@@ -56,9 +56,22 @@ Thumbs.db
 
 # Uploaded files (if they're stored in your repo directory)
 /adjuntos_calendario/*
+!/adjuntos_calendario/.gitkeep
+
 /adjuntos_coladas/*
+!/adjuntos_coladas/.gitkeep
+
 /adjuntos_compras/*
+!/adjuntos_compras/.gitkeep
+
 /adjuntos_lc/*
+!/adjuntos_lc/.gitkeep
+
 /adjuntos_polizas/*
+!/adjuntos_polizas/.gitkeep
+
 /adjuntos_proyectos/*
+!/adjuntos_proyectos/.gitkeep
+
 /adjuntos_sitios/*
+!/adjuntos_sitios/.gitkeep
