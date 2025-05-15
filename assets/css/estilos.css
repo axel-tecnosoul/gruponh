@@ -1,0 +1,16 @@
+.editable:hover {
+    text-decoration: underline;
+}
+body {
+	font-size: 13px;
+}
+.theme-form .form-group{
+	margin-bottom: 1px;
+}
+.notification-dropdown {
+  max-height: 700px; /* Ajusta esta altura según lo que necesites */
+  overflow-y: auto; /* Habilita el scroll vertical */
+  overflow-x: hidden; /* Evita el scroll horizontal si no es necesario */
+  border: 1px solid #ddd; /* Opcional: añade un borde para distinguir el contenedor */
+  background-color: #fff; /* Asegúrate de que tenga un fondo */
+}

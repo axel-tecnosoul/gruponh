@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    table th,td{
+      border: 1px solid gray;
+      /* border-collapse: collapse; */
+    }
+    .provincia{
+      background-color: lightblue;
+    }
+    .localidad{
+      background-color: lightcoral;
+    }
+  </style>
+</head>
+<body>
+  <form>
+    <fieldset id="pais">
+      <legend>Datos del pais</legend>
+      <label for="country-name">Nombre:</label>
+      <input type="text" id="country-name" name="country-name">
+      <br>
+      <label for="country-population">Población:</label>
+      <input type="text" id="country-population" name="country-population">
+
+      <fieldset class="provincia" style="margin-top: 15px;margin-bottom: 10px;">
+        <legend>Datos de la provincia</legend>
+        <label for="province-name">Nombre:</label>
+        <input type="text" class="province-name" name="province-name">
+        <br>
+        <label for="province-population">Población:</label>
+        <input type="text" class="province-population" name="province-population">
+
+        <fieldset class="localidad" style="margin-top: 15px;margin-bottom: 10px;">
+          <legend>Datos de la localidad</legend>
+          <label for="locality-name">Nombre:</label>
+          <input type="text" class="locality-name" name="locality-name">
+          <br>
+          <label for="locality-population">Población:</label>
+          <input type="text" class="locality-population" name="locality-population">
+        </fieldset>
+        
+        <button type="button" class="add-locality-btn">Agregar localidad</button>
+        <button type="button" class="edit-locality-btn" style="display: none;">Editar localidad</button>
+  
+        <table class="localitys-table">
+          <thead>
+            <tr>
+              <th>Localidad</th>
+              <th>Población</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+
+      </fieldset>
+      
+      <button type="button" id="add-province-btn">Agregar provincia</button>
+      <button type="button" id="edit-province-btn" style="display: none;">Editar provincia</button>
+
+      <table class="provinces-table">
+        <thead>
+          <tr>
+            <th>Provincia</th>
+            <th>Población</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+    </fieldset>
+  </form>
+
+</body>
+</html>
+
+<script type="text/javascript">
+  window.addEventListener('load', function() {
+    const ocultarTodo=1
+    const pais = document.getElementById("pais");
+    const addProvinceBtn = document.getElementById("add-province-btn");
+
+    addProvinceBtn.addEventListener("click", () => {
+      const provinceFieldset = document.querySelector(".provincia:last-of-type");
+      console.log(provinceFieldset);
+      const newProvinceFieldset = provinceFieldset.cloneNode(true);
+      const inputs = newProvinceFieldset.querySelectorAll("input");
+
+      //ELIMINAMOS LAS LOCALIDADES
+      const localidades = newProvinceFieldset.querySelectorAll(".localidad");
+      //const numElements = localidades.length - 1;
+      localidades.forEach((localidad, index) => {
+        if(localidad.style.display=="none"){
+          localidad.remove()
+        }
+      });
+
+      newProvinceFieldset.querySelectorAll("table tbody tr").forEach((row) => {
+        row.remove();
+      });
+
+      // Limpia los valores de los campos de texto de la nueva provincia
+      inputs.forEach((input, index) => {
+        input.value = "";
+      });
+
+      // Agrega el nuevo conjunto de campos de texto al formulario
+      pais.insertBefore(newProvinceFieldset, addProvinceBtn);
+
+      // Agrega este código dentro del evento "click" del botón "Agregar provincia"
+      // Obtiene el último campo de texto de provincia
+      if(ocultarTodo==1){
+        provinceFieldset.style.display = 'none';
+      }
+
+      const provincesTableBody = document.querySelector('.provinces-table tbody');
+      const newProvinceRow = provincesTableBody.insertRow();
+
+      const provinceName = provinceFieldset.querySelector('.province-name').value;
+      const nameCell = newProvinceRow.insertCell();
+      nameCell.textContent = provinceName;
+
+      const provincePopulation = provinceFieldset.querySelector('.province-population').value;
+      const populationCell = newProvinceRow.insertCell();
+      populationCell.textContent = provincePopulation;
+
+      // Añade un evento 'click' a cada fila de la tabla
+      const rows = document.querySelectorAll(".provinces-table tbody tr");
+      rows.forEach((row, index) => {
+        row.addEventListener("click", () => {
+          // Oculta todos los fieldset de las provincias
+          document.querySelectorAll(".provincia").forEach((fieldset) => {
+            fieldset.style.display = "none";
+          });
+          // Muestra el fieldset correspondiente al índice de la fila
+          document.querySelectorAll(".provincia")[index].style.display = "block";
+          document.querySelector("#edit-province-btn").style.display = "block";
+        });
+
+      });
+
+      newProvinceFieldset.querySelector(".add-locality-btn").addEventListener("click", function() {
+        handleLocality(newProvinceFieldset);
+      });
+      //hacemos foco en el primer input del fieldset
+      inputs[0].focus()
+
+    });
+
+    document.querySelector("#edit-province-btn").addEventListener("click", () => {
+      const fieldsetProvincias = document.querySelectorAll(".provincia");
+      fieldsetProvincias.forEach((row, index) => {
+        if(row.style.display=="block"){
+          const celdas=document.querySelectorAll(".provinces-table tbody tr")[index].querySelectorAll("td")
+          celdas[0].textContent=row.querySelector(".province-name").value
+          celdas[1].textContent=row.querySelector(".province-population").value
+        }
+      })
+    });
+
+
+    const provincias = document.querySelector(".provincia:last-of-type")
+    const addLocalityBtn = provincias.querySelector(".add-locality-btn");
+    //addLocalityBtn.addEventListener("click", handleLocality(provincias));
+    addLocalityBtn.addEventListener("click", function() {
+      handleLocality(provincias);
+    });
+
+    function handleLocality(provincia){
+      //console.log(provincia);
+      const localityFieldset = provincia.querySelector(".localidad:last-of-type");
+      //console.log(localityFieldset);
+      const newLocalityFieldset = localityFieldset.cloneNode(true);
+      //console.log(newLocalityFieldset);
+      const inputs = newLocalityFieldset.querySelectorAll("input");
+
+      // Limpia los valores de los campos de texto de la nueva localidad
+      inputs.forEach((input, index) => {
+        input.value = "";
+      });
+
+      const addLocalityBtn = provincia.querySelector(".add-locality-btn");
+
+      // Agrega el nuevo conjunto de campos de texto al formulario
+      provincia.insertBefore(newLocalityFieldset, addLocalityBtn);
+
+      // Agrega este código dentro del evento "click" del botón "Agregar localidad"
+      // Obtiene el último campo de texto de localidad
+      if(ocultarTodo==1){
+        localityFieldset.style.display = 'none';
+      }
+
+      const localitysTableBody = provincia.querySelector('.localitys-table tbody');
+      const newLocalityRow = localitysTableBody.insertRow();
+
+      const localityName = localityFieldset.querySelector('.locality-name').value;
+      const nameCell = newLocalityRow.insertCell();
+      nameCell.textContent = localityName;
+
+      const localityPopulation = localityFieldset.querySelector('.locality-population').value;
+      const populationCell = newLocalityRow.insertCell();
+      populationCell.textContent = localityPopulation;
+
+      // Añade un evento 'click' a cada fila de la tabla
+      const rows = provincia.querySelectorAll(".localitys-table tbody tr");
+      rows.forEach((row, index) => {
+        row.addEventListener("click", () => {
+          // Oculta todos los fieldset de las localidads
+          provincia.querySelectorAll(".localidad").forEach((fieldset) => {
+            fieldset.style.display = "none";
+          });
+          // Muestra el fieldset correspondiente al índice de la fila
+          provincia.querySelectorAll(".localidad")[index].style.display = "block";
+          provincia.querySelector(".edit-locality-btn").style.display = "block";
+        });
+
+      });
+
+      provincia.querySelector(".edit-locality-btn").addEventListener("click", () => {
+        const fieldsetProvincias = provincia.querySelectorAll(".localidad");
+        fieldsetProvincias.forEach((row, index) => {
+          if(row.style.display=="block"){
+            const celdas=provincia.querySelectorAll(".localitys-table tbody tr")[index].querySelectorAll("td")
+            celdas[0].textContent=row.querySelector(".locality-name").value
+            celdas[1].textContent=row.querySelector(".locality-population").value
+          }
+        })
+      });
+
+      //hacemos foto en el primer input del fieldset
+      inputs[0].focus()
+    }
+
+  })
+
+</script>

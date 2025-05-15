@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <form>
+    <fieldset class="pais">
+      <legend>Datos del país</legend>
+      <label for="country-name">Nombre del país:</label>
+      <input type="text" id="country-name" name="country-name">
+      <br>
+      <label for="country-population">Población del país:</label>
+      <input type="text" id="country-population" name="country-population">
+    </fieldset>
+    
+    <fieldset class="provincia">
+      <legend>Datos de la provincia</legend>
+      <label for="province-name">Nombre de la provincia:</label>
+      <input type="text" class="province-name" name="province-name">
+      <br>
+      <label for="province-population">Población de la provincia:</label>
+      <input type="text" class="province-population" name="province-population">
+    </fieldset>
+    
+    <button type="button" id="add-province-btn">Agregar provincia</button>
+    <button type="button" id="edit-province-btn" style="display: none;">Editar provincia</button>
+  </form>
+  
+  <table id="provinces-table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Población</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+
+</body>
+</html>
+
+<script type="text/javascript">
+  const form = document.querySelector("form");
+  const addProvinceBtn = document.getElementById("add-province-btn");
+
+  addProvinceBtn.addEventListener("click", () => {
+    const provinceFieldset = document.querySelector(".provincia:last-of-type");
+    const newProvinceFieldset = provinceFieldset.cloneNode(true);
+    const inputs = newProvinceFieldset.querySelectorAll("input");
+
+    // Limpia los valores de los campos de texto de la nueva provincia
+    inputs.forEach((input) => {
+      input.value = "";
+    });
+
+    // Agrega el nuevo conjunto de campos de texto al formulario
+    form.insertBefore(newProvinceFieldset, addProvinceBtn);
+
+    // Agrega este código dentro del evento "click" del botón "Agregar provincia"
+    // Obtiene el último campo de texto de provincia
+    provinceFieldset.style.display = 'none';
+
+    const provincesTableBody = document.querySelector('#provinces-table tbody');
+    const newProvinceRow = provincesTableBody.insertRow();
+
+    const provinceName = provinceFieldset.querySelector('.province-name').value;
+    const nameCell = newProvinceRow.insertCell();
+    nameCell.textContent = provinceName;
+
+    const provincePopulation = provinceFieldset.querySelector('.province-population').value;
+    const populationCell = newProvinceRow.insertCell();
+    populationCell.textContent = provincePopulation;
+
+    // Añade un evento 'click' a cada fila de la tabla
+    const rows = document.querySelectorAll("#provinces-table tbody tr");
+    rows.forEach((row, index) => {
+      row.addEventListener("click", () => {
+        // Oculta todos los fieldset de las provincias
+        document.querySelectorAll(".provincia").forEach((fieldset) => {
+          fieldset.style.display = "none";
+        });
+        // Muestra el fieldset correspondiente al índice de la fila
+        document.querySelectorAll(".provincia")[index].style.display = "block";
+        document.querySelector("#edit-province-btn").style.display = "block";
+      });
+
+    });
+
+  });
+
+  document.querySelector("#edit-province-btn").addEventListener("click", () => {
+    const fieldsetProvincias = document.querySelectorAll(".provincia");
+    fieldsetProvincias.forEach((row, index) => {
+      if(row.style.display=="block"){
+        const celdas=document.querySelectorAll("#provinces-table tbody tr")[index].querySelectorAll("td")
+        celdas[0].textContent=row.querySelector(".province-name").value
+        celdas[1].textContent=row.querySelector(".province-population").value
+      }
+    })
+  });
+
+</script>

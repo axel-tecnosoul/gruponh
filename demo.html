@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <form>
+    <fieldset>
+      <legend>Datos del país</legend>
+      <label for="country-name">Nombre del país:</label>
+      <input type="text" id="country-name" name="country-name">
+      <br>
+      <label for="country-population">Población del país:</label>
+      <input type="text" id="country-population" name="country-population">
+    </fieldset>
+    
+    <fieldset>
+      <legend>Datos de la provincia</legend>
+      <label for="province-name">Nombre de la provincia:</label>
+      <input type="text" id="province-name" name="province-name">
+      <br>
+      <label for="province-population">Población de la provincia:</label>
+      <input type="text" id="province-population" name="province-population">
+    </fieldset>
+    
+    <button type="button" id="add-province-btn">Agregar provincia</button>
+  </form>
+</body>
+</html>
+<script type="text/javascript">
+  const form = document.querySelector("form");
+  const addProvinceBtn = document.getElementById("add-province-btn");
+  const provinceFieldset = document.querySelector("fieldset:last-of-type");
+
+  addProvinceBtn.addEventListener("click", () => {
+    const newProvinceFieldset = provinceFieldset.cloneNode(true);
+    const inputs = newProvinceFieldset.querySelectorAll("input");
+
+    // Limpia los valores de los campos de texto de la nueva provincia
+    inputs.forEach((input) => {
+      input.value = "";
+    });
+
+    // Agrega el nuevo conjunto de campos de texto al formulario
+    form.insertBefore(newProvinceFieldset, addProvinceBtn);
+  });
+</script>

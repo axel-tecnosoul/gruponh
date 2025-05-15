@@ -1,0 +1,9 @@
+RENAME TABLE `presupuestos_revisiones` TO `presupuestos_revisiones_old`;
+RENAME TABLE `presupuestos` TO `presupuestos_revisiones`;
+ALTER TABLE `presupuestos_revisiones` ADD `id_presupuesto` INT NOT NULL AFTER `id`;
+UPDATE `presupuestos_revisiones` SET id_presupuesto=id;
+CREATE TABLE `presupuestos` ( `id` INT NOT NULL AUTO_INCREMENT , `ultimo_nro_revision` INT NOT NULL , `anulado` TINYINT NOT NULL DEFAULT '0' , PRIMARY KEY (`id`)) ENGINE = InnoDB;
+INSERT INTO presupuestos (id,ultimo_nro_revision,anulado) SELECT id_presupuesto, nro_revision, anulado FROM presupuestos_revisiones;
+ALTER TABLE `presupuestos_revisiones` ADD `fecha_hora_alta` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `id_linea_negocio`;
+ALTER TABLE `presupuestos_detalle` CHANGE `costo` `costo` DOUBLE(12,2) NOT NULL;
+ALTER TABLE `presupuestos_detalle` CHANGE `precio` `precio` DOUBLE(12,2) NOT NULL;

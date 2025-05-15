@@ -1,0 +1,64 @@
+/phpmyadmin/
+#serviceAccountKey-ospiapbatesting-firebase-adminsdk-lbt4s-8db4ebc483.json
+#serviceAccountKey-app-ospiapba-c86dea275cf8.json
+#serviceAccountKey-*
+#admin/config.php
+#admin/database.php
+php.ini
+
+github-deploy-key
+
+# Dependencies
+/vendor/
+/node_modules/
+composer.lock
+
+#.env
+#.env.*
+#!.env.example
+#/img/*
+database.php
+#config.php
+save_log.txt
+
+# IDE and editor files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Cache and logs
+/storage/*.key
+/storage/logs/
+/storage/framework/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database
+*.sqlite
+*.sqlite3
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*.bak
+*.swp
+*.swo
+
+# Uploaded files (if they're stored in your repo directory)
+/adjuntos_calendario/*
+/adjuntos_coladas/*
+/adjuntos_compras/*
+/adjuntos_lc/*
+/adjuntos_polizas/*
+/adjuntos_proyectos/*
+/adjuntos_sitios/*
