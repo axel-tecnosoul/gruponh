@@ -11,7 +11,8 @@
     require 'database.php';
     
     if (!empty($_POST)) {
-        
+        // var_dump($_POST);
+		// die;
         // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -39,8 +40,19 @@
 		$nroComputo = $data['cant']+1;
 		
 		$idCuentaRealizo = null;
-		$idCuentaReviso = $_POST['id_cuenta_reviso'];
-		$idCuentaValido = $_POST['id_cuenta_valido'];
+		$idCuentaValido = null;
+		$idCuentaReviso = null;
+		if(isset($_POST['id_cuenta_realizo'])){
+			$idCuentaRealizo = $_POST['id_cuenta_realizo'];
+		}
+
+		if(isset($_POST['id_cuenta_reviso'])){
+			$idCuentaReviso = $_POST['id_cuenta_reviso'];
+		}
+
+		if(isset($_POST['id_cuenta_valido'])){
+			$idCuentaValido = $_POST['id_cuenta_valido'];
+		}
 
 		$sql = "SELECT id FROM `cuentas` WHERE id_usuario = ? ";
 		$q = $pdo->prepare($sql);
@@ -195,10 +207,10 @@
 							<label class="col-sm-3 col-form-label">Fecha(*)</label>
 							<div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" autofocus value="<?php echo date('Y-m-d');?>" class="form-control" required="required"></div>
 							</div>
-							<div class="form-group row">
+							<div class="form-group row mt-3">
 							<label class="col-sm-3 col-form-label">Proyecto(*)</label>
 							<div class="col-sm-9">
-							<input type="text" name="proyecto_descripcion" class="form-control" disabled="disabled" value="<?php echo $descProyecto;?>">
+							<label class="form-control"><?php echo $descProyecto; ?></label>
 							</div>
 							</div>
 							<div class="form-group row">
@@ -238,7 +250,7 @@
 							</select>
 							<input type="hidden" name="id_tarea" value="<?php echo $_GET['id'];?>">
 							</div>
-							</div>
+							<!-- </div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Revisó(*)</label>
 							<div class="col-sm-9">
@@ -258,8 +270,8 @@
 							?>
 							</select>
 							</div>
-							</div>
-							<div class="form-group row">
+							</div> -->
+							<!-- <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Aprobó(*)</label>
 							<div class="col-sm-9">
 							<select name="id_cuenta_valido" id="id_cuenta_valido" class="js-example-basic-single col-sm-12" required="required">
@@ -278,8 +290,8 @@
 							?>
 							</select>
 							</div>
-							</div>
-							<div class="form-group row">
+							</div> -->
+							<!-- <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Estado</label>
 							<div class="col-sm-9">
 							<select name="id_estado" id="id_estado" class="js-example-basic-single col-sm-12" required="required">
@@ -297,7 +309,8 @@
 							?>
 							</select>
 							</div>
-							</div>
+							</div> -->
+							<input type="hidden" name="id_estado" id="id_estado" value="1">
                         </div>
                       </div>
                     </div>
