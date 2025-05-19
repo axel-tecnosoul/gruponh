@@ -14,3 +14,13 @@ body {
   border: 1px solid #ddd; /* Opcional: añade un borde para distinguir el contenedor */
   background-color: #fff; /* Asegúrate de que tenga un fondo */
 }
+
+.btn-cancelar {
+  background-color: #CCDBDF;
+  border-color: #CCDBDF;
+}
+
+.btn-cancelar:hover{
+  background-color: #515151;
+  color: #FFF;
+}
