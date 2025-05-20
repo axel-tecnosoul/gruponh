@@ -1,75 +1,118 @@
 <?php
-    require("config.php");
-    require 'database.php';
-    $submitted_username = '';
-    if (!empty($_POST)) {
+// 1) Arranca la sesión (necesario antes de usar $_SESSION)
+session_start();
 
-      $pdo = Database::connect();
+// 2) Si ya está logueado, lo mandamos al dashboard
+if (!empty($_SESSION['user'])) {
+    header('Location: dashboard.php');
+    exit;
+}
 
-      try {
-        $sql = "SELECT `id`, `usuario`, `contrasenia`, `id_perfil`, `fecha_alta`, `activo` 
-                FROM `usuarios` 
-                WHERE activo = 1 AND usuario = :user";
+// 3) Conectar BD (sin incluir aquí todo el middleware de sesión)
+require 'database.php';
 
+$submitted_username = '';
+$error = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pdo = Database::connect();
+
+    try {
+        $sql = "SELECT id, usuario, contrasenia, id_perfil, fecha_alta, activo
+                FROM usuarios
+                WHERE activo = 1
+                  AND usuario = :user";
         $stmt = $pdo->prepare($sql);
         $stmt->execute([':user' => $_POST['user']]);
-
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        $login_ok = false;
 
-        if ($row) {
-          $check_pass = md5($_POST['pass']); // Recomendado: cambiar a password_hash en el futuro
-          if ($check_pass === $row['contrasenia']) {
-            $login_ok = true;
-          }
-        }
-
-      } catch (PDOException $ex) {
-          die("Error en la consulta: " . $ex->getMessage());
-      } finally {
-          Database::disconnect();
-      }
-      /*$query = "SELECT `id`, `usuario`, `contrasenia`, `id_perfil`, `fecha_alta`, `activo` FROM `usuarios` WHERE activo = 1 and usuario = :user";
-      $query_params = [':user' => $_POST['user']];
-      
-      try {
-          $stmt = $db->prepare($query);
-          $result = $stmt->execute($query_params);
-      } catch (PDOException $ex) {
-          die("Failed to run query: " . $ex->getMessage());
-      }
-      $login_ok = false;
-      $row = $stmt->fetch();
-      if ($row) {
-          $check_pass = md5($_POST['pass']);
-          if ($check_pass === $row['contrasenia']) {
-              $login_ok = true;
-          }
-      }*/
-		  $error = "";
-        if ($login_ok) {
+        if ($row && md5($_POST['pass']) === $row['contrasenia']) {
+            // 4) Éxito: guardar datos en sesión
             unset($row['contrasenia']);
             $_SESSION['user'] = $row;
-            
-            $pdo = Database::connect();
-            $sql = " SELECT ap.id_accion FROM `acciones_permisos` ap  inner join permisos_perfil pp on ap.id_permiso = pp.id_permiso WHERE pp.id_perfil =  ".$row['id_perfil'];
-            //var_dump($sql);
-            $permisos = null;
-            foreach ($pdo->query($sql) as $row2) {
-                $permisos[] = $row2[0];
+
+            // 5) Cargar permisos
+            $permisos = [];
+            $permSql = "SELECT ap.id_accion
+                        FROM acciones_permisos ap
+                        JOIN permisos_perfil pp ON ap.id_permiso = pp.id_permiso
+                        WHERE pp.id_perfil = :perfil";
+            $permStmt = $pdo->prepare($permSql);
+            $permStmt->execute([':perfil' => $row['id_perfil']]);
+            while ($r = $permStmt->fetch(PDO::FETCH_NUM)) {
+                $permisos[] = $r[0];
             }
-            
-            Database::disconnect();
             $_SESSION['user']['permisos'] = $permisos;
 
-            header("Location: dashboard.php");
-            die("Redirecting to: dashboard.php");
+            // 6) Redirigir al dashboard
+            header('Location: dashboard.php');
+            exit;
+
         } else {
-            $error = "Usuario o Contraseña incorrecto!";
+            $error = 'Usuario o contraseña incorrectos';
             $submitted_username = htmlentities($_POST['user'], ENT_QUOTES, 'UTF-8');
         }
+
+    } catch (PDOException $ex) {
+        die('Error en la consulta: ' . $ex->getMessage());
+    } finally {
+        Database::disconnect();
     }
-?>
+}
+/*$submitted_username = '';
+if (!empty($_POST)) {
+  //require("config.php");
+  require 'database.php';
+
+  $pdo = Database::connect();
+
+  try {
+    $sql = "SELECT `id`, `usuario`, `contrasenia`, `id_perfil`, `fecha_alta`, `activo` 
+            FROM `usuarios` 
+            WHERE activo = 1 AND usuario = :user";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([':user' => $_POST['user']]);
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $login_ok = false;
+
+    if ($row) {
+      $check_pass = md5($_POST['pass']); // Recomendado: cambiar a password_hash en el futuro
+      if ($check_pass === $row['contrasenia']) {
+        $login_ok = true;
+      }
+    }
+
+  } catch (PDOException $ex) {
+    die("Error en la consulta: " . $ex->getMessage());
+  } finally {
+    Database::disconnect();
+  }
+  
+  $error = "";
+  if ($login_ok) {
+    unset($row['contrasenia']);
+    $_SESSION['user'] = $row;
+    
+    $pdo = Database::connect();
+    $sql = " SELECT ap.id_accion FROM `acciones_permisos` ap  inner join permisos_perfil pp on ap.id_permiso = pp.id_permiso WHERE pp.id_perfil =  ".$row['id_perfil'];
+    //var_dump($sql);
+    $permisos = null;
+    foreach ($pdo->query($sql) as $row2) {
+      $permisos[] = $row2[0];
+    }
+    
+    Database::disconnect();
+    $_SESSION['user']['permisos'] = $permisos;
+
+    header("Location: dashboard.php");
+    die("Redirecting to: dashboard.php");
+  } else {
+    $error = "Usuario o Contraseña incorrecto!";
+    $submitted_username = htmlentities($_POST['user'], ENT_QUOTES, 'UTF-8');
+  }
+}*/?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -142,15 +185,15 @@
                         <div class="form-group form-row mt-3 mb-0">
                           <!-- <a href="#" onclick="document.flogin.submit()" class="btn btn-primary btn-block">Ingresar</a> -->
                           <input type="submit" class="btn btn-primary btn-block" value="Ingresar">
-                        </div>
-						<?php if (isset($error)) { ?>
-						<div class="checkbox p-0">
-						  <?php print("<b><font color='red'>Usuario o Contraseña incorrecto!</font></b>");  ?>
-						</div>
-						<?php } ?>
-						<?php if (!empty($_GET['sesion'])) {
-						  print("<div class='checkbox p-0'><b><font color='red'>Sesión vencida!</font></b></div>");
-						} ?>
+                        </div><?php
+                        if ($error) { ?>
+                          <div class="checkbox p-0"><?php
+                            print("<b><font color='red'>Usuario o Contraseña incorrecto!</font></b>");  ?>
+                          </div><?php
+                        }
+                        if (!empty($_GET['sesion'])) {
+                          print("<div class='checkbox p-0'><b><font color='red'>Sesión vencida!</font></b></div>");
+                        } ?>
                       </form>
                     </div>
                   </div>

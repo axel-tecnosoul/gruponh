@@ -7,36 +7,55 @@ $id_computo = $_POST['id_computo'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y'), d.aprobado, d.id_material, d.reservado, d.comprado,SUM(id.saldo) AS disponible,d.comentarios, date_format(d.fecha_necesidad,'%y%m%d'), d.cancelado FROM computos_detalle d inner join materiales m on m.id = d.id_material left JOIN ingresos_detalle id ON id.id_material=m.id WHERE d.cancelado = 0 and d.id_computo = $id_computo GROUP BY m.id";
+//$sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y'), d.aprobado, d.id_material, d.reservado, d.comprado,SUM(id.saldo) AS disponible,d.comentarios, date_format(d.fecha_necesidad,'%y%m%d'), d.cancelado FROM computos_detalle d inner join materiales m on m.id = d.id_material left JOIN ingresos_detalle id ON id.id_material=m.id WHERE d.cancelado = 0 and d.id_computo = $id_computo GROUP BY m.id";
+//$sql = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad AS cantidad_solicitada, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad_formatted, cd.aprobado, cd.id_material, cd.reservado, cd.comprado, SUM(id.saldo) AS disponible, cd.comentarios, date_format(cd.fecha_necesidad,'%y%m%d') AS fecha_necesidad, cd.cancelado, pd.cantidad AS cantidad_pedida FROM computos_detalle cd inner join materiales m on m.id = cd.id_material left JOIN ingresos_detalle id ON id.id_material=m.id LEFT JOIN pedidos p ON p.id_computo=cd.id_computo LEFT JOIN pedidos_detalle pd ON pd.id_pedido AND pd.id_material=m.id WHERE cd.cancelado = 0 and cd.id_computo =$id_computo GROUP BY m.id";
+$sql = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad AS cantidad_solicitada, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad_formatted, date_format(cd.fecha_necesidad,'%y%m%d') AS fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, pd.cantidad AS cantidad_pedida, cd.comprado, m.id AS id_material, cd.cancelado, cd.comentarios FROM computos_detalle cd inner join materiales m on m.id = cd.id_material LEFT JOIN pedidos p ON cd.id_computo=p.id_computo LEFT JOIN pedidos_detalle pd ON pd.id_pedido=p.id AND pd.id_material=m.id WHERE cd.cancelado = 0 and cd.id_computo = ".$id_computo;
 $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {
-	if (empty($row[8])) {
-		$row[8] = 0;
+
+  // 1) Calcular stock disponible
+  $sql3  = "SELECT SUM(saldo) AS disponible FROM ingresos_detalle WHERE id_material = " . $row["id_material"];
+  $q3    = $pdo->prepare($sql3);
+  $q3->execute();
+  $data3 = $q3->fetch(PDO::FETCH_ASSOC);
+
+  $enStock = !empty($data3['disponible']) ? $data3['disponible'] : 0;
+
+  /*$disponible=$row["disponible"];
+	if (empty($disponible)) {
+		$disponible = 0;
+	}*/
+
+  $aprobado="No";
+	if ($row["aprobado"]==1) {
+		$aprobado = 'Si';
 	}
-	if ($row[4]==1) {
-		$row[4] = 'Si';
-	} else {
-		$row[4] = 'No';
-	}
-	$saldo = $row[2]-$row[8]-$row[6]-$row[7];
+
+  $cantidad_solicitada = $row["cantidad_solicitada"];
+  $reservado=$row["reservado"];
+  $comprado=$row["comprado"];
+  //$cantidad_pedida = $row["cantidad_pedida"];
+  $cantidad_pedida = !empty($row['cantidad_pedida']) ? $row['cantidad_pedida'] : 0;
+	//$saldo = $cantidad_solicitada-$disponible-$reservado-$comprado;
+  $saldo = $cantidad_solicitada - $reservado - $cantidad_pedida;
 
 
 	$cancelado = "No";
-	if ($row[11]==1) {
+	if ($row["cancelado"]==1) {
 		$cancelado = "Si";	
 	}
   $aConceptos[]=[
-    0 => $row[1],
-	1 => $row[2],
-	2 => "<span style='display: none;'>". $row[10] . "</span>".$row[3],
-	3 => $row[4],
-	4 => $row[8],
-    5 => $row[6],
-    6 => $row[7],
-    7 => $saldo,
-	8 => $row[9]
-    
+    0 => $row["concepto"],
+    1 => $cantidad_solicitada,
+    2 => "<span style='display: none;'>". $row["fecha_necesidad"] . "</span>".$row["fecha_necesidad_formatted"],
+    3 => $aprobado,
+    4 => $enStock,
+    5 => $reservado,
+    6 => $cantidad_pedida,
+    7 => $comprado,
+    8 => $saldo,
+	  9 => $row["comentarios"]
   ];
 }
 

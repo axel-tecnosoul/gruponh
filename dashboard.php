@@ -1,13 +1,12 @@
 <?php 
 require("config.php");
-require 'database.php';
-?>
+require 'database.php';?>
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <?php include('head_tables.php');?>
-	<link rel="stylesheet" type="text/css" href="assets/css/calendar.css">
-	<link rel="stylesheet" href="assets/css/colResize.css">
+  <head><?php
+    include('head_tables.php');?>
+    <link rel="stylesheet" type="text/css" href="assets/css/calendar.css">
+    <link rel="stylesheet" href="assets/css/colResize.css">
   </head>
   <body>
     <!-- page-wrapper Start-->
@@ -335,20 +334,15 @@ require 'database.php';
     <script src="assets/js/dashboard/project-custom.js"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-	<script src="assets/js/calendar/moment.min.js"></script>
+	  <script src="assets/js/calendar/moment.min.js"></script>
     <script src="assets/js/calendar/fullcalendar.min.js"></script>
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
-	<script src="assets/js/chart/morris-chart/raphael.js"></script>
+	  <script src="assets/js/chart/morris-chart/raphael.js"></script>
     <script src="assets/js/chart/morris-chart/morris.js"></script>
     <script src="assets/js/chart/morris-chart/prettify.min.js"></script>
     <script src="assets/js/chart/morris-chart/morris-script.js"></script>
-	<script src="assets/js/colResize.js"></script>
+	  <script src="assets/js/colResize.js"></script>
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script>

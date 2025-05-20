@@ -1,9 +1,10 @@
 <?php
-session_start();
+/*session_start();
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
-}
+}*/
+include 'config.php';
 include 'database.php';?>
 <!DOCTYPE html>
 <html lang="en">
@@ -226,8 +227,9 @@ include 'database.php';?>
                           <th>Aprobado</th>
                           <th>Stock</th>
                           <th>Reservado</th>
+                          <th>Pedido</th>
                           <th>Comprando</th>
-                          <th>Pendiente</th>
+                          <th>Saldo</th>
                           <th>Comentarios</th>
                         </tr>
                       </thead>
@@ -240,6 +242,7 @@ include 'database.php';?>
                           <th>Aprobado</th>
                           <th>Stock</th>
                           <th>Reservado</th>
+                          <th>Pedido</th>
                           <th>Comprando</th>
                           <th>Pendiente</th>
                           <th>Comentarios</th>

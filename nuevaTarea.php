@@ -23,6 +23,8 @@
 		$sql = "INSERT INTO `tareas`(`id_proyecto`, `estructura`, `id_sector`, `id_tipo_tarea`, `id_recurso`, `observaciones`, `id_coordinador`, `fecha_inicio_estimada`, `fecha_fin_estimada`, `fecha_inicio_real`, `fecha_fin_real`, `anulado`) VALUES (?,?,?,?,?,?,?,?,?,?,?,0)";
 		$q = $pdo->prepare($sql);		   
 		$q->execute([$_POST['id_proyecto'],$_POST['estructura'],$_POST['id_sector'],$_POST['id_tipo_tarea'],$_POST['id_recurso'],$_POST['observaciones'],$_POST['id_coordinador'],$_POST['fecha_inicio_estimada'],$_POST['fecha_fin_estimada'],$_POST['fecha_inicio_real'],$_POST['fecha_fin_real']]);
+
+    $id = $pdo->lastInsertId();
         
 		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva tarea de proyecto','Tareas','verTarea.php?id=$id')";
 		$q = $pdo->prepare($sql);

@@ -66,6 +66,7 @@
                 </ul>
               </li>
 			  <li class="onhover-dropdown">
+          <span id="tiempoSesion"></span>
                   <h6><b><?php echo $_SESSION['user']['usuario']?></b></h6>
               </li>
               <li class="onhover-dropdown">
