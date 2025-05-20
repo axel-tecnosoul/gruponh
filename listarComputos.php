@@ -134,7 +134,7 @@ include 'database.php';?>
                       <tbody><?php
                         if (!empty($_POST)) {
                           $pdo = Database::connect();
-                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
+                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
                           if (!empty($_POST['nro'])) {
                             $sql .= " and (p.nro = ".$_POST['nro']." or s.nro_sitio = ".$_POST['nro'].") ";
                           }
@@ -149,7 +149,7 @@ include 'database.php';?>
                             $sql .= " AND ec.id in (".implode(', ',$_POST['id_estado']).") ";
                           }
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr>
+                            <tr data-estado-id="<?=$row["id_estado"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -166,10 +166,10 @@ include 'database.php';?>
                           Database::disconnect();
                         } else {
                           $pdo = Database::connect();
-                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
+                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
                             
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr>
+                            <tr data-estado-id="<?=$row["id_estado"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -324,6 +324,32 @@ include 'database.php';?>
             </div>
           </div>
         </div>
+      </div>
+      
+      <div class="modal fade" id="modalRevision" tabindex="-1" role="dialog" aria-labelledby="modalRevisionLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <form id="formRevision">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalRevisionLabel">Nueva Revisión</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <p>¿Está seguro que desea generar una nueva revisión?</p>
+                <div class="form-group">
+                  <label for="motivoRevision">Motivo de la revisión:</label>
+                  <textarea id="motivoRevision" name="motivoRevision" class="form-control" required></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Confirmar</button>
+                <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div><?php
     }
     Database::disconnect();?>
@@ -441,12 +467,54 @@ include 'database.php';?>
           }
         })
       
-        $("#link_items_computo").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione un cómputo para ver/añadir/modificar ítems")
+        let hrefToRedirect = null;
+
+        $("#link_items_computo").on("click", function (e) {
+          e.preventDefault();
+
+          let l = document.location.href;
+
+          if (this.href == l || this.href == l + "#") {
+            alert("Por favor seleccione un cómputo para ver/añadir/modificar ítems");
+            return;
           }
-        })
+
+          const estado_id = parseInt($(this).data("estado-id"), 10);
+
+          console.log("estado_id:", estado_id);
+
+          if (estado_id === 1 || estado_id === 2) {
+            // Elaboración o Para Aprobar → se puede modificar directamente
+            window.location.href = this.href;
+
+          } else if (estado_id === 3 || estado_id === 4) {
+            // Aprobado o En Proceso → solo revisión
+            hrefToRedirect = this.href;
+            $("#modalRevision").modal("show");
+
+          } else {
+            // Cancelado, Terminado, Superado u otros → no permitido
+            alert("No se puede modificar ni revisar ítems en este estado.");
+          }
+        });
+
+        // Confirmación del modal usando botón tipo submit
+        $("#formRevision").on("submit", function (e) {
+          e.preventDefault();
+
+          const motivo = $("#motivoRevision").val().trim();
+          if (motivo === "") {
+            alert("Por favor complete el motivo de la revisión.");
+            return;
+          }
+
+          // Redirigir
+          if (hrefToRedirect) {
+            window.location.href = hrefToRedirect;
+            hrefToRedirect = null;
+          }
+        });
+
       
         $("#link_aprobar_computo").on("click",function(){
           /*let l=document.location.href;
@@ -527,7 +595,14 @@ include 'database.php';?>
               $("#link_eliminar_computo").attr("data-target","#");
             }
           }
+
+          setEstadoIdParaItemsComputo(t);
         });
+
+        function setEstadoIdParaItemsComputo(row) {
+          let estado_id = row.data("estado-id");
+          $("#link_items_computo").data("estado-id", estado_id);
+        }
       
         $("body").on('dblclick',".editable", function(event) {
           var t=$(this);
