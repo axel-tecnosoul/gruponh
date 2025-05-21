@@ -106,11 +106,26 @@ include 'database.php';?>
                     if (!empty(tienePermiso(291))) {?>
                       <a href="#" id="link_items_computo"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Editar / Revisión" title="Editar / Revisión"></a>
                       &nbsp;&nbsp;<?php
-                    }
+                    }?>
+
+                    <a href="#" class="accion-computo" data-accion="aprobar_completo" title="Aprobar Completo">
+                      <img src="img/estrella.png" width="24" height="25">
+                    </a>
+
+                    <a href="#" class="accion-computo" data-accion="aprobar_parcial" title="Aprobar Parcial">
+                      <img src="img/medalla-plateada.png" width="24" height="25">
+                    </a>
+
+                    <a href="#" class="accion-computo" data-accion="cancelar_computo" title="Cancelar Cómputo">
+                      <img src="img/neg.png" width="24" height="25">
+                    </a><?php
+
+                    
                     if (!empty(tienePermiso(292))) {?>
                       <a href="#" id="link_eliminar_computo"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>
                       &nbsp;&nbsp;<?php
                     }?>
+                    
                   </h5>
                 </div>
                 <div class="card-body">
@@ -149,7 +164,7 @@ include 'database.php';?>
                             $sql .= " AND ec.id in (".implode(', ',$_POST['id_estado']).") ";
                           }
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>">
+                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -169,7 +184,7 @@ include 'database.php';?>
                           $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
                             
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>">
+                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -351,6 +366,28 @@ include 'database.php';?>
             </form>
           </div>
         </div>
+      </div>
+      
+      <div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <form id="formConfirmacion">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalConfirmacionLabel">Confirmación</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <p id="textoConfirmacion">¿Está seguro?</p>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Confirmar</button>
+                <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div><?php
     }
     Database::disconnect();?>
@@ -432,9 +469,9 @@ include 'database.php';?>
                 "previous": "Anterior"
             }
           },
-          "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            $('td:eq(9)', nRow).addClass("editable").attr('data-id-posicion', aData[4]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
-          },
+          // "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
+          //   $('td:eq(9)', nRow).addClass("editable").attr('data-id-posicion', aData[4]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
+          // },
           initComplete: function(){
             $('[title]').tooltip();
           }
@@ -665,6 +702,113 @@ include 'database.php';?>
           });
         });
       });
+
+      let accionPendiente = null;
+      let idComputoPendiente = null;
+      let idsMultiples = [];
+
+      // Marcar fila activa al hacer clic
+      $(document).on("click", "#dataTables-example666 tbody tr", function () {
+          $("#dataTables-example666 tbody tr").removeClass("fila-activa");
+          $(this).addClass("fila-activa");
+      });
+
+      // Manejo de clic en botones de acción
+      $(document).on("click", ".accion-computo", function (e) {
+          e.preventDefault();
+
+          const accion = $(this).data("accion");
+          accionPendiente = accion;
+          idComputoPendiente = null;
+          idsMultiples = [];
+
+          let mensaje = "";
+
+          switch (accion) {
+              case "cancelar_computo":
+                  const filaActiva = $("#dataTables-example666 tbody tr.fila-activa");
+                  if (filaActiva.length === 0) {
+                      alert("Debe seleccionar un cómputo de la tabla primero.");
+                      return;
+                  }
+                  idComputoPendiente = filaActiva.data("id-computo");
+                  mensaje = "¿Está seguro que desea <strong>cancelar</strong> este cómputo?";
+                  break;
+
+              case "aprobar_completo":
+                  $("#dataTables-example666 tbody tr").each(function () {
+                      const id = $(this).data("id-computo");
+                      if (id) idsMultiples.push(id);
+                  });
+                  mensaje = "¿Desea aprobar <strong>todos</strong> los conceptos de los cómputos listados?";
+                  break;
+
+              case "aprobar_parcial":
+                  $("#dataTables-example666 tbody tr").each(function () {
+                      const id = $(this).data("id-computo");
+                      if (id) idsMultiples.push(id);
+                  });
+                  mensaje = "¿Desea aprobar <strong>solo los conceptos no rechazados</strong> de los cómputos listados?";
+                  break;
+
+              default:
+                  alert("Acción no reconocida.");
+                  return;
+          }
+
+          // Mostrar modal
+          $("#textoConfirmacion").html(mensaje);
+          $("#modalConfirmacion").modal("show");
+      });
+
+      // Confirmar acción desde el modal
+      $("#formConfirmacion").on("submit", function (e) {
+          e.preventDefault();
+
+          if (!accionPendiente) return;
+
+          let data = {
+              ajax: true,
+              accion: accionPendiente
+          };
+
+          if (accionPendiente === "cancelar_computo") {
+              if (!idComputoPendiente) {
+                  alert("No hay cómputo seleccionado.");
+                  return;
+              }
+              data.id_computo = idComputoPendiente;
+          } else {
+              if (idsMultiples.length === 0) {
+                  alert("No hay cómputos para procesar.");
+                  return;
+              }
+              data.ids_computo = idsMultiples;
+          }
+
+          $.ajax({
+              url: "acciones_computo.php",
+              method: "POST",
+              data: data,
+              success: function (resp) {
+                  if (resp.trim() === "ok") {
+                      location.reload();
+                  } else {
+                      alert("Error: " + resp);
+                  }
+              },
+              error: function (xhr) {
+                  alert("Error del servidor: " + xhr.responseText);
+              },
+              complete: function () {
+                  $("#modalConfirmacion").modal("hide");
+                  accionPendiente = null;
+                  idComputoPendiente = null;
+                  idsMultiples = [];
+              }
+          });
+      });
+
     
       $(document).ready(function() {
         // Setup - add a text input to each footer cell
