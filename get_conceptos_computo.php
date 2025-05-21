@@ -1,6 +1,7 @@
 <?php
 require("config.php");
 require 'database.php';
+require 'permisos.php';
 
 $id_computo = $_POST['id_computo'];
 
@@ -13,6 +14,13 @@ $sql = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad AS cantidad_
 $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {
+
+  $id_computo_detalle = $row["id_computo_detalle"];
+  $cantidad_solicitada = $row["cantidad_solicitada"];
+  $reservado=$row["reservado"];
+  $comprado=$row["comprado"];
+  //$cantidad_pedida = $row["cantidad_pedida"];
+  $cantidad_pedida = !empty($row['cantidad_pedida']) ? $row['cantidad_pedida'] : 0;
 
   // 1) Calcular stock disponible
   $sql3  = "SELECT SUM(saldo) AS disponible FROM ingresos_detalle WHERE id_material = " . $row["id_material"];
@@ -32,11 +40,6 @@ foreach ($pdo->query($sql) as $row) {
 		$aprobado = 'Si';
 	}
 
-  $cantidad_solicitada = $row["cantidad_solicitada"];
-  $reservado=$row["reservado"];
-  $comprado=$row["comprado"];
-  //$cantidad_pedida = $row["cantidad_pedida"];
-  $cantidad_pedida = !empty($row['cantidad_pedida']) ? $row['cantidad_pedida'] : 0;
 	//$saldo = $cantidad_solicitada-$disponible-$reservado-$comprado;
   $saldo = $cantidad_solicitada - $reservado - $cantidad_pedida;
 
@@ -45,17 +48,31 @@ foreach ($pdo->query($sql) as $row) {
 	if ($row["cancelado"]==1) {
 		$cancelado = "Si";	
 	}
+
+  $acciones = "";
+    if (!empty(tienePermiso(294))) {
+      if ($aprobado=="No") {
+        $acciones.="<span class='abrirModalAprobarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/aprobar.png' width='24' height='25' border='0' alt='Aprobar' title='Aprobar'></span>&nbsp;&nbsp;";
+      }
+    }
+    if (!empty(tienePermiso(311))) {
+      if ($reservado > 0) {
+        $acciones.="<a href='cancelarStockPedido.php?id=$id_computo_detalle&idComputo=".$id_computo."><img src='img/neg.png' width='24' height='25' border='0' alt='Cancelar Reserva' title='Cancelar Reserva'></a>&nbsp;&nbsp;";
+      }
+    }
+
   $aConceptos[]=[
     0 => $row["concepto"],
     1 => $cantidad_solicitada,
-    2 => "<span style='display: none;'>". $row["fecha_necesidad"] . "</span>".$row["fecha_necesidad_formatted"],
-    3 => $aprobado,
-    4 => $enStock,
-    5 => $reservado,
-    6 => $cantidad_pedida,
-    7 => $comprado,
-    8 => $saldo,
-	  9 => $row["comentarios"]
+    2 => $acciones,
+    3 => "<span style='display: none;'>". $row["fecha_necesidad"] . "</span>".$row["fecha_necesidad_formatted"],
+    4 => $aprobado,
+    5 => $enStock,
+    6 => $reservado,
+    7 => $cantidad_pedida,
+    8 => $comprado,
+    9 => $saldo,
+	  10 => $row["comentarios"]
   ];
 }
 

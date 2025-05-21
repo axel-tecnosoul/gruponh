@@ -26,6 +26,9 @@ include 'database.php';?>
         text-decoration: underline;
         cursor: default;
       }
+      .abrirModalAprobarItem{
+        cursor: pointer;
+      }
     </style>
 	  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
@@ -223,6 +226,7 @@ include 'database.php';?>
                         <tr>
                           <th>Concepto</th>
                           <th>Solicitado</th>
+                          <th>Acciones</th>
                           <th>Necesidad</th>
                           <th>Aprobado</th>
                           <th>En Stock</th>
@@ -238,6 +242,7 @@ include 'database.php';?>
                         <tr>
                           <th>Concepto</th>
                           <th>Solicitado</th>
+                          <th>Acciones</th>
                           <th>Necesidad</th>
                           <th>Aprobado</th>
                           <th>En Stock</th>
@@ -272,6 +277,51 @@ include 'database.php';?>
         }
         Database::disconnect();?>
       </select>
+    </div>
+
+    <div class="modal fade" id="modalRevision" tabindex="-1" role="dialog" aria-labelledby="modalRevisionLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <form id="formRevision" method="post">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalRevisionLabel">Nueva Revisión</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>¿Está seguro que desea generar una nueva revisión?</p>
+              <div class="form-group">
+                <label for="motivoRevision">Motivo de la revisión:</label>
+                <textarea id="motivoRevision" name="motivoRevision" class="form-control" required></textarea>
+              </div>
+              <!-- Aquí iremos inyectando inputs ocultos -->
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">Confirmar</button>
+              <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="aprobarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea aprobar el ítem del cómputo?</div>
+          <div class="modal-footer">
+            <input type="hidden" id="id_computo_detalle">
+            <input type="hidden" id="id_computo">
+            <button class="btn btn-primary" type="button" id="aprobarItem">Aprobar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
+      </div>
     </div><?php
 
     $pdo = Database::connect();
@@ -324,33 +374,6 @@ include 'database.php';?>
             </div>
           </div>
         </div>
-      </div>
-      
-      <div class="modal fade" id="modalRevision" tabindex="-1" role="dialog" aria-labelledby="modalRevisionLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <form id="formRevision" method="post">
-              <div class="modal-header">
-                <h5 class="modal-title" id="modalRevisionLabel">Nueva Revisión</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
-                  <span aria-hidden="true">&times;</span>
-                </button>
-              </div>
-              <div class="modal-body">
-                <p>¿Está seguro que desea generar una nueva revisión?</p>
-                <div class="form-group">
-                  <label for="motivoRevision">Motivo de la revisión:</label>
-                  <textarea id="motivoRevision" name="motivoRevision" class="form-control" required></textarea>
-                </div>
-                <!-- Aquí iremos inyectando inputs ocultos -->
-              </div>
-              <div class="modal-footer">
-                <button type="submit" class="btn btn-primary">Confirmar</button>
-                <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
-              </div>
-            </form>
-          </div>
-        </div>
       </div><?php
     }
     Database::disconnect();?>
@@ -400,7 +423,7 @@ include 'database.php';?>
           $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
         } );
     
-        $('#dataTables-example666').DataTable({
+        var table = $('#dataTables-example666').DataTable({
           stateSave: false,
           searching: false,
           responsive: false,
@@ -426,10 +449,10 @@ include 'database.php';?>
             "search": "Buscar:",
             "zeroRecords": "No hay resultados",
             "paginate": {
-                "first": "Primero",
-                "last": "Ultimo",
-                "next": "Siguiente",
-                "previous": "Anterior"
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
             }
           },
           "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
@@ -441,13 +464,14 @@ include 'database.php';?>
         });
   
         // DataTable
-        var table = $('#dataTables-example666').DataTable();
-  
+        //var table = $('#dataTables-example666').DataTable();
         // Apply the search
         table.columns().every( function () {
           var that = this;
-
           $( 'input', this.footer() ).on( 'keyup change', function () {
+            console.log(table);
+            console.log(this.value);
+            console.log(that.search());
             if ( that.search() !== this.value ) {
               that.search( this.value ).draw();
             }
@@ -664,9 +688,7 @@ include 'database.php';?>
             });
           });
         });
-      });
-    
-      $(document).ready(function() {
+      
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
           var title = $(this).text();
@@ -699,7 +721,7 @@ include 'database.php';?>
         });
   
         // DataTable
-        var table = $('#dataTables-example667').DataTable();
+        /*var table = $('#dataTables-example667').DataTable();
     
         // Apply the search
         table.columns().every( function () {
@@ -710,6 +732,45 @@ include 'database.php';?>
               that.search( this.value ).draw();
             }
           });
+        });*/
+
+        $(document).on("click", ".abrirModalAprobarItem", function(){
+          let id_computo_detalle=this.dataset.id_computo_detalle;
+          let id_computo=this.dataset.id_computo;
+          let modal=$("#aprobarModal")
+          modal.modal("show");
+          $("#id_computo_detalle").val(id_computo_detalle);
+          $("#id_computo").val(id_computo);
+          //modal.find(".btn-primary").attr("href","aprobarComputoDetalle.php?id="+id_computo_detalle+"&idComputo="+id_computo);
+        });
+
+        $("#aprobarItem").on("click",function(){
+          let id_computo_detalle=$("#id_computo_detalle").val();
+          let id_computo=$("#id_computo").val();
+
+          // Crear el objeto FormData y agregarle los campos
+          let data = new FormData();
+          data.append('id_computo_detalle', id_computo_detalle);
+          data.append('id_computo', id_computo);
+          
+          fetch('aprobarComputoDetalle.php', {
+              method: 'POST',
+              body: data
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                alert("Concepto aprobado correctamente");
+                let modal=$("#aprobarModal").modal("hide");
+                get_conceptos(id_computo)
+              } else {
+                alert("Error al aprobar el ítem");
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert("Error al intentar aprobar el ítem");
+            });
         });
       });
     
@@ -758,6 +819,9 @@ include 'database.php';?>
                   "next": "Siguiente",
                   "previous": "Anterior"
                 }
+              },
+              initComplete: function(){
+                $('[title]').tooltip();
               }
             });
         
