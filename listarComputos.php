@@ -223,9 +223,9 @@ include 'database.php';?>
                         <tr>
                           <th>Concepto</th>
                           <th>Solicitado</th>
-                          <th>Fecha de Necesidad</th>
+                          <th>Necesidad</th>
                           <th>Aprobado</th>
-                          <th>Stock</th>
+                          <th>En Stock</th>
                           <th>Reservado</th>
                           <th>Pedido</th>
                           <th>Comprando</th>
@@ -238,9 +238,9 @@ include 'database.php';?>
                         <tr>
                           <th>Concepto</th>
                           <th>Solicitado</th>
-                          <th>Fecha de Necesidad</th>
+                          <th>Necesidad</th>
                           <th>Aprobado</th>
-                          <th>Stock</th>
+                          <th>En Stock</th>
                           <th>Reservado</th>
                           <th>Pedido</th>
                           <th>Comprando</th>
@@ -329,7 +329,7 @@ include 'database.php';?>
       <div class="modal fade" id="modalRevision" tabindex="-1" role="dialog" aria-labelledby="modalRevisionLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
           <div class="modal-content">
-            <form id="formRevision">
+            <form id="formRevision" method="post">
               <div class="modal-header">
                 <h5 class="modal-title" id="modalRevisionLabel">Nueva Revisión</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
@@ -342,6 +342,7 @@ include 'database.php';?>
                   <label for="motivoRevision">Motivo de la revisión:</label>
                   <textarea id="motivoRevision" name="motivoRevision" class="form-control" required></textarea>
                 </div>
+                <!-- Aquí iremos inyectando inputs ocultos -->
               </div>
               <div class="modal-footer">
                 <button type="submit" class="btn btn-primary">Confirmar</button>
@@ -467,6 +468,7 @@ include 'database.php';?>
           }
         })
       
+        let formRevision  = $("#formRevision");
         let hrefToRedirect = null;
 
         $("#link_items_computo").on("click", function (e) {
@@ -488,7 +490,7 @@ include 'database.php';?>
             window.location.href = this.href;
 
           } else if (estado_id === 3 || estado_id === 4) {
-            // Aprobado o En Proceso → solo revisión
+            // Aprobado o Gestionando → solo revisión
             hrefToRedirect = this.href;
             $("#modalRevision").modal("show");
 
@@ -509,10 +511,30 @@ include 'database.php';?>
           }
 
           // Redirigir
-          if (hrefToRedirect) {
+          /*if (hrefToRedirect) {
             window.location.href = hrefToRedirect;
             hrefToRedirect = null;
-          }
+          }*/
+
+          // Construyo un URL object para extraer query params
+          const url = new URL(hrefToRedirect, window.location.origin);
+          const id       = url.searchParams.get("id");
+          const modo     = url.searchParams.get("modo");
+          const revision = url.searchParams.get("revision");
+
+          // Inyecto inputs ocultos en el form
+          formRevision.find("input[name='id']"      ).remove();
+          formRevision.find("input[name='modo']"    ).remove();
+          formRevision.find("input[name='revision']").remove();
+
+          formRevision.append(`<input type="hidden" name="id"       value="${id}">`);
+          formRevision.append(`<input type="hidden" name="modo"     value="${modo}">`);
+          formRevision.append(`<input type="hidden" name="revision" value="${revision}">`);
+          // motivo ya lo tiene como textarea name="motivoRevision"
+
+          // Finalmente envío el POST al mismo script
+          formRevision.attr("action", url.pathname);
+          this.submit();
         });
 
       

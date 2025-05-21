@@ -28,12 +28,22 @@ $_SESSION['LAST_REQUEST_TIME'] = time();*/
 // Activa DEBUG temporalmente con ?debug=1 en la URL
 $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
 
-// Tiempo de inactividad (s)
+// 2) Define el timeout base en minutos  
+//    – en debug: 20 segundos ≃ 0.333 minutos  
+//    – en prod: 15 minutos
+$timeoutMinutes = $debug ? 0.3333 : 30;
+
+// 3) Calcula todos los valores en segundos a partir de ese único minuto
+define('SESSION_TIMEOUT', (int)($timeoutMinutes * 60));        // tiempo total de inactividad
+define('WARNING_OFFSET', max(1, (int)(SESSION_TIMEOUT / 3))); // aviso a 1/3 del timeout
+define('REGEN_OFFSET', (int)(SESSION_TIMEOUT * 2 / 3));       // regenerar ID a 2/3 del timeout
+
+/*// Tiempo de inactividad (s)
 define('SESSION_TIMEOUT', $debug ? 20 : 900);
 // Offset de aviso (s) antes de expirar
 define('WARNING_OFFSET', $debug ? 10 : 60);
 // Frecuencia de regeneración de ID (s)
-define('REGEN_OFFSET', $debug ? 15 : 600);
+define('REGEN_OFFSET', $debug ? 15 : 600);*/
 
 // 1. Forzar UTF-8 antes de cualquier salida
 header('Content-Type: text/html; charset=utf-8');

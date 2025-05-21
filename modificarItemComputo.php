@@ -1,79 +1,78 @@
 <?php
-    require("config.php");
-    if (empty($_SESSION['user'])) {
-        header("Location: index.php");
-        die("Redirecting to index.php");
-    }
-    
-    require 'database.php';
+require("config.php");
+/*if (empty($_SESSION['user'])) {
+    header("Location: index.php");
+    die("Redirecting to index.php");
+}*/
+require 'database.php';
 
-    $id = null;
-    if (!empty($_GET['id'])) {
-        $id = $_REQUEST['id'];
-    }
-    
-    if (null==$id) {
-        header("Location: listarComputos.php");
-    }
-    
-    if (!empty($_POST)) {
-        
-        // insert data
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-		//if ($_GET['modo'] == "nuevo") {
-			$sql = "update `computos_detalle` set `id_material`= ?, `cantidad`= ?, `fecha_necesidad`= ?, `aprobado` = 0, comentarios=? where id = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios'],$id]);
-		/*
-		} else if ($_GET['modo'] == "update") {
-			
-			$sql = "select id,nro_revision,id_tarea,fecha,id_cuenta_solicitante,nro FROM `computos` where id = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_GET['idRetorno']]);
-			$dataC = $q->fetch(PDO::FETCH_ASSOC);
-				
-			$nro = $_POST['nro_revision']+1;
-			
-			$sql = "insert into `computos` (`nro_revision`, `id_tarea`, `fecha`, `id_cuenta_solicitante`, `id_estado`, `nro_computo`, `comentarios_revision`, `fecha_hora_revision`,nro) values (?,?,?,?,2,?,?,now(),?)";
-			$q = $pdo->prepare($sql);
-			$q->execute([$nro,$dataC['id_tarea'],$dataC['fecha'],$dataC['id_cuenta_solicitante'],$dataC['id'],$_POST['comentarios'],$dataC['nro']]);
-			
-			$idNuevoComputo = $pdo->lastInsertId();
-			$sqlList = " SELECT `id_material`, `cantidad`, `fecha_necesidad`, `aprobado`, `reservado`, `comprado`, `cancelado` FROM `computos_detalle` WHERE `id_computo` = ".$id;
-			foreach ($pdo->query($sqlList) as $row) {
-				$sql = "INSERT INTO `computos_detalle`(`id_computo`, `id_material`, `cantidad`, `fecha_necesidad`, `aprobado`, `reservado`, `comprado`, `cancelado`) VALUES (?,?,?,?,?,?,?,?)";
-				$q = $pdo->prepare($sql);
-				$q->execute([$idNuevoComputo,$row[0],$row[1],$row[2],$row[3],$row[4],$row[5],$row[6]]);
-			}
-			
-			$sql = "update `computos_detalle` set `id_material`= ?, `cantidad`= ?, `fecha_necesidad`= ?, `aprobado` = 0, comentarios=? where id = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios'],$idNuevoComputo]);
+$id = null;
+if (!empty($_GET['id'])) {
+    $id = $_REQUEST['id'];
+}
 
-			
-		}
+if (null==$id) {
+    header("Location: listarComputos.php");
+}
 
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha modificado un item de un cómputo','Cómputos','verComputo.php?id=$id')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
-		*/
-        Database::disconnect();
-        
-        header("Location: itemsComputo.php?id=".$_GET['idRetorno']."&modo=".$_GET['modo']."&revision=".$nro);
-    } else {
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `id_computo`, `id_material`, `cantidad`, `fecha_necesidad`, `aprobado`, `reservado`, `comprado`, `cancelado`, comentarios FROM `computos_detalle` WHERE id = ? ";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id]);
-        $data = $q->fetch(PDO::FETCH_ASSOC);
-        
-        Database::disconnect();
+if (!empty($_POST)) {
+    
+  // insert data
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+  $nro_revision=$_POST['nro_revision'];
+    
+  //if ($_GET['modo'] == "nuevo") {
+    $sql = "UPDATE computos_detalle set id_material= ?, cantidad= ?, fecha_necesidad= ?, aprobado = 0, comentarios=? where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios'],$id]);
+  /*
+  } else if ($_GET['modo'] == "update") {
+    
+    $sql = "select id,nro_revision,id_tarea,fecha,id_cuenta_solicitante,nro FROM `computos` where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_GET['idRetorno']]);
+    $dataC = $q->fetch(PDO::FETCH_ASSOC);
+      
+    $nro_revision = $nro_revision+1;
+    
+    $sql = "insert into `computos` (`nro_revision`, `id_tarea`, `fecha`, `id_cuenta_solicitante`, `id_estado`, `nro_computo`, `comentarios_revision`, `fecha_hora_revision`,nro) values (?,?,?,?,2,?,?,now(),?)";
+    $q = $pdo->prepare($sql);
+    $q->execute([$nro_revision,$dataC['id_tarea'],$dataC['fecha'],$dataC['id_cuenta_solicitante'],$dataC['id'],$_POST['comentarios'],$dataC['nro']]);
+    
+    $idNuevoComputo = $pdo->lastInsertId();
+    $sqlList = " SELECT `id_material`, `cantidad`, `fecha_necesidad`, `aprobado`, `reservado`, `comprado`, `cancelado` FROM `computos_detalle` WHERE `id_computo` = ".$id;
+    foreach ($pdo->query($sqlList) as $row) {
+      $sql = "INSERT INTO `computos_detalle`(`id_computo`, `id_material`, `cantidad`, `fecha_necesidad`, `aprobado`, `reservado`, `comprado`, `cancelado`) VALUES (?,?,?,?,?,?,?,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$idNuevoComputo,$row[0],$row[1],$row[2],$row[3],$row[4],$row[5],$row[6]]);
     }
     
-?>
+    $sql = "update `computos_detalle` set `id_material`= ?, `cantidad`= ?, `fecha_necesidad`= ?, `aprobado` = 0, comentarios=? where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios'],$idNuevoComputo]);
+
+    
+  }
+
+  $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha modificado un item de un cómputo','Cómputos','verComputo.php?id=$id')";
+  $q = $pdo->prepare($sql);
+  $q->execute(array($_SESSION['user']['id']));
+  */
+  Database::disconnect();
+  
+  header("Location: itemsComputo.php?id=".$_GET['idRetorno']."&modo=".$_GET['modo']."&revision=".$nro_revision);
+} else {
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sql = "SELECT `id`, `id_computo`, `id_material`, `cantidad`, `fecha_necesidad`, `aprobado`, `reservado`, `comprado`, `cancelado`, comentarios FROM `computos_detalle` WHERE id = ? ";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    
+    Database::disconnect();
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>

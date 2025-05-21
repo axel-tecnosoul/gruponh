@@ -70,46 +70,31 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion." ".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"]." ".$data["nro_computo"]?></h5>
+                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" name="form1" id="form1" action="modificarComputo.php?id=<?=$data['id_computo']; ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Fecha:</label>
-                            <label class="col-sm-2 col-form-label"><?=$data['fecha_computo'];?></label>
-                            <!-- <div class="col-sm-9">
-                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha'];?>" class="form-control" readonly="readonly">
-                            </div> -->
-                            <label class="col-sm-2 col-form-label font-weight-bold">Tarea:</label>
-                            <label class="col-sm-4 col-form-label"><?=$data['tipo']." / ".$data['observaciones']?></label>
+                            <div class="col-sm-5">
+                              <label class="col-form-label font-weight-bold">Fecha:</label>
+                              <label class="col-form-label"><?=$data['fecha_computo'];?></label>
+                            </div>
+                            <div class="col-sm-7">
+                              <label class="col-form-label font-weight-bold">Tarea:</label>
+                              <label class="col-form-label"><?=$data['tipo']." / ".$data['observaciones']?></label>
+                            </div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Estado:</label>
-                            <label class="col-sm-2 col-form-label"><?=$data['estado']?></label>
-                            <!-- <div class="col-sm-9">
-                              <select name="id_tarea" id="id_tarea" class="js-example-basic-single col-sm-12" disabled="disabled">
-                                <option value="">Seleccione...</option><?php
-                                /*$pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT t.id,tt.tipo,t.observaciones FROM `tareas` t inner join tipos_tarea tt on tt.id = t.id_tipo_tarea WHERE t.`anulado` = 0";
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  if (!empty($_GET['id'])) {
-                                    if ($fila['id'] == $data['id_tarea']) {
-                                      echo " selected ";
-                                    }
-                                  }
-                                  echo ">".$fila['tipo']." / ".$fila['observaciones']."</option>";
-                                }
-                                Database::disconnect();*/?>
-                              </select>
-                            </div> -->
-                            <label class="col-sm-2 col-form-label font-weight-bold">Realizó:</label>
-                            <label class="col-sm-4 col-form-label"><?=$data['cuenta_realizo']?></label>
+                            <div class="col-sm-5">
+                              <label class="col-form-label font-weight-bold">Estado:</label>
+                              <label class="col-form-label"><?=$data['estado']?></label>
+                            </div>
+                            <div class="col-sm-7">
+                              <label class="col-form-label font-weight-bold">Realizó:</label>
+                              <label class="col-form-label"><?=$data['cuenta_realizo']?></label>
+                            </div>
                           </div>
                           <!-- <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Realizó</label>
@@ -173,12 +158,12 @@ if (!empty($_POST)) {
                                       <th>Concepto</th>
                                       <th>Solicitado</th>
                                       <th>Necesidad</th>
+                                      <th>Aprobado</th>
                                       <th>En Stock</th>
                                       <th>Reservado</th>
                                       <th>Pedido</th>
                                       <th>Comprando</th>
                                       <th>Saldo</th>
-                                      <th>Aprobado</th>
                                       <!-- <th>Solicitar</th> -->
                                       <?php if ($tienePermisoParaReservar) { ?><th>Reservar</th><?php }?>
                                       <?php if ($tienePermisoParaPedir) { ?><th>Pedir</th><?php }?>
@@ -295,12 +280,12 @@ if (!empty($_POST)) {
                                         <td><?=$row["concepto"]?></td>
                                         <td><?=$cantidad_solicitada?></td>
                                         <td><?=$row["fecha_necesidad"]?></td>
+                                        <td><?=$lblAprobado?></td>
                                         <td><?=$enStock?></td>
                                         <td><?=$reservado?></td>
                                         <td><?=$cantidad_pedida?></td>
                                         <td><?=$comprado?></td>
                                         <td class="saldo"><?=$saldo?></td>
-                                        <td><?=$lblAprobado?></td>
                                         <?php if ($tienePermisoParaReservar) { ?><td><?=$inputReservar?></td><?php }?>
                                         <?php if ($tienePermisoParaPedir) { ?><td><?=$inputPedir?></td><?php }
                                           /*if ($aprobado==1) {?>
@@ -312,10 +297,10 @@ if (!empty($_POST)) {
                                           }*/?>
                                         <td><?php
                                           if (!empty(tienePermiso(294))) {
-                                            if ($aprobado==0) {?>
+                                            /*if ($aprobado==0) {?>
                                               <a href="#" data-toggle="modal" data-target="#aprobarModal_<?=$id_computo_detalle?>"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Aprobar" title="Aprobar"></a>
                                               &nbsp;&nbsp;<?php
-                                            }
+                                            }*/
                                           }
                                           if (!empty(tienePermiso(311))) {
                                             if ($reservado > 0) {?>

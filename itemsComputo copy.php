@@ -1,225 +1,221 @@
 <?php
 require("config.php");
-require 'database.php';
 require("PHPMailer/class.phpmailer.php");
 require("PHPMailer/class.smtp.php");
-
-// 1) Control de acceso
-/*session_start();
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
-  exit;
-}*/
+  die("Redirecting to index.php");
+}
+require 'database.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+$id = null;
+if (!empty($_GET['id'])) {
+  $id = $_REQUEST['id'];
+}
 
-// 2) Recoger parámetros comunes
-$modo      = $_REQUEST['modo']      ?? 'nuevo';     // 'nuevo' o 'update'
-$idOrigen  = $_REQUEST['id']        ?? null;         // id del cómputo original
-$nroRev    = $_REQUEST['revision']  ?? 0;            // número de revisión actual
-
-if (!$idOrigen) {
+if (null==$id) {
   header("Location: listarComputos.php");
-  exit;
 }
 
-$id      = $idOrigen;
-$revision = $nroRev;
+if (!empty($_POST)) {
+  
+  // insert data
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// 3) Conexión PDO
-$pdo = Database::connect();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $modoDebug=0;
 
-// 4) Procesar POST
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  // Variables de sesión
-  $userId = $_SESSION['user']['id'];
-
-  // Si viene confirmación de enviar a aprobación:
-  if (isset($_POST['btn2_confirm'])) {
-    // Parámetros
-    $idComp   = $_POST['id'];
-    $revision = $_POST['revision'];
-
-    // 1) Actualizar el estado de LA REVISIÓN ACTUAL a "Para aprobar" (id_estado = 2)
-    $stmt = $pdo->prepare("UPDATE computos SET id_estado = 2 WHERE id = ?");
-    $stmt->execute([$idComp]);
-
-    // 2) Marcar la revisión ANTERIOR como “Superada” (id_estado = 7)
-    /*$stmt = $pdo->prepare("
-      UPDATE computos
-      SET id_estado = 7
-      WHERE nro_computo = (
-        SELECT nro_computo FROM computos WHERE id = ?
-      )
-        AND id <> ?
-        AND id_estado = 2
-    ");
-    $stmt->execute([$idComp, $idComp]);*/
-
-    // 3) Crear notificaciones y envío de email (idéntico al original)
-    // --- Cargo configuración SMTP desde parámetros ---
-    $smtp = [];
-    for ($i = 1; $i <= 5; $i++) {
-      $stmt = $pdo->prepare("SELECT valor FROM parametros WHERE id = ?");
-      $stmt->execute([$i]);
-      $smtp[$i] = $stmt->fetchColumn();
-    }
-    list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = [$smtp[1], $smtp[2], $smtp[3], $smtp[4], $smtp[5]];
-
-    // --- Descripción del proyecto ---
-    $stmt = $pdo->prepare("SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c JOIN tareas t ON t.id = c.id_tarea JOIN proyectos p ON p.id = t.id_proyecto JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ?");
-    $stmt->execute([$idComp]);
-    $fila = $stmt->fetch(PDO::FETCH_NUM);
-    $descProyecto = "{$fila[0]} - {$fila[1]} - {$fila[2]} - {$fila[3]}";
-
-    $whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
-
-    // --- Recorro usuarios suscriptos al tipo_notificación = 8 ---
-    $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 8".$whereDebug;
-    foreach ($pdo->query($sql) as $row) {
-      list($destUsuario, $destEmail) = $row;
-      // Inserto en notificaciones
-      $stmt = $pdo->prepare("INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES (8, ?, NOW(), 0, ?, ?)");
-      $detalle = "ID Cómputo: #{$idComp}";
-      $stmt->execute([$destUsuario, $detalle, $idComp]);
-
-      // Armo y envío mail
-      $titulo  = "ERP Notificaciones - Producción - Revisión Cómputo ({$descProyecto})";
-      $mensaje = "La revisión de cómputo #{$descProyecto} está lista para aprobación.";
-
-      $mail = new PHPMailer();
-      $mail->IsSMTP();
-      $mail->Host       = $smtpHost;
-      $mail->SMTPAuth   = true;
-      $mail->Username   = $smtpUsuario;
-      $mail->Password   = $smtpClave;
-      $mail->Port       = 25;
-      $mail->SMTPSecure = false;
-      $mail->From       = $smtpFrom;
-      $mail->FromName   = $_SESSION['user']['usuario'];
-      $mail->CharSet    = "utf-8";
-      $mail->IsHTML(true);
-      $mail->AddAddress($destEmail);
-      $mail->Subject    = $titulo;
-      $mail->Body       = nl2br($mensaje) . "<br><br>";
-      $mail->AltBody    = $mensaje;
-      $mail->Send();
-    }
-
-    // 4) Redirijo al listado
-    header("Location: listarComputos.php");
-    exit;
-  }
-
-  // ¿Es inicio de una revisión nueva?
-  $esRevision = ($modo === 'update' && !empty($_POST['motivoRevision']));
-
-  if ($esRevision) {
-    // --- Inicio transacción para nueva revisión ---
+  if ($modoDebug==1) {
     $pdo->beginTransaction();
-    try {
-      // 4.1) Marcar cómputo original como "Superada" (id_estado = 7)
-      /*$stmt = $pdo->prepare("UPDATE computos SET id_estado = 7 WHERE id = ?");
-      $stmt->execute([$idOrigen]);*/
+    /*var_dump($_POST);
+    var_dump($_GET);
+    var_dump($_FILES);*/
+  }
+		
+	$nro = $_POST['nro_revision'];
+		
+  $sql = "SELECT id_material FROM computos_detalle where cancelado = 0 and id_computo = ? and id_material = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id,$_POST['id_material']]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  if (empty($data)) {
+    if ($_GET['modo'] == "nuevo") {
+      $sql = "INSERT INTO computos_detalle(id_computo, id_material, cantidad, fecha_necesidad, aprobado,comentarios) VALUES (?,?,?,?,0,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id,$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios']]);
 
-      // 4.2) Cargar datos del cómputo original
-      $stmt = $pdo->prepare("SELECT nro_revision, id_tarea, fecha, id_cuenta_solicitante, nro AS nro_computo FROM computos WHERE id = ?");
-      $stmt->execute([$idOrigen]);
-      $orig = $stmt->fetch(PDO::FETCH_ASSOC);
+      $idNew = $pdo->lastInsertId();
+      
+      if (!empty($_POST['btn2'])) {
+        $sql = "UPDATE computos set id_estado = 2 where id = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id]);
+      }
+      
+    } else if ($_GET['modo'] == "update") {
+				
+      $sql = "UPDATE computos set id_estado = 7 where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id]);
+      
+      $sql = "SELECT id,id_tarea,fecha,id_cuenta_solicitante,nro,nro_computo FROM computos where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id]);
+      $dataC = $q->fetch(PDO::FETCH_ASSOC);
+        
+      $estadoComputo = 1;
+      if (!empty($_POST['btn2'])) {
+        
+        $nro = $_POST['nro_revision']+1;
+        
+        $sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
+        $q = $pdo->prepare($sql);
+        $q->execute([$_SESSION['user']['id']]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        if (!empty($data)) {
+          $idCuentaRealizo = $data['id'];
+        }
 
-      // 4.3) Determinar nuevos valores
-      $nuevoNroRev      = $orig['nro_revision'] + 1;
-      $motivo           = trim($_POST['motivoRevision']);
-      // Obtener la cuenta del revisor (basada en user logueado)
-      $stmt = $pdo->prepare("SELECT id FROM cuentas WHERE id_usuario = ?");
-      $stmt->execute([$userId]);
-      $rev = $stmt->fetchColumn();
-      // Para validación, puedes usar el mismo usuario o buscar otra lógica
-      $val = $rev;
+        $estadoComputo = 2;
+        $sql = "INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro_computo, comentarios_revision, fecha_hora_revision, nro, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) values (?,?,?,?,?,?,?,now(),?,?,?,?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$nro,$dataC['id_tarea'],$dataC['fecha'],$dataC['id_cuenta_solicitante'],$estadoComputo,$dataC['nro_computo'],$_POST['observaciones'],$dataC['nro'],$idCuentaRealizo,$_POST['id_cuenta_reviso'],$_POST['id_cuenta_valido']]);
+        
+        $idNew = $pdo->lastInsertId();
+        
+        $sql = "SELECT valor FROM parametros WHERE id = 1 ";
+        $q = $pdo->prepare($sql);
+        $q->execute();
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $smtpHost = $data['valor'];  
 
-      // 4.4) Insertar nuevo registro en computos
-      $stmt = $pdo->prepare("INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro_computo, comentarios_revision, fecha_hora_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?, ?, ?, ?, 2, ?, ?, NOW(), ?, ?, ?)");
-      $stmt->execute([
-        $nuevoNroRev,
-        $orig['id_tarea'],
-        $orig['fecha'],
-        $orig['id_cuenta_solicitante'],
-        $orig['nro_computo'],
-        $motivo,
-        $rev,       // quien realiza
-        $rev,       // quien revisa
-        $val        // quien valida
-      ]);
-      $idRevision = $pdo->lastInsertId();
+        $sql = "SELECT valor FROM parametros WHERE id = 2 ";
+        $q = $pdo->prepare($sql);
+        $q->execute();
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $smtpUsuario = $data['valor'];  
 
-      // 4.5) Duplicar todos los detalles del cómputo original
-      $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) SELECT ?, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios FROM computos_detalle WHERE id_computo = ?");
-      $stmt->execute([$idRevision, $idOrigen]);
+        $sql = "SELECT valor FROM parametros WHERE id = 3 ";
+        $q = $pdo->prepare($sql);
+        $q->execute();
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $smtpClave = $data['valor'];  
 
-      $pdo->commit();
-    } catch (Exception $e) {
-      $pdo->rollBack();
-      die("Error al generar revisión: " . $e->getMessage());
+        $sql = "SELECT valor FROM parametros WHERE id = 4 ";
+        $q = $pdo->prepare($sql);
+        $q->execute();
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $smtpFrom = $data['valor'];  
+
+        $sql = "SELECT valor FROM parametros WHERE id = 5 ";
+        $q = $pdo->prepare($sql);
+        $q->execute();
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $smtpFromName = $data['valor'];
+        
+        $sql = "SELECT id_proyecto from tareas where id = ? ";
+        $q = $pdo->prepare($sql);
+        $q->execute([$dataC['id_tarea']]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $idProyecto = $data['id_proyecto'];
+        
+        $sql = "SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
+        $q = $pdo->prepare($sql);
+        $q->execute([$idProyecto]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        $descripcionProyecto = $data['nro_sitio']." - ".$data['nro_subsitio']." - ".$data['nro']." - ".$data['nombre'];
+        
+        $sql = " SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 8 ";
+        foreach ($pdo->query($sql) as $row) {
+          
+          $sql = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (8,?,now(),0,?,?)";
+          $q = $pdo->prepare($sql);
+          $q->execute([$row[0],'ID Computo: #'.$idNew,$idNew]);
+          
+          $address = $row[1];
+          
+          $titulo = "ERP Notificaciones - Módulo Producción - Revisión Cómputo (".$descripcionProyecto.")";
+          $mensaje="Revisión de cómputo en el sistema para aprobar: #".$descripcionProyecto;
+          
+          $mail = new PHPMailer();
+          $mail->IsSMTP();
+          $mail->SMTPAuth = true;
+          $mail->Port = 25; 
+          $mail->SMTPSecure = 'ssl';
+          $mail->SMTPAutoTLS = false;
+          $mail->SMTPSecure = false;
+          $mail->IsHTML(true); 
+          $mail->CharSet = "utf-8";
+          $mail->From = $smtpFrom;
+          $mail->FromName = $_SESSION['user']['usuario'];
+          $mail->Host = $smtpHost; 
+          $mail->Username = $smtpUsuario; 
+          $mail->Password = $smtpClave;
+          $mail->AddAddress($address);
+          $mail->Subject = $titulo; 
+          $mensajeHtml = nl2br($mensaje);
+          $mail->Body = "{$mensajeHtml} <br /><br />"; 
+          $mail->AltBody = "{$mensaje} \n\n"; 
+          $mail->Send();
+        
+        }
+        
+        $sqlList = " SELECT id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado,comentarios FROM computos_detalle WHERE cancelado = 0 and id_computo = ".$id;
+        foreach ($pdo->query($sqlList) as $row) {
+          $sql = "INSERT INTO computos_detalle(id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) VALUES (?,?,?,?,?,?,?,?,?)";
+          $q = $pdo->prepare($sql);
+          $q->execute([$idNew,$row[0],$row[1],$row[2],$row[3],$row[4],$row[5],$row[6],$row[7]]);
+        }
+        
+        $sql = "INSERT INTO computos_detalle(id_computo, id_material, cantidad, fecha_necesidad, aprobado, comentarios) VALUES (?,?,?,?,0,?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$idNew,$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios']]);
+      } else {
+
+        $sql = "INSERT INTO computos_detalle(id_computo, id_material, cantidad, fecha_necesidad, aprobado, comentarios) VALUES (?,?,?,?,0,?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id,$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios']]);
+        
+      }
+    
+      
     }
+			
+    //$pdo->rollBack();
 
-    // Reasignamos las variables para que el form siga apuntando a la nueva revisión
-    $id       = $idRevision;
-    $nroRev   = $nuevoNroRev;
-
-  } else {
-    // No es nueva revisión: seguimos trabajando sobre el mismo $idOrigen
-    $id = $idOrigen;
-  }
-
-  // 5) Ahora procesamos el envío de un nuevo detalle (común a ambos modos)
-  //    (Aquí mantenemos la lógica existente de INSERT o UPDATE de ítems)
-  if (!empty($_POST['id_material'])) {
-    // Evito duplicados
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM computos_detalle WHERE cancelado = 0 AND id_computo = ? AND id_material = ?");
-    $stmt->execute([$id, $_POST['id_material']]);
-    if ($stmt->fetchColumn() > 0) {
-      header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev&error=1");
-      exit;
+    if(isset($idNew)){
+      $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Se ha modificado un item de un cómputo','Cómputos','verComputo.php?id=$idNew')";
+      $q = $pdo->prepare($sql);
+      $q->execute(array($_SESSION['user']['id']));
     }
+    
+    Database::disconnect();
+    if (!empty($_POST['btn2'])) {
+      
+      header("Location: listarComputos.php");
+      exit();
+    } else {
+      
+      /*if (headers_sent($file, $line)) {
+        die("¡Las cabeceras ya fueron enviadas en $file línea $line!");
+      }
+      // Mostrar los valores actuales:
+      echo 'error_reporting: ' . error_reporting() . '<br>';
+      echo 'display_errors: ' . ini_get('display_errors') . '<br>';
+      echo 'output_buffering: ' . ini_get('output_buffering') . '<br>';
 
-    // Inserto el nuevo ítem
-    $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, comentarios) VALUES (?, ?, ?, ?, 0, ?)");
-    $stmt->execute([
-      $id,
-      $_POST['id_material'],
-      $_POST['cantidad'],
-      $_POST['fecha_necesidad'],
-      $_POST['comentarios']
-    ]);
-
-    // Logueo la acción
-    $stmt = $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Se ha modificado un item de un cómputo', 'Cómputos', ?)");
-    $link = "verComputo.php?id=$id";
-    $stmt->execute([$userId, $link]);
-  }
-
-  // 6) Redirección final
-  if (isset($_POST['btn2'])) {
-    // Solo "Enviar a aprobación" (cambia de nombre en el HTML)
-    header("Location: listarComputos.php");
+      // Detener la ejecución para inspeccionar antes de que redireccione:
+      die('Fin de depuración');*/
+				
+      header("Location: itemsComputo.php?modo=".$_GET['modo']."&id=".$id."&revision=".$nro);	
+      exit();
+    }
   } else {
-    // "Crear y agregar otro"
-    header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev");
+    header("Location: itemsComputo.php?modo=".$_GET['modo']."&id=".$id."&revision=".$nro."&error=1");	
+    exit();
   }
-  exit;
-}
-
-$pdo = Database::connect();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
-
-$q = $pdo->prepare($sql);
-$q->execute([$id]);
-$data = $q->fetch(PDO::FETCH_ASSOC);
-
-Database::disconnect();
-// 7) Resto del HTML (tu form, tabla, etc.) se mantiene igual,
-//    y quitar los campos comentados de observaciones / cuentas.
-?>
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head><?php
@@ -242,7 +238,7 @@ Database::disconnect();
           id_cuenta_reviso.removeAttribute("required");
         });
 
-        /*btn2.addEventListener("click", function () {
+        btn2.addEventListener("click", function () {
           observaciones.setAttribute("required", "required");
           id_cuenta_valido.setAttribute("required", "required");
           id_cuenta_reviso.setAttribute("required", "required");
@@ -254,11 +250,11 @@ Database::disconnect();
             event.preventDefault();
             alert("Los datos de la revisión son obligatorios");
           }
-        });*/
+        });
 
         // Marcar qué botón fue presionado
         btn1.addEventListener("click", () => btn2.removeAttribute("clicked"));
-        //btn2.addEventListener("click", () => btn2.setAttribute("clicked", "true"));
+        btn2.addEventListener("click", () => btn2.setAttribute("clicked", "true"));
       });
     </script>
     <style>
@@ -294,13 +290,9 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
+                    <h5><?=$ubicacion?></h5>
                   </div>
 				          <form class="form theme-form" role="form" method="post" id="miFormulario" action="itemsComputo.php?modo=<?=$_GET['modo']?>&id=<?=$id?>">
-                    <!-- Hidden inputs para los parámetros -->
-                    <input type="hidden" name="modo"      value="<?= htmlspecialchars($modo) ?>">
-                    <input type="hidden" name="id"        value="<?= htmlspecialchars($id) ?>">
-                    <input type="hidden" name="revision"  value="<?= htmlspecialchars($revision) ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -448,14 +440,8 @@ Database::disconnect();
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-success" type="submit" value="1" name="btn1" id="btn1">Crear y Agregar Otro</button>
-						            <!-- <button class="btn btn-primary" type="submit" value="2" name="btn2" id="btn2">Crear y Enviar a Aprobación</button> -->
-                        <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
-						            <a href="listarComputos.php" class="btn btn-danger">Guardar y volver al Listado</a>
-
-                        <!-- <button type="submit" name="btn1" class="btn btn-success">Crear y Agregar Otro</button>
-                        <button type="submit" name="btn2" class="btn btn-primary">Enviar a aprobación</button>
-                        <a href="listarComputos.php" class="btn btn-danger">Volver al Listado</a> -->
-
+						            <button class="btn btn-primary" type="submit" value="2" name="btn2" id="btn2">Crear y Enviar a Aprobación</button>
+						            <a href="listarComputos.php" class="btn btn-danger">Volver al Listado</a>
                       </div>
                     </div>
                   </form>
@@ -468,34 +454,7 @@ Database::disconnect();
         <!-- footer start--><?php
         include("footer.php"); ?>
       </div>
-    </div>
-
-    <!-- Modal de confirmación -->
-    <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <form id="formEnviarAprobacion" method="post" action="itemsComputo.php">
-            <!-- mantenemos ocultos los campos esenciales -->
-            <input type="hidden" name="modo"      value="<?= htmlspecialchars($modo) ?>">
-            <input type="hidden" name="id"        value="<?= htmlspecialchars($id) ?>">
-            <input type="hidden" name="revision"  value="<?= htmlspecialchars($revision) ?>">
-            <input type="hidden" name="btn2_confirm" value="1">
-            <div class="modal-header">
-              <h5 class="modal-title">Confirmar envío a aprobación</h5>
-              <button type="button" class="close" data-dismiss="modal">&times;</button>
-            </div>
-            <div class="modal-body">
-              <p>¿Estás seguro de que quieres enviar esta revisión a aprobación?</p>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Confirmar</button>
-            </div>
-          </form>
-        </div>
-      </div>
     </div><?php
-
     $pdo = Database::connect();
     $sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y'), d.aprobado,d.id_computo FROM computos_detalle d inner join materiales m on m.id = d.id_material WHERE d.id_computo = ".$_GET['id'];
 	  foreach ($pdo->query($sql) as $row) {?>
@@ -568,12 +527,6 @@ Database::disconnect();
     <!-- Plugins JS Ends-->
     <script>
       $(document).ready(function() {
-
-        // dentro de tu $(document).ready(...)
-        $('#btnEnviarAprobacion').on('click', function(){
-          $('#modalEnviarAprobacion').modal('show');
-        });
-
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
           var title = $(this).text();
