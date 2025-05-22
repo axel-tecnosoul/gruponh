@@ -57,7 +57,8 @@ foreach ($pdo->query($sql) as $row) {
     }
     if (!empty(tienePermiso(311))) {
       if ($reservado > 0) {
-        $acciones.="<a href='cancelarStockPedido.php?id=$id_computo_detalle&idComputo=".$id_computo."'><img src='img/neg.png' width='24' height='25' border='0' alt='Cancelar Reserva' title='Cancelar Reserva'></a>&nbsp;&nbsp;";
+        //$acciones.="<a href='cancelarStockPedido.php?id=$id_computo_detalle&idComputo=".$id_computo."'><img src='img/neg.png' width='24' height='25' border='0' alt='Cancelar Reserva' title='Cancelar Reserva'></a>&nbsp;&nbsp;";
+        $acciones.="<span class='abrirModalCancelarReservaItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/neg.png' width='24' height='25' border='0' alt='Cancelar Reserva' title='Cancelar Reserva'></span>";
       }
     }
 

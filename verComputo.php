@@ -49,6 +49,9 @@ if (!empty($_POST)) {
       #pedidoModal .select2-dropdown {
         z-index: 2100 !important;
       }
+      .abrirModalCancelarReservaItem{
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -304,7 +307,7 @@ if (!empty($_POST)) {
                                           }
                                           if (!empty(tienePermiso(311))) {
                                             if ($reservado > 0) {?>
-                                              <a href="cancelarStockPedido.php?id=<?=$id_computo_detalle?>&idComputo=<?=$_GET['id']?>"><img src="img/neg.png" width="24" height="25" border="0" alt="Cancelar Reserva" title="Cancelar Reserva"></a>
+                                              <span class='abrirModalCancelarReservaItem' data-id_computo='<?=$_GET['id']?>' data-id_computo_detalle='<?=$id_computo_detalle?>'><img src="img/neg.png" width="24" height="25" border="0" alt="Cancelar Reserva" title="Cancelar Reserva"></span>
                                               &nbsp;&nbsp;<?php
                                             }
                                           }?>
@@ -399,7 +402,24 @@ if (!empty($_POST)) {
           </form>
         </div>
       </div>
+    </div>
+    
+    <div class="modal fade" id="cancelarReservaModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea cancelar la reserva de este ítem del cómputo?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary">Cancelar reserva</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
+      </div>
     </div><?php
+
     $pdo = Database::connect();
     $sql = " SELECT d.id AS id_computo_detalle, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y'), d.aprobado,d.id_computo FROM computos_detalle d inner join materiales m on m.id = d.id_material WHERE d.id_computo = ".$_GET['id'];
     foreach ($pdo->query($sql) as $row) {?>
@@ -566,8 +586,7 @@ if (!empty($_POST)) {
         document.getElementById('form1').action="nuevoPedido.php";
         document.getElementById('form1').submit();
       }
-		</script>
-    <script>
+		
       $(function() {
         let datosPedidoListos = false;
 
@@ -597,6 +616,14 @@ if (!empty($_POST)) {
           });
           return tiene;
         }
+
+        $(".abrirModalCancelarReservaItem").on("click", function(){
+          let id_computo_detalle=this.dataset.id_computo_detalle;
+          let id_computo=this.dataset.id_computo;
+          let modal=$("#cancelarReservaModal");
+          modal.modal("show");
+          modal.find(".btn-primary").attr("href","cancelarStockPedido.php?id="+id_computo_detalle+"&idComputo="+id_computo);
+        });
 
         // Cuando se abre el modal, inicializa (o reinicializa) Select2
         $('#pedidoModal').on('shown.bs.modal', function() {

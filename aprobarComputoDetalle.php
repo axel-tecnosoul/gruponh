@@ -63,22 +63,65 @@ try {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    $pdo->beginTransaction();
+    $modoDebug=0;
+
     // 1) Marcar detalle como aprobado
     $sql = "UPDATE computos_detalle SET aprobado = 1 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$idDetalle]);
 
     // 2) Verificar si quedan pendientes
-    $sql = "SELECT COUNT(*) AS cant FROM computos_detalle WHERE aprobado = 0 AND id_computo = ?";
+    //$sql = "SELECT COUNT(*) AS cant FROM computos_detalle WHERE aprobado = 0 AND cancelado = 0 AND id_computo = ?";
+    $sql = "SELECT COUNT(*) AS cant,c.nro_revision,c.nro AS nro_computo,c.id_tarea FROM computos_detalle cd JOIN computos c ON cd.id_computo=c.id WHERE cd.aprobado = 0 AND cd.cancelado = 0 AND cd.id_computo = $idComputo";
+    if ($modoDebug == 1) {
+      echo $sql."<br>";
+    }
     $q = $pdo->prepare($sql);
-    $q->execute([$idComputo]);
+    $q->execute();
     $data = $q->fetch(PDO::FETCH_ASSOC);
 
+    if ($modoDebug == 1) {
+      var_dump($data);
+    }
+
+    $textoComputo = "";
     if ($data['cant'] == 0) {
-        // Si no quedan pendientes, cambiar estado del cómputo
-        $sql = "UPDATE computos SET id_estado = 3 WHERE id = ?";
+
+      $nro_revision=$data['nro_revision'];
+
+      // Si no quedan pendientes, cambiar estado del cómputo
+      $sql = "UPDATE computos SET id_estado = 3 WHERE id = ?";
+      $q = $pdo->prepare($sql);
+      $params = [$idComputo];
+      $q->execute($params);
+      $textoComputo = " Computo aprobado en su totalidad. (actualice la pagina para ver el nuevo estado)";
+        
+      if ($modoDebug == 1) {
+        // Generar y mostrar la consulta “real”
+        $fullSql = debugQuery($pdo, $sql, $params);
+        echo $fullSql . "<br><br>";
+        echo $nro_revision."<br>";
+      }
+
+      if($nro_revision>0){
+        
+        $revision_anterior=$nro_revision-1;
+
+        $sql = "UPDATE computos SET id_estado = 7 WHERE id_tarea = ? AND nro = ? AND nro_revision = ?";
         $q = $pdo->prepare($sql);
-        $q->execute([$idComputo]);
+        $params = [$data['id_tarea'],$data['nro_computo'],$revision_anterior];
+        $q->execute($params);
+        $textoComputo.= " Revisión anterior N° ".$revision_anterior." superada.";
+
+        
+        if ($modoDebug == 1) {
+          // Generar y mostrar la consulta “real”
+          $fullSql = debugQuery($pdo, $sql, $params);
+          echo $fullSql . "<br><br>";
+        }
+      }
+
     }
 
     // 3) Insertar log
@@ -86,13 +129,17 @@ try {
     $q = $pdo->prepare($sql);
     $q->execute([ $_SESSION['user']['id'] ]);
 
+
+    //$pdo->rollBack();
+    $pdo->commit();
+
     // Desconectar
     Database::disconnect();
 
     // Respuesta exitosa
     echo json_encode([
         'success' => true,
-        'message' => 'Detalle aprobado correctamente.'
+        'message' => 'Concepto aprobado correctamente.'.$textoComputo
     ]);
 
 } catch (Exception $e) {

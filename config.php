@@ -99,3 +99,4 @@ date_default_timezone_set("America/Argentina/Buenos_Aires");
 
 // Preparar variable para el JS
 $expiresAt = $_SESSION['LAST_REQUEST_TIME'] + SESSION_TIMEOUT;
+include_once 'funciones.php';

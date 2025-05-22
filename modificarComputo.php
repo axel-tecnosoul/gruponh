@@ -16,16 +16,6 @@ if (null==$id) {
   header("Location: listarComputos.php");
 }
 
-function debugQuery(PDO $pdo, string $sql, array $params): string {
-  foreach ($params as $p) {
-      // $pdo->quote() añade comillas y escapa el valor
-      $quoted = $pdo->quote($p);
-      // reemplazamos la primera aparición de '?' por el valor quoteado
-      $sql = preg_replace('/\?/', $quoted, $sql, 1);
-  }
-  return $sql;
-}
-
 if (!empty($_POST)) {
 
   // insert data
@@ -137,9 +127,7 @@ if (!empty($_POST)) {
       $pdo->beginTransaction();
 
       // 1) Registrar todas las reservas de stock
-      $sqlUpdReserva = "UPDATE computos_detalle 
-                        SET reservado = ? 
-                        WHERE id = ?";
+      $sqlUpdReserva = "UPDATE computos_detalle SET reservado = ? WHERE id = ?";
       $stmtUpd = $pdo->prepare($sqlUpdReserva);
 
       foreach ($reservas as $idDetalle => $cantRes) {
@@ -172,9 +160,7 @@ if (!empty($_POST)) {
 
       if ($tienePedido) {
           // 2.a) Insertar cabecera
-          $sqlInsPedido = "INSERT INTO pedidos
-                          (id_computo, fecha, lugar_entrega, id_cuenta_recibe, id_estado)
-                          VALUES (?, NOW(), ?, ?, 1)";
+          $sqlInsPedido = "INSERT INTO pedidos (id_computo, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, NOW(), ?, ?, 1)";
           $params = [$idComputo,$_POST['lugar_entrega'],$_POST['id_cuenta_recibe']];
 
           if ($modoDebug == 1) {
@@ -189,9 +175,7 @@ if (!empty($_POST)) {
           $idPedido = $pdo->lastInsertId();
 
           // 2.b) Insertar detalle de pedido por cada material pedido
-          $sqlInsDetalle = "INSERT INTO pedidos_detalle
-                            (id_pedido, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)";
+          $sqlInsDetalle = "INSERT INTO pedidos_detalle (id_pedido, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado) VALUES (?, ?, ?, ?, ?, ?, ?)";
           $stmtInsDet = $pdo->prepare($sqlInsDetalle);
 
           // Para obtener datos de computos_detalle (id_material, fecha_necesidad, unidad, reservado, comprado)
@@ -225,9 +209,7 @@ if (!empty($_POST)) {
           }
 
           // 2.c) Log de pedido
-          $sqlLogP = "INSERT INTO logs
-                      (fecha_hora, id_usuario, detalle_accion, modulo, link)
-                      VALUES (NOW(), ?, 'Nuevo Pedido', 'Pedidos', ?)";
+          $sqlLogP = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nuevo Pedido', 'Pedidos', ?)";
           $stmtLogP = $pdo->prepare($sqlLogP);
 
           $params = [$userId, "verPedido.php?id={$idPedido}"];
@@ -264,9 +246,7 @@ if (!empty($_POST)) {
       }
 
       // 4) Log de reserva
-      $sqlLogR = "INSERT INTO logs
-                  (fecha_hora, id_usuario, detalle_accion, modulo, link)
-                  VALUES (NOW(), ?, 'Nueva reserva de stock', 'Pedidos', ?)";
+      $sqlLogR = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nueva reserva de stock', 'Pedidos', ?)";
       $stmtLogR = $pdo->prepare($sqlLogR);
 
       $params = [$userId, "verPedido.php?id={$idComputo}"];

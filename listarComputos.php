@@ -26,7 +26,7 @@ include 'database.php';?>
         text-decoration: underline;
         cursor: default;
       }
-      .abrirModalAprobarItem{
+      .abrirModalAprobarItem, .abrirModalCancelarReservaItem{
         cursor: pointer;
       }
     </style>
@@ -360,6 +360,22 @@ include 'database.php';?>
             <input type="hidden" id="id_computo_detalle">
             <input type="hidden" id="id_computo">
             <button class="btn btn-primary" type="button" id="aprobarItem">Aprobar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal fade" id="cancelarReservaModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea cancelar la reserva de este ítem del cómputo?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary">Cancelar reserva</a>
             <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
@@ -904,7 +920,7 @@ include 'database.php';?>
             .then(response => response.json())
             .then(data => {
               if (data.success) {
-                alert("Concepto aprobado correctamente");
+                alert(data.message);
                 let modal=$("#aprobarModal").modal("hide");
                 get_conceptos(id_computo)
               } else {
@@ -916,6 +932,15 @@ include 'database.php';?>
               alert("Error al intentar aprobar el ítem");
             });
         });
+
+        $(document).on("click",".abrirModalCancelarReservaItem", function(){
+          let id_computo_detalle=this.dataset.id_computo_detalle;
+          let id_computo=this.dataset.id_computo;
+          let modal=$("#cancelarReservaModal");
+          modal.modal("show");
+          modal.find(".btn-primary").attr("href","cancelarStockPedido.php?id="+id_computo_detalle+"&idComputo="+id_computo);
+        });
+
       });
 
       function setEstadoIdParaItemsComputo(row) {
