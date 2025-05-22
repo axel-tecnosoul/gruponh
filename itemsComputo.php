@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->execute([$idOrigen]);*/
 
       // 4.2) Cargar datos del cómputo original
-      $stmt = $pdo->prepare("SELECT nro_revision, id_tarea, fecha, id_cuenta_solicitante, nro AS nro_computo FROM computos WHERE id = ?");
+      $stmt = $pdo->prepare("SELECT nro_revision, id_tarea, fecha, id_cuenta_solicitante, nro, nro_computo FROM computos WHERE id = ?");
       $stmt->execute([$idOrigen]);
       $orig = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -137,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $val = $rev;
 
       // 4.4) Insertar nuevo registro en computos
-      $stmt = $pdo->prepare("INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro_computo, comentarios_revision, fecha_hora_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?, ?, ?, ?, 2, ?, ?, NOW(), ?, ?, ?)");
+      $stmt = $pdo->prepare("INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro_computo, comentarios_revision, fecha_hora_revision, nro, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?, ?, ?, ?, 1, ?, ?, NOW(), ?, ?, ?, ?)");
       $stmt->execute([
         $nuevoNroRev,
         $orig['id_tarea'],
@@ -145,6 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $orig['id_cuenta_solicitante'],
         $orig['nro_computo'],
         $motivo,
+        $orig['nro'],
         $rev,       // quien realiza
         $rev,       // quien revisa
         $val        // quien valida
@@ -152,7 +153,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $idRevision = $pdo->lastInsertId();
 
       // 4.5) Duplicar todos los detalles del cómputo original
-      $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) SELECT ?, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios FROM computos_detalle WHERE id_computo = ?");
+      /*$stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) SELECT ?, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios FROM computos_detalle WHERE id_computo = ?");
+      $stmt->execute([$idRevision, $idOrigen]);*/
+
+      // 4.5) Duplicar todos los detalles del cómputo original pero forzar aprobado, reservado, comprado y cancelado a 0
+      $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) SELECT ?, id_material, cantidad, fecha_necesidad, 0, 0, 0, 0, comentarios FROM computos_detalle WHERE id_computo = ?");
       $stmt->execute([$idRevision, $idOrigen]);
 
       $pdo->commit();
@@ -210,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
+$sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo, nro_revision FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
 
 $q = $pdo->prepare($sql);
 $q->execute([$id]);
@@ -294,7 +299,7 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
+                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].") Revision N° ".$data["nro_revision"]?></h5>
                   </div>
 				          <form class="form theme-form" role="form" method="post" id="miFormulario" action="itemsComputo.php?modo=<?=$_GET['modo']?>&id=<?=$id?>">
                     <!-- Hidden inputs para los parámetros -->
@@ -318,9 +323,12 @@ Database::disconnect();
                                   </tr>
                                 </thead>
                                 <tbody><?php
+                                $id_computo=$_GET['id'];
                                 $pdo = Database::connect();
-                                $sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y'), d.aprobado, d.comentarios, date_format(d.fecha_necesidad,'%y%m%d') FROM computos_detalle d inner join materiales m on m.id = d.id_material WHERE cancelado = 0 and d.id_computo = ".$_GET['id'];
+                                $sql = " SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad_formatted, cd.aprobado, cd.comentarios, date_format(cd.fecha_necesidad,'%y%m%d') AS fecha_necesidad FROM computos_detalle cd inner join materiales m on m.id = cd.id_material WHERE cancelado = 0 and cd.id_computo = ".$id_computo;
+                                $b=0;
                                 foreach ($pdo->query($sql) as $row) {
+                                  $b=1;
                                   $aprobado="No";
                                   if ($row["aprobado"] == 1) {
                                     $aprobado="Si";
@@ -328,14 +336,14 @@ Database::disconnect();
                                   <tr>
                                     <td><?=$row["concepto"]?></td>
                                     <td><?=$row["cantidad"]?></td>
-                                    <td><span style="display: none;"><?=$row[6]?></span><?=$row[3]?></td>
+                                    <td><span style="display: none;"><?=$row["fecha_necesidad"]?></span><?=$row["fecha_necesidad_formatted"]?></td>
                                     <td><?=$aprobado?></td>
-                                    <td><?=$row[5]?></td>
+                                    <td><?=$row["comentarios"]?></td>
                                     <td><?php
                                       if (!empty(tienePermiso(291))) {?>
-                                        <a href="modificarItemComputo.php?id=<?=$row[0]?>&idRetorno=<?=$_GET['id']?>&modo=<?=$_GET['modo']?>&revision=<?=$_GET['revision']?>"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>
+                                        <a href="modificarItemComputo.php?id=<?=$row["id_computo_detalle"]?>&idRetorno=<?=$id_computo?>&modo=<?=$_GET['modo']?>&revision=<?=$_GET['revision']?>"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>
                                         &nbsp;&nbsp;
-                                        <a href="#" data-toggle="modal" data-target="#eliminarModal_<?=$row[0]?>"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Cancelar" title="Cancelar"></a>
+                                        <a href="#" data-toggle="modal" data-target="#eliminarModal_<?=$row["id_computo_detalle"]?>"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>
                                         &nbsp;&nbsp;<?php
                                       }?>
                                     </td>
@@ -382,13 +390,13 @@ Database::disconnect();
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Cantidad(*)</label>
                           <div class="col-sm-9">
-                            <input name="cantidad" step="0.01" min="0.01" type="number" class="form-control" required="required" value="">
+                            <input name="cantidad" id="cantidad" step="0.01" min="0.01" type="number" class="form-control" required="required" value="">
                           </div>
                         </div>
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Fecha Necesidad(*)</label>
                           <div class="col-sm-9">
-                            <input name="fecha_necesidad" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="">
+                            <input name="fecha_necesidad" id="fecha_necesidad" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="">
                           </div>
                         </div>
                         <div class="form-group row">
@@ -448,8 +456,10 @@ Database::disconnect();
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-success" type="submit" value="1" name="btn1" id="btn1">Crear y Agregar Otro</button>
-						            <!-- <button class="btn btn-primary" type="submit" value="2" name="btn2" id="btn2">Crear y Enviar a Aprobación</button> -->
-                        <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
+						            <!-- <button class="btn btn-primary" type="submit" value="2" name="btn2" id="btn2">Crear y Enviar a Aprobación</button> --><?php
+                         if($b==1){?>
+                          <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button><?php
+                         }?>
 						            <a href="listarComputos.php" class="btn btn-danger">Guardar y volver al Listado</a>
 
                         <!-- <button type="submit" name="btn1" class="btn btn-success">Crear y Agregar Otro</button>
@@ -506,7 +516,7 @@ Database::disconnect();
 		          <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
 		          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
 		        </div>
-		        <div class="modal-body">¿Está seguro que desea cancelar el ítem del cómputo?</div>
+		        <div class="modal-body">¿Está seguro que desea eliminar el ítem del cómputo?</div>
 		        <div class="modal-footer">
 		          <a href="eliminarItemComputo.php?id=<?=$row["id"]?>&idComputo=<?=$row["id_computo"]?>&revision=<?php if (!empty($_GET['revision'])) { echo $_GET['revision']; }else { echo "0"; } ?>" class="btn btn-primary">Eliminar</a>
 		          <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
@@ -528,13 +538,8 @@ Database::disconnect();
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
     <!-- Plugins JS start-->
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
@@ -571,6 +576,15 @@ Database::disconnect();
 
         // dentro de tu $(document).ready(...)
         $('#btnEnviarAprobacion').on('click', function(){
+          let id_material=$("#id_material").val();
+          let cantidad=$("#cantidad").val();
+          let fecha_necesidad=$("#fecha_necesidad").val();
+
+          if(id_material!="" || cantidad!="" || fecha_necesidad!=""){
+            alert("No se puede enviar a aprobación si hay ítems sin guardar.");
+            return false;
+          }
+
           $('#modalEnviarAprobacion').modal('show');
         });
 

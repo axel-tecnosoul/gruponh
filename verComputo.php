@@ -73,7 +73,7 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
+                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].") Revision N° ".$data["nro_revision"]?></h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" name="form1" id="form1" action="modificarComputo.php?id=<?=$data['id_computo']; ?>">
                     <div class="card-body">

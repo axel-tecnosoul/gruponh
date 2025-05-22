@@ -26,7 +26,7 @@ include 'database.php';?>
         text-decoration: underline;
         cursor: default;
       }
-      .abrirModalAprobarItem, .abrirModalCancelarReservaItem{
+      .abrirModalAprobarItem, .abrirModalCancelarItem, .abrirModalCancelarReservaItem{
         cursor: pointer;
       }
     </style>
@@ -365,6 +365,24 @@ include 'database.php';?>
         </div>
       </div>
     </div>
+
+    <div class="modal fade" id="cancelarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea cancelar el ítem del cómputo?</div>
+          <div class="modal-footer">
+            <input type="hidden" id="id_computo_detalle">
+            <input type="hidden" id="id_computo">
+            <button class="btn btn-primary" type="button" id="cancelarItem">Cancelar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
     
     <div class="modal fade" id="cancelarReservaModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
@@ -536,10 +554,25 @@ include 'database.php';?>
           });
         });
     
-        $("#link_ver_computo").on("click",function(){
+        $("#link_ver_computo").on("click",function(e){
+          e.preventDefault();
+
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
             alert("Por favor seleccione un cómputo para ver detalle")
+            return;
+          }
+
+          const estado_id = parseInt($(this).data("estado-id"), 10);
+
+          console.log("estado_id:", estado_id);
+
+          if (estado_id === 3 || estado_id === 4) {
+            // Elaboración o Para Aprobar → se puede modificar directamente
+            window.location.href = this.href;
+          } else {
+            // Cancelado, Terminado, Superado u otros → no permitido
+            alert("No se puede gestionar el cómputo en este estado.");
           }
         })
 
@@ -557,7 +590,6 @@ include 'database.php';?>
           e.preventDefault();
 
           let l = document.location.href;
-
           if (this.href == l || this.href == l + "#") {
             alert("Por favor seleccione un cómputo para ver/añadir/modificar ítems");
             return;
@@ -788,7 +820,7 @@ include 'database.php';?>
                 const id = $(this).data("id-computo");
                 if (id) idsMultiples.push(id);
               });
-              mensaje = "¿Desea aprobar <strong>solo los conceptos no rechazados</strong> de los cómputos listados?";
+              mensaje = "¿Desea aprobar <strong>solo los conceptos no cancelados</strong> de los cómputos listados?";
               break;
 
             default:
@@ -879,20 +911,6 @@ include 'database.php';?>
             }
           }
         });
-  
-        // DataTable
-        /*var table = $('#dataTables-example667').DataTable();
-    
-        // Apply the search
-        table.columns().every( function () {
-          var that = this;
-
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that.search( this.value ).draw();
-            }
-          });
-        });*/
 
         $(document).on("click", ".abrirModalAprobarItem", function(){
           let id_computo_detalle=this.dataset.id_computo_detalle;
@@ -933,6 +951,45 @@ include 'database.php';?>
             });
         });
 
+        $(document).on("click", ".abrirModalCancelarItem", function(){
+          let id_computo_detalle=this.dataset.id_computo_detalle;
+          let id_computo=this.dataset.id_computo;
+          let modal=$("#cancelarModal")
+          modal.modal("show");
+          $("#id_computo_detalle").val(id_computo_detalle);
+          $("#id_computo").val(id_computo);
+          //modal.find(".btn-primary").attr("href","aprobarComputoDetalle.php?id="+id_computo_detalle+"&idComputo="+id_computo);
+        });
+
+        $("#cancelarItem").on("click",function(){
+          let id_computo_detalle=$("#id_computo_detalle").val();
+          let id_computo=$("#id_computo").val();
+
+          // Crear el objeto FormData y agregarle los campos
+          let data = new FormData();
+          data.append('id_computo_detalle', id_computo_detalle);
+          data.append('id_computo', id_computo);
+          
+          fetch('cancelarComputoDetalle.php', {
+              method: 'POST',
+              body: data
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                alert(data.message);
+                let modal=$("#cancelarModal").modal("hide");
+                get_conceptos(id_computo)
+              } else {
+                alert("Error al cancelar el ítem");
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert("Error al intentar cancelar el ítem");
+            });
+        });
+
         $(document).on("click",".abrirModalCancelarReservaItem", function(){
           let id_computo_detalle=this.dataset.id_computo_detalle;
           let id_computo=this.dataset.id_computo;
@@ -946,6 +1003,7 @@ include 'database.php';?>
       function setEstadoIdParaItemsComputo(row) {
         let estado_id = row.data("estado-id");
         $("#link_items_computo").data("estado-id", estado_id);
+        console.log(estado_id);
       }
     
       function selectRow(t){

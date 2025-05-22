@@ -67,13 +67,14 @@ try {
     $modoDebug=0;
 
     // 1) Marcar detalle como aprobado
-    $sql = "UPDATE computos_detalle SET aprobado = 1 WHERE id = ?";
+    $sql = "UPDATE computos_detalle SET aprobado = 1, cancelado = 0 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$idDetalle]);
 
     // 2) Verificar si quedan pendientes
     //$sql = "SELECT COUNT(*) AS cant FROM computos_detalle WHERE aprobado = 0 AND cancelado = 0 AND id_computo = ?";
-    $sql = "SELECT COUNT(*) AS cant,c.nro_revision,c.nro AS nro_computo,c.id_tarea FROM computos_detalle cd JOIN computos c ON cd.id_computo=c.id WHERE cd.aprobado = 0 AND cd.cancelado = 0 AND cd.id_computo = $idComputo";
+    //$sql = "SELECT COUNT(*) AS cant,c.nro_revision,c.nro AS nro_computo,c.id_tarea FROM computos_detalle cd JOIN computos c ON cd.id_computo=c.id WHERE cd.aprobado = 0 AND cd.cancelado = 0 AND cd.id_computo = $idComputo";
+    $sql = "SELECT COUNT(*) AS cant,c.nro_revision,c.nro AS nro_computo,c.id_tarea FROM computos_detalle cd JOIN computos c ON cd.id_computo=c.id WHERE cd.aprobado = 0 AND cd.id_computo = $idComputo";
     if ($modoDebug == 1) {
       echo $sql."<br>";
     }
