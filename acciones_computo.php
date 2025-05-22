@@ -9,17 +9,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
     try {
         switch ($accion) {
             case "aprobar_completo":
+                
                 if (!isset($_POST["ids_computo"]) || !is_array($_POST["ids_computo"])) {
                     throw new Exception("Faltan IDs de cómputos.");
                 }
 
                 foreach ($_POST["ids_computo"] as $id) {
                     $id = (int)$id;
+
+                    // Aprobar el cómputo (cambiar estado del cómputo a aprobado)
                     $pdo->prepare("UPDATE computos SET id_estado = 3 WHERE id = ?")->execute([$id]); // 3 = aprobado
+
+                    // Aprobar todos los conceptos relacionados con el cómputo (independientemente del estado cancelado)
+                    $pdo->prepare("UPDATE computos_detalle SET aprobado = 1, cancelado = 0 WHERE id_computo = ?")->execute([$id]);
                 }
                 break;
 
             case "aprobar_parcial":
+
                 if (!isset($_POST["ids_computo"]) || !is_array($_POST["ids_computo"])) {
                     throw new Exception("Faltan IDs de cómputos.");
                 }
@@ -27,13 +34,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
                 foreach ($_POST["ids_computo"] as $id) {
                     $id = (int)$id;
 
-                    // Evita aprobar los que ya están cancelados (estado 6)
+                    // Aprobar los conceptos que NO están cancelados (cancelado = 0)
+                    $pdo->prepare("UPDATE computos_detalle SET aprobado = 1 WHERE id_computo = ? AND cancelado = 0")->execute([$id]);
+
+                    // Cambiar el estado del cómputo a aprobado (solo si no está cancelado)
                     $stmt = $pdo->prepare("SELECT id_estado FROM computos WHERE id = ?");
                     $stmt->execute([$id]);
                     $estado = $stmt->fetchColumn();
 
-                    if ($estado != 6) {
-                        $pdo->prepare("UPDATE computos SET id_estado = 3 WHERE id = ?")->execute([$id]);
+                    if ($estado != 6) { // Si el cómputo no está cancelado
+                        $pdo->prepare("UPDATE computos SET id_estado = 3 WHERE id = ?")->execute([$id]); // 3 = aprobado
                     }
                 }
                 break;
@@ -43,7 +53,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
                     throw new Exception("ID de cómputo no recibido.");
                 }
                 $id = (int)$_POST["id_computo"];
+
+                // Cambiar el estado del cómputo a cancelado
                 $pdo->prepare("UPDATE computos SET id_estado = 6 WHERE id = ?")->execute([$id]); // 6 = cancelado
+
+                // Cancelar todos los conceptos asociados a ese cómputo
+                $pdo->prepare("UPDATE computos_detalle SET cancelado = 1, aprobado = 0 WHERE id_computo = ?")->execute([$id]);
+
                 break;
 
             // Si la acción no es válida (no coincide con las opciones predefinidas),
