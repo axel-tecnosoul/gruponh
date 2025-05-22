@@ -774,10 +774,8 @@ include 'database.php';?>
           });
         });
       
-
         let accionPendiente = null;
         let idComputoPendiente = null;
-        let idsMultiples = [];
 
         // Marcar fila activa al hacer clic
         $(document).on("click", "#dataTables-example666 tbody tr", function () {
@@ -792,35 +790,28 @@ include 'database.php';?>
           const accion = $(this).data("accion");
           accionPendiente = accion;
           idComputoPendiente = null;
-          idsMultiples = [];
 
           let mensaje = "";
 
+          const filaActiva = $("#dataTables-example666 tbody tr.fila-activa");
+          if (filaActiva.length === 0) {
+            alert("Debe seleccionar un cómputo de la tabla primero.");
+            return;
+          }
+
+          idComputoPendiente = filaActiva.data("id-computo");
+
           switch (accion) {
             case "cancelar_computo":
-              const filaActiva = $("#dataTables-example666 tbody tr.fila-activa");
-              if (filaActiva.length === 0) {
-                alert("Debe seleccionar un cómputo de la tabla primero.");
-                return;
-              }
-              idComputoPendiente = filaActiva.data("id-computo");
               mensaje = "¿Está seguro que desea <strong>cancelar</strong> este cómputo?";
               break;
 
             case "aprobar_completo":
-              $("#dataTables-example666 tbody tr").each(function () {
-                const id = $(this).data("id-computo");
-                if (id) idsMultiples.push(id);
-              });
-              mensaje = "¿Desea aprobar <strong>todos</strong> los conceptos de los cómputos listados?";
+              mensaje = "¿Desea aprobar <strong>todos</strong> los conceptos del cómputo seleccionado?";
               break;
 
             case "aprobar_parcial":
-              $("#dataTables-example666 tbody tr").each(function () {
-                const id = $(this).data("id-computo");
-                if (id) idsMultiples.push(id);
-              });
-              mensaje = "¿Desea aprobar <strong>solo los conceptos no cancelados</strong> de los cómputos listados?";
+              mensaje = "¿Desea aprobar <strong>solo los conceptos no cancelados</strong> del cómputo seleccionado?";
               break;
 
             default:
@@ -828,7 +819,7 @@ include 'database.php';?>
               return;
           }
 
-          // Mostrar modal
+          // Mostrar modal de confirmación
           $("#textoConfirmacion").html(mensaje);
           $("#modalConfirmacion").modal("show");
         });
@@ -837,26 +828,16 @@ include 'database.php';?>
         $("#formConfirmacion").on("submit", function (e) {
           e.preventDefault();
 
-          if (!accionPendiente) return;
-
-          let data = {
-            ajax: true,
-            accion: accionPendiente
-          };
-
-          if (accionPendiente === "cancelar_computo") {
-            if (!idComputoPendiente) {
-              alert("No hay cómputo seleccionado.");
-              return;
-            }
-            data.id_computo = idComputoPendiente;
-          } else {
-            if (idsMultiples.length === 0) {
-              alert("No hay cómputos para procesar.");
-              return;
-            }
-            data.ids_computo = idsMultiples;
+          if (!accionPendiente || !idComputoPendiente) {
+            alert("No hay cómputo seleccionado.");
+            return;
           }
+
+          const data = {
+            ajax: true,
+            accion: accionPendiente,
+            id_computo: idComputoPendiente
+          };
 
           $.ajax({
             url: "acciones_computo.php",
@@ -876,10 +857,10 @@ include 'database.php';?>
               $("#modalConfirmacion").modal("hide");
               accionPendiente = null;
               idComputoPendiente = null;
-              idsMultiples = [];
             }
           });
         });
+
 
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
