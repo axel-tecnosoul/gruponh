@@ -27,13 +27,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
                 $pdo->prepare("UPDATE computos_detalle SET aprobado = 1 WHERE id_computo = ? AND cancelado = 0")->execute([$id]);
 
                 // Cambiar el estado del cómputo a aprobado (solo si no está cancelado)
-                $stmt = $pdo->prepare("SELECT id_estado FROM computos WHERE id = ?");
+                /*$stmt = $pdo->prepare("SELECT id_estado FROM computos WHERE id = ?");
                 $stmt->execute([$id]);
                 $estado = $stmt->fetchColumn();
 
                 if ($estado != 6) { // Si el cómputo no está cancelado
                     $pdo->prepare("UPDATE computos SET id_estado = 3 WHERE id = ?")->execute([$id]);
-                }
+                }*/
+                
+                // Cambiar el estado del cómputo a aprobado
+                $pdo->prepare("UPDATE computos SET id_estado = 3 WHERE id = ?")->execute([$id]);
                 break;
 
             case "cancelar_computo":
