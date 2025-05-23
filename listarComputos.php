@@ -565,9 +565,14 @@ include 'database.php';?>
 
           const estado_id = parseInt($(this).data("estado-id"), 10);
 
-          console.log("estado_id:", estado_id);
+          //console.log("estado_id:", estado_id);
 
-          if (estado_id === 3 || estado_id === 4) {
+          let id_estado=getIdEstadoComputoSeleccionado();
+
+          console.log("id_estado:", id_estado);
+
+          //if (estado_id == 3 || estado_id == 4) {
+          if (id_estado == 3 || id_estado == 4) {
             // Elaboración o Para Aprobar → se puede modificar directamente
             window.location.href = this.href;
           } else {
@@ -846,6 +851,7 @@ include 'database.php';?>
             success: function (resp) {
               if (resp.trim() === "ok") {
                 location.reload();
+                //console.log("funcionó");
               } else {
                 alert("Error: " + resp);
               }
@@ -860,7 +866,6 @@ include 'database.php';?>
             }
           });
         });
-
 
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
@@ -985,6 +990,13 @@ include 'database.php';?>
         let estado_id = row.data("estado-id");
         $("#link_items_computo").data("estado-id", estado_id);
         console.log(estado_id);
+      }
+
+      function getIdEstadoComputoSeleccionado() {
+        let fila_seleccionada=$("#dataTables-example666 tbody tr.selected");
+        let id_estado=fila_seleccionada.data("estado-id");
+        console.log(id_estado);
+        return id_estado;
       }
     
       function selectRow(t){
