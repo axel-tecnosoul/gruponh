@@ -1,5 +1,9 @@
 <?php
 // session_js.php — asume que $expiresAt viene de config.php
+if (!isset($expiresAt) || !defined('WARNING_OFFSET')) {
+  // si no están, salimos sin imprimir nada
+  return;
+}
 ?>
 <script>
 // Offset de aviso y expiración (segundos), inyectados desde PHP

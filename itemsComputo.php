@@ -299,7 +299,7 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].") Revision N° ".$data["nro_revision"]?></h5>
+                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
                   </div>
 				          <form class="form theme-form" role="form" method="post" id="miFormulario" action="itemsComputo.php?modo=<?=$_GET['modo']?>&id=<?=$id?>">
                     <!-- Hidden inputs para los parámetros -->

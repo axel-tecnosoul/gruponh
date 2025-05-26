@@ -73,7 +73,7 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].") Revision N° ".$data["nro_revision"]?></h5>
+                    <h5><?=$ubicacion." N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" name="form1" id="form1" action="modificarComputo.php?id=<?=$data['id_computo']; ?>">
                     <div class="card-body">
@@ -176,7 +176,7 @@ if (!empty($_POST)) {
                                   <tbody><?php
                                     $pdo = Database::connect();
                                     //$sql = " SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, cd.comprado, m.id AS id_material FROM computos_detalle cd inner join materiales m on m.id = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ".$_GET['id'];
-                                    $sql = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad AS cantidad_solicitada, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, pd.cantidad AS cantidad_pedida, cd.comprado, m.id AS id_material FROM computos_detalle cd inner join materiales m on m.id = cd.id_material LEFT JOIN pedidos p ON cd.id_computo=p.id_computo LEFT JOIN pedidos_detalle pd ON pd.id_pedido=p.id AND pd.id_material=m.id WHERE cd.cancelado = 0 and cd.id_computo = ".$_GET['id'];
+                                    $sql = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad AS cantidad_solicitada, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, SUM(pd.cantidad) AS cantidad_pedida, cd.comprado, m.id AS id_material FROM computos_detalle cd inner join materiales m on m.id = cd.id_material LEFT JOIN pedidos p ON cd.id_computo=p.id_computo LEFT JOIN pedidos_detalle pd ON pd.id_pedido=p.id AND pd.id_material=m.id WHERE cd.cancelado = 0 and cd.id_computo = ".$_GET['id']." GROUP BY cd.id";
                                     foreach ($pdo->query($sql) as $row) {
                                       /*$id_computo_detalle=$row["id_computo_detalle"];
                                       $cantidad_solicitada=$row["cantidad"];
