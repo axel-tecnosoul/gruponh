@@ -133,8 +133,9 @@ if (!empty($_POST)) {
 							<div class="col-sm-9"><input name="cantidad" step="0.01" min="0.01" type="number" class="form-control" required="required" value="<?php echo $data['cantidad'];?>"></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Necesidad(*)</label>
-							<div class="col-sm-9"><input name="fecha_necesidad" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?php echo $data['fecha_necesidad'];?>"></div>
+							<label class="col-sm-3 col-form-label">Fecha Necesidad(*)</label><?php
+                $fecha_actual = date('Y-m-d');?>
+							<div class="col-sm-9"><input name="fecha_necesidad" type="date" min="<?php echo $fecha_actual; ?>" onfocus="this.showPicker()" class="form-control" required="required" value="<?php echo $data['fecha_necesidad'];?>"></div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Comentarios</label>

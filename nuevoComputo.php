@@ -200,8 +200,10 @@ if (!empty($_POST)) {
                         <div class="col">
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
-                            <div class="col-sm-9">
-                              <input name="fecha" type="date" onfocus="this.showPicker()" autofocus value="<?php echo date('Y-m-d');?>" class="form-control" required="required">
+                            <div class="col-sm-9"><?php
+                            $fecha_actual = date('Y-m-d');
+                            ?>
+                              <input name="fecha" type="date" onfocus="this.showPicker()" autofocus min="<?php echo $fecha_actual; ?>" value="<?=$fecha_actual?>" class="form-control" required="required">
                             </div>
                           </div>
                           <div class="form-group row mt-3">
