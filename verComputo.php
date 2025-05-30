@@ -52,6 +52,25 @@ if (!empty($_POST)) {
       .abrirModalCancelarReservaItem{
         cursor: pointer;
       }
+      #dataTables-example667 {
+        table-layout: fixed !important;
+        width: 100% !important;
+      }
+
+      th.text-narrow, td.text-narrow {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      th.text-left, td.text-left {
+        text-align: left !important;
+      }
+
+      th.text-center, td.text-center {
+        text-align: center !important;
+      }
+
     </style>
   </head>
   <body>
@@ -158,19 +177,17 @@ if (!empty($_POST)) {
                                 <table class="display" id="dataTables-example667">
                                   <thead>
                                     <tr>
-                                      <th>Concepto</th>
-                                      <th>Solicitado</th>
-                                      <th>Necesidad</th>
-                                      <th>Aprobado</th>
-                                      <th>En Stock</th>
-                                      <th>Reservado</th>
-                                      <th>Pedido</th>
-                                      <th>Comprando</th>
-                                      <th>Saldo</th>
-                                      <!-- <th>Solicitar</th> -->
-                                      <?php if ($tienePermisoParaReservar) { ?><th>Reservar</th><?php }?>
-                                      <?php if ($tienePermisoParaPedir) { ?><th>Pedir</th><?php }?>
-                                      <th>Opciones</th>
+                                      <th class="text-narrow" title="Concepto">Concepto</th>
+                                      <th class="text-narrow"title="Solicitado">Solicitado</th>
+                                      <th class="text-narrow"title="Necesidad">Necesidad</th>
+                                      <th class="text-narrow"title="En Stock">En Stock</th>
+                                      <th class="text-narrow"title="Reservado">Reservado</th>
+                                      <th class="text-narrow"title="Pedido">Pedido</th>
+                                      <th class="text-narrow"title="Comprando">Comprando</th>
+                                      <th class="text-narrow"title="Saldo">Saldo</th>
+                                      <?php if ($tienePermisoParaReservar) { ?><th class="text-narrow"title="Reservar">Reservar</th><?php } ?>
+                                      <?php if ($tienePermisoParaPedir) { ?><th class="text-narrow"title="Pedir">Pedir</th><?php } ?>
+                                      <th class="text-narrow"title="Opciones">Opciones</th>
                                     </tr>
                                   </thead>
                                   <tbody><?php
@@ -283,7 +300,6 @@ if (!empty($_POST)) {
                                         <td><?=$row["concepto"]?></td>
                                         <td><?=$cantidad_solicitada?></td>
                                         <td><?=$row["fecha_necesidad"]?></td>
-                                        <td><?=$lblAprobado?></td>
                                         <td><?=$enStock?></td>
                                         <td><?=$reservado?></td>
                                         <td><?=$cantidad_pedida?></td>
@@ -486,10 +502,15 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
 	  <script>
 		  $(document).ready(function() {
-
+        $('#dataTables-example667').DataTable().destroy();
         $('#dataTables-example667').DataTable({
           stateSave: false,
+          autoWidth: false,
           responsive: false,
+          columnDefs: [
+            { targets: 0, width: '33%', className: 'text-left' }, // Concepto ancho grande
+            { targets: [1,2,3,4,5,6,7,8,9,10], width: '6.7%', className: 'text-center' } // resto columnas iguales y centradas
+          ],
           language: {
             "decimal": "",
             "emptyTable": "No hay información",
