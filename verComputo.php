@@ -723,6 +723,24 @@ if (!empty($_POST)) {
       });
 
     </script>
+    
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        document.querySelector('.page-main-header').classList.add('open');
+        document.querySelector('.page-sidebar').classList.add('open');
+        
+        // Con DataTables, ajustamos el render para que no se "rompa"
+        setTimeout(() => {
+          if ($.fn.DataTable) {
+            let table = $('#dataTables-example667');
+            if ($.fn.DataTable.isDataTable(table)) {
+              table.DataTable().columns.adjust().draw();
+            }
+          }
+        }, 300);
+      });
+    </script>
+
 		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
   </body>
