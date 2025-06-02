@@ -508,8 +508,8 @@ if (!empty($_POST)) {
           autoWidth: false,
           responsive: false,
           columnDefs: [
-            { targets: 0, width: '33%', className: 'text-left' }, // Concepto ancho grande
-            { targets: [1,2,3,4,5,6,7,8,9,10], width: '6.7%', className: 'text-center' } // resto columnas iguales y centradas
+            { targets: 0, width: '36%', className: 'text-left' }, // Concepto ancho grande
+            { targets: [1,2,3,4,5,6,7,8,9,10], width: '1%', className: 'text-center' } // resto columnas iguales y centradas
           ],
           language: {
             "decimal": "",
