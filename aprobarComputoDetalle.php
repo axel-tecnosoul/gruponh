@@ -46,6 +46,7 @@ Database::disconnect();*/
 
 require("config.php");
 require 'database.php';
+require 'funciones.php';
 
 // Siempre devolvemos JSON
 header('Content-Type: application/json; charset=utf-8');
@@ -105,7 +106,12 @@ try {
         echo $nro_revision."<br>";
       }
 
-      if($nro_revision>0){
+      //$textoComputo = " Cómputo aprobado en su totalidad.";
+      // superamos la anterior llamando a la función
+      $textoComputo .= superarRevisionAnterior($pdo, $idComputo, $modoDebug, $_SESSION['user']);
+
+
+      /*if($nro_revision>0){
         
         $revision_anterior=$nro_revision-1;
 
@@ -121,7 +127,7 @@ try {
           $fullSql = debugQuery($pdo, $sql, $params);
           echo $fullSql . "<br><br>";
         }
-      }
+      }*/
 
     }
 

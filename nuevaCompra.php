@@ -280,6 +280,7 @@
 								  <?php
 									$pdo = Database::connect();
 									$sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.`cantidad`-d.`reservado`-d.`comprado`, d.`id_unidad_medida` FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = m.id_unidad_medida WHERE d.id in (".$_GET['conceptos'].")";
+                  //$sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.cantidad, d.`id_unidad_medida` FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = m.id_unidad_medida WHERE d.id in (".$_GET['conceptos'].")";//CONSULTA SIN RESTA
 									
 									foreach ($pdo->query($sql) as $row) {
 										echo '<tr>';

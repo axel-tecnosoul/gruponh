@@ -175,15 +175,11 @@ if (!empty($_POST)) {
           $idPedido = $pdo->lastInsertId();
 
           // 2.b) Insertar detalle de pedido por cada material pedido
-          $sqlInsDetalle = "INSERT INTO pedidos_detalle (id_pedido, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado) VALUES (?, ?, ?, ?, ?, ?, ?)";
+          $sqlInsDetalle = "INSERT INTO pedidos_detalle (id_pedido, id_computo_detalle, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
           $stmtInsDet = $pdo->prepare($sqlInsDetalle);
 
           // Para obtener datos de computos_detalle (id_material, fecha_necesidad, unidad, reservado, comprado)
-          $sqlFetch = "SELECT d.id, m.concepto, d.cantidad, d.fecha_necesidad, d.aprobado, d.id_material, d.reservado, d.comprado,SUM(id.saldo) AS disponible,m.id_unidad_medida FROM computos_detalle d inner join materiales m on m.id = d.id_material left join ingresos_detalle id on id.id_material = d.id_material WHERE d.cancelado = 0 and d.id_computo = ? GROUP BY d.id_material";
-          /*$sqlFetch = "SELECT d.id, d.id_material, d.fecha_necesidad,
-                              m.id_unidad_medida, d.reservado, d.comprado
-                      FROM computos_detalle d inner join materiales m on m.id = d.id_material
-                      WHERE d.id_computo = ? AND d.cancelado = 0";*/
+          $sqlFetch = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, cd.fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, cd.comprado,SUM(id.saldo) AS disponible,m.id_unidad_medida FROM computos_detalle cd inner join materiales m on m.id = cd.id_material left join ingresos_detalle id on id.id_material = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ? GROUP BY d.id_material";
           $datos = $pdo->prepare($sqlFetch);
           $datos->execute([$idComputo]);
           $rows = $datos->fetchAll(PDO::FETCH_ASSOC);
@@ -193,7 +189,7 @@ if (!empty($_POST)) {
             $cantP = isset($pedidos[$idDet]) ? (int)$pedidos[$idDet] : 0;
             if ($cantP > 0) {
 
-              $params=[$idPedido,$r['id_material'],$r['fecha_necesidad'],$cantP,$r['id_unidad_medida'],$r['reservado'],$r['comprado']];
+              $params=[$idPedido,$r['id_computo_detalle'],$r['id_material'],$r['fecha_necesidad'],$cantP,$r['id_unidad_medida'],$r['reservado'],$r['comprado']];
 
               if ($modoDebug == 1) {
                 // Generar y mostrar la consulta “real”

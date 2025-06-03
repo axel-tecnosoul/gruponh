@@ -155,19 +155,21 @@
 								<tbody>
 								  <?php
 									$pdo = Database::connect();
-									$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, date_format(d.`fecha_necesidad`,'%d/%m/%y'), u.`unidad_medida`,d.id_material,d.reservado,d.comprado FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ".$_GET['id'];
+									$sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y'), u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$_GET['id'];
 									
 									foreach ($pdo->query($sql) as $row) {
-										$sql2 = "SELECT d.`precio`,date_format(c.`fecha_emision`,'%d/%m/%y') fecha_emision FROM `compras_detalle` d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
+										$sql2 = "SELECT d.precio,date_format(c.fecha_emision,'%d/%m/%y') fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
 										$q2 = $pdo->prepare($sql2);
 										$q2->execute();
 										$data2 = $q2->fetch(PDO::FETCH_ASSOC);
 										
 										echo '<tr>';
-										if ($row[2]-$row[6]-$row[7] > 0) {
+										if ($row["cantidad"]-$row["reservado"]-$row["comprado"] > 0) {
 											echo '<td><input type="checkbox" class="no-sort customer-selector" value="'.$row[0].'" /> </td>';	
 										} else {
-											echo '<td>&nbsp;</td>';	
+											echo '<td>&nbsp;</td>';
+                      //echo '<td>'.$row["cantidad"]." - ".$row["reservado"]." - ".$row["comprado"].'</td>';
+                      //echo '<td><input type="checkbox" class="no-sort customer-selector" value="'.$row[0].'" /> </td>';
 										}
 										
 										echo '<td>'. $row[1] . '</td>';
