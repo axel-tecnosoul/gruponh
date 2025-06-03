@@ -57,12 +57,19 @@ if (!empty($_POST)) {
         width: 100% !important;
       }
 
+      /* Columnas angostas: mostrar todo el contenido, con salto de línea automático */
       th.text-narrow, td.text-narrow {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        white-space: normal !important;   /* Permitir salto de línea */
+        word-break: break-word;           /* Cortar palabras si es necesario */
+        overflow: visible !important;     /* Mostrar todo el contenido */
+        text-overflow: unset !important;  /* Sin puntos suspensivos */
+        vertical-align: middle;
+        text-align: center;
+        padding: 8px;
+        line-height: 1.2;
       }
 
+      /* Para encabezados y celdas alineadas a la izquierda o centro, se mantiene igual */
       th.text-left, td.text-left {
         text-align: left !important;
       }
@@ -70,6 +77,7 @@ if (!empty($_POST)) {
       th.text-center, td.text-center {
         text-align: center !important;
       }
+
 
     </style>
   </head>
@@ -178,7 +186,7 @@ if (!empty($_POST)) {
                                   <thead>
                                     <tr>
                                       <th class="text-narrow" title="Concepto">Concepto</th>
-                                      <th class="text-narrow"title="Solicitado">Solicitado</th>
+                                      <th class="text-narrow"title="Solicitado">Solic<br>itado</th>
                                       <th class="text-narrow"title="Necesidad">Necesidad</th>
                                       <th class="text-narrow"title="En Stock">En Stock</th>
                                       <th class="text-narrow"title="Reservado">Reservado</th>
@@ -508,8 +516,8 @@ if (!empty($_POST)) {
           autoWidth: false,
           responsive: false,
           columnDefs: [
-            { targets: 0, width: '36%', className: 'text-left' }, // Concepto ancho grande
-            { targets: [1,2,3,4,5,6,7,8,9,10], width: '1%', className: 'text-center' } // resto columnas iguales y centradas
+            { targets: 0, width: '36%', className: 'text-left text-narrow' }, // Concepto ancho grande
+            { targets: [1,2,3,4,5,6,7,8,9,10], width: '2%', className: 'text-center text-narrow' } // resto columnas iguales y centradas
           ],
           language: {
             "decimal": "",
