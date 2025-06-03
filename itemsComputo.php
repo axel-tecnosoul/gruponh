@@ -395,8 +395,9 @@ Database::disconnect();
                         </div>
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Fecha Necesidad(*)</label>
-                          <div class="col-sm-9">
-                            <input name="fecha_necesidad" id="fecha_necesidad" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="">
+                          <div class="col-sm-9"><?php
+                            $fecha_actual = date('Y-m-d');?>
+                            <input name="fecha_necesidad" min="<?php echo $fecha_actual; ?>" id="fecha_necesidad" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="">
                           </div>
                         </div>
                         <div class="form-group row">

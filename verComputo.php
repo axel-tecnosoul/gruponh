@@ -52,6 +52,25 @@ if (!empty($_POST)) {
       .abrirModalCancelarReservaItem{
         cursor: pointer;
       }
+      #dataTables-example667 {
+        table-layout: fixed !important;
+        width: 100% !important;
+      }
+
+      th.text-narrow, td.text-narrow {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      th.text-left, td.text-left {
+        text-align: left !important;
+      }
+
+      th.text-center, td.text-center {
+        text-align: center !important;
+      }
+
     </style>
   </head>
   <body>
@@ -158,19 +177,17 @@ if (!empty($_POST)) {
                                 <table class="display" id="dataTables-example667">
                                   <thead>
                                     <tr>
-                                      <th>Concepto</th>
-                                      <th>Solicitado</th>
-                                      <th>Necesidad</th>
-                                      <th>Aprobado</th>
-                                      <th>En Stock</th>
-                                      <th>Reservado</th>
-                                      <th>Pedido</th>
-                                      <th>Comprando</th>
-                                      <th>Saldo</th>
-                                      <!-- <th>Solicitar</th> -->
-                                      <?php if ($tienePermisoParaReservar) { ?><th>Reservar</th><?php }?>
-                                      <?php if ($tienePermisoParaPedir) { ?><th>Pedir</th><?php }?>
-                                      <th>Opciones</th>
+                                      <th class="text-narrow" title="Concepto">Concepto</th>
+                                      <th class="text-narrow"title="Solicitado">Solicitado</th>
+                                      <th class="text-narrow"title="Necesidad">Necesidad</th>
+                                      <th class="text-narrow"title="En Stock">En Stock</th>
+                                      <th class="text-narrow"title="Reservado">Reservado</th>
+                                      <th class="text-narrow"title="Pedido">Pedido</th>
+                                      <th class="text-narrow"title="Comprando">Comprando</th>
+                                      <th class="text-narrow"title="Saldo">Saldo</th>
+                                      <?php if ($tienePermisoParaReservar) { ?><th class="text-narrow"title="Reservar">Reservar</th><?php } ?>
+                                      <?php if ($tienePermisoParaPedir) { ?><th class="text-narrow"title="Pedir">Pedir</th><?php } ?>
+                                      <th class="text-narrow"title="Opciones">Opciones</th>
                                     </tr>
                                   </thead>
                                   <tbody><?php
@@ -283,7 +300,6 @@ if (!empty($_POST)) {
                                         <td><?=$row["concepto"]?></td>
                                         <td><?=$cantidad_solicitada?></td>
                                         <td><?=$row["fecha_necesidad"]?></td>
-                                        <td><?=$lblAprobado?></td>
                                         <td><?=$enStock?></td>
                                         <td><?=$reservado?></td>
                                         <td><?=$cantidad_pedida?></td>
@@ -362,8 +378,9 @@ if (!empty($_POST)) {
 
               <div class="form-group row">
                 <label for="inputFecha" class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
-                <div class="col-sm-9">
-                  <input name="fecha" id="inputFecha" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control" required="required">
+                <div class="col-sm-9"><?php
+                  $fecha_actual = date('Y-m-d');?>
+                  <input name="fecha" id="inputFecha" min="<?$fecha_actual?>" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control" required="required">
                 </div>
               </div>
               <div class="form-group row">
@@ -485,10 +502,15 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
 	  <script>
 		  $(document).ready(function() {
-
+        $('#dataTables-example667').DataTable().destroy();
         $('#dataTables-example667').DataTable({
           stateSave: false,
+          autoWidth: false,
           responsive: false,
+          columnDefs: [
+            { targets: 0, width: '36%', className: 'text-left' }, // Concepto ancho grande
+            { targets: [1,2,3,4,5,6,7,8,9,10], width: '1%', className: 'text-center' } // resto columnas iguales y centradas
+          ],
           language: {
             "decimal": "",
             "emptyTable": "No hay información",
@@ -701,6 +723,24 @@ if (!empty($_POST)) {
       });
 
     </script>
+    
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        document.querySelector('.page-main-header').classList.add('open');
+        document.querySelector('.page-sidebar').classList.add('open');
+        
+        // Con DataTables, ajustamos el render para que no se "rompa"
+        setTimeout(() => {
+          if ($.fn.DataTable) {
+            let table = $('#dataTables-example667');
+            if ($.fn.DataTable.isDataTable(table)) {
+              table.DataTable().columns.adjust().draw();
+            }
+          }
+        }, 300);
+      });
+    </script>
+
 		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
   </body>
