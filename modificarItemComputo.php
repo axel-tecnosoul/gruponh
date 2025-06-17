@@ -22,11 +22,11 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   $nro_revision=$_POST['nro_revision'];
-    
+  $cantidad=$_POST['cantidad'];
   //if ($_GET['modo'] == "nuevo") {
-    $sql = "UPDATE computos_detalle set id_material= ?, cantidad= ?, fecha_necesidad= ?, aprobado = 0, comentarios=? where id = ?";
+    $sql = "UPDATE computos_detalle set id_material= ?, cantidad= ?, saldo= ?, fecha_necesidad= ?, aprobado = 0, comentarios=? where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$_POST['comentarios'],$id]);
+    $q->execute([$_POST['id_material'],$cantidad,$cantidad,$_POST['fecha_necesidad'],$_POST['comentarios'],$id]);
   /*
   } else if ($_GET['modo'] == "update") {
     

@@ -89,7 +89,7 @@ if (isset($_SESSION['LAST_REQUEST_TIME']) && (time()-$_SESSION['LAST_REQUEST_TIM
 $_SESSION['LAST_REQUEST_TIME'] = time();
 
 // 6. Comprobación de login
-if (empty($_SESSION['user'])) {
+if (empty($_SESSION['user']['id']) or empty($_SESSION['user']['permisos'])) {
   header('Location: login.php?sesion=1');
   exit;
 }

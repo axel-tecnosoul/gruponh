@@ -3,7 +3,7 @@
 session_start();
 
 // 2) Si ya está logueado, lo mandamos al dashboard
-if (!empty($_SESSION['user'])) {
+if (!empty($_SESSION['user']['id']) and !empty($_SESSION['user']['permisos'])) {
     header('Location: dashboard.php');
     exit;
 }

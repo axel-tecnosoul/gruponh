@@ -186,7 +186,7 @@ if (!empty($_POST)) {
                                   <thead>
                                     <tr>
                                       <th class="text-narrow" title="Concepto">Concepto</th>
-                                      <th class="text-narrow"title="Solicitado">Solic<br>itado</th>
+                                      <th class="text-narrow"title="Solicitado">Solicitado</th>
                                       <th class="text-narrow"title="Necesidad">Necesidad</th>
                                       <th class="text-narrow"title="En Stock">En Stock</th>
                                       <th class="text-narrow"title="Reservado">Reservado</th>
@@ -266,7 +266,7 @@ if (!empty($_POST)) {
 
                                         // suponemos que ya tienes:
                                         //$saldo        = max($cantidad_solicitada - $reservado - $comprado, 0);
-                                        $saldo        = max($cantidad_solicitada - $reservado - $cantidad_pedida, 0);
+                                        $saldo        = max($saldo, 0);
                                         $maxReservar  = min($saldo, $enStock);
 
                                         if ($tienePermisoParaReservar){
@@ -277,14 +277,7 @@ if (!empty($_POST)) {
                                           $requiredReservar= $maxReservar > 0 ? 'required' : '';
 
                                           // arma un solo input de reservar
-                                          $inputReservar = sprintf(
-                                            '<input type="number" class="form-control" name="cantidad_reservar[%d]" min="0" max="%d" step="1" value="%d" onkeyup="validateMax(this)" %s %s>',
-                                            $id_computo_detalle,
-                                            $maxAttrReservar,
-                                            $valorReservar,
-                                            $disabledReservar,
-                                            $requiredReservar
-                                          );
+                                          $inputReservar = "<input type='number' class='form-control' name='cantidad_reservar[$id_computo_detalle]' min='0' max='$maxAttrReservar' step='1' value='$valorReservar' onkeyup='validateMax(this)' $disabledReservar $requiredReservar>";
                                         }
 
                                         if ($tienePermisoParaPedir){
@@ -295,12 +288,7 @@ if (!empty($_POST)) {
                                           $maxPedir   = $saldo;              // límite lógico: nunca pedir más del saldo
                                           $valorPedir = $sugeridoPedir;      // sugerencia por defecto
 
-                                          $inputPedir = sprintf(
-                                            '<input type="number" class="form-control" name="cantidad_pedir[%d]" min="0" max="%d" step="1" value="%d" onkeyup="validateMax(this)" required>',
-                                            $id_computo_detalle,
-                                            $maxPedir,
-                                            $valorPedir
-                                          );
+                                          $inputPedir = "<input type='number' class='form-control' name='cantidad_pedir[$id_computo_detalle]' min='0' max='$maxPedir' step='1' value='$valorPedir' onkeyup='validateMax(this)' required>";
                                         }
 
                                       }?>
@@ -312,7 +300,10 @@ if (!empty($_POST)) {
                                         <td><?=$reservado?></td>
                                         <td><?=$cantidad_pedida?></td>
                                         <td><?=$comprado?></td>
-                                        <td class="saldo"><?=$saldo?></td>
+                                        <td>
+                                          <input type="hidden" name="saldo[<?=$id_computo_detalle?>]" value="<?=$saldo?>">
+                                          <span class="saldo"><?=$saldo?></span>
+                                        </td>
                                         <?php if ($tienePermisoParaReservar) { ?><td><?=$inputReservar?></td><?php }?>
                                         <?php if ($tienePermisoParaPedir) { ?><td><?=$inputPedir?></td><?php }
                                           /*if ($aprobado==1) {?>
@@ -574,33 +565,6 @@ if (!empty($_POST)) {
   
       });
 
-      //$(function() {
-        // Función que verifica un row concreto
-        /*function validarFila($tr) {
-          // Leer saldo de la fila
-          const saldo = parseInt($tr.find('.saldo').text(), 10) || 0;
-          // Leer valores de reservar y pedir
-          const reservar = parseInt($tr.find('input[name^="cantidad_reservar"]').val(), 10) || 0;
-          const pedir    = parseInt($tr.find('input[name^="cantidad_pedir"]').val(), 10)    || 0;
-          const suma     = reservar + pedir;
-
-          // Seleccionar ambos inputs
-          const $inputs = $tr.find('input[name^="cantidad_reservar"], input[name^="cantidad_pedir"]');
-
-          if (suma > saldo) {
-            // invalidar
-            $inputs.removeClass('valid').addClass('invalid');
-            return false;
-          } else {
-            // marcar como válido
-            $inputs.removeClass('invalid').addClass('valid');
-            return true;
-          }
-        }*/
-
-        
-      //});
-
       function validateMax(e) {
         if (parseFloat(e.value) > parseFloat(e.max)) {
           e.value = e.max;
@@ -730,9 +694,6 @@ if (!empty($_POST)) {
         });
       });
 
-    </script>
-    
-    <script>
       document.addEventListener("DOMContentLoaded", function() {
         document.querySelector('.page-main-header').classList.add('open');
         document.querySelector('.page-sidebar').classList.add('open');

@@ -4,7 +4,6 @@ if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
 }
-
 require 'database.php';
 
 $id = null;
@@ -127,12 +126,14 @@ if (!empty($_POST)) {
       $pdo->beginTransaction();
 
       // 1) Registrar todas las reservas de stock
-      $sqlUpdReserva = "UPDATE computos_detalle SET reservado = ? WHERE id = ?";
+      $sqlUpdReserva = "UPDATE computos_detalle SET reservado = reservado + ? WHERE id = ?";
       $stmtUpd = $pdo->prepare($sqlUpdReserva);
 
+      $c=$c2=0;
       foreach ($reservas as $idDetalle => $cantRes) {
         $cantRes = (int) $cantRes;
         if ($cantRes > 0) {
+          $c++;
 
           $params = [$cantRes, $idDetalle];
           
@@ -145,8 +146,27 @@ if (!empty($_POST)) {
           $stmtUpd->execute($params);
           if ($stmtUpd->rowCount() === 0) {
             throw new Exception("No se pudo actualizar reserva para detalle $idDetalle.");
+          }else{
+            $c2++;
           }
         }
+      }
+
+      // si reservamos al menos un detalle y todos los detalles fueron reservados se registra el log de reserva
+      if($c>0 and $c==$c2){
+        // 4) Log de reserva
+        $sqlLogR = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nueva reserva de stock', 'Computos', ?)";
+        $stmtLogR = $pdo->prepare($sqlLogR);
+
+        $params = [$userId, "verComputo.php?id={$idComputo}"];
+
+        if ($modoDebug == 1) {
+          // Generar y mostrar la consulta “real”
+          $fullSql = debugQuery($pdo, $sqlLogR, $params);
+          echo $fullSql . "<br><br>";
+        }
+
+        $stmtLogR->execute($params);
       }
 
       // 2) Si hay al menos un pedido, creamos cabecera de pedido
@@ -179,14 +199,14 @@ if (!empty($_POST)) {
           $stmtInsDet = $pdo->prepare($sqlInsDetalle);
 
           // Para obtener datos de computos_detalle (id_material, fecha_necesidad, unidad, reservado, comprado)
-          $sqlFetch = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, cd.fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, cd.comprado,SUM(id.saldo) AS disponible,m.id_unidad_medida FROM computos_detalle cd inner join materiales m on m.id = cd.id_material left join ingresos_detalle id on id.id_material = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ? GROUP BY d.id_material";
+          $sqlFetch = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, cd.fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, cd.comprado,SUM(id.saldo) AS disponible,m.id_unidad_medida FROM computos_detalle cd inner join materiales m on m.id = cd.id_material left join ingresos_detalle id on id.id_material = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ? GROUP BY cd.id_material";
           $datos = $pdo->prepare($sqlFetch);
           $datos->execute([$idComputo]);
           $rows = $datos->fetchAll(PDO::FETCH_ASSOC);
 
           foreach ($rows as $r) {
-            $idDet = $r['id'];
-            $cantP = isset($pedidos[$idDet]) ? (int)$pedidos[$idDet] : 0;
+            $id_computo_detalle = $r['id_computo_detalle'];
+            $cantP = isset($pedidos[$id_computo_detalle]) ? (int)$pedidos[$id_computo_detalle] : 0;
             if ($cantP > 0) {
 
               $params=[$idPedido,$r['id_computo_detalle'],$r['id_material'],$r['fecha_necesidad'],$cantP,$r['id_unidad_medida'],$r['reservado'],$r['comprado']];
@@ -199,7 +219,7 @@ if (!empty($_POST)) {
 
               $stmtInsDet->execute($params);
               if ($stmtInsDet->rowCount() === 0) {
-                throw new Exception("No se pudo insertar detalle de pedido para detalle $idDet.");
+                throw new Exception("No se pudo insertar detalle de pedido para detalle $id_computo_detalle.");
               }
             }
           }
@@ -219,41 +239,42 @@ if (!empty($_POST)) {
           $stmtLogP->execute($params);
       }
 
-      // 3) Actualizar estado de cómputo a “4” (reservado/pedido completo)
-      $sqlUpdComp = "UPDATE computos SET id_estado = 4 WHERE id = ?";
-      $stmtComp = $pdo->prepare($sqlUpdComp);
+      // actualizamos el saldo de los detalles del cómputo
+      if (!empty($_POST['saldo'])) {
+        // Prepara la consulta para actualizar el nuevo saldo
+        $sqlUpdSaldo = "UPDATE computos_detalle SET saldo = ? WHERE id = ?";
+        $stmtUpdSaldo = $pdo->prepare($sqlUpdSaldo);
 
-      $params = [$idComputo];
+        foreach ($_POST['saldo'] as $idDetalle => $saldoActualStr) {
+          $saldoActual = (int) $saldoActualStr;
+          // Si no vienen índices, asumimos 0
+          $cantRes = isset($reservas[$idDetalle]) ? (int)$reservas[$idDetalle] : 0;
+          $cantPed = isset($pedidos[$idDetalle])  ? (int)$pedidos[$idDetalle]  : 0;
 
-      if ($modoDebug == 1) {
-        // Generar y mostrar la consulta “real”
-        $fullSql = debugQuery($pdo, $sqlUpdComp, $params);
-        echo $fullSql . "<br><br>";
+          // Calcula el nuevo saldo, jamás negativo
+          $nuevoSaldo = $saldoActual - $cantRes - $cantPed;
+          if ($nuevoSaldo < 0) {
+            $nuevoSaldo = 0;
+          }
+          
+          $params = [$nuevoSaldo, $idDetalle];
+
+          if ($modoDebug === 1) {
+            // Generar y mostrar la consulta “real”
+            $fullSql = debugQuery($pdo, $sqlUpdSaldo, $params);
+            echo $fullSql . "<br><br>";
+          }
+
+          $stmtUpdSaldo->execute($params);
+          // No forzamos excepción si rowCount()==0, porque tal vez no haya cambio si ya era 0
+        }
       }
 
-      /*$stmtComp->execute($params);
-      if ($stmtComp->rowCount() === 0) {
-        throw new Exception("No se pudo actualizar estado de cómputo {$idComputo}.");
-      }*/
+      $ok=marcarComputoGestionandoOTerminado($pdo, $idComputo, $modoDebug);
 
-      $ok = $stmtComp->execute($params);
-      if ($ok === false) {
-          throw new Exception("Falló la ejecución de la consulta de estado de cómputo.");
+      if($ok==0){
+        throw new Exception("Falló la ejecución de la consulta de estado de cómputo.");
       }
-
-      // 4) Log de reserva
-      $sqlLogR = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nueva reserva de stock', 'Pedidos', ?)";
-      $stmtLogR = $pdo->prepare($sqlLogR);
-
-      $params = [$userId, "verPedido.php?id={$idComputo}"];
-
-      if ($modoDebug == 1) {
-        // Generar y mostrar la consulta “real”
-        $fullSql = debugQuery($pdo, $sqlLogR, $params);
-        echo $fullSql . "<br><br>";
-      }
-
-      $stmtLogR->execute($params);
 
       // 5) Commit
       if ($modoDebug === 1) {

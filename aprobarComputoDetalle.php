@@ -46,7 +46,7 @@ Database::disconnect();*/
 
 require("config.php");
 require 'database.php';
-require 'funciones.php';
+//require 'funciones.php';
 
 // Siempre devolvemos JSON
 header('Content-Type: application/json; charset=utf-8');

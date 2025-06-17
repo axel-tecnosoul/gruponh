@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $stmt->execute([$idRevision, $idOrigen]);*/
 
       // 4.5) Duplicar todos los detalles del cómputo original pero forzar aprobado, reservado, comprado y cancelado a 0
-      $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) SELECT ?, id_material, cantidad, fecha_necesidad, 0, 0, 0, 0, comentarios FROM computos_detalle WHERE id_computo = ?");
+      $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, reservado, saldo, comprado, cancelado, comentarios) SELECT ?, id_material, cantidad, fecha_necesidad, 0, 0, 0, 0, 0, comentarios FROM computos_detalle WHERE id_computo = ?");
       $stmt->execute([$idRevision, $idOrigen]);
 
       $pdo->commit();
@@ -186,15 +186,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       exit;
     }
 
+    $cantidad=$_POST['cantidad'];
+
     // Inserto el nuevo ítem
-    $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, fecha_necesidad, aprobado, comentarios) VALUES (?, ?, ?, ?, 0, ?)");
-    $stmt->execute([
-      $id,
-      $_POST['id_material'],
-      $_POST['cantidad'],
-      $_POST['fecha_necesidad'],
-      $_POST['comentarios']
-    ]);
+    $stmt = $pdo->prepare("INSERT INTO computos_detalle (id_computo, id_material, cantidad, saldo, fecha_necesidad, aprobado, comentarios) VALUES (?, ?, ?, ?, ?, 0, ?)");
+    $stmt->execute([$id,$_POST['id_material'],$cantidad,$cantidad,$_POST['fecha_necesidad'],$_POST['comentarios']]);
 
     // Logueo la acción
     $stmt = $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Se ha modificado un item de un cómputo', 'Cómputos', ?)");
@@ -461,7 +457,8 @@ Database::disconnect();
                          if($b==1){?>
                           <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button><?php
                          }?>
-						            <a href="listarComputos.php" class="btn btn-danger">Guardar y volver al Listado</a>
+						            <!-- <a href="listarComputos.php" class="btn btn-danger">Guardar y volver al Listado</a> -->
+                         <button class="btn btn-danger" type="button" id="guardarYVolver">Guardar y volver al Listado</button>
 
                         <!-- <button type="submit" name="btn1" class="btn btn-success">Crear y Agregar Otro</button>
                         <button type="submit" name="btn2" class="btn btn-primary">Enviar a aprobación</button>
@@ -587,6 +584,24 @@ Database::disconnect();
           }
 
           $('#modalEnviarAprobacion').modal('show');
+        });
+
+        $("#guardarYVolver").on("click", function(event) {
+          let id_material=$("#id_material").val();
+          let cantidad=$("#cantidad").val();
+          let fecha_necesidad=$("#fecha_necesidad").val();
+
+          console.log(id_material,cantidad,fecha_necesidad);
+
+          if(id_material=="" && cantidad=="" && fecha_necesidad==""){
+            // Redirige a la página de listado
+            window.location.href = "listarComputos.php";
+            return false;
+          }
+
+          alert("No se puede guardar y volver si hay ítems sin cargar.");
+          return false;
+          
         });
 
         // Setup - add a text input to each footer cell

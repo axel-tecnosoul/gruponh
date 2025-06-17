@@ -63,7 +63,7 @@ $tests = [
     'setup' => function(PDO $pdo) {
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (30,1,0,300,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (3,30,70,5,4,0,0,0,'2025-01-01','')");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (3,30,70,5,5,4,0,0,0,'2025-01-01','')");
       // no hay pedido para este caso
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (31,1,1,300,3)");
     },
@@ -82,7 +82,7 @@ $tests = [
     'setup' => function(PDO $pdo) {
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       $pdo->exec("INSERT INTO computos VALUES (40,1,0,400,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (4,40,80,6,0,0,0,0,'2025-01-01','')");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (4,40,80,6,6,0,0,0,0,'2025-01-01','')");
       $pdo->exec("INSERT INTO pedidos_detalle (id,id_pedido,id_material,fecha_necesidad,cantidad,id_unidad_medida,reservado,comprado) VALUES (4,201,80,'2025-01-01',3,1,0,0)");
       $pdo->exec("INSERT INTO computos VALUES (41,1,1,400,3)");
     },
@@ -101,7 +101,7 @@ $tests = [
     'setup' => function(PDO $pdo) {
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       $pdo->exec("INSERT INTO computos VALUES (50,1,0,500,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (5,50,90,7,0,0,0,0,'2025-01-01','')");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (5,50,90,7,7,0,0,0,0,'2025-01-01','')");
       $pdo->exec("INSERT INTO pedidos_detalle (id,id_pedido,id_material,fecha_necesidad,cantidad,id_unidad_medida,reservado,comprado) VALUES (5,202,90,'2025-01-01',4,1,0,1)"); // comprado=1
       $pdo->exec("INSERT INTO computos VALUES (51,1,1,500,3)");
     },
@@ -120,9 +120,9 @@ $tests = [
     'setup' => function(PDO $pdo) {
       $pdo->exec("DELETE FROM computos_detalle; DELETE FROM computos;");
       $pdo->exec("INSERT INTO computos VALUES (60,1,0,600,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado) VALUES (6,60,100,5,3)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado) VALUES (6,60,100,5,5,3)");
       $pdo->exec("INSERT INTO computos VALUES (61,1,1,600,3)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad) VALUES (7,61,100,7)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo) VALUES (7,61,100,7,7)");
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 61, 0, ['id'=>1]);
@@ -141,11 +141,11 @@ $tests = [
       // Computo rev0
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (70,1,0,700,4)");
       // Detalle rev0: cantidad=10, reservado=6
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (7,70,110,10,6,0,0,0,'2025-01-01','')");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (7,70,110,10,10,6,0,0,0,'2025-01-01','')");
       // Computo rev1
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (71,1,1,700,3)");
       // Detalle rev1: cantidad_actual=4
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (8,71,110,4,0,0,0,0,'2025-01-01','')");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (8,71,110,4,4,0,0,0,0,'2025-01-01','')");
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 71, 0, ['id'=>1]);
@@ -165,11 +165,11 @@ $tests = [
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       // rev0
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (80,1,0,800,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (9,80,120,3,0,0,0,0,'2025-01-01','')");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (9,80,120,3,3,0,0,0,0,'2025-01-01','')");
       $pdo->exec("INSERT INTO pedidos_detalle (id,id_pedido,id_material,fecha_necesidad,cantidad,id_unidad_medida,reservado,comprado) VALUES (9,203,120,'2025-01-01',2,1,0,0)");
       // rev1 con cantidad_actual > prev: 5 > 3
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (81,1,1,800,3)");
-      $pdo->exec("INSERT INTO computos_detalle(id,id_computo,id_material,cantidad) VALUES (10,81,120,5)");
+      $pdo->exec("INSERT INTO computos_detalle(id,id_computo,id_material,cantidad,saldo) VALUES (10,81,120,5,5)");
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 81, 0, ['id'=>1]);
@@ -187,11 +187,11 @@ $tests = [
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       // rev0: cantidad=5, reservado=4 → pedido cantidad 2
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (90,1,0,900,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado) VALUES (11,90,130,5,4)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado) VALUES (11,90,130,5,5,4)");
       $pdo->exec("INSERT INTO pedidos_detalle (id,id_pedido,id_material,fecha_necesidad,cantidad) VALUES (11,204,130,'2025-01-01',2)");
       // rev1: cantidad_actual=3 → cantAPedir = 3 - 4 = -1 <=0
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (91,1,1,900,3)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad) VALUES (12,91,130,3)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo) VALUES (12,91,130,3,3)");
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 91, 0, ['id'=>1]);
@@ -209,11 +209,11 @@ $tests = [
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       // rev0: cantidad=8, reservado=2 → pedido cantidad 4
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (100,1,0,1000,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado) VALUES (13,100,140,8,2)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado) VALUES (13,100,140,8,8,2)");
       $pdo->exec("INSERT INTO pedidos_detalle (id,id_pedido,id_material,fecha_necesidad,cantidad) VALUES (13,205,140,'2025-01-01',4)");
       // rev1: cantidad_actual=6 → cantAPedir = 6 - 2 = 4 >0
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (101,1,1,1000,3)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad) VALUES (14,101,140,6)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo) VALUES (14,101,140,6,6)");
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 101, 0, ['id'=>1]);
@@ -232,11 +232,11 @@ $tests = [
       $pdo->exec("DELETE FROM pedidos_detalle; DELETE FROM computos_detalle; DELETE FROM computos;");
       // rev0: cantidad=5, any reserved
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (110,1,0,1100,4)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,reservado) VALUES (15,110,150,5,1)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado) VALUES (15,110,150,5,5,1)");
       $pdo->exec("INSERT INTO pedidos_detalle (id,id_pedido,id_material,fecha_necesidad,cantidad,comprado) VALUES (15,206,150,'2025-01-01',3,1)");
       // rev1: cantidad_actual different e.g. 2
       $pdo->exec("INSERT INTO computos(id,nro,nro_revision,id_tarea,id_estado) VALUES (111,1,1,1100,3)");
-      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad) VALUES (16,111,150,2)");
+      $pdo->exec("INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo) VALUES (16,111,150,2,2)");
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 111, 0, ['id'=>1]);
