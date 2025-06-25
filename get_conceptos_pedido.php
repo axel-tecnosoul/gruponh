@@ -7,7 +7,7 @@ $id_pedido = $_POST['id_pedido'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, date_format(d.`fecha_necesidad`,'%d/%m/%y'), u.`unidad_medida`,d.id_material,d.reservado,d.comprado, date_format(d.`fecha_necesidad`,'%y%m%d') FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ".$id_pedido;
+$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, date_format(d.`fecha_necesidad`,'%d/%m/%y'), u.`unidad_medida`,d.id_material,d.reservado,d.comprado, date_format(d.`fecha_necesidad`,'%y%m%d') FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ".$id_pedido;//." AND d.cancelado = 0";
 $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {

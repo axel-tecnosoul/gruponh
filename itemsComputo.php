@@ -1,8 +1,8 @@
 <?php
 require("config.php");
 require 'database.php';
-require("PHPMailer/class.phpmailer.php");
-require("PHPMailer/class.smtp.php");
+/*require("PHPMailer/class.phpmailer.php");
+require("PHPMailer/class.smtp.php");*/
 
 // 1) Control de acceso
 /*session_start();
@@ -71,7 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fila = $stmt->fetch(PDO::FETCH_NUM);
     $descProyecto = "{$fila[0]} - {$fila[1]} - {$fila[2]} - {$fila[3]}";
 
-    $whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
+    //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
+    $whereDebug="";
 
     // --- Recorro usuarios suscriptos al tipo_notificación = 8 ---
     $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 8".$whereDebug;
@@ -92,8 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $mail->SMTPAuth   = true;
       $mail->Username   = $smtpUsuario;
       $mail->Password   = $smtpClave;
-      $mail->Port       = 25;
-      $mail->SMTPSecure = false;
+      
+      /*$mail->Port       = 25;
+      $mail->SMTPSecure = false;*/
+      $mail->Port = 587;
+      $mail->SMTPSecure = 'tls';
+
       $mail->From       = $smtpFrom;
       $mail->FromName   = $_SESSION['user']['usuario'];
       $mail->CharSet    = "utf-8";

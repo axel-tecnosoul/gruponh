@@ -142,9 +142,9 @@ $tests = [
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 41, 1);
-      $stmt = stmtLog($pdo, "SELECT cantidad FROM pedidos_detalle WHERE id = ?",[4]);
+      $stmt = stmtLog($pdo, "SELECT cancelado FROM pedidos_detalle WHERE id = ?",[4]);
       //$stmt->execute([4]);
-      return $stmt->fetchColumn() == 0;
+      return $stmt->fetchColumn() == 1;
     }
   ],
 
@@ -265,9 +265,9 @@ $tests = [
     },
     'test' => function(PDO $pdo) {
       superarRevisionAnterior($pdo, 91, 1);
-      $stmt = stmtLog($pdo, "SELECT cantidad FROM pedidos_detalle WHERE id = ?",[11]);
+      $stmt = stmtLog($pdo, "SELECT cancelado FROM pedidos_detalle WHERE id = ?",[11]);
       //$q->execute([11]);
-      return $stmt->fetchColumn() == 0;
+      return $stmt->fetchColumn() == 1;
     }
   ],
 
@@ -328,17 +328,23 @@ $tests = [
 
 echo "=== INICIO DE TESTS RÁPIDOS ===<br><br>";
 
+$b=1;
 foreach ($tests as $name => $tc) {
-  echo "<h3>$name</h3>";
-  try {
-    $pdo->beginTransaction();
-    $tc['setup']($pdo);
-    $ok = $tc['test']($pdo);
-    $pdo->rollBack();
-    echo str_pad($name, 45) . ($ok ? "[ OK ]<hr>" : "<span style='color:red'>[ FAIL ]</span><hr>");
-  } catch (Exception $e) {
-    if ($pdo->inTransaction()) { $pdo->rollBack(); }
-    echo str_pad($name, 45) . "<span style='color:red'>[ ERROR: " . $e->getMessage() . " ]</span><hr>";
+  if($b==1){
+    //$b=0;
+    echo "<h3>$name</h3>";
+    try {
+      $pdo->beginTransaction();
+      $tc['setup']($pdo);
+      $ok = $tc['test']($pdo);
+      //$pdo->rollBack();
+      $pdo->commit();
+      echo str_pad($name, 45) . ($ok ? "[ OK ]<hr>" : "<span style='color:red'>[ FAIL ]</span><hr>");
+    } catch (Exception $e) {
+      //if ($pdo->inTransaction()) { $pdo->rollBack(); }
+      if ($pdo->inTransaction()) { $pdo->commit(); }
+      echo str_pad($name, 45) . "<span style='color:red'>[ ERROR: " . $e->getMessage() . " ]</span><hr>";
+    }
   }
 }
 

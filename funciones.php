@@ -1,4 +1,7 @@
 <?php
+require("PHPMailer/class.phpmailer.php");
+require("PHPMailer/class.smtp.php");
+
 function debugQuery(PDO $pdo, string $sql, array $params): string {
   foreach ($params as $key => $value) {
     // PDO::quote() añade comillas y escapa caracteres especiales
@@ -68,7 +71,7 @@ function fetchPedidoDetalle(PDO $pdo, int $idComputoDetalle, bool $modoDebug): ?
  * @return void
  */
 function cancelPedidoDetalle(PDO $pdo, int $idPedidoDetalle, bool $modoDebug): bool {
-    $sql = "UPDATE pedidos_detalle SET cancelado = 1, cantidad = 0 WHERE id = ?";
+    $sql = "UPDATE pedidos_detalle SET cancelado = 1 WHERE id = ?";
     $stmt=debugExecute($pdo, $sql, [$idPedidoDetalle], $modoDebug, "Cancelar pedido_detalle $idPedidoDetalle");
     return $stmt->rowCount() == 1; // Retorna true si se canceló correctamente
 }
@@ -136,6 +139,23 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
 
   if (!$info || $info['nro_revision'] < 1) {
     // No hay revisión anterior
+
+    //notificar que se ha aprobado un computo
+    $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo, nro_revision FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
+    $q = $pdo->prepare($sql);
+    $q->execute([$idComputo]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+
+    //$descProyecto = " N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+    $descProyecto = " N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+
+    $idTipoNotificacion=15;
+    $idEntidad=$idComputo;
+    $detalleNotificacion="ID Computo: #".$idComputo;
+    $asuntoEmail="Producción - Aprobación de Cómputo ({$descProyecto})";
+    $cuerpoEmail="El cómputo #{$descProyecto} ha sido aprobado.";
+    crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+
     return $texto;
   }
 
@@ -161,6 +181,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
     return $texto;
   }
 
+  $detalleRealizadoCuerpoEmail="";
   if ($prev['id_estado'] != 4) {
     // ============================================================
     // A) Si la revisión anterior NO estaba en “Gestionando” (4)
@@ -171,9 +192,13 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
       echo "-La revision anterior del computo está en un estado diferente a 4 (Gestionando), por lo que se pasa directamente a Superado sin mayor lógica<br><br>";
     }
     
-    $texto = ". La revisión anterior N° {$revisionAnterior} NO se esta Gestionando, por lo que ha sido superada sin mas.";
+    $texto = "La revisión anterior N° {$revisionAnterior} no se esta Gestionando, por lo que ha sido superada sin mas.";
+    $detalleRealizadoCuerpoEmail="<br>".$texto;
+    $texto = ". ".$texto;
 
   }else{
+    $detalleRealizadoCuerpoEmail="<br>La revisión anterior N° {$revisionAnterior} se estaba gestionando, por lo que fue superada luego de revisar sus conceptos.<br>";
+
     if ($modoDebug) {
       echo "-La revision anterior del computo está en estado Gestionando, por lo que debemos comaprar linea por linea los conceptos de ambas revisiones y actuar segun cada caso<br><br>";
     }
@@ -186,6 +211,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
     $sql = "SELECT
               cd_previo.id        AS id_previo,
               cd_previo.id_material,
+              m.concepto,
               cd_previo.cantidad  AS cantidad_previo,
               cd_previo.reservado AS reservado_previo,
               cd_actual.id        AS id_actual,
@@ -195,6 +221,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
               ON cd_previo.id_material = cd_actual.id_material
              AND cd_actual.id_computo = :actual
              AND cd_actual.cancelado = 0
+            LEFT JOIN materiales m ON cd_previo.id_material=m.id
             WHERE cd_previo.id_computo = :previo
               AND cd_previo.cancelado = 0";
 
@@ -213,11 +240,13 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
       // B.A) Concepto Eliminado
       // -----------------------------------
       if (is_null($ln['id_actual'])) {
+        $detalleRealizadoCuerpoEmail.="-Se ha eliminado el concepto ".$ln['concepto'];
         if ($modoDebug) {
           echo "-Se ha eliminado el concepto con ID ".$ln['id_previo']."<br><br>";
         }
         // B.A.1) si tiene reserva → la borramos
         if ($ln['reservado_previo'] > 0) {
+          $detalleRealizadoCuerpoEmail.=", como tenía una reserva previa de ".$ln['reservado_previo']." unidades, la hemos eliminado.<br>";
           if ($modoDebug) {
             echo "-Tenia una reserva (".$ln['reservado_previo'].")<br><br>";
           }
@@ -229,6 +258,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             var_dump($ok);
           }
         }else{
+          $detalleRealizadoCuerpoEmail.=" que no tenía reserva previa.<br>";
           if ($modoDebug) {
             echo "-No tenia reserva (".$ln['reservado_previo'].")<br><br>";
           }
@@ -244,11 +274,13 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
         }
 
         if ($pd) {
+          $detalleRealizadoCuerpoEmail.=" Tiene un pedido asociado (id:".$pd["id"].", cantidad:".$pd["pedido_cantidad"].")";
           if ($modoDebug) {
             echo "-Tiene pedidos asociados (id:".$pd["id"].", cantidad:".$pd["pedido_cantidad"]."):<br><br>";
             //var_dump($pd);
           }
           if ($pd['comprado'] == 0) {
+            $detalleRealizadoCuerpoEmail.=" y aun no se está comprando por lo que lo cancelamos.<br>";
             if ($modoDebug) {
               echo "-Aun no se está comprando (".$pd['comprado'].")<br><br>";
             }
@@ -257,16 +289,18 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             $ok=cancelPedidoDetalle($pdo,$id_pedido_detalle=$pd['id'],$modoDebug);
 
             if ($modoDebug) {
-              echo "B.A.2) cancelar pedido_detalle:<br>". debugQuery($pdo, $sql, $params) . "<br>";
+              //echo "B.A.2) cancelar pedido_detalle:<br>". debugQuery($pdo, $sql, $params) . "<br>";
               var_dump($ok);
             }
           } else {
+            $detalleRealizadoCuerpoEmail.=" que está en proceso de compra (".$pd['comprado']."), por lo que no se pudo cancelar.<br>";
             // B.A.3) pedido en compra → solo notificar
             if ($modoDebug) {
               echo "-El pedido ya está en compra, solo notificar<br><br>";
             }
           }
         }else{
+          $detalleRealizadoCuerpoEmail.="No tenía pedidos asociados.<br>";
           if ($modoDebug) {
             echo "-No tenia pedido (".$ln['id_previo'].")<br><br>";
           }
@@ -282,6 +316,8 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
         
         $diff = $ln['cantidad_actual'] - $ln['cantidad_previo'];
         $cantidadActualEsMenorQueCantidadPrevio = $ln['cantidad_actual'] < $ln['cantidad_previo'];
+
+        $detalleRealizadoCuerpoEmail.= "-Se ha modificado la cantidad del concepto ".$ln['concepto']." de ".$ln['cantidad_previo']." a ".$ln['cantidad_actual'];
         
         if ($modoDebug) {
           echo "-Hubo un cambio en la cantidad:<br>&nbsp;Revision anterior: ".$ln['cantidad_previo']."<br>&nbsp;Revision actual: ".$ln['cantidad_actual']."<br>&nbsp;Diferencia:".$diff."<br><br>";
@@ -295,6 +331,8 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
           if ($cantidadActualEsMenorQueCantidadPrevio and $ln['cantidad_actual'] < $ln['reservado_previo']) {
             // B.B.1.2) nueva cantidad < reserva → ajustar y heredar
 
+            $detalleRealizadoCuerpoEmail.= ", como tenía una reserva previa de ".$ln['reservado_previo'].", la hemos ajustado a la nueva cantidad de ".$ln['cantidad_actual']."<br>";
+
             if ($modoDebug) {
               echo "-La nueva cantidad (".$ln['cantidad_actual'].") es inferior a lo reservado en la revision anterior (".$ln['reservado_previo']."), pasamos la reserva a la nueva revision ajustando la cantidad y notificamos!<br><br>";
             }
@@ -302,6 +340,9 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             $ok=pasarReservaDeRevisionAnterior($pdo,$id_revision_anterior=$ln['id_previo'],$id_revision_actual=$ln['id_actual'],$nueva_cantidad=$ln['cantidad_actual'],$modoDebug);
 
           } else {
+
+            $detalleRealizadoCuerpoEmail.= ", como tenía una reserva previa de ".$ln['reservado_previo'].", la pasamos a esta revision<br>";
+
             // B.B.1.1) nueva cantidad > reserva → no tocar reserva, notificar
             if ($modoDebug) {
               echo "-La nueva cantidad (".$ln['cantidad_actual'].") es mayor o igual a la cantidad reservada en la revision anterior (".$ln['reservado_previo']."), pasamos la reserva a la nueva revision y notificamos!<br><br>";
@@ -311,6 +352,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
 
           }
         }else{
+          $detalleRealizadoCuerpoEmail.= " que no tenía reserva previa, por lo que no se ha ajustado nada.<br>";
           if ($modoDebug) {
             echo "-No tenia reserva (".$ln['reservado_previo'].")<br><br>";
           }
@@ -326,7 +368,11 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
         }
 
         if ($pd) {
+          $detalleRealizadoCuerpoEmail.= " Tiene un pedido asociado (id:".$pd["id"].", cantidad:".$pd["pedido_cantidad"].")";
+
           if ($pd['comprado'] == 0) {
+
+            $detalleRealizadoCuerpoEmail.= " que aun no se está comprando";
 
             if ($modoDebug) {
               echo "-Aun no se está comprando<br><br>";
@@ -341,14 +387,17 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
               }
               if ($cantPedir <= 0) {
                 // B.B.2.2.1) cancelar pedido_detalle
+                $detalleRealizadoCuerpoEmail.= " y como ya no es necesario pedir, cancelamos el pedido.<br>";
 
                 $ok=cancelPedidoDetalle($pdo,$id_pedido_detalle=$pd['id'],$modoDebug);
 
                 if ($modoDebug) {
-                  echo "-Cancelamos el pedido_detalle:<br>". debugQuery($pdo, $sql, $params) . "<br>";
+                  //echo "-Cancelamos el pedido_detalle:<br>". debugQuery($pdo, $sql, $params) . "<br>";
                   var_dump($ok);
                 }
               } else {
+                $detalleRealizadoCuerpoEmail.= " y como la nueva cantidad a pedir (".$cantPedir.") es mayor a 0 y menor a la cantidad anterior, lo actualizamos y reasignamos al computo_detalle de la nueva revision.<br>";
+
                 // B.B.2.2.2) actualizar pedido y reasignar
                 $sql = "UPDATE pedidos_detalle SET cantidad = ?, id_computo_detalle = ? WHERE id = ?";
                 $params = [$cantPedir, $ln['id_actual'], $pd['id']];
@@ -359,18 +408,22 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
                 }
               }
             } else {
+              $detalleRealizadoCuerpoEmail.= " y como la nueva cantidad es mayor o igual a la del pedido ".$pd['id']." (".$pd["pedido_cantidad"].") no hemos realizado nada.<br>";
+
               // B.B.2.1) nueva cantidad > anterior → solo notificar
               if ($modoDebug) {
                 echo "-La nueva cantidad (".$ln["cantidad_actual"].") es mayor o igual a la del pedido ".$pd['id']." (".$pd["pedido_cantidad"]."), notificamos!<br><br>";
               }
             }
           } else {
+            $detalleRealizadoCuerpoEmail.= " que está en proceso de compra (".$pd['comprado']."), por lo que no se pudo realizar nada.";
             // B.B.3) pedido en compra → solo notificar
             if ($modoDebug) {
               echo "-El pedido está en proceso, ya se está comprando, solo notificamos!<br><br>";
             }
           }
         }else{
+          $detalleRealizadoCuerpoEmail.= "No tenía pedidos asociados.<br>";
           if ($modoDebug) {
             echo "-No tenia pedido (".$ln['id_previo'].")<br><br>";
           }
@@ -390,6 +443,22 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
     var_dump($ok);
     
   }
+
+  //notificar que se ha aprobado una revision de un computo
+  $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo, nro_revision FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
+  $q = $pdo->prepare($sql);
+  $q->execute([$idComputo]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  $descProyecto = " N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+
+  $idTipoNotificacion=16;
+  $idEntidad=$idComputo;
+  //$detalleNotificacion="verComputo.php?id=";
+  $detalleNotificacion="ID Computo: #".$idComputo;
+  $asuntoEmail="Producción - Aprobación de revisión de Cómputo ".$descProyecto;
+  $cuerpoEmail="El cómputo ".$descProyecto." ha sido aprobado.".$detalleRealizadoCuerpoEmail;
+  crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
 
   return $texto;
 }
@@ -457,4 +526,73 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
 
   return $ok;
 
+}
+
+
+function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, string $detalleNotificacion, string $asuntoEmail,string $cuerpoEmail): void{
+  // 3) Conexión PDO
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  
+  // --- Cargo configuración SMTP desde parámetros ---
+  $smtp = [];
+  for ($i = 1; $i <= 5; $i++) {
+    $stmt = $pdo->prepare("SELECT valor FROM parametros WHERE id = ?");
+    $stmt->execute([$i]);
+    $smtp[$i] = $stmt->fetchColumn();
+  }
+  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = [$smtp[1], $smtp[2], $smtp[3], $smtp[4], $smtp[5]];
+
+  //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
+  $whereDebug="";
+  
+  // --- Recorro usuarios suscriptos al tipo_notificación = $idTipoNotificacion ---
+  $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = $idTipoNotificacion".$whereDebug;
+  foreach ($pdo->query($sql) as $row) {
+    list($destUsuario, $destEmail) = $row;
+    // Inserto en notificaciones
+    $stmt = $pdo->prepare("INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES ($idTipoNotificacion, ?, NOW(), 0, ?, ?)");
+    //$detalle = "ID Cómputo: #{$idComp}";
+    $detalle = $detalleNotificacion; // Usar el detalle pasado como parámetro
+    $stmt->execute([$destUsuario, $detalle, $idEntidad]);
+
+    // Armo y envío mail
+    //$titulo  = "ERP Notificaciones - Producción - Revisión Cómputo ({$descProyecto})";
+    $titulo  = "ERP Notificaciones - ".$asuntoEmail; // Usar el asunto del email pasado como parámetro
+    //$mensaje = "La revisión de cómputo #{$descProyecto} está lista para aprobación.";
+    $mensaje = $cuerpoEmail; // Usar el cuerpo del email pasado como parámetro
+
+    $mail = new PHPMailer();
+    //$mail->SMTPDebug = 3;//Habilitamos solo para debugguear
+    $mail->IsSMTP();
+    $mail->Host       = $smtpHost;
+    $mail->SMTPAuth   = true;
+    $mail->Username   = $smtpUsuario;
+    $mail->Password   = $smtpClave;
+    
+    /*$mail->Port = 465;
+    $mail->SMTPSecure = 'ssl';*/
+    /*$mail->Port       = 25;
+    $mail->SMTPSecure = false;*/
+    $mail->Port = 587;
+    $mail->SMTPSecure = 'tls';
+    
+    $mail->From       = $smtpFrom;
+    $mail->FromName   = $_SESSION['user']['usuario'];
+    $mail->CharSet    = "utf-8";
+    $mail->IsHTML(true);
+    $mail->clearAddresses(); // <- MUY IMPORTANTE LIMPIAR destinatarios anteriores
+    $mail->AddAddress($destEmail);
+    $mail->Subject    = $titulo;
+    $mail->Body       = nl2br($mensaje) . "<br><br>";
+    $mail->AltBody    = $mensaje;
+    //$mail->Send();
+    $envio = $mail->Send();
+
+    if (!$envio) {
+        
+    }
+
+
+  }
 }
