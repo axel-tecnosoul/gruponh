@@ -1,6 +1,6 @@
 <?php
-require("PHPMailer/class.phpmailer.php");
-require("PHPMailer/class.smtp.php");
+require_once("PHPMailer/class.phpmailer.php");
+require_once("PHPMailer/class.smtp.php");
 
 function debugQuery(PDO $pdo, string $sql, array $params): string {
   foreach ($params as $key => $value) {

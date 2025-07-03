@@ -1,8 +1,8 @@
 <?php
 require("config.php");
 require 'database.php';
-/*require("PHPMailer/class.phpmailer.php");
-require("PHPMailer/class.smtp.php");*/
+/*require_once("PHPMailer/class.phpmailer.php");
+require_once("PHPMailer/class.smtp.php");*/
 
 // 1) Control de acceso
 /*session_start();

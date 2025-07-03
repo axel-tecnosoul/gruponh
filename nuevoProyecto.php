@@ -1,7 +1,7 @@
 <?php
     require("config.php");
-	require("PHPMailer/class.phpmailer.php");
-	require("PHPMailer/class.smtp.php");
+	require_once("PHPMailer/class.phpmailer.php");
+	require_once("PHPMailer/class.smtp.php");
     
     if (empty($_SESSION['user'])) {
         header("Location: index.php");
