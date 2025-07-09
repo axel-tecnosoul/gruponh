@@ -159,7 +159,15 @@ include 'database.php';?>
                           $pdo = Database::connect();
                           $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
                           if (!empty($_POST['nro'])) {
-                            $sql .= " and (p.nro = ".$_POST['nro']." or s.nro_sitio = ".$_POST['nro'].") ";
+                            $nro=$_POST['nro'];
+                            $ex=explode("/", $nro);
+                            if(count($ex)>1){
+                              $sitio = $ex[0];
+                              $proyecto = $ex[1];
+                              $sql .= " AND (p.nro = ".$proyecto." AND s.nro_sitio = ".$sitio.") ";
+                            }else{
+                              $sql .= " AND (p.nro = ".$nro." OR s.nro_sitio = ".$nro.") ";
+                            }
                           }
                           if (!empty($_POST['fecha'])) {
                             $sql .= " AND c.fecha >= '".$_POST['fecha']."' ";
