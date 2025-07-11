@@ -566,16 +566,23 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     //$mail->SMTPDebug = 3;//Habilitamos solo para debugguear
     $mail->IsSMTP();
     $mail->Host       = $smtpHost;
-    $mail->SMTPAuth   = true;
     $mail->Username   = $smtpUsuario;
     $mail->Password   = $smtpClave;
     
     /*$mail->Port = 465;
     $mail->SMTPSecure = 'ssl';*/
-    /*$mail->Port       = 25;
-    $mail->SMTPSecure = false;*/
+
+    //EN LOCAL
+    /*$mail->SMTPAuth   = true;
     $mail->Port = 587;
-    $mail->SMTPSecure = 'tls';
+    $mail->SMTPSecure = 'tls';*/
+
+    //EN PRODUCCION
+    $mail->SMTPAuth = true;
+    $mail->Port = 25; 
+    //$mail->SMTPSecure = 'ssl';
+    //$mail->SMTPAutoTLS = false;
+    $mail->SMTPSecure = false;
     
     $mail->From       = $smtpFrom;
     $mail->FromName   = $_SESSION['user']['usuario'];

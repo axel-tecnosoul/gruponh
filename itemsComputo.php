@@ -43,39 +43,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("UPDATE computos SET id_estado = 2 WHERE id = ?");
     $stmt->execute([$idComp]);
 
+    // --- Descripción del proyecto ---
+    /*$stmt = $pdo->prepare("SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c JOIN tareas t ON t.id = c.id_tarea JOIN proyectos p ON p.id = t.id_proyecto JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ?");
+    $stmt->execute([$idComp]);
+    $fila = $stmt->fetch(PDO::FETCH_NUM);
+    $descProyecto = "{$fila[0]} - {$fila[1]} - {$fila[2]} - {$fila[3]}";*/
+    
+    $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo, nro_revision FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
+    $q = $pdo->prepare($sql);
+    $q->execute([$idComp]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $descProyecto = " N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+
+    $idTipoNotificacion=8;
+    $idEntidad=$idComp;
+    $detalleNotificacion="ID Computo: #".$idComp;
+    $asuntoEmail="Producción - Aprobación de Cómputo ({$descProyecto})";
+    $cuerpoEmail="La revisión de cómputo #{$descProyecto} está lista para aprobación.";
+    crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+
     // 2) Marcar la revisión ANTERIOR como “Superada” (id_estado = 7)
-    /*$stmt = $pdo->prepare("
-      UPDATE computos
-      SET id_estado = 7
-      WHERE nro_computo = (
-        SELECT nro_computo FROM computos WHERE id = ?
-      )
-        AND id <> ?
-        AND id_estado = 2
-    ");
+    /*$stmt = $pdo->prepare("UPDATE computos SET id_estado = 7 WHERE nro_computo = (SELECT nro_computo FROM computos WHERE id = ?) AND id <> ? AND id_estado = 2");
     $stmt->execute([$idComp, $idComp]);*/
 
     // 3) Crear notificaciones y envío de email (idéntico al original)
     // --- Cargo configuración SMTP desde parámetros ---
-    $smtp = [];
+    /*$smtp = [];
     for ($i = 1; $i <= 5; $i++) {
       $stmt = $pdo->prepare("SELECT valor FROM parametros WHERE id = ?");
       $stmt->execute([$i]);
       $smtp[$i] = $stmt->fetchColumn();
     }
-    list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = [$smtp[1], $smtp[2], $smtp[3], $smtp[4], $smtp[5]];
-
-    // --- Descripción del proyecto ---
-    $stmt = $pdo->prepare("SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c JOIN tareas t ON t.id = c.id_tarea JOIN proyectos p ON p.id = t.id_proyecto JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ?");
-    $stmt->execute([$idComp]);
-    $fila = $stmt->fetch(PDO::FETCH_NUM);
-    $descProyecto = "{$fila[0]} - {$fila[1]} - {$fila[2]} - {$fila[3]}";
+    list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = [$smtp[1], $smtp[2], $smtp[3], $smtp[4], $smtp[5]];*/
 
     //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
     $whereDebug="";
 
     // --- Recorro usuarios suscriptos al tipo_notificación = 8 ---
-    $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 8".$whereDebug;
+    /*$sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 8".$whereDebug;
     foreach ($pdo->query($sql) as $row) {
       list($destUsuario, $destEmail) = $row;
       // Inserto en notificaciones
@@ -94,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $mail->Username   = $smtpUsuario;
       $mail->Password   = $smtpClave;
       
-      /*$mail->Port       = 25;
-      $mail->SMTPSecure = false;*/
+      //$mail->Port       = 25;
+      //$mail->SMTPSecure = false;
       $mail->Port = 587;
       $mail->SMTPSecure = 'tls';
 
@@ -108,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $mail->Body       = nl2br($mensaje) . "<br><br>";
       $mail->AltBody    = $mensaje;
       $mail->Send();
-    }
+    }*/
 
     // 4) Redirijo al listado
     header("Location: listarComputos.php");
