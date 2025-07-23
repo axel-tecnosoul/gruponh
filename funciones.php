@@ -535,13 +535,9 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
   // --- Cargo configuración SMTP desde parámetros ---
-  $smtp = [];
-  for ($i = 1; $i <= 5; $i++) {
-    $stmt = $pdo->prepare("SELECT valor FROM parametros WHERE id = ?");
-    $stmt->execute([$i]);
-    $smtp[$i] = $stmt->fetchColumn();
-  }
-  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = [$smtp[1], $smtp[2], $smtp[3], $smtp[4], $smtp[5]];
+  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+  $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
+  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
 
   //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
   $whereDebug="";
@@ -601,5 +597,12 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     }
 
 
+  }
+}
+
+// Verifica si la función str_starts_with ya existe (PHP 8.0+)
+if (!function_exists('str_starts_with')) {
+  function str_starts_with(string $haystack, string $needle): bool {
+    return $needle !== '' && strpos($haystack, $needle) === 0;
   }
 }

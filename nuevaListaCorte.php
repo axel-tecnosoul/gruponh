@@ -3,21 +3,20 @@ require("config.php");
 require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");
 if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
+  header("Location: index.php");
+  die("Redirecting to index.php");
 }
-
 require 'database.php';
-
 if (!empty($_POST)) {
-    
+  // var_dump($_POST);
+  // die;
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
   $idTarea = null;
   if (!empty($_POST['id_tarea'])) {
-	$idTarea = $_POST['id_tarea'];	  
+	  $idTarea = $_POST['id_tarea'];
   }
 
   $sql = "INSERT INTO listas_corte (ultimo_nro_revision,id_tarea) VALUES (0,?)";
@@ -25,12 +24,11 @@ if (!empty($_POST)) {
   $q->execute([$idTarea]);
   $id_lista_corte = $pdo->lastInsertId();
   
-  $sql = "update tareas set `fecha_inicio_real`=now(), `fecha_fin_real`=now() where id = ?";
+  $sql = "UPDATE tareas set fecha_inicio_real=now(), fecha_fin_real=now() where id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$idTarea]);
   
-  
-	$sql = "select s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
+	$sql = "SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
 	$q = $pdo->prepare($sql);
 	$q->execute([$_POST['id_proyecto']]);
 	$data = $q->fetch(PDO::FETCH_ASSOC);
@@ -41,12 +39,12 @@ if (!empty($_POST)) {
   $q->execute([$_POST['id_proyecto']]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $_POST['numero'] = $data['cant']+1;
-  
-	$idCuentaRealizo = null;
-	$idCuentaReviso = $_POST['id_cuenta_reviso'];
-	$idCuentaValido = $_POST['id_cuenta_valido'];
 
-	$sql = "SELECT id FROM `cuentas` WHERE id_usuario = ? ";
+  $idCuentaRealizo = $_POST['id_cuenta_realizo'] ?? null;
+  $idCuentaReviso  = $_POST['id_cuenta_reviso'] ?? null;
+  $idCuentaValido  = $_POST['id_cuenta_valido'] ?? null;
+
+	$sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
 	$q = $pdo->prepare($sql);
 	$q->execute([$_SESSION['user']['id']]);
 	$data = $q->fetch(PDO::FETCH_ASSOC);
@@ -54,7 +52,7 @@ if (!empty($_POST)) {
 		$idCuentaRealizo = $data['id'];
 	}
 
-  $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion,`id_cuenta_realizo`, `id_cuenta_reviso`, `id_cuenta_valido`) VALUES (?,?,?,?,1,0,0,?,?,?,?,?,?)";
+  $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,1,0,0,?,?,?,?,?,?)";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte,$_POST['id_proyecto'],$_POST['fecha'],$_SESSION['user']['id'],$_POST['nombre'],$_POST['numero'],"Emisión original",$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
 
@@ -67,44 +65,19 @@ if (!empty($_POST)) {
   }
   
   
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte_revision')";
+  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte_revision')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
   
-	$sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpHost = $data['valor'];  
+  // --- Cargo configuración SMTP desde parámetros ---
+  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+  $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
+  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
 	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpUsuario = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpClave = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpFrom = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpFromName = $data['valor'];  
-	
-	$sql = " select t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 5 ";
+	/*$sql = "SELECT t.id_usuario, u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 5 ";
 	foreach ($pdo->query($sql) as $row) {
 		
-		$sql = "INSERT INTO `notificaciones`(`id_tipo_notificacion`, `id_usuario`, `fecha_hora`, `leida`,detalle,id_entidad) VALUES (5,?,now(),0,?,?)";
+		$sql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES (5,?,now(),0,?,?)";
 		$q = $pdo->prepare($sql);
 		$q->execute([$row[0],'ID Lista de Corte: #'.$id_lista_corte_revision,$id_lista_corte_revision]);
 		
@@ -117,8 +90,8 @@ if (!empty($_POST)) {
 		$mail->IsSMTP();
 		$mail->SMTPAuth = true;
 		$mail->Port = 25; 
-		$mail->SMTPSecure = 'ssl';
-		$mail->SMTPAutoTLS = false;
+		//$mail->SMTPSecure = 'ssl';
+		//$mail->SMTPAutoTLS = false;
 		$mail->SMTPSecure = false;
 		$mail->IsHTML(true); 
 		$mail->CharSet = "utf-8";
@@ -134,14 +107,84 @@ if (!empty($_POST)) {
 		$mail->AltBody = "{$mensaje} \n\n"; 
 		$mail->Send();
 	
-	}
-	
-	
+	}*/
+
+  // 1) Recuperar todos los usuarios de golpe
+  $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t INNER JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 5";
+  $users = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+  // 2) Batch-insert de notificaciones
+  if (!empty($users)) {
+    $values    = [];
+    $params    = [];
+    $detalle   = 'ID Lista de Corte: #'.$id_lista_corte_revision;
+    foreach ($users as $u) {
+      $values[] = "(5, ?, NOW(), 0, ?, ?)";
+      $params[] = $u['id_usuario'];
+      $params[] = $detalle;
+      $params[] = $id_lista_corte_revision;
+    }
+    $insertSql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES ".implode(', ', $values);
+    $pdo->prepare($insertSql)->execute($params);
+  }
+
+  // 3) Preparar y enviar un único e-mail
+
+  $mail = new PHPMailer();
+  $mail->isSMTP();
+  $mail->SMTPAuth      = true;
+  $mail->SMTPKeepAlive = true;    // Mantiene la conexión viva para no reconectar
+  $mail->Host          = $smtpHost;
+  $mail->Port          = 25;
+  $mail->SMTPSecure    = false;
+  $mail->Username      = $smtpUsuario;
+  $mail->Password      = $smtpClave;
+
+  $mail->setFrom($smtpFrom, $_SESSION['user']['usuario']);
+  $mail->isHTML(true);
+  $mail->CharSet       = 'utf-8';
+  $mail->Subject       = "ERP Notificaciones - Módulo Ingeniería - Nueva Lista de Corte ({$descripcionProyecto})";
+
+  $plainMsg  = "Nueva lista de corte dada de alta en el sistema: #{$id_lista_corte_revision}";
+  $htmlMsg   = nl2br($plainMsg) . '<br><br>';
+  $mail->Body    = $htmlMsg;
+  $mail->AltBody = $plainMsg;
+
+  // Agregar todos como BCC (no ven entre sí las direcciones)
+  foreach ($users as $u) {
+    $mail->addBCC($u['email']);
+  }
+
+  // Enviar todo en un solo envío SMTP
+  if (!$mail->send()) {
+    error_log('Error enviando notificación masiva: ' . $mail->ErrorInfo);
+    // manejar el error según tu lógica
+  }
 
   Database::disconnect();
   //header("Location: listarListasCorte.php");
   header("Location: nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision);
-}?>
+}else {
+  /*$pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sql = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from tareas t inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio where t.id = ? ";
+  $q = $pdo->prepare($sql);
+  $q->execute([$_GET['id']]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  $descProyecto = $data['nro_sitio'].'-'.$data['nro_subsitio'].'-'.$data['nro'].': '.$data['nombre'];
+  
+  $sql2 = "SELECT id from cuentas where id_usuario = ? ";
+  $q2 = $pdo->prepare($sql2);
+  $q2->execute([$_SESSION['user']['id']]);
+  
+  $data2 = $q2->fetch(PDO::FETCH_ASSOC);
+  
+  $idCuenta = 0;
+  if (!empty($data2['id'])) {
+    $idCuenta = $data2['id'];	
+  }*/
+}
+$hoy=date("Y-m-d")?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -180,11 +223,11 @@ if (!empty($_POST)) {
                         <div class="col">
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
-                            <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" autofocus class="form-control" required="required" value=""></div>
+                            <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$hoy?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Nombre de la LC(*)</label>
-                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" class="form-control" required="required" value=""></div>
+                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" autofocus class="form-control" required="required" value=""></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Proyecto(*)</label>
@@ -193,75 +236,71 @@ if (!empty($_POST)) {
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+                                if (!empty($_GET['idTarea'])) {
+                                  $sql = "SELECT id_proyecto from tareas where id = ?";
+                                  $q = $pdo->prepare($sql);
+                                  $q->execute([$_GET['idTarea']]);
+                                  $data = $q->fetch(PDO::FETCH_ASSOC);
+                                  $_GET['idProyecto'] = $data['id_proyecto'];
+                                }
 								
-								if (!empty($_GET['idTarea'])) {
-									$sql = "SELECT id_proyecto from tareas where id = ?";
-									$q = $pdo->prepare($sql);
-									$q->execute([$_GET['idTarea']]);
-									$data = $q->fetch(PDO::FETCH_ASSOC);
-									$_GET['idProyecto'] = $data['id_proyecto'];
-								}
-								
-                                $sqlZon = "select p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
+                                $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute();
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-								  if ((isset($_GET['idProyecto'])) && ($_GET['idProyecto'] == $fila['id'])) {
-									  echo " selected ";
-								  }
-                                  echo ">".$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']."</option>";
+                                  $selected="";
+                                  if ((isset($_GET['idProyecto'])) && ($_GET['idProyecto'] == $fila['id'])) {
+                                    $selected=" selected ";
+                                  }?>
+                                  <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']?></option><?php
                                 }
                                 Database::disconnect();?>
                               </select>
                             </div>
                           </div>
-						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Revisó(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_reviso" id="id_cuenta_reviso" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Aprobó(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_valido" id="id_cuenta_valido" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-						  <div class="form-group row">
+                          <!-- <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Revisó(*)</label>
+                            <div class="col-sm-9">
+                              <select name="id_cuenta_reviso" id="id_cuenta_reviso" class="js-example-basic-single col-sm-12" required="required">
+                                <option value="">Seleccione...</option><?php
+                                $pdo = Database::connect();
+                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
+                                $q = $pdo->prepare($sqlZon);
+                                $q->execute();
+                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                  echo "<option value='".$fila['id']."'";
+                                  echo ">".$fila['nombre']."</option>";
+                                }
+                                Database::disconnect();?>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Aprobó(*)</label>
+                            <div class="col-sm-9">
+                              <select name="id_cuenta_valido" id="id_cuenta_valido" class="js-example-basic-single col-sm-12" required="required">
+                                <option value="">Seleccione...</option><?php
+                                $pdo = Database::connect();
+                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
+                                $q = $pdo->prepare($sqlZon);
+                                $q->execute();
+                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                  echo "<option value='".$fila['id']."'";
+                                  echo ">".$fila['nombre']."</option>";
+                                }
+                                Database::disconnect();?>
+                              </select>
+                            </div>
+                          </div> -->
+                          <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Adjuntar Plano</label>
                             <div class="col-sm-9"><input name="adjunto" type="text" value="" class="form-control"></div>
                             <input type="hidden" name="hId" value="1" />
                           </div>
-						  <input type="hidden" name="id_tarea" value="<?php if (!empty($_GET['idTarea'])) echo $_GET['idTarea'];?>" />
+						              <input type="hidden" name="id_tarea" value="<?php if (!empty($_GET['idTarea'])) echo $_GET['idTarea'];?>" />
                         </div>
                       </div>
                     </div>

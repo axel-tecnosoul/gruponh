@@ -36,20 +36,9 @@ if (!empty($_POST)) {
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $nroComputo = $data['cant']+1;
   
-  $idCuentaRealizo = null;
-  $idCuentaValido = null;
-  $idCuentaReviso = null;
-  if(isset($_POST['id_cuenta_realizo'])){
-    $idCuentaRealizo = $_POST['id_cuenta_realizo'];
-  }
-
-  if(isset($_POST['id_cuenta_reviso'])){
-    $idCuentaReviso = $_POST['id_cuenta_reviso'];
-  }
-
-  if(isset($_POST['id_cuenta_valido'])){
-    $idCuentaValido = $_POST['id_cuenta_valido'];
-  }
+  $idCuentaRealizo = $_POST['id_cuenta_realizo'] ?? null;
+  $idCuentaReviso  = $_POST['id_cuenta_reviso'] ?? null;
+  $idCuentaValido  = $_POST['id_cuenta_valido'] ?? null;
 
   $sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
   $q = $pdo->prepare($sql);
@@ -59,57 +48,31 @@ if (!empty($_POST)) {
     $idCuentaRealizo = $data['id'];
   }
 
-  $sql = "INSERT INTO computos(nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro,id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (0,?,?,?,?,?,?,?,?)";
-  $q = $pdo->prepare($sql);		   
+  $sql = "INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro,id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (0,?,?,?,?,?,?,?,?)";
+  $q = $pdo->prepare($sql);
   $q->execute([$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,$_POST['id_estado'],$nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
-      
+  
   $id = $pdo->lastInsertId();
   
   $sql = "UPDATE computos set nro_computo = ? where id = ?";
-  $q = $pdo->prepare($sql);		   
+  $q = $pdo->prepare($sql);
   $q->execute([$id,$id]);
 
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id')";
+  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
-  
-  $sql = "SELECT valor FROM parametros WHERE id = 1 ";
-  $q = $pdo->prepare($sql);
-  $q->execute();
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $smtpHost = $data['valor'];  
-  
-  $sql = "SELECT valor FROM parametros WHERE id = 2 ";
-  $q = $pdo->prepare($sql);
-  $q->execute();
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $smtpUsuario = $data['valor'];  
-  
-  $sql = "SELECT valor FROM parametros WHERE id = 3 ";
-  $q = $pdo->prepare($sql);
-  $q->execute();
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $smtpClave = $data['valor'];  
-  
-  $sql = "SELECT valor FROM parametros WHERE id = 4 ";
-  $q = $pdo->prepare($sql);
-  $q->execute();
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $smtpFrom = $data['valor'];  
-  
-  $sql = "SELECT valor FROM parametros WHERE id = 5 ";
-  $q = $pdo->prepare($sql);
-  $q->execute();
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $smtpFromName = $data['valor'];  
-  
+
+  // --- Cargo configuración SMTP desde parámetros ---
+  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+  $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
+  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
   
   if ($_POST['id_estado']==2) {
     
     $sql = " SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 8 ";
     foreach ($pdo->query($sql) as $row) {
       
-      $sql = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (8,?,now(),0,?,?)";
+      $sql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (8,?,now(),0,?,?)";
       $q = $pdo->prepare($sql);
       $q->execute([$row[0],'ID Computo: #'.$id,$id]);
       
@@ -122,8 +85,8 @@ if (!empty($_POST)) {
       $mail->IsSMTP();
       $mail->SMTPAuth = true;
       $mail->Port = 25; 
-      $mail->SMTPSecure = 'ssl';
-      $mail->SMTPAutoTLS = false;
+      /*$mail->SMTPSecure = 'ssl';
+      $mail->SMTPAutoTLS = false;*/
       $mail->SMTPSecure = false;
       $mail->IsHTML(true); 
       $mail->CharSet = "utf-8";
@@ -140,10 +103,8 @@ if (!empty($_POST)) {
       $mail->Send();
     }
     
-    
   }
   
-      
   Database::disconnect();
   header("Location: itemsComputo.php?id=".$id."&revision=0&modo=nuevo");
 } else {
