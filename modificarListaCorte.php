@@ -112,78 +112,27 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte_revision]);
    
-    $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$data["id_lista_corte"],$data['id_proyecto'],$_POST['fecha'],$data['id_usuario'],1,$nuevo_nro_revision,$data['anulado'],$_POST['nombre'],$_POST['numero'],$_POST['descripcion'],$_POST['id_cuenta_realizo'],$_POST['id_cuenta_reviso'],$_POST['id_cuenta_valido']]);
-    $id_lista_corte_revision = $pdo->lastInsertId();
+    $id_lista_corte_revision = crearListaCorteRevision($pdo, [
+      'id_lista_corte'   => $data['id_lista_corte'],
+      'id_proyecto'      => $data['id_proyecto'],
+      'fecha'            => $_POST['fecha'],
+      'id_usuario'       => $data['id_usuario'],
+      'nro_revision'     => $nuevo_nro_revision,
+      'anulado'          => $data['anulado'],
+      'nombre'           => $_POST['nombre'],
+      'numero'           => $_POST['numero'],
+      'descripcion'      => $_POST['descripcion'],
+      'id_cuenta_realizo'=> $_POST['id_cuenta_realizo'],
+      'id_cuenta_reviso' => $_POST['id_cuenta_reviso'],
+      'id_cuenta_valido' => $_POST['id_cuenta_valido'],
+      'adjunto'          => $_POST['adjunto'] ?? null
+    ]);
 
     if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
+      echo "<br><br>Creada nueva revisión ID: $id_lista_corte_revision<br><br>";
     }
-	/*
-    if (!empty($_FILES['adjunto']['name'])) {
-      $filename = $_FILES['adjunto']['name'];
-      move_uploaded_file($_FILES['adjunto']['tmp_name'],'adjuntos_lc/'.$id_lista_corte_revision.'_'.$filename);
-        
-      $sql = "UPDATE listas_corte_revisiones set adjunto = ? where id = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute(array($id_lista_corte_revision.'_'.$filename,$id_lista_corte_revision));
 
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
-    }
-	*/
-	if (!empty($_POST['adjunto'])) {
-      $sql = "UPDATE listas_corte_revisiones set adjunto = ? where id = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute(array($_POST['adjunto'],$id_lista_corte_revision));
-    }
-	
-    $sql = "SELECT lcc.id,lcc.id_lista_corte,lcc.nombre,lcc.cantidad,lcc.peso,lcc.id_estado_lista_corte_conjuntos FROM listas_corte_conjuntos lcc WHERE lcc.id_lista_corte = ".$data['id'];
-    foreach ($pdo->query($sql) as $row) {
-      $sql = "INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte_revision,$row['nombre'],$row['cantidad'],$row['peso'],$row['id_estado_lista_corte_conjuntos']]);
-      $id_lista_corte_conjunto = $pdo->lastInsertId();
-
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
-
-      $sql = "SELECT lcp.id,lcp.id_lista_corte_conjunto,lcp.id_material,lcp.posicion,lcp.cantidad,lcp.largo,lcp.ancho,lcp.marca,lcp.peso,lcp.finalizado,lcp.id_colada,lcp.diametro,lcp.calidad FROM lista_corte_posiciones lcp WHERE lcp.id_lista_corte_conjunto = ".$row["id"];
-      foreach ($pdo->query($sql) as $row) {
-        $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto,id_material,posicion,cantidad,largo,ancho,marca,peso,finalizado,id_colada,diametro,calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id_lista_corte_conjunto,$row["id_material"],$row["posicion"],$row["cantidad"],$row["largo"],$row["ancho"],$row["marca"],$row["peso"],$row["finalizado"],$row["id_colada"],$row["diametro"],$row["calidad"]]);
-        $id_lista_corte_posicion = $pdo->lastInsertId();
-
-        if ($modoDebug==1) {
-          $q->debugDumpParams();
-          echo "<br><br>Afe: ".$q->rowCount();
-          echo "<br><br>";
-        }
-
-        $sql = "SELECT lcp.id_lista_corte_posicion,lcp.id_tipo_proceso,lcp.observaciones,lcp.id_estado_lista_corte_proceso FROM lista_corte_procesos lcp WHERE lcp.id_lista_corte_posicion = ".$row["id"];
-        foreach ($pdo->query($sql) as $row) {
-          $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,?)";
-          $q = $pdo->prepare($sql);
-          $q->execute([$id_lista_corte_posicion,$row['id_tipo_proceso'],$row['observaciones'],$row['id_estado_lista_corte_proceso']]);
-
-          if ($modoDebug==1) {
-            $q->debugDumpParams();
-            echo "<br><br>Afe: ".$q->rowCount();
-            echo "<br><br>";
-          }
-        }
-      }
-    }
+    duplicarListaCorteRevision($pdo, (int)$data['id'], $id_lista_corte_revision, (bool)$modoDebug);
 
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Nueva Revision de Lista de Corte','Listas de Corte')";
     $q = $pdo->prepare($sql);

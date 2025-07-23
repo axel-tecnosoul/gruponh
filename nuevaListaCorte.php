@@ -44,25 +44,28 @@ if (!empty($_POST)) {
   $idCuentaReviso  = $_POST['id_cuenta_reviso'] ?? null;
   $idCuentaValido  = $_POST['id_cuenta_valido'] ?? null;
 
-	$sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
-	$q = $pdo->prepare($sql);
-	$q->execute([$_SESSION['user']['id']]);
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	if (!empty($data)) {
-		$idCuentaRealizo = $data['id'];
-	}
+        $sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
+        $q = $pdo->prepare($sql);
+        $q->execute([$_SESSION['user']['id']]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+        if (!empty($data)) {
+                $idCuentaRealizo = $data['id'];
+        }
 
-  $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,1,0,0,?,?,?,?,?,?)";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lista_corte,$_POST['id_proyecto'],$_POST['fecha'],$_SESSION['user']['id'],$_POST['nombre'],$_POST['numero'],"Emisión original",$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
-
-  $id_lista_corte_revision = $pdo->lastInsertId();
-  
-  if (!empty($_POST['adjunto'])) {
-    $sql = "UPDATE listas_corte_revisiones set adjunto = ? where id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_POST['adjunto'],$id_lista_corte_revision));
-  }
+  $id_lista_corte_revision = crearListaCorteRevision($pdo, [
+    'id_lista_corte'   => $id_lista_corte,
+    'id_proyecto'      => $_POST['id_proyecto'],
+    'fecha'            => $_POST['fecha'],
+    'id_usuario'       => $_SESSION['user']['id'],
+    'nro_revision'     => 0,
+    'nombre'           => $_POST['nombre'],
+    'numero'           => $_POST['numero'],
+    'descripcion'      => 'Emisión original',
+    'id_cuenta_realizo'=> $idCuentaRealizo,
+    'id_cuenta_reviso' => $idCuentaReviso,
+    'id_cuenta_valido' => $idCuentaValido,
+    'adjunto'          => $_POST['adjunto'] ?? null
+  ]);
   
   
   $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte_revision')";

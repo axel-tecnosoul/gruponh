@@ -606,3 +606,88 @@ if (!function_exists('str_starts_with')) {
     return $needle !== '' && strpos($haystack, $needle) === 0;
   }
 }
+
+/**
+ * Inserta una revisión de lista de corte y devuelve su ID.
+ */
+function crearListaCorteRevision(PDO $pdo, array $datos): int {
+  $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+  $params = [
+    $datos['id_lista_corte'],
+    $datos['id_proyecto'],
+    $datos['fecha'],
+    $datos['id_usuario'],
+    $datos['id_estado_lista_corte'] ?? 1,
+    $datos['nro_revision'],
+    $datos['anulado'] ?? 0,
+    $datos['nombre'],
+    $datos['numero'],
+    $datos['descripcion'],
+    $datos['id_cuenta_realizo'],
+    $datos['id_cuenta_reviso'],
+    $datos['id_cuenta_valido']
+  ];
+  $stmt = $pdo->prepare($sql);
+  $stmt->execute($params);
+  $id = (int)$pdo->lastInsertId();
+
+  if (!empty($datos['adjunto'])) {
+    $pdo->prepare('UPDATE listas_corte_revisiones SET adjunto = ? WHERE id = ?')->execute([$datos['adjunto'], $id]);
+  }
+
+  return $id;
+}
+
+/**
+ * Duplica conjuntos, posiciones y procesos de una revisión de lista de corte en otra.
+ */
+function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, bool $modoDebug = false): void {
+  $sqlCon = "SELECT id, nombre, cantidad, peso, id_estado_lista_corte_conjuntos FROM listas_corte_conjuntos WHERE id_lista_corte = ?";
+  $stmtCon = $pdo->prepare($sqlCon);
+  $stmtCon->execute([$idOrigen]);
+  while ($conj = $stmtCon->fetch(PDO::FETCH_ASSOC)) {
+    $pdo->prepare(
+      'INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)'
+    )->execute([$idDestino, $conj['nombre'], $conj['cantidad'], $conj['peso'], $conj['id_estado_lista_corte_conjuntos']]);
+    $idConjNuevo = (int)$pdo->lastInsertId();
+
+    $stmtPos = $pdo->prepare(
+      'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?'
+    );
+    $stmtPos->execute([$conj['id']]);
+    while ($pos = $stmtPos->fetch(PDO::FETCH_ASSOC)) {
+      $pdo->prepare(
+        'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+      )->execute([
+        $idConjNuevo,
+        $pos['id_material'],
+        $pos['posicion'],
+        $pos['cantidad'],
+        $pos['largo'],
+        $pos['ancho'],
+        $pos['marca'],
+        $pos['peso'],
+        $pos['finalizado'],
+        $pos['id_colada'],
+        $pos['diametro'],
+        $pos['calidad']
+      ]);
+      $idPosNuevo = (int)$pdo->lastInsertId();
+
+      $stmtProc = $pdo->prepare(
+        'SELECT id_tipo_proceso, observaciones, id_estado_lista_corte_proceso FROM lista_corte_procesos WHERE id_lista_corte_posicion = ?'
+      );
+      $stmtProc->execute([$pos['id']]);
+      while ($proc = $stmtProc->fetch(PDO::FETCH_ASSOC)) {
+        $pdo->prepare(
+          'INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,?)'
+        )->execute([
+          $idPosNuevo,
+          $proc['id_tipo_proceso'],
+          $proc['observaciones'],
+          $proc['id_estado_lista_corte_proceso']
+        ]);
+      }
+    }
+  }
+}
