@@ -509,7 +509,7 @@ include 'database.php';?>
     
         var table = $('#dataTables-example666').DataTable({
           stateSave: false,
-          //searching: false,
+          //searching: false,//debemos quitar esta linea para que funcione el buscador
           responsive: false,
           dom: 'Bfrtp<"bottom"l>',
           buttons: [
@@ -553,9 +553,6 @@ include 'database.php';?>
         table.columns().every( function () {
           var that = this;
           $( 'input', this.footer() ).on( 'keyup change', function () {
-            console.log(table);
-            console.log(this.value);
-            console.log(that.search());
             if ( that.search() !== this.value ) {
               that.search( this.value ).draw();
             }

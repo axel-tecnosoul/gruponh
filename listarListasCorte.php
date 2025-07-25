@@ -135,7 +135,8 @@ include 'database.php';?>
                         </thead>
                         <tbody><?php 
                           $pdo = Database::connect();
-                          $sql = "SELECT lc.id AS id_lista_corte, lcr.numero, lcr.nro_revision, lcr.nombre, p.nro AS nro_proyecto, date_format(lcr.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lcr.adjunto, s.nro_sitio, s.nro_subsitio, lcr.id AS id_lista_corte_revision, date_format(lcr.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto FROM listas_corte lc INNER JOIN listas_corte_revisiones lcr ON lcr.id_lista_corte=lc.id inner join estados_lista_corte e on e.id = lcr.id_estado_lista_corte inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
+                          //$sql = "SELECT lc.id AS id_lista_corte, lcr.numero, lcr.nro_revision, lcr.nombre, p.nro AS nro_proyecto, date_format(lcr.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lcr.adjunto, s.nro_sitio, s.nro_subsitio, lcr.id AS id_lista_corte_revision, date_format(lcr.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto FROM listas_corte lc INNER JOIN listas_corte_revisiones lcr ON lcr.id_lista_corte=lc.id inner join estados_lista_corte e on e.id = lcr.id_estado_lista_corte inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
+                          $sql = "SELECT lc.id AS id_lista_corte, lc.numero, lc.nro_revision, lc.nombre, p.nro AS nro_proyecto, date_format(lc.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lc.adjunto, s.nro_sitio, s.nro_subsitio, lc.id AS id_lista_corte_revision, date_format(lc.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto FROM listas_corte lc inner join estados_lista_corte e on e.id = lc.id_estado_lista_corte inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
                           if (!empty($_POST['nro'])) {
                             $nro=$_POST['nro'];
                             $ex=explode("/", $nro);
@@ -148,16 +149,17 @@ include 'database.php';?>
                             }
                           }
                           if (!empty($_POST['fecha'])) {
-                            $sql .= " AND lcr.fecha >= '".$_POST['fecha']."' ";
+                            $sql .= " AND lc.fecha >= '".$_POST['fecha']."' ";
                           }
                           if (!empty($_POST['fechah'])) {
-                            $sql .= " AND lcr.fecha <= '".$_POST['fechah']."' ";
+                            $sql .= " AND lc.fecha <= '".$_POST['fechah']."' ";
                           }
                           if (!empty($_POST['id_estado'][0])) {
                             $sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
                           }else{
                             $sql .= " AND e.id in (1,2,3,4) ";
                           }
+                          //echo $sql;
                           foreach ($pdo->query($sql) as $row) {?>
                             <tr>
                               <td class="d-none"><?=$row["id_lista_corte_revision"]?></td>
@@ -369,9 +371,9 @@ include 'database.php';?>
           $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
         });
 
-        $('#dataTables-example666').DataTable({
+        var table = $('#dataTables-example666').DataTable({
           stateSave: false,
-		      searching: false,
+		      //searching: false,//debemos quitar esta linea para que funcione el buscador
           responsive: false,
 		      dom: 'Bfrtp<"bottom"l>',
           buttons: [
@@ -410,7 +412,7 @@ include 'database.php';?>
         });
     
         // DataTable
-        var table = $('#dataTables-example666').DataTable();
+        //var table = $('#dataTables-example666').DataTable();
         // Apply the search
         table.columns().every( function () {
           var that = this;
