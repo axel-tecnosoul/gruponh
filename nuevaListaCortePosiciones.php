@@ -28,6 +28,16 @@ if (!empty($_POST)) {
     var_dump($_FILES);
   }
 
+  $nombre_posicion=trim($_POST['nombre_posicion']);
+  $id_material=trim($_POST['id_material']);
+  $cantidad_posicion=trim($_POST['cantidad_posicion']);
+  $largo=trim($_POST['largo']);
+  $ancho=trim($_POST['ancho']);
+  $marca=trim($_POST['marca']);
+  $peso=trim($_POST['peso']);
+  $peso_calculado_posicion=trim($_POST['hiddenPesoCalculado']);
+  $diametro=trim($_POST['diametro']);
+
   if (!empty($_POST['btn3'])) {
     //editar posicion
     $id_lista_corte_posicion=$_POST['btn3'];
@@ -39,9 +49,9 @@ if (!empty($_POST)) {
     $id_lista_corte=$data['id_lista_corte'];
     $id_lista_corte_conjunto=$data['id_lista_corte_conjunto'];
 
-    $sql = "UPDATE listas_corte_conjuntos set peso = peso - (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
+    /*$sql = "UPDATE listas_corte_conjuntos set peso = peso - (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$data['cantidad'],$data['id_material'],$id_lista_corte_conjunto]);
+    $q->execute([$data['cantidad'],$data['id_material'],$id_lista_corte_conjunto]);*/
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -49,14 +59,14 @@ if (!empty($_POST)) {
       echo "<br><br>";
     }
     
-    $sql = "UPDATE lista_corte_posiciones set largo=?,ancho=?,marca=?,peso=?,diametro=? where id = ?";
+    $sql = "UPDATE lista_corte_posiciones set largo=?, ancho=?, marca=?, peso=?, peso_calculado_posicion=?, diametro=? where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST['largo'],$_POST['ancho'],$_POST['marca'],$_POST['peso'],$_POST['diametro'],$id_lista_corte_posicion]);
+    $q->execute([$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$diametro,$id_lista_corte_posicion]);
 
-    if(isset($_POST["cantidad_posicion"]) and isset($_POST["nombre_posicion"])){
+    if(isset($cantidad_posicion) and isset($nombre_posicion)){
       $sql = "UPDATE lista_corte_posiciones set cantidad=?, posicion=? where id = ?";
       $q = $pdo->prepare($sql);
-      $q->execute([$_POST['cantidad_posicion'],$_POST['nombre_posicion'],$id_lista_corte_posicion]);
+      $q->execute([$cantidad_posicion,$nombre_posicion,$id_lista_corte_posicion]);
 
       if ($modoDebug==1) {
         $q->debugDumpParams();
@@ -97,9 +107,9 @@ if (!empty($_POST)) {
       }
     }
 
-    $sql = "UPDATE listas_corte_conjuntos set peso = peso + (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
+    $sql = "UPDATE listas_corte_conjuntos set peso = (SELECT SUM(peso_calculado_posicion) FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?) where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST['cantidad_posicion'],$_POST['id_material'],$id_lista_corte_conjunto]);
+    $q->execute([$id_lista_corte_conjunto,$id_lista_corte_conjunto]);
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -133,7 +143,8 @@ if (!empty($_POST)) {
   }else{
     //insertar posicion
     $idColada = null;
-    $sql = "SELECT col.id FROM coladas col inner join compras com on com.id = col.id_compra inner join pedidos p on p.id = com.id_pedido inner join computos c on c.id = p.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos pr on pr.id = t.id_proyecto inner join listas_corte_revisiones lcr on lcr.id_proyecto = pr.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lcr.id WHERE col.id_material = ? and lcc.id = ? ";
+    //$sql = "SELECT col.id FROM coladas col inner join compras com on com.id = col.id_compra inner join pedidos p on p.id = com.id_pedido inner join computos c on c.id = p.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos pr on pr.id = t.id_proyecto inner join listas_corte_revisiones lcr on lcr.id_proyecto = pr.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lcr.id WHERE col.id_material = ? and lcc.id = ? ";
+    $sql = "SELECT col.id FROM coladas col inner join compras com on com.id = col.id_compra inner join pedidos p on p.id = com.id_pedido inner join computos c on c.id = p.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos pr on pr.id = t.id_proyecto inner join listas_corte lc on lc.id_proyecto = pr.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lc.id WHERE col.id_material = ? and lcc.id = ? ";
     $q = $pdo->prepare($sql);
     $q->execute([$_POST['id_material'],$id_lista_corte_conjunto]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -146,118 +157,122 @@ if (!empty($_POST)) {
       echo "<br><br>Afe: ".$q->rowCount();
       echo "<br><br>";
     }
+
+    $calidad = null;
+    if (!empty($id_material)) {
+      $sqlM = " SELECT calidad from materiales where id = ?";
+      $qM = $pdo->prepare($sqlM);
+      $qM->execute([$id_material]);
+      $dataM = $qM->fetch(PDO::FETCH_ASSOC);
+      $calidad = $dataM['calidad'];
+    }
 	
-	//validacion de repetido
-	$sqlP = " select count(*) cant from lista_corte_posiciones where posicion = ? and id_lista_corte_conjunto = ?";
+	  //validacion de repetido
+	  $sqlP = " SELECT count(*) cant from lista_corte_posiciones where posicion = ? and id_lista_corte_conjunto = ? AND id_material = ? AND cantidad = ? AND largo = ? AND ancho = ? AND marca = ? AND peso = ? AND diametro = ?";// AND id_colada = ? AND calidad = ?
     $qP = $pdo->prepare($sqlP);
-    $qP->execute([$_POST['nombre_posicion'],$id_lista_corte_conjunto]);
+    $params = [$nombre_posicion,$id_lista_corte_conjunto,$id_material,$cantidad_posicion,$largo,$ancho,$marca,$peso,$diametro];//,$idColada,$calidad
+    //echo debugQuery($pdo, $sqlP, $params);
+    $qP->execute($params);
     $dataP = $qP->fetch(PDO::FETCH_ASSOC);
-	if ($dataP['cant'] == 0) {
-		
-		$calidad = "";
-		if (!empty($_POST['id_material'])) {
-			$sqlM = " select calidad from materiales where id = ?";
-			$qM = $pdo->prepare($sqlM);
-			$qM->execute([$_POST['id_material']]);
-			$dataM = $qM->fetch(PDO::FETCH_ASSOC);
-			$calidad = $dataM['calidad'];
-		}
-		
-		$sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,0,?,?,?)";
-		$q = $pdo->prepare($sql);
-		$q->execute([$id_lista_corte_conjunto,$_POST['id_material'],$_POST['nombre_posicion'],$_POST['cantidad_posicion'],$_POST['largo'],$_POST['ancho'],$_POST['marca'],$_POST['peso'],$idColada,$_POST['diametro'],$calidad]);
-		$id_posicion = $pdo->lastInsertId();
+    
+    if ($dataP['cant'] == 0) {
+      
+      $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_lista_corte_conjunto,$id_material,$nombre_posicion,$cantidad_posicion,$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$idColada,$diametro,$calidad]);
+      $id_posicion = $pdo->lastInsertId();
 
-		if ($modoDebug==1) {
-		  $q->debugDumpParams();
-		  echo "<br><br>Afe: ".$q->rowCount();
-		  echo "<br><br>";
-		}
-		
-		//pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
-		$procesos=$_POST["proceso"];
-		$procesos[]=$_POST["id_terminacion"];
+      if ($modoDebug==1) {
+        $q->debugDumpParams();
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
+      
+      //pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
+      $procesos=$_POST["proceso"];
+      $procesos[]=$_POST["id_terminacion"];
 
-		if ($modoDebug==1) {
-		  var_dump($procesos);
-		}
-		
-		foreach ($procesos as $key => $id_proceso) {
-		  $observaciones="";
+      if ($modoDebug==1) {
+        var_dump($procesos);
+      }
+      
+      foreach ($procesos as $key => $id_proceso) {
+        $observaciones="";
 
-		  $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, id_estado_lista_corte_proceso, observaciones) VALUES (?,?,1,?)";
-		  $q = $pdo->prepare($sql);
-		  $q->execute([$id_posicion,$id_proceso,$observaciones]);
+        $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, id_estado_lista_corte_proceso, observaciones) VALUES (?,?,1,?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id_posicion,$id_proceso,$observaciones]);
 
-		  if ($modoDebug==1) {
-			$q->debugDumpParams();
-			echo "<br><br>Afe: ".$q->rowCount();
-			echo "<br><br>";
-		  }
-		}
+        if ($modoDebug==1) {
+        $q->debugDumpParams();
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+        }
+      }
 
-		$sql = "UPDATE listas_corte_conjuntos set peso = peso + (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
-		$q = $pdo->prepare($sql);
-		$q->execute([$_POST['cantidad_posicion'],$_POST['id_material'],$id_lista_corte_conjunto]);
+      $sql = "UPDATE listas_corte_conjuntos set peso = peso + $peso_calculado_posicion where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_lista_corte_conjunto]);
 
-		if ($modoDebug==1) {
-		  $q->debugDumpParams();
-		  echo "<br><br>Afe: ".$q->rowCount();
-		  echo "<br><br>";
-		}
+      if ($modoDebug==1) {
+        $q->debugDumpParams();
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
 
-		$idComputoDetalle = 0;
-		$sql = "SELECT cd.id idComputoDetalle from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte_revisiones lcr on lcr.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lcr.id where cd.cancelado = 0 and lcc.id = ? and m.id = ?";
-		$q = $pdo->prepare($sql);
-		$q->execute([$id_lista_corte_conjunto,$_POST['id_material']]);
-		$data = $q->fetch(PDO::FETCH_ASSOC);
-		$idComputoDetalle = $data['idComputoDetalle'];
+      $idComputoDetalle = 0;
+      //$sql = "SELECT cd.id idComputoDetalle from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte_revisiones lcr on lcr.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lcr.id where cd.cancelado = 0 and lcc.id = ? and m.id = ?";
+      $sql = "SELECT cd.id idComputoDetalle from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte lc on lc.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lc.id where cd.cancelado = 0 and lcc.id = ? and m.id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_lista_corte_conjunto,$_POST['id_material']]);
+      $data = $q->fetch(PDO::FETCH_ASSOC);
+      $idComputoDetalle = $data['idComputoDetalle'];
 
-		if ($modoDebug==1) {
-		  $q->debugDumpParams();
-		  echo "<br><br>Afe: ".$q->rowCount();
-		  echo "<br><br>";
-		}
-		  
-		$sql = "UPDATE computos_detalle set comprado = comprado + ?, reservado = reservado - ?  where id = ?";
-		$q = $pdo->prepare($sql);
-		$q->execute([$_POST['cantidad_posicion'],$_POST['cantidad_posicion'],$idComputoDetalle]);
+      if ($modoDebug==1) {
+        $q->debugDumpParams();
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
+        
+      $sql = "UPDATE computos_detalle set comprado = comprado + ?, reservado = reservado - ?  where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$_POST['cantidad_posicion'],$_POST['cantidad_posicion'],$idComputoDetalle]);
 
-		if ($modoDebug==1) {
-		  $q->debugDumpParams();
-		  echo "<br><br>Afe: ".$q->rowCount();
-		  echo "<br><br>";
-		}
-		  
-		$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Posición ID #$id_posicion de Concepto en Conjunto de Lista de Corte','Listas de Corte','')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
+      if ($modoDebug==1) {
+        $q->debugDumpParams();
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
+        
+      $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Posición ID #$id_posicion de Concepto en Conjunto de Lista de Corte','Listas de Corte','')";
+      $q = $pdo->prepare($sql);
+      $q->execute(array($_SESSION['user']['id']));
 
-		if ($modoDebug==1) {
-		  $q->debugDumpParams();
-		  echo "<br><br>Afe: ".$q->rowCount();
-		  echo "<br><br>";
-		}
-		  
-		if ($modoDebug==1) {
-		  $pdo->rollBack();
-		  die();
-		} else {
-		  Database::disconnect();
-		  if (!empty($_POST['btn2'])) {
-			$sql = "SELECT id_lista_corte FROM listas_corte_conjuntos WHERE id = ? ";
-			$q = $pdo->prepare($sql);
-			$q->execute([$id_lista_corte_conjunto]);
-			$data = $q->fetch(PDO::FETCH_ASSOC);
+      if ($modoDebug==1) {
+        $q->debugDumpParams();
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
+        
+      if ($modoDebug==1) {
+        $pdo->rollBack();
+        die();
+      } else {
+        Database::disconnect();
+        if (!empty($_POST['btn2'])) {
+          $sql = "SELECT id_lista_corte FROM listas_corte_conjuntos WHERE id = ? ";
+          $q = $pdo->prepare($sql);
+          $q->execute([$id_lista_corte_conjunto]);
+          $data = $q->fetch(PDO::FETCH_ASSOC);
 
-			header("Location: nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$data["id_lista_corte"]);
-		  } else {
-			header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto);
-		  }
-		}
-	} else {
-		header("Location: nuevaListaCortePosiciones.php?error_repetido=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
-	}
+          header("Location: nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$data["id_lista_corte"]);
+        } else {
+          header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        }
+      }
+    } else {
+      header("Location: nuevaListaCortePosiciones.php?error_repetido=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+    }
       
     
   }
@@ -267,12 +282,15 @@ if (!empty($_POST)) {
 //$id_lista_corte_conjunto=$_GET['id_lista_corte_conjunto'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT lcc.nombre,lcc.id_lista_corte,lcr.id_estado_lista_corte,lcr.id AS id_lista_corte_revision FROM listas_corte_conjuntos lcc INNER JOIN listas_corte_revisiones lcr ON lcc.id_lista_corte=lcr.id WHERE lcc.id = ? ";
+$sql = "SELECT lcc.nombre, lcc.id_lista_corte, lc.id_estado_lista_corte, lc.id AS id_lista_corte_revision, lc.id_proyecto, lc.numero FROM listas_corte_conjuntos lcc INNER JOIN listas_corte lc ON lcc.id_lista_corte=lc.id WHERE lcc.id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$id_lista_corte_conjunto]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
-Database::disconnect();
-?>
+
+$descripcionProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
+
+Database::disconnect();?>
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -292,14 +310,14 @@ Database::disconnect();
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
           $ubicacion="Nueva Posicion";
-          include_once("head_page.php")?>
+          include_once("head_page.php");?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Posiciones para el Conjunto <?=$data['nombre']?>
+                    <h5>Posiciones para el Conjunto <?=$data['nombre']?> LC #<?=$data['numero'].$descripcionProyecto?>
                       &nbsp;&nbsp;<?php
                       /*if (!empty(tienePermiso(331))) {?>
                         <a href="nuevoPosicionListaCorte.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?>"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva Posicion" title="Nueva Posicion"></a>&nbsp;&nbsp;<?php
@@ -338,67 +356,71 @@ Database::disconnect();
                                 </tr>
                               </thead>
                               <tbody><?php
-								$pesoTotal = 0;
-								$pesoPosicion = 0;
+                                $pesoTotal = 0;
+                                $pesoPosicion = 0;
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                 
-                                $sql = " SELECT pos.id, pos.posicion, pos.cantidad, m.concepto, pos.id_material, pos.ancho, pos.largo, pos.diametro, pos.marca, pos.peso, GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, GROUP_CONCAT(tp.id SEPARATOR ',') AS id_procesos, pos.finalizado FROM lista_corte_posiciones pos inner join materiales m on m.id = pos.id_material LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion=pos.id LEFT JOIN tipos_procesos tp ON lcp.id_tipo_proceso=tp.id WHERE pos.id_lista_corte_conjunto = ".$id_lista_corte_conjunto." GROUP BY pos.id ";
+                                $sql = " SELECT pos.id, pos.posicion, pos.cantidad, m.concepto, pos.id_material, pos.ancho, pos.largo, pos.diametro, pos.marca, pos.peso_calculado_posicion, GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, GROUP_CONCAT(tp.id SEPARATOR ',') AS id_procesos, pos.finalizado FROM lista_corte_posiciones pos inner join materiales m on m.id = pos.id_material LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion=pos.id LEFT JOIN tipos_procesos tp ON lcp.id_tipo_proceso=tp.id WHERE pos.id_lista_corte_conjunto = ".$id_lista_corte_conjunto." GROUP BY pos.id ";
                                 foreach ($pdo->query($sql) as $row) {
-                                  echo '<tr>';
-                                  echo '<td class="d-none">'. $row["id"] . '</td>';
-                                  echo '<td>'. $row["posicion"] . '</td>';
-                                  echo '<td>'. $row["cantidad"] . '</td>';
-                                  echo '<td data-id="'.$row["id_material"].'">'. $row["concepto"] . '</td>';
-                                  echo '<td>'. $row["ancho"] . '</td>';
-                                  echo '<td>'. $row["largo"] . '</td>';
-                                  echo '<td>'. $row["diametro"] . '</td>';
-                                  echo '<td>'. $row["marca"] . '</td>';
-                                  echo '<td>'. $row["peso"] . '</td>';
-                                  echo '<td data-id="'.$row["id_procesos"].'">'. $row["procesos"] . '</td>';
-                                  echo '</tr>';
-								  $pesoPosicion = $row["peso"];
-								  if (str_starts_with($row["concepto"], "Chapa")) {
-									if (empty($row["largo"]) && empty($row["ancho"])) {
-										$pesoPosicion = $row["peso"]*$row["diametro"]*$row["diametro"];
-									} else {
-										$pesoPosicion = $row["peso"]*$row["largo"]*$row["ancho"]/1000;	
-									}
-								  }
-								  if (str_starts_with($row["concepto"], "Perfil")) {
-									$pesoPosicion = $row["peso"]*$row["largo"]/1000000;
-								  }
-								  //hacer la logica y sumar el peso
-								  $pesoTotal += $pesoPosicion;
+                                  $pesoPosicion = $row["peso_calculado_posicion"];
+                                  /*if (str_starts_with($row["concepto"], "Chapa")) {
+                                    if (empty($row["largo"]) && empty($row["ancho"])) {
+                                      $pesoPosicion = $row["peso"]*$row["diametro"]*$row["diametro"];
+                                    } else {
+                                      $pesoPosicion = $row["peso"]*$row["largo"]*$row["ancho"]/1000;	
+                                    }
+                                  }
+                                  if (str_starts_with($row["concepto"], "Perfil")) {
+                                    $pesoPosicion = $row["peso"]*$row["largo"]/1000000;
+                                  }*/
+                                  //hacer la logica y sumar el peso
+                                  $pesoTotal += $pesoPosicion;?>
+                                  <tr>
+                                    <td class="d-none"><?=$row["id"]?></td>
+                                    <td><?=$row["posicion"]?></td>
+                                    <td><?=$row["cantidad"]?></td>
+                                    <td data-id="<?=$row["id_material"]?>"><?=$row["concepto"]?></td>
+                                    <td><?=$row["ancho"]?></td>
+                                    <td><?=$row["largo"]?></td>
+                                    <td><?=$row["diametro"]?></td>
+                                    <td><?=$row["marca"]?></td>
+                                    <td><?=$pesoPosicion?></td>
+                                    <td data-id="<?=$row["id_procesos"]?>"><?=$row["procesos"]?></td>
+                                  </tr><?php
                                 }
                                 Database::disconnect();?>
                               </tbody>
                             </table>
-							<b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,1);?>&nbsp;kgs</b>
+							              <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,1,",",".");?>&nbsp;kgs</b>
                           </div>
                         </div>
+                      </div>
+                      <div class="row">
                         <div class="form-group col-3">
                           <label>Posicion(*)</label>
-                          <input name="nombre_posicion" type="text" maxlength="99" autofocus class="form-control nombre_posicion" required="required" value="">
-						  <?php if (!empty($_GET['error_repetido'])) { echo "<font color='red'><b>El nombre de Posición utilizado ya está en uso</b></font>"; } ?>
-						</div>
+                          <input name="nombre_posicion" type="text" maxlength="99" autofocus class="form-control nombre_posicion" required="required" value=""><?php
+                          if (!empty($_GET['error_repetido'])) {
+                            echo "<font color='red'><b>El nombre de Posición utilizado ya está en uso</b></font>";
+                          }?>
+						            </div>
                         <div class="form-group col-3">
                           <label>Cantidad(*)</label>
                           <input name="cantidad_posicion" type="number" step="0.01" min="0.01" maxlength="99" class="form-control cantidad_posicion" required="required" value="">
                         </div>
-                        <div class="form-group col-3">
+                        <div class="form-group col-6">
                           <label>Concepto(*)</label><br>
                           <select name="id_material" class="js-example-basic-single id_material" onchange="jsCompletarPeso(this.value);">
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            $sqlZon = "SELECT distinct m.id, m.codigo, m.concepto, c.nro_computo, max(c.nro_revision) from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte_revisiones lcr on lcr.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lcr.id where lcc.id = ".$id_lista_corte_conjunto." group by m.id, m.codigo, m.concepto, c.nro_computo ";
-							//$sqlZon = "SELECT `id`, `concepto`, `codigo` FROM `materiales` WHERE anulado = 0 "; //que traiga los conceptos 
-							$q = $pdo->prepare($sqlZon);
+                            //$sqlZon = "SELECT distinct m.id, m.codigo, m.concepto, c.nro_computo, max(c.nro_revision) from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte lc on lc.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lc.id where lcc.id = ".$id_lista_corte_conjunto." GROUP BY m.id, m.codigo, m.concepto, c.nro_computo ";
+							              //$sqlZon = "SELECT `id`, `concepto`, `codigo` FROM `materiales` WHERE anulado = 0 "; //que traiga los conceptos 
+                            $sqlZon = "SELECT cd.id AS id_computo_detalle, c.id AS id_computo, m.id AS id_material, m.codigo, m.concepto FROM listas_corte_conjuntos lcc JOIN listas_corte lc ON lcc.id_lista_corte=lc.id JOIN proyectos p ON lc.id_proyecto=p.id JOIN tareas t ON t.id_proyecto=p.id JOIN computos c ON c.id_tarea=t.id JOIN computos_detalle cd ON cd.id_computo=c.id JOIN materiales m ON cd.id_material=m.id WHERE lcc.id=$id_lista_corte_conjunto AND c.id_estado IN (3,4,5) ORDER BY m.concepto";
+							              $q = $pdo->prepare($sqlZon);
                             $q->execute();
-                            while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='".$fila['id']."'";
-								echo ">".$fila['concepto']." (".$fila['codigo'].")</option>";
+                            while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
+                              <option value='<?=$fila['id_material']?>'><?=$fila['concepto']." (".$fila['codigo'].") - Computo ".$fila['id_computo']?></option><?php
                             }
                             Database::disconnect();?>
                           </select>
@@ -406,15 +428,15 @@ Database::disconnect();
                       </div>
                       <div class="row">
                         <div class="form-group col-2">
-                          <label>Ancho</label>
+                          <label>Ancho (En mm)</label>
                           <input name="ancho" type="number" step="0.01" maxlength="99" class="form-control ancho" value="">
                         </div>
                         <div class="form-group col-2">
-                          <label>Largo</label>
+                          <label>Largo (En mm)</label>
                           <input name="largo" type="number" step="0.01" maxlength="99" class="form-control largo" value="">
                         </div>
                         <div class="form-group col-2">
-                          <label>Diametro</label>
+                          <label>Diametro (En mm)</label>
                           <input name="diametro" type="number" step="0.01" maxlength="99" class="form-control diametro" value="">
                         </div>
                         <div class="form-group col-2">
@@ -425,6 +447,12 @@ Database::disconnect();
                           <label>Peso KG x Metro</label>
                           <span id="pesokg"><input name="peso" type="number" step="0.01" maxlength="99" class="form-control peso" value=""></span>
                         </div>
+                        <div class="form-group col-2">
+                          <label>Peso estimado calculado</label><br>
+                          <span id="pesoCalculado" style="font-weight: bold;font-size: x-large;">0 kg</span>
+                          <input type="hidden" name="hiddenPesoCalculado" id="hiddenPesoCalculado" value="0">
+                        </div>
+
                       </div>
                       <div class="row">
                         <div class="form-group col-9">
@@ -436,10 +464,10 @@ Database::disconnect();
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                             $id="proceso_".$fila['id']?>
-                          <div class="custom-control custom-checkbox d-inline-block pr-4">
-                            <input type="checkbox" name="proceso[]" class="custom-control-input proceso" id="<?=$id?>" value="<?=$fila['id']?>">
-                            <label class="custom-control-label" for="<?=$id?>"><?=$fila['tipo']?></label>
-                          </div><?php
+                            <div class="custom-control custom-checkbox d-inline-block pr-4">
+                              <input type="checkbox" name="proceso[]" class="custom-control-input proceso" id="<?=$id?>" value="<?=$fila['id']?>">
+                              <label class="custom-control-label" for="<?=$id?>"><?=$fila['tipo']?></label>
+                            </div><?php
                           }
                           Database::disconnect();?>
                         </div>
@@ -466,7 +494,7 @@ Database::disconnect();
                         <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear y volver a Conjuntos</button>
                         <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='nuevaListaCorteConjuntos.php?id_lista_corte_revision=<?=$data["id_lista_corte_revision"]?>' class="btn btn-light">Volver</a>
+                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?>' class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -544,11 +572,12 @@ Database::disconnect();
           var title = $(this).text();
           $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
         } );
-	      $('#dataTables-example667').DataTable({
+	      
+        var table=$('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
-		  paging: false,
-		  searching: false,
+          paging: false,
+          searching: false,
           language: {
           "decimal": "",
           "emptyTable": "No hay información",
@@ -638,37 +667,75 @@ Database::disconnect();
             $("#link_ver_posicion_lc").attr("href","verPosicionConjuntoListaCorte.php?id="+id_posicion);
           }
         });
-    
-      });
 
-      $("#link_eliminar_posicion").on("click",function(){
-        let id_posicion=$(this).data("id")
-        if(id_posicion!="" && id_posicion>0){
-          let modal=$("#eliminarPosicion")
-          modal.modal("show")
-          modal.find(".modal-footer a").attr("href","eliminarPosicionListaCorte.php?id="+id_posicion)
-        }
-      });
+        $("input[name='largo'], input[name='ancho'], input[name='peso']").on("input change", calcularPesoMaterial);
+        $("select[name='id_material']").on("change", calcularPesoMaterial);
 
-      $("#cancelEditPosicion").on("click",function(){
-        $("input[name='nombre_posicion']").val("").attr("readonly",false)
-        $("input[name='cantidad_posicion']").val("").attr("readonly",false)
-        $("select[name='id_material']").val("").trigger('change');
-        $("input[name='ancho']").val("")
-        $("input[name='largo']").val("")
-        $("input[name='diametro']").val("")
-        $("input[name='marca']").val("")
-        $("input[name='peso']").val("")
-        $("input[name='proceso[]']").each(function(){
-          this.checked=false;
+        $("#link_eliminar_posicion").on("click",function(){
+          let id_posicion=$(this).data("id")
+          if(id_posicion!="" && id_posicion>0){
+            let modal=$("#eliminarPosicion")
+            modal.modal("show")
+            modal.find(".modal-footer a").attr("href","eliminarPosicionListaCorte.php?id="+id_posicion)
+          }
+        });
+
+        $("#cancelEditPosicion").on("click",function(){
+          $("input[name='nombre_posicion']").val("").attr("readonly",false)
+          $("input[name='cantidad_posicion']").val("").attr("readonly",false)
+          $("select[name='id_material']").val("").trigger('change');
+          $("input[name='ancho']").val("")
+          $("input[name='largo']").val("")
+          $("input[name='diametro']").val("")
+          $("input[name='marca']").val("")
+          $("input[name='peso']").val("")
+          $("input[name='proceso[]']").each(function(){
+            this.checked=false;
+          })
+          $("select[name='id_terminacion']").val("").trigger('change');
+
+          $(".addPosicion").toggleClass("d-none")
+          $("#editPosicion").toggleClass("d-none")
+          $("#editPosicion").val("")
+          $("#cancelEditPosicion").toggleClass("d-none")
         })
-        $("select[name='id_terminacion']").val("").trigger('change');
+      });
 
-        $(".addPosicion").toggleClass("d-none")
-        $("#editPosicion").toggleClass("d-none")
-        $("#editPosicion").val("")
-        $("#cancelEditPosicion").toggleClass("d-none")
-      })
+      function calcularPesoMaterial() {
+        const tipoMaterial = $("select[name='id_material'] option:selected").text(); // contiene "Chapa" o "Perfil"
+        const largo = $("input[name='largo']").val();
+        const ancho = $("input[name='ancho']").val();
+        const pesoConcepto = $("input[name='peso']").val();
+
+        // Convertir milímetros a metros
+        const largo_m = parseFloat(largo) / 1000;
+        const ancho_m = parseFloat(ancho) / 1000;
+        const peso = parseFloat(pesoConcepto);
+
+        console.log(largo_m,ancho_m,peso);
+        let pesoCalculado = 0;
+
+        if (isNaN(largo_m) || isNaN(ancho_m) || isNaN(peso)) {
+          pesoCalculado = 0;
+        }else{
+          // Si el tipo comienza con "Chapa" => cálculo por área
+          if (tipoMaterial.startsWith("Chapa")) {
+            const area = largo_m * ancho_m; // m²
+            pesoCalculado = +(area * peso).toFixed(2); // kg
+          }else{
+            pesoCalculado = +(largo_m * peso).toFixed(2); // kg
+          }
+
+          // Si el tipo comienza con "Perfil" => cálculo lineal
+          if (tipoMaterial.startsWith("Perfil")) {
+            
+          }
+        }
+
+        // Otros tipos pueden extenderse aquí
+        $("#pesoCalculado").text(`${pesoCalculado} kg`);
+        $("#hiddenPesoCalculado").val(pesoCalculado);
+      }
 
       function selectRow(t){
         t.addClass('selected');
@@ -677,16 +744,17 @@ Database::disconnect();
         t.removeClass('selected');
       }
 	  
-	  function jsCompletarPeso(val) {
-		  $.ajax({
-			type: "POST",
-			url: "ajaxPeso.php",
-			data: "id_concepto="+val,
-			success: function(resp){
-				$("#pesokg").html(resp);
-			}
-		});
-	  }
+      function jsCompletarPeso(val) {
+        $.ajax({
+          type: "POST",
+          url: "ajaxPeso.php",
+          data: "id_concepto="+val,
+          success: function(resp){
+            //$("#pesokg").html(resp);
+            $("input[name='peso']").val(resp);
+          }
+        });
+	    }
       
     </script>
   </body>

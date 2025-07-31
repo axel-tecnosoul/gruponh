@@ -111,22 +111,19 @@ include 'database.php';?>
                       &nbsp;&nbsp;<?php
                     }
                     if (!empty(tienePermiso(293))) {?>
-                    <a href="#" class="accion-computo" data-accion="aprobar_completo" title="Aprobar Completo">
-                      <img src="img/estrella.png" width="24" height="25">
-                    </a>
-                    &nbsp;&nbsp;<?php
+                      <a href="#" class="accion-computo" data-accion="aprobar_completo" title="Aprobar Completo">
+                        <img src="img/estrella.png" width="24" height="25">
+                      </a>&nbsp;&nbsp;<?php
                     }
                     if (!empty(tienePermiso(293))) {?>
-                    <a href="#" class="accion-computo" data-accion="aprobar_parcial" title="Aprobar Parcial">
-                      <img src="img/medalla-plateada.png" width="24" height="25">
-                    </a>
-                    &nbsp;&nbsp;<?php
+                      <a href="#" class="accion-computo" data-accion="aprobar_parcial" title="Aprobar Parcial">
+                        <img src="img/medalla-plateada.png" width="24" height="25">
+                      </a>&nbsp;&nbsp;<?php
                     }
                     if (!empty(tienePermiso(293))) {?>
-                    <a href="#" class="accion-computo" data-accion="cancelar_computo" title="Cancelar Cómputo">
-                      <img src="img/neg.png" width="24" height="25">
-                    </a>
-                    &nbsp;&nbsp;<?php
+                      <a href="#" class="accion-computo" data-accion="cancelar_computo" title="Cancelar Cómputo">
+                        <img src="img/neg.png" width="24" height="25">
+                      </a>&nbsp;&nbsp;<?php
                     }
                     
                     if (!empty(tienePermiso(292))) {?>

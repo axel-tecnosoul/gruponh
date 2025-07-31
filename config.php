@@ -31,7 +31,8 @@ $debug = isset($_GET['debug']) && $_GET['debug'] == 1;
 // 2) Define el timeout base en minutos  
 //    – en debug: 20 segundos ≃ 0.333 minutos  
 //    – en prod: 15 minutos
-$timeoutMinutes = $debug ? 0.3333 : 30;
+//$timeoutMinutes = $debug ? 0.3333 : 30;
+$timeoutMinutes = $debug ? 0.3333 : 3000;//solo para desarrollo
 
 // 3) Calcula todos los valores en segundos a partir de ese único minuto
 define('SESSION_TIMEOUT', (int)($timeoutMinutes * 60));        // tiempo total de inactividad

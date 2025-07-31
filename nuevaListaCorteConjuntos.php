@@ -5,6 +5,14 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+
+if(isset($_GET["id_lista_corte"])){
+  $id_lista_corte=$_GET["id_lista_corte"];
+} else {
+  header("Location: listarListasCorte.php");
+  die("Redirecting to listarListasCorte.php");
+}
+
 if (!empty($_POST)) {
     
   // insert data
@@ -20,7 +28,7 @@ if (!empty($_POST)) {
 
     if(isset($_POST['btn2'])){
       $id_lista_corte_conjunto=$_POST['btn2'];
-      $redirect="nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$_GET["id_lista_corte_revision"];
+      $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
     }
     if(isset($_POST['btn3'])){
       $id_lista_corte_conjunto=$_POST['btn3'];
@@ -29,7 +37,7 @@ if (!empty($_POST)) {
 	
 	$sql = "SELECT count(*) cant FROM `listas_corte_conjuntos` WHERE nombre = ? and id_lista_corte = ? and id <> ? ";
 	$q = $pdo->prepare($sql);
-	$q->execute([$_POST['nombre'],$_GET['id_lista_corte_revision'],$id_lista_corte_conjunto]);
+	$q->execute([$_POST['nombre'],$id_lista_corte,$id_lista_corte_conjunto]);
 	$data = $q->fetch(PDO::FETCH_ASSOC);
 	
 	if ($data['cant'] == 0) {
@@ -41,7 +49,7 @@ if (!empty($_POST)) {
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
 	} else {
-		$redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte_revision=".$_GET["id_lista_corte_revision"];
+		$redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte=".$id_lista_corte;
 	}
     
 
@@ -49,25 +57,25 @@ if (!empty($_POST)) {
     $peso=0;
     $id_estado_lista_corte_conjuntos=1;
 	
-	$sql = "SELECT count(*) cant FROM `listas_corte_conjuntos` WHERE nombre = ? and id_lista_corte = ?";
-	$q = $pdo->prepare($sql);
-	$q->execute([$_POST['nombre'],$_GET['id_lista_corte_revision']]);
-	$data = $q->fetch(PDO::FETCH_ASSOC);
+    $sql = "SELECT count(*) cant FROM `listas_corte_conjuntos` WHERE nombre = ? and id_lista_corte = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['nombre'],$id_lista_corte]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
 	
-	if ($data['cant'] == 0) {
-		$sql = "INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)";
-		$q = $pdo->prepare($sql);
-		$q->execute([$_GET['id_lista_corte_revision'],$_POST['nombre'],$_POST['cantidad'],$peso,$id_estado_lista_corte_conjuntos]);
-		$id_lista_corte_conjunto = $pdo->lastInsertId();
-		
-		$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Conjunto ID #$id_lista_corte_conjunto de Lista de Corte','Listas de Corte','')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
+    if ($data['cant'] == 0) {
+      $sql = "INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_lista_corte,$_POST['nombre'],$_POST['cantidad'],$peso,$id_estado_lista_corte_conjuntos]);
+      $id_lista_corte_conjunto = $pdo->lastInsertId();
+      
+      $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Conjunto ID #$id_lista_corte_conjunto de Lista de Corte','Listas de Corte','')";
+      $q = $pdo->prepare($sql);
+      $q->execute(array($_SESSION['user']['id']));
 
-		$redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto;
-	} else {
-		$redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte_revision=".$_GET["id_lista_corte_revision"];
-	}
+      $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto;
+    } else {
+      $redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte=".$id_lista_corte;
+    }
   }
 
   Database::disconnect();
@@ -75,15 +83,16 @@ if (!empty($_POST)) {
 
 }
 
-$id_lista_corte_revision=$_GET['id_lista_corte_revision'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT nombre, numero FROM listas_corte_revisiones WHERE id = ? ";
+$sql = "SELECT nombre, numero, id_proyecto FROM listas_corte WHERE id = ? ";
 $q = $pdo->prepare($sql);
-$q->execute([$id_lista_corte_revision]);
+$q->execute([$id_lista_corte]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
-Database::disconnect();
-?>
+
+$descripcionProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
+
+Database::disconnect();?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -110,7 +119,7 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Conjuntos de la Lista de Corte #<?=$data['numero']." - ".$data['nombre']?>
+                    <h5>Conjuntos de la Lista de Corte #<?=$data['numero']." - ".$data['nombre'].$descripcionProyecto?>
                       &nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(329))) {?>
                         <img src="img/icon_modificar.png" id="link_modificar_conjunto" style="cursor: pointer;" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp;<?php
@@ -121,9 +130,10 @@ Database::disconnect();
                       /*if (!empty(tienePermiso(331))) {?>
                         <a href="#" id="link_nueva_posicion"><img src="img/edit3.png" width="24" height="25" border="0" alt="Nueva Posición" title="Nueva Posición"></a>&nbsp;&nbsp;<?php
                       }*/?>
+                      <a href="#" id="link_ver_posicion"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Posiciones" title="Ver Posiciones"></a>&nbsp;&nbsp;
                     </h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="nuevaListaCorteConjuntos.php?id_lista_corte_revision=<?=$id_lista_corte_revision?>">
+					        <form class="form theme-form" role="form" method="post" action="nuevaListaCorteConjuntos.php?id_lista_corte=<?=$id_lista_corte?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -152,15 +162,15 @@ Database::disconnect();
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                   
-                                  $sql = " SELECT c.id, c.nombre, c.cantidad, c.peso, e.estado FROM listas_corte_conjuntos c inner join estados_lista_corte_conjuntos e on e.id = c.id_estado_lista_corte_conjuntos WHERE c.id_lista_corte = ".$id_lista_corte_revision;
-                                  foreach ($pdo->query($sql) as $row) {
-                                    echo '<tr>';
-                                    echo '<td>'. $row["id"] . '</td>';
-                                    echo '<td>'. $row["nombre"] . '</td>';
-                                    echo '<td>'. $row["cantidad"] . '</td>';
-                                    echo '<td>'. $row["peso"] . '</td>';
-                                    echo '<td>'. $row["estado"] . '</td>';
-                                    echo '</tr>';
+                                  $sql = " SELECT c.id, c.nombre, c.cantidad, c.peso, e.estado FROM listas_corte_conjuntos c inner join estados_lista_corte_conjuntos e on e.id = c.id_estado_lista_corte_conjuntos WHERE c.id_lista_corte = ".$id_lista_corte;
+                                  foreach ($pdo->query($sql) as $row) {?>
+                                    <tr>
+                                      <td><?=$row["id"]?></td>
+                                      <td><?=$row["nombre"]?></td>
+                                      <td><?=$row["cantidad"]?></td>
+                                      <td><?=$row["peso"]?></td>
+                                      <td><?=$row["estado"]?></td>
+                                    </tr><?php
                                   }
                                   Database::disconnect();?>
                                 </tbody>
@@ -169,13 +179,12 @@ Database::disconnect();
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Nombre del Conjunto(*)</label>
-                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" autofocus class="form-control" required="required">
-							<?php
-							if (!empty($_GET['error'])) {
-								echo "*El nombre del conjunto ya existe";
-							}
-							?>
-							</div>
+                            <div class="col-sm-9">
+                              <input name="nombre" type="text" maxlength="99" autofocus class="form-control" required="required"><?php
+                              if (!empty($_GET['error'])) {
+                                echo "*El nombre del conjunto ya existe";
+                              }?>
+							              </div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Cantidad(*)</label>
@@ -205,6 +214,7 @@ Database::disconnect();
           </div>
           <!-- Container-fluid Ends-->
         </div>
+
         <!-- Modal para eliminas conjuntos -->
         <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
@@ -272,32 +282,34 @@ Database::disconnect();
           var title = $(this).text();
           $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
         } );
-	      $('#dataTables-example667').DataTable({
+
+	      var table = $('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
           language: {
-          "decimal": "",
-          "emptyTable": "No hay información",
-          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-          "infoFiltered": "(Filtrado de _MAX_ total registros)",
-          "infoPostFix": "",
-          "thousands": ",",
-          "lengthMenu": "Mostrar _MENU_ Registros",
-          "loadingRecords": "Cargando...",
-          "processing": "Procesando...",
-          "search": "Buscar:",
-          "zeroRecords": "No hay resultados",
-          "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
-          }}
+            "decimal": "",
+            "emptyTable": "No hay información",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+            "infoFiltered": "(Filtrado de _MAX_ total registros)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "Mostrar _MENU_ Registros",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar:",
+            "zeroRecords": "No hay resultados",
+            "paginate": {
+                "first": "Primero",
+                "last": "Ultimo",
+                "next": "Siguiente",
+                "previous": "Anterior"
+            }
+          }
         });
  
         // DataTable
-        var table = $('#dataTables-example667').DataTable();
+        //var table = $('#dataTables-example667').DataTable();
         // Apply the search
         table.columns().every( function () {
           var that = this;
@@ -319,6 +331,7 @@ Database::disconnect();
             $("#link_ver_conjunto_lc").attr("href","#");
             $("#link_modificar_conjunto").attr("href","#");
             //$("#link_eliminar_conjunto").attr("href","#");
+            $("#link_ver_posicion").attr("href","#");
             $("#link_eliminar_conjunto").data("id","");
             $("#link_nueva_posicion").attr("href","#");
           }else{
@@ -344,6 +357,7 @@ Database::disconnect();
                 $("#volverListaCorte").toggleClass("d-none")
               }
             })
+            $("#link_ver_posicion").attr("href","nuevaListaCortePosiciones.php?modo=update&id_lista_corte_conjunto="+id_conjunto);
             //$("#link_eliminar_conjunto").attr("href","eliminarConjuntoListaCorte.php?id="+id_conjunto);
             $("#link_eliminar_conjunto").data("id",id_conjunto);
             $("#link_nueva_posicion").attr("href","nuevaListaCortePosiciones.php?id_lista_corte_conjunto="+id_conjunto);

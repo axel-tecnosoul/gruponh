@@ -608,34 +608,14 @@ if (!function_exists('str_starts_with')) {
 }
 
 /**
- * Inserta una revisión de lista de corte y devuelve su ID.
+ * Obtene una descripción del proyecto asociado a un ID de proyecto.
  */
-function crearListaCorteRevision(PDO $pdo, array $datos): int {
-  $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-  $params = [
-    $datos['id_lista_corte'],
-    $datos['id_proyecto'],
-    $datos['fecha'],
-    $datos['id_usuario'],
-    $datos['id_estado_lista_corte'] ?? 1,
-    $datos['nro_revision'],
-    $datos['anulado'] ?? 0,
-    $datos['nombre'],
-    $datos['numero'],
-    $datos['descripcion'],
-    $datos['id_cuenta_realizo'],
-    $datos['id_cuenta_reviso'],
-    $datos['id_cuenta_valido']
-  ];
-  $stmt = $pdo->prepare($sql);
-  $stmt->execute($params);
-  $id = (int)$pdo->lastInsertId();
-
-  if (!empty($datos['adjunto'])) {
-    $pdo->prepare('UPDATE listas_corte_revisiones SET adjunto = ? WHERE id = ?')->execute([$datos['adjunto'], $id]);
-  }
-
-  return $id;
+function getDescripcionProyecto($pdo, $id_proyecto) {
+  $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto FROM proyectos p INNER JOIN sitios s on s.id = p.id_sitio WHERE p.id = ? ";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_proyecto]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  return " (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
 }
 
 /**

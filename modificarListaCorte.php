@@ -154,12 +154,15 @@ if (!empty($_POST)) {
 
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT lc.id AS id_lista_corte, lcr.id AS id_lista_corte_revision, lcr.id_proyecto, lcr.fecha, lcr.id_usuario, lcr.id_estado_lista_corte, lcr.nro_revision, lcr.anulado, lcr.nombre, lcr.numero, lcr.adjunto, lcr.id_cuenta_realizo, lcr.id_cuenta_reviso, lcr.id_cuenta_valido FROM listas_corte_revisiones lcr INNER JOIN listas_corte lc ON lcr.id_lista_corte=lc.id AND lcr.nro_revision=lc.ultimo_nro_revision WHERE lcr.id = ?";
+  $sql = "SELECT lc.id AS id_lista_corte, lcr.id AS id_lista_corte_revision, lcr.id_proyecto, lcr.fecha, lcr.id_usuario, lcr.id_estado_lista_corte, lcr.nro_revision, lcr.anulado, lcr.nombre, lcr.numero, lcr.adjunto, lcr.id_cuenta_realizo, lcr.id_cuenta_reviso, lcr.id_cuenta_valido FROM listas_corte_revisiones_old2 lcr INNER JOIN listas_corte_old2 lc ON lcr.id_lista_corte=lc.id AND lcr.nro_revision=lc.ultimo_nro_revision WHERE lcr.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte_revision]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
-  $id_estado_lista_corte=$data["id_estado_lista_corte"];
+  $id_estado_lista_corte=1;
+  if(isset($data["id_estado_lista_corte"])){
+    $id_estado_lista_corte=$data["id_estado_lista_corte"];
+  }
   $accion="revisar";
   if($id_estado_lista_corte==1){//PERMITIMOS MODIFICAR LA lc
     $accion="modificar";

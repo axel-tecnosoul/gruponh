@@ -7,167 +7,209 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$hoy=date("Y-m-d");
+$modo="create";
+if(isset($_GET["modo"])){
+  $modo = $_GET["modo"];
+}
 if (!empty($_POST)) {
-  // var_dump($_POST);
-  // die;
+   //var_dump($_POST);
+   //die;
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  
-  $idTarea = null;
-  if (!empty($_POST['id_tarea'])) {
-	  $idTarea = $_POST['id_tarea'];
-  }
 
-  $sql = "INSERT INTO listas_corte (ultimo_nro_revision,id_tarea) VALUES (0,?)";
-  $q = $pdo->prepare($sql);
-  $q->execute([$idTarea]);
-  $id_lista_corte = $pdo->lastInsertId();
+  if($modo == "update" && isset($_GET["id_lista_corte"])) {
+    $id_lista_corte = $_GET["id_lista_corte"];
+    $sql = "UPDATE listas_corte SET fecha=?, id_tarea=?, id_proyecto=?, nombre=?, adjunto=? WHERE id=?";
+    $params = [$_POST['fecha'], $_POST['id_tarea'], $_POST['id_proyecto'], $_POST['nombre'], $_POST['adjunto'], $id_lista_corte];
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    Database::disconnect();
+    $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte;
+  }else{
   
-  $sql = "UPDATE tareas set fecha_inicio_real=now(), fecha_fin_real=now() where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$idTarea]);
-  
-	$sql = "SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
-	$q = $pdo->prepare($sql);
-	$q->execute([$_POST['id_proyecto']]);
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$descripcionProyecto = $data['nro_sitio']." - ".$data['nro_subsitio']." - ".$data['nro']." - ".$data['nombre'];
-  
-  $sql = "SELECT count(id) cant FROM listas_corte_revisiones where descripcion = 'Emisión original' and id_proyecto = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST['id_proyecto']]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $_POST['numero'] = $data['cant']+1;
+    $id_estado_lista_corte=1;
+    $nro_revision=0;
+    $anulado=0;
+    $descripcion_lc='Emisión original';
+    $id_proyecto=$_POST['id_proyecto'];
 
-  $idCuentaRealizo = $_POST['id_cuenta_realizo'] ?? null;
-  $idCuentaReviso  = $_POST['id_cuenta_reviso'] ?? null;
-  $idCuentaValido  = $_POST['id_cuenta_valido'] ?? null;
-
-        $sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
-        $q = $pdo->prepare($sql);
-        $q->execute([$_SESSION['user']['id']]);
-        $data = $q->fetch(PDO::FETCH_ASSOC);
-        if (!empty($data)) {
-                $idCuentaRealizo = $data['id'];
-        }
-
-  $id_lista_corte_revision = crearListaCorteRevision($pdo, [
-    'id_lista_corte'   => $id_lista_corte,
-    'id_proyecto'      => $_POST['id_proyecto'],
-    'fecha'            => $_POST['fecha'],
-    'id_usuario'       => $_SESSION['user']['id'],
-    'nro_revision'     => 0,
-    'nombre'           => $_POST['nombre'],
-    'numero'           => $_POST['numero'],
-    'descripcion'      => 'Emisión original',
-    'id_cuenta_realizo'=> $idCuentaRealizo,
-    'id_cuenta_reviso' => $idCuentaReviso,
-    'id_cuenta_valido' => $idCuentaValido,
-    'adjunto'          => $_POST['adjunto'] ?? null
-  ]);
-  
-  
-  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte_revision')";
-  $q = $pdo->prepare($sql);
-  $q->execute(array($_SESSION['user']['id']));
-  
-  // --- Cargo configuración SMTP desde parámetros ---
-  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
-  $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
-  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
-	
-	/*$sql = "SELECT t.id_usuario, u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 5 ";
-	foreach ($pdo->query($sql) as $row) {
-		
-		$sql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES (5,?,now(),0,?,?)";
-		$q = $pdo->prepare($sql);
-		$q->execute([$row[0],'ID Lista de Corte: #'.$id_lista_corte_revision,$id_lista_corte_revision]);
-		
-		$address = $row[1];
-		
-		$titulo = "ERP Notificaciones - Módulo Ingeniería - Nueva Lista de Corte (".$descripcionProyecto.")";
-		$mensaje="Nueva lista de corte dada de alta en el sistema: #".$id_lista_corte_revision;
-		
-		$mail = new PHPMailer();
-		$mail->IsSMTP();
-		$mail->SMTPAuth = true;
-		$mail->Port = 25; 
-		//$mail->SMTPSecure = 'ssl';
-		//$mail->SMTPAutoTLS = false;
-		$mail->SMTPSecure = false;
-		$mail->IsHTML(true); 
-		$mail->CharSet = "utf-8";
-		$mail->From = $smtpFrom;
-		$mail->FromName = $_SESSION['user']['usuario'];
-		$mail->Host = $smtpHost; 
-		$mail->Username = $smtpUsuario; 
-		$mail->Password = $smtpClave;
-		$mail->AddAddress($address);
-		$mail->Subject = $titulo; 
-		$mensajeHtml = nl2br($mensaje);
-		$mail->Body = "{$mensajeHtml} <br /><br />"; 
-		$mail->AltBody = "{$mensaje} \n\n"; 
-		$mail->Send();
-	
-	}*/
-
-  // 1) Recuperar todos los usuarios de golpe
-  $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t INNER JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 5";
-  $users = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-
-  // 2) Batch-insert de notificaciones
-  if (!empty($users)) {
-    $values    = [];
-    $params    = [];
-    $detalle   = 'ID Lista de Corte: #'.$id_lista_corte_revision;
-    foreach ($users as $u) {
-      $values[] = "(5, ?, NOW(), 0, ?, ?)";
-      $params[] = $u['id_usuario'];
-      $params[] = $detalle;
-      $params[] = $id_lista_corte_revision;
+    $idTarea = null;
+    if (!empty($_POST['id_tarea'])) {
+      $idTarea = $_POST['id_tarea'];
     }
-    $insertSql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES ".implode(', ', $values);
-    $pdo->prepare($insertSql)->execute($params);
-  }
+    
+    $sql = "SELECT count(id) AS cant FROM listas_corte where descripcion = '$descripcion_lc' and id_proyecto = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_proyecto]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $numero_lc = $data['cant']+1;
 
-  // 3) Preparar y enviar un único e-mail
+    $idCuentaRealizo = $_POST['id_cuenta_realizo'] ?? null;
+    $idCuentaReviso  = $_POST['id_cuenta_reviso'] ?? null;
+    $idCuentaValido  = $_POST['id_cuenta_valido'] ?? null;
 
-  $mail = new PHPMailer();
-  $mail->isSMTP();
-  $mail->SMTPAuth      = true;
-  $mail->SMTPKeepAlive = true;    // Mantiene la conexión viva para no reconectar
-  $mail->Host          = $smtpHost;
-  $mail->Port          = 25;
-  $mail->SMTPSecure    = false;
-  $mail->Username      = $smtpUsuario;
-  $mail->Password      = $smtpClave;
+    $sql = "SELECT id FROM cuentas WHERE id_usuario = ? ";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_SESSION['user']['id']]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    if (!empty($data)) {
+      $idCuentaRealizo = $data['id'];
+    }
 
-  $mail->setFrom($smtpFrom, $_SESSION['user']['usuario']);
-  $mail->isHTML(true);
-  $mail->CharSet       = 'utf-8';
-  $mail->Subject       = "ERP Notificaciones - Módulo Ingeniería - Nueva Lista de Corte ({$descripcionProyecto})";
+    $sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    $params = [$id_proyecto, $idTarea, $_POST['fecha'], $_SESSION['user']['id'], $id_estado_lista_corte, $nro_revision, $anulado, $_POST['nombre'], $numero_lc, $_POST['adjunto'], $descripcion_lc, $idCuentaRealizo, $idCuentaReviso, $idCuentaValido];
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    
+    $id_lista_corte = (int)$pdo->lastInsertId();
 
-  $plainMsg  = "Nueva lista de corte dada de alta en el sistema: #{$id_lista_corte_revision}";
-  $htmlMsg   = nl2br($plainMsg) . '<br><br>';
-  $mail->Body    = $htmlMsg;
-  $mail->AltBody = $plainMsg;
+    if($id_lista_corte>0 and $idTarea>0){
+      $sql = "UPDATE tareas set fecha_inicio_real=now(), fecha_fin_real=now() where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$idTarea]);
+    }
+    
+    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte')";
+    $q = $pdo->prepare($sql);
+    $q->execute(array($_SESSION['user']['id']));
+    
+    $descripcionProyecto = getDescripcionProyecto($pdo, $id_proyecto);
+    
+    // --- Cargo configuración SMTP desde parámetros ---
+    $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+    $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
+    list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
+    
+    /*$sql = "SELECT t.id_usuario, u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 5 ";
+    foreach ($pdo->query($sql) as $row) {
+      
+      $sql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES (5,?,now(),0,?,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$row[0],'ID Lista de Corte: #'.$id_lista_corte_revision,$id_lista_corte_revision]);
+      
+      $address = $row[1];
+      
+      $titulo = "ERP Notificaciones - Módulo Ingeniería - Nueva Lista de Corte (".$descripcionProyecto.")";
+      $mensaje="Nueva lista de corte dada de alta en el sistema: #".$id_lista_corte_revision;
+      
+      $mail = new PHPMailer();
+      $mail->IsSMTP();
+      $mail->SMTPAuth = true;
+      $mail->Port = 25; 
+      //$mail->SMTPSecure = 'ssl';
+      //$mail->SMTPAutoTLS = false;
+      $mail->SMTPSecure = false;
+      $mail->IsHTML(true); 
+      $mail->CharSet = "utf-8";
+      $mail->From = $smtpFrom;
+      $mail->FromName = $_SESSION['user']['usuario'];
+      $mail->Host = $smtpHost; 
+      $mail->Username = $smtpUsuario; 
+      $mail->Password = $smtpClave;
+      $mail->AddAddress($address);
+      $mail->Subject = $titulo; 
+      $mensajeHtml = nl2br($mensaje);
+      $mail->Body = "{$mensajeHtml} <br /><br />"; 
+      $mail->AltBody = "{$mensaje} \n\n"; 
+      $mail->Send();
+    
+    }*/
 
-  // Agregar todos como BCC (no ven entre sí las direcciones)
-  foreach ($users as $u) {
-    $mail->addBCC($u['email']);
-  }
+    // 1) Recuperar todos los usuarios de golpe
+    $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t INNER JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 5";
+    $users = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
-  // Enviar todo en un solo envío SMTP
-  if (!$mail->send()) {
-    error_log('Error enviando notificación masiva: ' . $mail->ErrorInfo);
-    // manejar el error según tu lógica
+    // 2) Batch-insert de notificaciones
+    if (!empty($users)) {
+      $values    = [];
+      $params    = [];
+      $detalle   = 'ID Lista de Corte: #'.$id_lista_corte;
+      foreach ($users as $u) {
+        $values[] = "(5, ?, NOW(), 0, ?, ?)";
+        $params[] = $u['id_usuario'];
+        $params[] = $detalle;
+        $params[] = $id_lista_corte;
+      }
+      $insertSql = "INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES ".implode(', ', $values);
+      $pdo->prepare($insertSql)->execute($params);
+    }
+
+    // 3) Preparar y enviar un único e-mail
+
+    $mail = new PHPMailer();
+    $mail->isSMTP();
+    $mail->SMTPAuth      = true;
+    $mail->SMTPKeepAlive = true;    // Mantiene la conexión viva para no reconectar
+    $mail->Host          = $smtpHost;
+    $mail->Port          = 25;
+    $mail->SMTPSecure    = false;
+    $mail->Username      = $smtpUsuario;
+    $mail->Password      = $smtpClave;
+
+    $mail->setFrom($smtpFrom, $_SESSION['user']['usuario']);
+    $mail->isHTML(true);
+    $mail->CharSet       = 'utf-8';
+    $mail->Subject       = "ERP Notificaciones - Módulo Ingeniería - Nueva Lista de Corte ({$descripcionProyecto})";
+
+    $plainMsg  = "Nueva lista de corte dada de alta en el sistema: #{$id_lista_corte}";
+    $htmlMsg   = nl2br($plainMsg) . '<br><br>';
+    $mail->Body    = $htmlMsg;
+    $mail->AltBody = $plainMsg;
+
+    // Agregar todos como BCC (no ven entre sí las direcciones)
+    foreach ($users as $u) {
+      $mail->addBCC($u['email']);
+    }
+
+    // Enviar todo en un solo envío SMTP
+    if (!$mail->send()) {
+      error_log('Error enviando notificación masiva: ' . $mail->ErrorInfo);
+      // manejar el error según tu lógica
+    }
+
+    $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
   }
 
   Database::disconnect();
   //header("Location: listarListasCorte.php");
-  header("Location: nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision);
+  header("Location: $redirect");
 }else {
+  $fecha=$hoy;
+  $id_tarea="";
+  if (!empty($_GET['idTarea'])) {
+    $id_tarea = $_GET['idTarea']; 
+  }
+  $id_proyecto="";
+  if(isset($_GET['idProyecto'])){
+    $id_proyecto = $_GET['idProyecto'];
+  }
+  $nombre="";
+  $adjunto="";
+  $titulo="Nueva";
+  $accion="Crear";
+  $formAction="nuevaListaCorte.php";
+  if($modo == 'update' && isset($_GET['id_lista_corte'])) {
+    $titulo="Modificar";
+    $accion=$titulo;
+    $id_lista_corte = $_GET['id_lista_corte'];
+    $formAction="nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte;
+
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto FROM listas_corte WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_lista_corte]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    if ($data) {
+      $fecha=$data["fecha"];
+      $id_tarea=$data["id_tarea"];
+      $id_proyecto=$data["id_proyecto"];
+      $nombre=$data["nombre"];
+      $adjunto=$data["adjunto"];
+    }
+  }
   /*$pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   $sql = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from tareas t inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio where t.id = ? ";
@@ -186,8 +228,7 @@ if (!empty($_POST)) {
   if (!empty($data2['id'])) {
     $idCuenta = $data2['id'];	
   }*/
-}
-$hoy=date("Y-m-d")?>
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -203,14 +244,13 @@ $hoy=date("Y-m-d")?>
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <?php include('header.php');?>
-    
       <!-- Page Header Start-->
       <div class="page-body-wrapper">
         <?php include('menu.php');?>
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Nueva Lista de Corte";
+          $ubicacion=$titulo." Lista de Corte";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -220,17 +260,17 @@ $hoy=date("Y-m-d")?>
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" action="nuevaListaCorte.php" enctype="multipart/form-data">
+				          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
-                            <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$hoy?>"></div>
+                            <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$fecha?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Nombre de la LC(*)</label>
-                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" autofocus class="form-control" required="required" value=""></div>
+                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" autofocus class="form-control" required="required" value="<?=$nombre?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Proyecto(*)</label>
@@ -240,12 +280,12 @@ $hoy=date("Y-m-d")?>
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                                if (!empty($_GET['idTarea'])) {
+                                if (!empty($id_tarea)) {
                                   $sql = "SELECT id_proyecto from tareas where id = ?";
                                   $q = $pdo->prepare($sql);
-                                  $q->execute([$_GET['idTarea']]);
+                                  $q->execute([$id_tarea]);
                                   $data = $q->fetch(PDO::FETCH_ASSOC);
-                                  $_GET['idProyecto'] = $data['id_proyecto'];
+                                  $id_proyecto = $data['id_proyecto'];
                                 }
 								
                                 $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
@@ -253,7 +293,7 @@ $hoy=date("Y-m-d")?>
                                 $q->execute();
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                                   $selected="";
-                                  if ((isset($_GET['idProyecto'])) && ($_GET['idProyecto'] == $fila['id'])) {
+                                  if ($id_proyecto == $fila['id']) {
                                     $selected=" selected ";
                                   }?>
                                   <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']?></option><?php
@@ -300,16 +340,19 @@ $hoy=date("Y-m-d")?>
                           </div> -->
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Adjuntar Plano</label>
-                            <div class="col-sm-9"><input name="adjunto" type="text" value="" class="form-control"></div>
+                            <div class="col-sm-9"><input name="adjunto" type="text" value="<?=$adjunto?>" class="form-control"></div>
                             <input type="hidden" name="hId" value="1" />
                           </div>
-						              <input type="hidden" name="id_tarea" value="<?php if (!empty($_GET['idTarea'])) echo $_GET['idTarea'];?>" />
+						              <input type="hidden" name="id_tarea" value="<?=$id_tarea?>" />
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-                        <button class="btn btn-primary" type="submit">Crear y agregar Conjuntos</button>
+                        <button class="btn btn-success" type="submit"><?=$accion?> y agregar Conjuntos</button><?php
+                         if($modo=="update"){?>
+                          <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button><?php
+                         }?>
 						            <a href="listarListasCorte.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -324,6 +367,27 @@ $hoy=date("Y-m-d")?>
         <?php include("footer.php"); ?>
       </div>
     </div>
+
+    <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$id_lista_corte?>">
+            <div class="modal-header">
+              <h5 class="modal-title">Confirmar envío a aprobación</h5>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+              <p>¿Estás seguro de que quieres enviar esta revisión a aprobación?</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Confirmar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -369,57 +433,13 @@ $hoy=date("Y-m-d")?>
     <!-- Plugins JS Ends-->
     <script>
       $(document).ready(function() {
-        // Setup - add a text input to each footer cell
-        $('#dataTables-example667 tfoot th').each( function () {
-          var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-        $('#dataTables-example667').DataTable({
-          stateSave: false,
-          responsive: false,
-          language: {
-            "decimal": "",
-            "emptyTable": "No hay información",
-            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-            "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "infoPostFix": "",
-            "thousands": ",",
-            "lengthMenu": "Mostrar _MENU_ Registros",
-            "loadingRecords": "Cargando...",
-            "processing": "Procesando...",
-            "search": "Buscar:",
-            "zeroRecords": "No hay resultados",
-            "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
-            }
-          }
+        
+        $('#btnEnviarAprobacion').on('click', function(){
+          $('#modalEnviarAprobacion').modal('show');
         });
   
-        // DataTable
-        var table = $('#dataTables-example667').DataTable();
-    
-        // Apply the search
-        table.columns().every( function () {
-          var that = this;
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that
-              .search( this.value )
-              .draw();
-            }
-          });
-        });
       });
       
       </script>
-      <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-      <!-- Plugin used-->
-	
-	    <!-- Page-Level Demo Scripts - Tables - Use for reference -->
-   
   </body>
 </html>
