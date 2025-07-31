@@ -669,7 +669,7 @@ Database::disconnect();?>
         });
 
         $("input[name='largo'], input[name='ancho'], input[name='peso']").on("input change", calcularPesoMaterial);
-        $("select[name='id_material']").on("change", calcularPesoMaterial);
+        $("select[name='id_material']").on("input change", calcularPesoMaterial);
 
         $("#link_eliminar_posicion").on("click",function(){
           let id_posicion=$(this).data("id")
@@ -752,6 +752,7 @@ Database::disconnect();?>
           success: function(resp){
             //$("#pesokg").html(resp);
             $("input[name='peso']").val(resp);
+            calcularPesoMaterial();
           }
         });
 	    }
