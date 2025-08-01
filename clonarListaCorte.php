@@ -21,7 +21,7 @@ if (null==$id) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$modoDebug=0;
+$modoDebug=1;
 
 if ($modoDebug==1) {
   $pdo->beginTransaction();
@@ -35,11 +35,13 @@ $id_lista_corte_clonar = $_GET['id_lista_corte'];
 
 $sql = "SELECT id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, anulado, nombre, descripcion, adjunto, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$id_lista_corte_clonar]);
+$params = [$id_lista_corte_clonar];
+$q->execute($params);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 
 if ($modoDebug==1) {
-  $q->debugDumpParams();
+  //$q->debugDumpParams();
+  echo debugQuery($pdo,$sql,$params);
   echo "<br><br>Afe: ".$q->rowCount();
   echo "<br><br>";
 }
@@ -47,19 +49,21 @@ if ($modoDebug==1) {
 
 $sql = "SELECT MAX(numero) AS max_num FROM listas_corte WHERE id_proyecto = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$data['id_proyecto']]);
+$params = [$data['id_proyecto']];
+$q->execute($params);
 $cant = $q->fetch(PDO::FETCH_ASSOC);
 $numero_lc = ((int)$cant['max_num']) + 1;
 
 if ($modoDebug==1) {
-  $q->debugDumpParams();
+  //$q->debugDumpParams();
+  echo debugQuery($pdo,$sql,$params);
   echo "<br><br>Afe: ".$q->rowCount();
   echo "<br><br>";
 }
 
 $sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 $q = $pdo->prepare($sql);
-$q->execute([
+$params = [
   $data['id_proyecto'],
   $data['id_tarea'],
   $data['fecha'],
@@ -74,18 +78,28 @@ $q->execute([
   $data['id_cuenta_realizo'],
   $data['id_cuenta_reviso'],
   $data['id_cuenta_valido']
-]);
+];
+$q->execute($params);
 $id_lista_corte = $pdo->lastInsertId();
 
+if ($modoDebug==1) {
+  //$q->debugDumpParams();
+  echo debugQuery($pdo,$sql,$params);
+  echo "<br><br>Afe: ".$q->rowCount();
+  echo "<br><br>";
+}
+
 // Duplicar conjuntos, posiciones y procesos
-duplicarListaCorteRevision($pdo, (int)$id_lista_corte_clonar, $id_lista_corte);
+duplicarListaCorteRevision($pdo, (int)$id_lista_corte_clonar, $id_lista_corte, $modoDebug);
 
 $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Se ha clonado una Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte')";
 $q = $pdo->prepare($sql);
-$q->execute([$_SESSION['user']['id']]);
+$params = [$_SESSION['user']['id']];
+$q->execute($params);
 
 if ($modoDebug==1) {
-  $q->debugDumpParams();
+  //$q->debugDumpParams();
+  echo debugQuery($pdo,$sql,$params);
   echo "<br><br>Afe: ".$q->rowCount();
   echo "<br><br>";
 }

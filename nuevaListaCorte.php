@@ -21,47 +21,27 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   $fecha      = $_POST['fecha'];
-  $id_tarea   = $_POST['id_tarea'] ?? '';
+  $id_tarea   = $_POST['id_tarea'] ?? null;
   $nombre     = $_POST['nombre'];
   $adjunto    = $_POST['adjunto'];
 
   $id_proyecto = $_POST['id_proyecto'];
 
-  // Verifico existencia de cómputos asociados al proyecto
-  $sql = "SELECT COUNT(*) FROM computos co INNER JOIN tareas t ON t.id = co.id_tarea WHERE t.id_proyecto = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_proyecto]);
-  $tieneComputos = $q->fetchColumn();
-
-  // Verifico existencia de pedidos asociados al proyecto
-  $sql = "SELECT COUNT(*) FROM pedidos WHERE id_proyecto = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_proyecto]);
-  $tienePedidos = $q->fetchColumn();
-
-  if($tieneComputos==0 || $tienePedidos==0){
-    $advertencia='El proyecto seleccionado debe contar con cómputos y pedidos de materiales antes de continuar.';
-  }
-
-  if(empty($advertencia) && $modo == "update" && isset($_GET["id_lista_corte"])) {
+  //if(empty($advertencia) && $modo == "update" && isset($_GET["id_lista_corte"])) {
+  if($modo == "update" && isset($_GET["id_lista_corte"])) {
     $id_lista_corte = $_GET["id_lista_corte"];
     $sql = "UPDATE listas_corte SET fecha=?, id_tarea=?, id_proyecto=?, nombre=?, adjunto=? WHERE id=?";
-    $params = [$_POST['fecha'], $_POST['id_tarea'], $_POST['id_proyecto'], $_POST['nombre'], $_POST['adjunto'], $id_lista_corte];
+    $params = [$fecha, $id_tarea, $id_proyecto, $nombre, $adjunto, $id_lista_corte];
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte;
-  }elseif(empty($advertencia)){
+  //}elseif(empty($advertencia)){
+  }else{
   
     $id_estado_lista_corte=1;
     $nro_revision=0;
     $anulado=0;
     $descripcion_lc='Emisión original';
-    $id_proyecto=$_POST['id_proyecto'];
-
-    $idTarea = null;
-    if (!empty($_POST['id_tarea'])) {
-      $idTarea = $_POST['id_tarea'];
-    }
     
     $sql = "SELECT count(id) AS cant FROM listas_corte where descripcion = '$descripcion_lc' and id_proyecto = ?";
     $q = $pdo->prepare($sql);
@@ -82,7 +62,7 @@ if (!empty($_POST)) {
     }
 
     $sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    $params = [$id_proyecto, $idTarea, $_POST['fecha'], $_SESSION['user']['id'], $id_estado_lista_corte, $nro_revision, $anulado, $_POST['nombre'], $numero_lc, $_POST['adjunto'], $descripcion_lc, $idCuentaRealizo, $idCuentaReviso, $idCuentaValido];
+    $params = [$id_proyecto, $idTarea, $fecha, $_SESSION['user']['id'], $id_estado_lista_corte, $nro_revision, $anulado, $nombre, $numero_lc, $adjunto, $descripcion_lc, $idCuentaRealizo, $idCuentaReviso, $idCuentaValido];
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     
@@ -195,23 +175,36 @@ if (!empty($_POST)) {
     $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
   }
 
-  if(empty($advertencia)){
+  //if(empty($advertencia)){
     Database::disconnect();
     //header("Location: listarListasCorte.php");
     header("Location: $redirect");
     exit();
-  }
+  //}
   Database::disconnect();
-}else {
+}
   $fecha=$hoy;
   $id_tarea="";
   if (!empty($_GET['idTarea'])) {
     $id_tarea = $_GET['idTarea']; 
   }
+
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
   $id_proyecto="";
+  if (!empty($id_tarea)) {
+    $sql = "SELECT id_proyecto from tareas where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_tarea]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $id_proyecto = $data['id_proyecto'];
+  }
+
   if(isset($_GET['idProyecto'])){
     $id_proyecto = $_GET['idProyecto'];
   }
+
   $nombre="";
   $adjunto="";
   $titulo="Nueva";
@@ -223,8 +216,6 @@ if (!empty($_POST)) {
     $id_lista_corte = $_GET['id_lista_corte'];
     $formAction="nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte;
 
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto FROM listas_corte WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte]);
@@ -237,6 +228,24 @@ if (!empty($_POST)) {
       $adjunto=$data["adjunto"];
     }
   }
+
+  // Verifico existencia de cómputos asociados al proyecto
+  $sql = "SELECT COUNT(*) FROM computos co INNER JOIN tareas t ON t.id = co.id_tarea WHERE t.id_proyecto = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_proyecto]);
+  $tieneComputos = $q->fetchColumn();
+  //die();
+
+  // Verifico existencia de pedidos asociados al proyecto
+  $sql = "SELECT COUNT(*) FROM pedidos WHERE id_proyecto = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_proyecto]);
+  $tienePedidos = $q->fetchColumn();
+
+  if($tieneComputos==0 && $tienePedidos==0){
+    $advertencia='El proyecto seleccionado debe contar con cómputos y pedidos de materiales antes de continuar.';
+  }
+
   /*$pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   $sql = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from tareas t inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio where t.id = ? ";
@@ -255,7 +264,7 @@ if (!empty($_POST)) {
   if (!empty($data2['id'])) {
     $idCuenta = $data2['id'];	
   }*/
-}?>
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -289,9 +298,6 @@ if (!empty($_POST)) {
                   </div>
 				          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
                     <div class="card-body">
-                      <?php if(!empty($advertencia)): ?>
-                      <div class="alert alert-warning" role="alert"><?=$advertencia?></div>
-                      <?php endif; ?>
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
@@ -309,14 +315,6 @@ if (!empty($_POST)) {
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-                                if (!empty($id_tarea)) {
-                                  $sql = "SELECT id_proyecto from tareas where id = ?";
-                                  $q = $pdo->prepare($sql);
-                                  $q->execute([$id_tarea]);
-                                  $data = $q->fetch(PDO::FETCH_ASSOC);
-                                  $id_proyecto = $data['id_proyecto'];
-                                }
 								
                                 $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
                                 $q = $pdo->prepare($sqlZon);
@@ -331,7 +329,10 @@ if (!empty($_POST)) {
                                 Database::disconnect();?>
                               </select>
                             </div>
-                          </div>
+                          </div><?php
+                          if(!empty($advertencia)){?>
+                            <div class="alert alert-warning mb-0" role="alert"><?=$advertencia?></div><?php
+                          }?>
                           <!-- <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Revisó(*)</label>
                             <div class="col-sm-9">

@@ -626,19 +626,32 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
   $stmtCon = $pdo->prepare($sqlCon);
   $stmtCon->execute([$idOrigen]);
   while ($conj = $stmtCon->fetch(PDO::FETCH_ASSOC)) {
-    $pdo->prepare(
-      'INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)'
-    )->execute([$idDestino, $conj['nombre'], $conj['cantidad'], $conj['peso'], $conj['id_estado_lista_corte_conjuntos']]);
+    $sql = 'INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)';
+    $q = $pdo->prepare($sql);
+    $params = [$idDestino, $conj['nombre'], $conj['cantidad'], $conj['peso'], $conj['id_estado_lista_corte_conjuntos']];
+    if ($modoDebug==1) {
+      //$q->debugDumpParams();
+      echo debugQuery($pdo,$sql,$params);
+      echo "<br><br>Afe: ".$q->rowCount();
+      echo "<br><br>";
+    }
+    $q->execute($params);
     $idConjNuevo = (int)$pdo->lastInsertId();
 
-    $stmtPos = $pdo->prepare(
-      'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?'
-    );
-    $stmtPos->execute([$conj['id']]);
+    $sql = 'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?';
+    $stmtPos = $pdo->prepare($sql);
+    $params = [$conj['id']];
+    if ($modoDebug==1) {
+      //$q->debugDumpParams();
+      echo debugQuery($pdo,$sql,$params);
+      echo "<br><br>Afe: ".$q->rowCount();
+      echo "<br><br>";
+    }
+    $stmtPos->execute($params);
     while ($pos = $stmtPos->fetch(PDO::FETCH_ASSOC)) {
-      $pdo->prepare(
-        'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
-      )->execute([
+      $sql = 'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)';
+      $q = $pdo->prepare($sql);
+      $params = [
         $idConjNuevo,
         $pos['id_material'],
         $pos['posicion'],
@@ -651,22 +664,42 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
         $pos['id_colada'],
         $pos['diametro'],
         $pos['calidad']
-      ]);
+      ];
+      if ($modoDebug==1) {
+        //$q->debugDumpParams();
+        echo debugQuery($pdo,$sql,$params);
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
+      $q->execute($params);
       $idPosNuevo = (int)$pdo->lastInsertId();
 
-      $stmtProc = $pdo->prepare(
-        'SELECT id_tipo_proceso, observaciones, id_estado_lista_corte_proceso FROM lista_corte_procesos WHERE id_lista_corte_posicion = ?'
-      );
-      $stmtProc->execute([$pos['id']]);
+      $sql = 'SELECT id_tipo_proceso, observaciones, id_estado_lista_corte_proceso FROM lista_corte_procesos WHERE id_lista_corte_posicion = ?';
+      $stmtProc = $pdo->prepare($sql);
+      $params = [$pos['id']];
+      if ($modoDebug==1) {
+        //$q->debugDumpParams();
+        echo debugQuery($pdo,$sql,$params);
+        echo "<br><br>Afe: ".$q->rowCount();
+        echo "<br><br>";
+      }
+      $stmtProc->execute($params);
       while ($proc = $stmtProc->fetch(PDO::FETCH_ASSOC)) {
-        $pdo->prepare(
-          'INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,?)'
-        )->execute([
+        $sql = 'INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,?)';
+        $q = $pdo->prepare($sql);
+        $params = [
           $idPosNuevo,
           $proc['id_tipo_proceso'],
           $proc['observaciones'],
           $proc['id_estado_lista_corte_proceso']
-        ]);
+        ];
+        if ($modoDebug==1) {
+          //$q->debugDumpParams();
+          echo debugQuery($pdo,$sql,$params);
+          echo "<br><br>Afe: ".$q->rowCount();
+          echo "<br><br>";
+        }
+        $q->execute($params);
       }
     }
   }
