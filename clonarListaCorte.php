@@ -6,6 +6,7 @@ if (empty($_SESSION['user'])) {
 }
 
 require 'database.php';
+// funciones.php is included from config.php. Ensure it is available for helper utilities
 
 $id = null;
 if (!empty($_GET['id_lista_corte'])) {
@@ -29,23 +30,12 @@ if ($modoDebug==1) {
   var_dump($_FILES);
 }
 
-$id_lista_corte_clonar=$_GET['id_lista_corte'];
-$ultimo_nro_revision_clonar=$_GET['revision'];
 
-$sql = "INSERT INTO listas_corte (ultimo_nro_revision) VALUES (0)";
+$id_lista_corte_clonar = $_GET['id_lista_corte'];
+
+$sql = "SELECT id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, anulado, nombre, descripcion, adjunto, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ?";
 $q = $pdo->prepare($sql);
-$q->execute();
-$id_lista_corte = $pdo->lastInsertId();
-
-if ($modoDebug==1) {
-  $q->debugDumpParams();
-  echo "<br><br>Afe: ".$q->rowCount();
-  echo "<br><br>";
-}
-
-$sql = "SELECT lcr.id, lcr.id_lista_corte, lcr.id_proyecto, lcr.fecha, lcr.id_usuario, lcr.id_estado_lista_corte, lcr.anulado, lcr.nombre, lcr.numero, lcr.adjunto, lcr.id_cuenta_realizo, lcr.id_cuenta_reviso, lcr.id_cuenta_valido FROM listas_corte_revisiones lcr WHERE lcr.id_lista_corte = ? AND lcr.nro_revision = ?";
-$q = $pdo->prepare($sql);
-$q->execute([$id_lista_corte_clonar,$ultimo_nro_revision_clonar]);
+$q->execute([$id_lista_corte_clonar]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 
 if ($modoDebug==1) {
@@ -54,10 +44,12 @@ if ($modoDebug==1) {
   echo "<br><br>";
 }
 
-$sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion) VALUES (?,?,?,?,1,0,0,?,?,?)";
+
+$sql = "SELECT MAX(numero) AS max_num FROM listas_corte WHERE id_proyecto = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$id_lista_corte,$data['id_proyecto'],$data['fecha'],$data['id_usuario'],$data['nombre'],$data['numero'],"Emisión original"]);
-$id_lista_corte_revision = $pdo->lastInsertId();
+$q->execute([$data['id_proyecto']]);
+$cant = $q->fetch(PDO::FETCH_ASSOC);
+$numero_lc = ((int)$cant['max_num']) + 1;
 
 if ($modoDebug==1) {
   $q->debugDumpParams();
@@ -65,45 +57,37 @@ if ($modoDebug==1) {
   echo "<br><br>";
 }
 
-$sql = "SELECT lcc.id,lcc.id_lista_corte,lcc.nombre,lcc.cantidad,lcc.peso,lcc.id_estado_lista_corte_conjuntos FROM listas_corte_conjuntos lcc WHERE lcc.id_lista_corte = ".$data['id'];
-foreach ($pdo->query($sql) as $row) {
-  $sql = "INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,1)";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lista_corte_revision,$row['nombre'],$row['cantidad'],$row['peso']]);
-  $id_lista_corte_conjunto = $pdo->lastInsertId();
+$sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+$q = $pdo->prepare($sql);
+$q->execute([
+  $data['id_proyecto'],
+  $data['id_tarea'],
+  $data['fecha'],
+  $data['id_usuario'],
+  1,
+  0,
+  0,
+  $data['nombre'],
+  $numero_lc,
+  $data['adjunto'],
+  'Emisión original',
+  $data['id_cuenta_realizo'],
+  $data['id_cuenta_reviso'],
+  $data['id_cuenta_valido']
+]);
+$id_lista_corte = $pdo->lastInsertId();
 
-  if ($modoDebug==1) {
-    $q->debugDumpParams();
-    echo "<br><br>Afe: ".$q->rowCount();
-    echo "<br><br>";
-  }
+// Duplicar conjuntos, posiciones y procesos
+duplicarListaCorteRevision($pdo, (int)$id_lista_corte_clonar, $id_lista_corte);
 
-  $sql = "SELECT lcp.id,lcp.id_lista_corte_conjunto,lcp.id_material,lcp.posicion,lcp.cantidad,lcp.largo,lcp.ancho,lcp.marca,lcp.peso,lcp.finalizado,lcp.id_colada,lcp.diametro,lcp.calidad FROM lista_corte_posiciones lcp WHERE lcp.id_lista_corte_conjunto = ".$row["id"];
-  foreach ($pdo->query($sql) as $row2) {
-    $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto,id_material,posicion,cantidad,largo,ancho,marca,peso,finalizado,id_colada,diametro,calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_lista_corte_conjunto,$row2["id_material"],$row2["posicion"],$row2["cantidad"],$row2["largo"],$row2["ancho"],$row2["marca"],$row2["peso"],$row2["finalizado"],$row2["id_colada"],$row2["diametro"],$row2["calidad"]]);
-    $id_lista_corte_posicion = $pdo->lastInsertId();
+$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Se ha clonado una Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte')";
+$q = $pdo->prepare($sql);
+$q->execute([$_SESSION['user']['id']]);
 
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
-
-    $sql = "SELECT lcp.id_lista_corte_posicion,lcp.id_tipo_proceso,lcp.observaciones,lcp.id_estado_lista_corte_proceso FROM lista_corte_procesos lcp WHERE lcp.id_lista_corte_posicion = ".$row2["id"];
-    foreach ($pdo->query($sql) as $row3) {
-      $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,1)";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte_posicion,$row3['id_tipo_proceso'],$row3['observaciones']]);
-
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
-    }
-  }
+if ($modoDebug==1) {
+  $q->debugDumpParams();
+  echo "<br><br>Afe: ".$q->rowCount();
+  echo "<br><br>";
 }
 
 if ($modoDebug==1) {
@@ -111,5 +95,6 @@ if ($modoDebug==1) {
   die();
 } else {
   Database::disconnect();
-  header("Location: modificarListaCorte.php?id_lista_corte=".$id_lista_corte."&revision=0");
-}?>
+  header("Location: nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte);
+}
+?>
