@@ -34,4 +34,4 @@ $q->execute(array($_SESSION['user']['id']));
 
 Database::disconnect();
     
-header("Location: nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$data["id_lista_corte"]);
+header("Location: nuevaListaCorteConjuntos.php?id_lista_corte=".$data["id_lista_corte"]);
