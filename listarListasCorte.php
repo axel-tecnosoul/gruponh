@@ -308,6 +308,24 @@ include 'database.php';?>
           </div>
           <div class="modal-body">
             <p id="textoClonar">¿Está seguro?</p>
+            <select id="select_tarea_clonar" class="js-example-basic-single col-sm-12" style="width:100%; margin-top:10px;">
+              <option value="">Seleccione una tarea...</option>
+              <?php
+                $pdo = Database::connect();
+                $sqlT = "SELECT t.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre, tt.tipo, t.observaciones
+                          FROM tareas t
+                          INNER JOIN proyectos p ON p.id = t.id_proyecto
+                          INNER JOIN sitios s ON s.id = p.id_sitio
+                          INNER JOIN tipos_tarea tt ON tt.id = t.id_tipo_tarea
+                          WHERE t.anulado = 0 AND p.anulado = 0
+                          ORDER BY s.nro_sitio, s.nro_subsitio, p.nro, t.id";
+                foreach ($pdo->query($sqlT) as $filaT) {
+                  $desc = $filaT['nro_sitio'].'-'.$filaT['nro_subsitio'].'-'.$filaT['nro'].': '.$filaT['nombre'].' / '.$filaT['tipo'].' - '.$filaT['observaciones'];
+                  echo "<option value='{$filaT['id']}'>".$desc."</option>";
+                }
+                Database::disconnect();
+              ?>
+            </select>
           </div>
           <div class="modal-footer">
             <a id="btnConfirmarClonar" class="btn btn-primary" href="#">Confirmar</a>
@@ -518,7 +536,15 @@ include 'database.php';?>
 
           const mensaje = `¿Desea clonar la Lista de Corte #${numero} Rev. ${revision} del proyecto ${proyecto} (${sitio}/${subsitio}/${proy})?`;
           $("#textoClonar").text(mensaje);
-          $("#btnConfirmarClonar").attr("href",`clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}`);
+          $("#btnConfirmarClonar").off('click').on('click', function(ev){
+            ev.preventDefault();
+            const idTarea = $('#select_tarea_clonar').val();
+            if(!idTarea){
+              alert('Debe seleccionar una tarea');
+              return;
+            }
+            window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}`;
+          });
           $("#modalClonar").modal("show");
         })
         $("#link_nuevo_conjunto").on("click",function(){
