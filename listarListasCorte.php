@@ -166,7 +166,7 @@ include 'database.php';?>
                           }
                           //echo $sql;
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado_lista_corte"]?>" data-id-lista-corte="<?=$row["id_lista_corte"]?>">
+                            <tr data-estado-id="<?=$row["id_estado_lista_corte"]?>" data-id-lista-corte="<?=$row["id_lista_corte"]?>" data-numero="<?=$row["numero"]?>" data-revision="<?=$row["nro_revision"]?>" data-proyecto="<?=$row["nombre_proyecto"]?>" data-sitio="<?=$row["nro_sitio"]?>" data-subsitio="<?=$row["nro_subsitio"]?>" data-proy="<?=$row["nro_proyecto"]?>">
                               <td class="d-none"><?=$row["id_lista_corte_revision"]?></td>
                               <td class="d-none"><?=$row["id_lista_corte"]?></td>
                               <td><?=$row["nro_sitio"]?></td>
@@ -296,8 +296,28 @@ include 'database.php';?>
         </div>
       </div>
     </div>
-	
-	  <div style="width: 0;height: 0;display: none;">
+
+    <div class="modal fade" id="modalClonar" tabindex="-1" role="dialog" aria-labelledby="modalClonarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalClonarLabel">Confirmación</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p id="textoClonar">¿Está seguro?</p>
+          </div>
+          <div class="modal-footer">
+            <a id="btnConfirmarClonar" class="btn btn-primary" href="#">Confirmar</a>
+            <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+          <div style="width: 0;height: 0;display: none;">
       <select id="select_estado_base"><?php
         $pdo = Database::connect();
         $sql = "SELECT id,estado FROM estados_lista_corte";
@@ -480,11 +500,26 @@ include 'database.php';?>
             alert("Por favor seleccione una lista de corte para modificar/revisar")
           }
         })
-        $("#link_clonar_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una lista de corte para clonar")
+        $("#link_clonar_lc").on("click",function(e){
+          e.preventDefault();
+          const filaActiva = $("#dataTables-example666 tbody tr.selected");
+          if (filaActiva.length === 0) {
+            alert("Por favor seleccione una lista de corte para clonar");
+            return;
           }
+
+          const id = filaActiva.data("id-lista-corte");
+          const numero = filaActiva.data("numero");
+          const revision = filaActiva.data("revision");
+          const proyecto = filaActiva.data("proyecto");
+          const sitio = filaActiva.data("sitio");
+          const subsitio = filaActiva.data("subsitio");
+          const proy = filaActiva.data("proy");
+
+          const mensaje = `¿Desea clonar la Lista de Corte #${numero} Rev. ${revision} del proyecto ${proyecto} (${sitio}/${subsitio}/${proy})?`;
+          $("#textoClonar").text(mensaje);
+          $("#btnConfirmarClonar").attr("href",`clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}`);
+          $("#modalClonar").modal("show");
         })
         $("#link_nuevo_conjunto").on("click",function(){
           let l=document.location.href;
