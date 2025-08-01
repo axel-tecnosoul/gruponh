@@ -32,6 +32,10 @@ if ($modoDebug==1) {
 
 
 $id_lista_corte_clonar = $_GET['id_lista_corte'];
+$id_tarea_nueva = null;
+if (!empty($_GET['id_tarea'])) {
+  $id_tarea_nueva = (int)$_GET['id_tarea'];
+}
 
 $sql = "SELECT id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, anulado, nombre, descripcion, adjunto, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ?";
 $q = $pdo->prepare($sql);
@@ -45,9 +49,20 @@ if ($modoDebug==1) {
 }
 
 
+$id_proyecto_destino = $data['id_proyecto'];
+if ($id_tarea_nueva) {
+  $sql = "SELECT id_proyecto FROM tareas WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_tarea_nueva]);
+  $tarea = $q->fetch(PDO::FETCH_ASSOC);
+  if (!empty($tarea['id_proyecto'])) {
+    $id_proyecto_destino = (int)$tarea['id_proyecto'];
+  }
+}
+
 $sql = "SELECT MAX(numero) AS max_num FROM listas_corte WHERE id_proyecto = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$data['id_proyecto']]);
+$q->execute([$id_proyecto_destino]);
 $cant = $q->fetch(PDO::FETCH_ASSOC);
 $numero_lc = ((int)$cant['max_num']) + 1;
 
@@ -60,8 +75,8 @@ if ($modoDebug==1) {
 $sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 $q = $pdo->prepare($sql);
 $q->execute([
-  $data['id_proyecto'],
-  $data['id_tarea'],
+  $id_proyecto_destino,
+  $id_tarea_nueva ? $id_tarea_nueva : $data['id_tarea'],
   $data['fecha'],
   $data['id_usuario'],
   1,
