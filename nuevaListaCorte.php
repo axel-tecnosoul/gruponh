@@ -12,6 +12,7 @@ $modo="create";
 if(isset($_GET["modo"])){
   $modo = $_GET["modo"];
 }
+$advertencia="";
 if (!empty($_POST)) {
    //var_dump($_POST);
    //die;
@@ -19,15 +20,37 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  if($modo == "update" && isset($_GET["id_lista_corte"])) {
+  $fecha      = $_POST['fecha'];
+  $id_tarea   = $_POST['id_tarea'] ?? '';
+  $nombre     = $_POST['nombre'];
+  $adjunto    = $_POST['adjunto'];
+
+  $id_proyecto = $_POST['id_proyecto'];
+
+  // Verifico existencia de cómputos asociados al proyecto
+  $sql = "SELECT COUNT(*) FROM computos co INNER JOIN tareas t ON t.id = co.id_tarea WHERE t.id_proyecto = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_proyecto]);
+  $tieneComputos = $q->fetchColumn();
+
+  // Verifico existencia de pedidos asociados al proyecto
+  $sql = "SELECT COUNT(*) FROM pedidos WHERE id_proyecto = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_proyecto]);
+  $tienePedidos = $q->fetchColumn();
+
+  if($tieneComputos==0 || $tienePedidos==0){
+    $advertencia='El proyecto seleccionado debe contar con cómputos y pedidos de materiales antes de continuar.';
+  }
+
+  if(empty($advertencia) && $modo == "update" && isset($_GET["id_lista_corte"])) {
     $id_lista_corte = $_GET["id_lista_corte"];
     $sql = "UPDATE listas_corte SET fecha=?, id_tarea=?, id_proyecto=?, nombre=?, adjunto=? WHERE id=?";
     $params = [$_POST['fecha'], $_POST['id_tarea'], $_POST['id_proyecto'], $_POST['nombre'], $_POST['adjunto'], $id_lista_corte];
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    Database::disconnect();
     $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte;
-  }else{
+  }elseif(empty($advertencia)){
   
     $id_estado_lista_corte=1;
     $nro_revision=0;
@@ -172,9 +195,13 @@ if (!empty($_POST)) {
     $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
   }
 
+  if(empty($advertencia)){
+    Database::disconnect();
+    //header("Location: listarListasCorte.php");
+    header("Location: $redirect");
+    exit();
+  }
   Database::disconnect();
-  //header("Location: listarListasCorte.php");
-  header("Location: $redirect");
 }else {
   $fecha=$hoy;
   $id_tarea="";
@@ -262,6 +289,9 @@ if (!empty($_POST)) {
                   </div>
 				          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
                     <div class="card-body">
+                      <?php if(!empty($advertencia)): ?>
+                      <div class="alert alert-warning" role="alert"><?=$advertencia?></div>
+                      <?php endif; ?>
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
