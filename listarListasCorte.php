@@ -429,9 +429,10 @@ include 'database.php';?>
     <script>
       let accionPendiente = null;
       let id_lista_corte = null;
-      var selectTarea = $('#select_tarea_clonar');
+      var selectTarea;
       $(document).ready(function() {
 
+        selectTarea = $('#select_tarea_clonar');
         selectTarea.select2({
           dropdownParent: $('#modalClonar') // ¡esto es clave!
         });
@@ -494,35 +495,13 @@ include 'database.php';?>
           });
         });
 
-        function validarAccionListaCorte(estadosPermitidos, nombreAccion) {
-          const estado = getEstadoListaCorteSeleccionada();
-          if (estado === null) {
-            alert("Por favor seleccione una lista de corte para " + nombreAccion);
-            return false;
-          }
-          if (estadosPermitidos.length && !estadosPermitidos.includes(estado.id)) {
-            alert("La acción no puede ejecutarse para la lista de corte en el estado actual \"" + estado.nombre + "\"");
-            return false;
-          }
-          return true;
-        }
-
-        function bindAccionListaCorte(selector, accion, nombreAccion, estadosPermitidos = [1,2,3,4,5,6,7]) {
-          $(selector).on("click", function(e){
-            e.preventDefault();
-            if(validarAccionListaCorte(estadosPermitidos, nombreAccion)){
-              accion.call(this, e);
-            }
-          });
-        }
-
-        bindAccionListaCorte("#link_ot_lc", function(){ window.location.href = this.href; }, "generar una Orden de trabajo", [1,2,3,4,5,6,7]);
-        bindAccionListaCorte("#link_ver_lc", function(){ window.location.href = this.href; }, "ver detalle", [1,2,3,4,5,6,7]);
-        bindAccionListaCorte("#link_imprimir_lc", function(){ window.open(this.href, '_blank'); }, "imprimir", [1,2,3,4,5,6,7]);
-        bindAccionListaCorte("#link_modificar_lc", function(){ window.location.href = this.href; }, "modificar/revisar", [1,2,3,4,5,6,7]);
-        bindAccionListaCorte("#link_nuevo_conjunto", function(){ window.location.href = this.href; }, "crear un conjunto", [1,2,3,4,5,6,7]);
+        bindAccionListaCorte("#link_ot_lc", generarOrdenTrabajoLC, "generar una Orden de trabajo", [1,2,3,4,5]);
+        bindAccionListaCorte("#link_ver_lc", verListaCorte, "ver detalle");
+        bindAccionListaCorte("#link_imprimir_lc", imprimirListaCorte, "imprimir");
+        bindAccionListaCorte("#link_modificar_lc", modificarListaCorte, "modificar/revisar");
+        bindAccionListaCorte("#link_nuevo_conjunto", nuevoConjuntoListaCorte, "crear un conjunto");
         bindAccionListaCorte("#link_eliminar_lc", cancelarLC, "cancelar", [1,2]);
-        bindAccionListaCorte("#link_clonar_lc", clonarLC, "clonar", [1,2,3,4,5,6,7]);
+        bindAccionListaCorte("#link_clonar_lc", clonarLC, "clonar");
 
         // Manejo de clic en botones de acción
         $(document).on("click", ".accion-lista-corte", function (e) {
@@ -702,6 +681,41 @@ include 'database.php';?>
       
       });
 
+      function validarAccionListaCorte(estadosPermitidos, nombreAccion) {
+        const estado = getEstadoListaCorteSeleccionada();
+        if (estado === null) {
+          alert("Por favor seleccione una lista de corte para " + nombreAccion);
+          return false;
+        }
+        if (estadosPermitidos.length && !estadosPermitidos.includes(estado.id)) {
+          alert("La acción no puede ejecutarse para la lista de corte en el estado actual \"" + estado.nombre + "\"");
+          return false;
+        }
+        return true;
+      }
+
+      function bindAccionListaCorte(selector, accion, nombreAccion, estadosPermitidos = [1,2,3,4,5,6]) {
+        $(selector).on("click", function(e){
+          e.preventDefault();
+          if(validarAccionListaCorte(estadosPermitidos, nombreAccion)){
+            accion.call(this, e);
+          }
+        });
+      }
+
+      function generarOrdenTrabajoLC(){ window.location.href = this.href; }
+      function verListaCorte(){ window.location.href = this.href; }
+      function imprimirListaCorte(){ window.open(this.href, '_blank'); }
+      function modificarListaCorte(){ window.location.href = this.href; }
+      function nuevoConjuntoListaCorte(){ window.location.href = this.href; }
+
+      function cancelarLC(){
+        const filaActiva = $("#dataTables-example666 tbody tr.selected");
+        const idRev = filaActiva.data("id-lc-revision");
+        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+idRev);
+        $("#eliminarModal").modal("show");
+      }
+
       function clonarLC(){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
         const id = filaActiva.data("id-lista-corte");
@@ -723,13 +737,6 @@ include 'database.php';?>
           window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}`;
         });
         $("#modalClonar").modal("show");
-      }
-
-      function cancelarLC(){
-        const filaActiva = $("#dataTables-example666 tbody tr.selected");
-        const idRev = filaActiva.data("id-lc-revision");
-        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+idRev);
-        $("#eliminarModal").modal("show");
       }
 
       function getEstadoListaCorteSeleccionada() {
