@@ -19,7 +19,8 @@ if (null==$id) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "UPDATE listas_corte_revisiones SET id_estado_lista_corte = 6 WHERE id = ".$id;
+//$sql = "UPDATE listas_corte_revisiones SET id_estado_lista_corte = 6 WHERE id = ".$id;
+$sql = "UPDATE listas_corte SET id_estado_lista_corte = 6 WHERE id = ".$id;
 $q = $pdo->prepare($sql);
 $q->execute();
 

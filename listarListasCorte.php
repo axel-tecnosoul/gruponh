@@ -347,7 +347,7 @@ include 'database.php';?>
       </select>
     </div><?php
 
-    $pdo = Database::connect();
+    /*$pdo = Database::connect();
     $sql = "SELECT `id`, `id_lista_corte`, `nombre`, `cantidad`, `peso`, `id_estado_lista_corte_conjuntos` FROM `listas_corte_conjuntos` WHERE 1 "; 
     foreach ($pdo->query($sql) as $row) {
       $sql2 = "select count(*) cant from lista_corte_posiciones where id_lista_corte_conjunto = ".$row[0];
@@ -387,7 +387,7 @@ include 'database.php';?>
         </div><?php
       }
     }
-	  Database::disconnect();?>
+	  Database::disconnect();*/?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -651,15 +651,16 @@ include 'database.php';?>
             selectRow(t);
             get_detalle_lista_corte(id_lc)
             $("#link_ver_lc").attr("href","verListaCorte.php?id="+id_lc);
-            $("#link_ot_lc").attr("href","nuevaOrdenTrabajo.php?id_lista_corte="+id_lc);
 			      $("#link_imprimir_lc").attr("target","_blank");
             $("#link_imprimir_lc").attr("href","imprimirListaCorte.php?id="+id_lc);
             $("#link_nuevo_conjunto").attr("href","nuevoConjuntoListaCorte.php?id="+id_lc);
             if (estado != "Cancelada") {
               //$("#link_modificar_lc").attr("href","modificarListaCorte.php?id_lista_corte_revision="+id_lc);
               $("#link_modificar_lc").attr("href","nuevaListaCorte.php?modo=update&id_lista_corte="+id_lc);
+              $("#link_ot_lc").attr("href","nuevaOrdenTrabajo.php?id_lista_corte="+id_lc);
             } else {
               $("#link_modificar_lc").attr("href","#");
+              $("#link_ot_lc").attr("href","#");
             }
                     
             $("#link_clonar_lc").attr("href","clonarListaCorte.php?id_lista_corte="+id_lc_revision+"&revision="+nro_revision);
@@ -741,12 +742,12 @@ include 'database.php';?>
             alert("Por favor seleccione un conjunto para modificar")
           }
         })
-        $("#link_eliminar_conjunto").on("click",function(){
+        /*$("#link_eliminar_conjunto").on("click",function(){
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
             alert("Por favor seleccione un conjunto para eliminar")
           }
-        })
+        })*/
         $("#link_nueva_posicion").on("click",function(){
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
@@ -830,7 +831,7 @@ include 'database.php';?>
                 deselectRow(t);
                 $("#link_ver_conjunto_lc").attr("href","#");
                 $("#link_modificar_conjunto").attr("href","#");
-                $("#link_eliminar_conjunto").attr("data-target","#");
+                //$("#link_eliminar_conjunto").attr("data-target","#");
                 $("#link_nueva_posicion").attr("href","#");
               }else{
                 table.rows().nodes().each( function (rowNode, index) {
@@ -840,8 +841,8 @@ include 'database.php';?>
                 $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_con);
                 $("#link_modificar_conjunto").attr("href","modificarConjuntoListaCorte.php?id="+id_con);
                 $("#link_nueva_posicion").attr("href","nuevaPosicionListaCorte.php?id="+id_con);
-                $("#link_eliminar_conjunto").attr("data-toggle","modal");
-                $("#link_eliminar_conjunto").attr("data-target","#eliminarModalConjunto_"+id_con);
+                /*$("#link_eliminar_conjunto").attr("data-toggle","modal");
+                $("#link_eliminar_conjunto").attr("data-target","#eliminarModalConjunto_"+id_con);*/
               }
             });
           }

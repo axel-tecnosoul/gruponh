@@ -24,10 +24,9 @@ if (!empty($_POST)) {
   $q->execute([null,$_POST["id_lista_corte"],$_POST['fecha'],$_SESSION["user"]["id"],$id_estado_orden_trabajo,$nro_revision,$anulado,$_POST['titulo'],$numero,$descripcion,$_POST['notas']]);
   $id_orden_trabajo_revision = $pdo->lastInsertId();
 
-  $sql = "update ordenes_trabajo set id_orden_trabajo=? where id =?";
+  $sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
   $q = $pdo->prepare($sql);
   $q->execute([$id_orden_trabajo_revision,$id_orden_trabajo_revision]);
-
 
   if ($id_orden_trabajo_revision>0) {
     $numero="LC".$_POST["id_lista_corte"]."-OT".$id_orden_trabajo_revision;
@@ -63,7 +62,8 @@ if(isset($_GET['id_lista_corte'])){
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte_revisiones WHERE id = ? ";
+  //$sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte_revisiones WHERE id = ? ";
+  $sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$_GET['id_lista_corte']]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -117,9 +117,13 @@ Database::disconnect();?>
                           <div class="form-group row">
                             <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$_GET['id_lista_corte']?>">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
-                            <div class="col-sm-3"><input name="fecha" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control"></div>
+                            <div class="col-sm-3">
+                              <input name="fecha" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
+                            </div>
                             <label class="col-sm-3 col-form-label">Titulo(*)</label>
-                            <div class="col-sm-3"><input name="titulo" type="text" class="form-control"></div>
+                            <div class="col-sm-3">
+                              <input name="titulo" type="text" class="form-control">
+                            </div>
                           </div>
                           <div class="form-group row">
                             <!-- <label class="col-sm-3 col-form-label">Descripcion del cambio(*)</label>
@@ -161,9 +165,8 @@ Database::disconnect();?>
                                 <th>Cantidad Pedida</th>
                                 <th>Material</th>
                                 <th>Procesos</th>
-								<th>Cantidad Bajada</th>
-								<th>Saldo</th>
-                                
+                                <th>Cantidad Bajada</th>
+                                <th>Saldo</th>
                               </tr>
                             </thead>
                             <tfoot>
@@ -175,9 +178,8 @@ Database::disconnect();?>
                                 <th>Cantidad Pedida</th>
                                 <th>Material</th>
                                 <th>Procesos</th>
-								<th>Cantidad Bajada</th>
-								<th>Saldo</th>
-                                
+                                <th>Cantidad Bajada</th>
+                                <th>Saldo</th>
                               </tr>
                             </tfoot>
                             <tbody><?php
@@ -194,8 +196,8 @@ Database::disconnect();?>
                                 echo '<td>'. $row["cant_pos"] . '</td>';
                                 echo '<td>'. $row["concepto"] . '</td>';
                                 echo '<td>'. $row["procesos"] . '</td>';
-								echo '<td>'. 0 . '</td>';
-								echo '<td>'. $row["cant_pos"] . '</td>';
+                                echo '<td>'. 0 . '</td>';
+                                echo '<td>'. $row["cant_pos"] . '</td>';
                                 
                                 echo '</tr>';
                               }
@@ -261,6 +263,7 @@ Database::disconnect();?>
           </div>
           <!-- Container-fluid Ends-->
         </div>
+
         <!-- Modal para eliminas conjuntos -->
         <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
@@ -278,7 +281,7 @@ Database::disconnect();?>
           </div>
         </div>
 
-        <!-- Modal para eliminas posiciones -->
+        <!-- Modal para eliminar posiciones -->
         <div class="modal fade" id="eliminarPosicion" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -294,6 +297,7 @@ Database::disconnect();?>
             </div>
           </div>
         </div>
+
         <!-- footer start-->
         <?php include("footer.php"); ?>
       </div>
@@ -419,7 +423,7 @@ Database::disconnect();?>
           }
         });
 		
-		// Setup - add a text input to each footer cell
+		    // Setup - add a text input to each footer cell
         tablaOT.find('tfoot th').each( function () {
           var title = $(this).text();
           $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
@@ -468,10 +472,6 @@ Database::disconnect();?>
           }
         });
 
-        
-
-        
- 
         // Apply the search
         tablaOT.DataTable().columns().every( function () {
           var that = this;
@@ -498,7 +498,7 @@ Database::disconnect();?>
     
       });
 	  
-	  function order(a, b) {
+	    function order(a, b) {
         return b.age - a.age;
       }
 
