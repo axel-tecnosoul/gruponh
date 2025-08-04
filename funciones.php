@@ -638,7 +638,7 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
     $q->execute($params);
     $idConjNuevo = (int)$pdo->lastInsertId();
 
-    $sql = 'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?';
+    $sql = 'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?';
     $stmtPos = $pdo->prepare($sql);
     $params = [$conj['id']];
     if ($modoDebug==1) {
@@ -649,7 +649,7 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
     }
     $stmtPos->execute($params);
     while ($pos = $stmtPos->fetch(PDO::FETCH_ASSOC)) {
-      $sql = 'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)';
+      $sql = 'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)';
       $q = $pdo->prepare($sql);
       $params = [
         $idConjNuevo,
@@ -660,6 +660,7 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
         $pos['ancho'],
         $pos['marca'],
         $pos['peso'],
+        $pos['peso_calculado_posicion'],
         $pos['finalizado'],
         $pos['id_colada'],
         $pos['diametro'],

@@ -21,7 +21,7 @@ if (null==$id) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$modoDebug=1;
+$modoDebug=0;
 
 if ($modoDebug==1) {
   $pdo->beginTransaction();
@@ -123,6 +123,8 @@ if ($modoDebug==1) {
   die();
 } else {
   Database::disconnect();
-  header("Location: nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte);
+  //header("Location: nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte);
+  header("Location: nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte);
+  exit();
 }
 ?>

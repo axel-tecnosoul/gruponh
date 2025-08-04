@@ -308,7 +308,7 @@ include 'database.php';?>
           </div>
           <div class="modal-body">
             <p id="textoClonar">¿Está seguro?</p>
-            <select id="select_tarea_clonar" class="js-example-basic-single col-sm-12" style="width:100%; margin-top:10px;">
+            <select id="select_tarea_clonar" class="col-sm-12" style="width:100%; margin-top:10px;">
               <option value="">Seleccione una tarea...</option>
               <?php
                 $pdo = Database::connect();
@@ -428,7 +428,12 @@ include 'database.php';?>
     <script>
       let accionPendiente = null;
       let id_lista_corte = null;
+      var selectTarea = $('#select_tarea_clonar');
       $(document).ready(function() {
+
+        selectTarea.select2({
+          dropdownParent: $('#modalClonar') // ¡esto es clave!
+        });
 
         // Setup - add a text input to each footer cell
         $('#dataTables-example666 tfoot th').each( function () {
@@ -538,7 +543,7 @@ include 'database.php';?>
           $("#textoClonar").text(mensaje);
           $("#btnConfirmarClonar").off('click').on('click', function(ev){
             ev.preventDefault();
-            const idTarea = $('#select_tarea_clonar').val();
+            const idTarea = selectTarea.val();
             if(!idTarea){
               alert('Debe seleccionar una tarea');
               return;
