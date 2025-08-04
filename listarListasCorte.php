@@ -336,6 +336,32 @@ include 'database.php';?>
       </div>
     </div>
 
+    <div class="modal fade" id="modalRevision" tabindex="-1" role="dialog" aria-labelledby="modalRevisionLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <form id="formRevision" method="post">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalRevisionLabel">Nueva Revisión</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>¿Está seguro que desea generar una nueva revisión?</p>
+              <div class="form-group">
+                <label for="motivoRevision">Motivo de la revisión:</label>
+                <textarea id="motivoRevision" name="comentarios" class="form-control" required></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">Confirmar</button>
+              <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
           <div style="width: 0;height: 0;display: none;">
       <select id="select_estado_base"><?php
         $pdo = Database::connect();
@@ -493,6 +519,26 @@ include 'database.php';?>
               that.search( this.value ).draw();
             }
           });
+        });
+
+        let formRevision = $("#formRevision");
+        let hrefToRedirect = null;
+
+        formRevision.on("submit", function(e){
+          e.preventDefault();
+          const motivo = $("#motivoRevision").val().trim();
+          if(motivo === ""){
+            alert("Por favor complete el motivo de la revisión.");
+            return;
+          }
+          const url = new URL(hrefToRedirect, window.location.origin);
+          const id = url.searchParams.get("id_lista_corte");
+          const fila = $("#dataTables-example666 tbody tr.selected");
+          const revision = fila.data("revision");
+          formRevision.find("input[name='nro_revision']").remove();
+          formRevision.append(`<input type="hidden" name="nro_revision" value="${revision}">`);
+          formRevision.attr("action", `nuevaRevisionListaCorte.php?id=${id}`);
+          this.submit();
         });
 
         bindAccionListaCorte("#link_ot_lc", generarOrdenTrabajoLC, "generar una Orden de trabajo", [3,4]);
@@ -673,7 +719,16 @@ include 'database.php';?>
 
       function generarOrdenTrabajoLC(){ window.location.href = this.href; }
       function imprimirListaCorte(){ window.open(this.href, '_blank'); }
-      function modificarListaCorte(){ window.location.href = this.href; }
+      function modificarListaCorte(e){
+        const estado = getEstadoListaCorteSeleccionada();
+        if(estado && (estado.id === 3 || estado.id === 4)){
+          hrefToRedirect = this.href;
+          $("#motivoRevision").val('');
+          $("#modalRevision").modal("show");
+        }else{
+          window.location.href = this.href;
+        }
+      }
 
       function cancelarLC(){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
