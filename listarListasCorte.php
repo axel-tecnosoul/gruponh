@@ -521,36 +521,8 @@ include 'database.php';?>
         bindAccionListaCorte("#link_imprimir_lc", function(){ window.open(this.href, '_blank'); }, "imprimir", [1,2,3,4,5,6,7]);
         bindAccionListaCorte("#link_modificar_lc", function(){ window.location.href = this.href; }, "modificar/revisar", [1,2,3,4,5,6,7]);
         bindAccionListaCorte("#link_nuevo_conjunto", function(){ window.location.href = this.href; }, "crear un conjunto", [1,2,3,4,5,6,7]);
-
-        bindAccionListaCorte("#link_eliminar_lc", function(){
-          const filaActiva = $("#dataTables-example666 tbody tr.selected");
-          const idRev = filaActiva.data("id-lc-revision");
-          $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+idRev);
-          $("#eliminarModal").modal("show");
-        }, "cancelar", [1,2]);
-
-        bindAccionListaCorte("#link_clonar_lc", function(){
-          const filaActiva = $("#dataTables-example666 tbody tr.selected");
-          const id = filaActiva.data("id-lista-corte");
-          const numero = filaActiva.data("numero");
-          const revision = filaActiva.data("revision");
-          const proyecto = filaActiva.data("proyecto");
-          const sitio = filaActiva.data("sitio");
-          const subsitio = filaActiva.data("subsitio");
-          const proy = filaActiva.data("proy");
-          const mensaje = `¿Desea clonar la Lista de Corte #${numero} Rev. ${revision} del proyecto ${proyecto} (${sitio}/${subsitio}/${proy})?`;
-          $("#textoClonar").text(mensaje);
-          $("#btnConfirmarClonar").off('click').on('click', function(ev){
-            ev.preventDefault();
-            const idTarea = selectTarea.val();
-            if(!idTarea){
-              alert('Debe seleccionar una tarea');
-              return;
-            }
-            window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}`;
-          });
-          $("#modalClonar").modal("show");
-        }, "clonar", [1,2,3,4,5,6,7]);
+        bindAccionListaCorte("#link_eliminar_lc", cancelarLC, "cancelar", [1,2]);
+        bindAccionListaCorte("#link_clonar_lc", clonarLC, "clonar", [1,2,3,4,5,6,7]);
 
         // Manejo de clic en botones de acción
         $(document).on("click", ".accion-lista-corte", function (e) {
@@ -689,7 +661,6 @@ include 'database.php';?>
                 }else{
                   t.css({padding: old_padding});
                   t.html(textoSeleccionado)
-					
 				        }
               }
             });
@@ -730,6 +701,36 @@ include 'database.php';?>
         })
       
       });
+
+      function clonarLC(){
+        const filaActiva = $("#dataTables-example666 tbody tr.selected");
+        const id = filaActiva.data("id-lista-corte");
+        const numero = filaActiva.data("numero");
+        const revision = filaActiva.data("revision");
+        const proyecto = filaActiva.data("proyecto");
+        const sitio = filaActiva.data("sitio");
+        const subsitio = filaActiva.data("subsitio");
+        const proy = filaActiva.data("proy");
+        const mensaje = `¿Desea clonar la Lista de Corte #${numero} Rev. ${revision} del proyecto ${proyecto} (${sitio}/${subsitio}/${proy})?`;
+        $("#textoClonar").text(mensaje);
+        $("#btnConfirmarClonar").off('click').on('click', function(ev){
+          ev.preventDefault();
+          const idTarea = selectTarea.val();
+          if(!idTarea){
+            alert('Debe seleccionar una tarea');
+            return;
+          }
+          window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}`;
+        });
+        $("#modalClonar").modal("show");
+      }
+
+      function cancelarLC(){
+        const filaActiva = $("#dataTables-example666 tbody tr.selected");
+        const idRev = filaActiva.data("id-lc-revision");
+        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+idRev);
+        $("#eliminarModal").modal("show");
+      }
 
       function getEstadoListaCorteSeleccionada() {
         let fila_seleccionada=$("#dataTables-example666 tbody tr.selected");
@@ -829,7 +830,8 @@ include 'database.php';?>
 	  
       function jsExportar() {
         document.location.href="exportListasCorte.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value;
-      }	
+      }
+
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
 	  <script src="assets/js/select2/select2.full.min.js"></script>
