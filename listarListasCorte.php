@@ -110,14 +110,14 @@ include 'database.php';?>
                         &nbsp;&nbsp;<?php
                       }
                       if (!empty(tienePermiso(315))) { ?>
-                        <a href="#" id="link_clonar_lc"><img src="img/icon_ejecutar.png" width="24" height="25" border="0" alt="Clonar" title="Clonar"></a>&nbsp;&nbsp;<?php
+                        <a href="#" id="link_clonar_lc"><img src="img/icon_ejecutar.png" width="24" height="25" border="0" alt="Clonar" title="Clonar"></a>
+                        &nbsp;&nbsp;<?php
                       }
                       if (!empty(tienePermiso(293))) {?>
-                        <a href="#" class="accion-lista-corte" data-accion="aprobar" title="Aprobar LC">
-                          <img src="img/estrella.png" width="24" height="25">
-                        </a>&nbsp;&nbsp;<?php
+                        <a href="#" class="accion-lista-corte" data-accion="aprobar" title="Aprobar LC"><img src="img/estrella.png" width="24" height="25"></a>
+                        &nbsp;&nbsp;<?php
                       }?>
-                      <a href="#" id="link_ot_lc" title="Nueva OT"><i style="width: 24px; height: 20px;color: midnightblue;" class='fa fa-lg fa-briefcase'></i></a>
+                      <a href="#" id="link_ot_lc" title="Nueva OT"><i style="vertical-align: middle;color: midnightblue;" class='fa fa-lg fa-briefcase'></i></a>
                     </h5>
                   </div>
                   <div class="card-body">
@@ -495,11 +495,9 @@ include 'database.php';?>
           });
         });
 
-        bindAccionListaCorte("#link_ot_lc", generarOrdenTrabajoLC, "generar una Orden de trabajo", [1,2,3,4,5]);
-        bindAccionListaCorte("#link_ver_lc", verListaCorte, "ver detalle");
+        bindAccionListaCorte("#link_ot_lc", generarOrdenTrabajoLC, "generar una Orden de trabajo", [3,4]);
         bindAccionListaCorte("#link_imprimir_lc", imprimirListaCorte, "imprimir");
-        bindAccionListaCorte("#link_modificar_lc", modificarListaCorte, "modificar/revisar");
-        bindAccionListaCorte("#link_nuevo_conjunto", nuevoConjuntoListaCorte, "crear un conjunto");
+        bindAccionListaCorte("#link_modificar_lc", modificarListaCorte, "modificar/revisar", [1,2,3,4]);
         bindAccionListaCorte("#link_eliminar_lc", cancelarLC, "cancelar", [1,2]);
         bindAccionListaCorte("#link_clonar_lc", clonarLC, "clonar");
 
@@ -578,11 +576,9 @@ include 'database.php';?>
           if(t.hasClass('selected')){
             deselectRow(t);
             get_detalle_lista_corte(0)
-            $("#link_ver_lc").attr("href","#");
             $("#link_ot_lc").attr("href","#");
             $("#link_imprimir_lc").attr("href","#");
             $("#link_modificar_lc").attr("href","#");
-            $("#link_nuevo_conjunto").attr("href","#");
           }else{
             table.rows().nodes().each( function (rowNode, index) {
               $(rowNode).removeClass("selected");
@@ -590,12 +586,9 @@ include 'database.php';?>
             //t.parent().find("tr").removeClass("selected");
             selectRow(t);
             get_detalle_lista_corte(id_lc)
-            $("#link_ver_lc").attr("href","verListaCorte.php?id="+id_lc);
-			      $("#link_imprimir_lc").attr("target","_blank");
-            $("#link_imprimir_lc").attr("href","imprimirListaCorte.php?id="+id_lc);
-            $("#link_nuevo_conjunto").attr("href","nuevoConjuntoListaCorte.php?id="+id_lc);
+            $("#link_imprimir_lc").attr("target","_blank").attr("href","imprimirListaCorte.php?id="+id_lc);
             if (estado != "Cancelada") {
-              //$("#link_modificar_lc").attr("href","modificarListaCorte.php?id_lista_corte_revision="+id_lc);
+              //$("#link_modificar_lc").attr("href","modificarListaCorte.php?id_lista_corte_revision="+id_lc);//old version
               $("#link_modificar_lc").attr("href","nuevaListaCorte.php?modo=update&id_lista_corte="+id_lc);
               $("#link_ot_lc").attr("href","nuevaOrdenTrabajo.php?id_lista_corte="+id_lc);
             } else {
@@ -653,31 +646,6 @@ include 'database.php';?>
           var title = $(this).text();
           $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
         });
-
-        $("#link_ver_conjunto_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione un conjunto para ver detalle")
-          }
-        })
-        $("#link_modificar_conjunto").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione un conjunto para modificar")
-          }
-        })
-        /*$("#link_eliminar_conjunto").on("click",function(){
-          let target=this.dataset.target;
-          if(target==undefined || target=="#"){
-            alert("Por favor seleccione un conjunto para eliminar")
-          }
-        })*/
-        $("#link_nueva_posicion").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione un conjunto para agregar conceptos y posiciones")
-          }
-        })
       
       });
 
@@ -704,10 +672,8 @@ include 'database.php';?>
       }
 
       function generarOrdenTrabajoLC(){ window.location.href = this.href; }
-      function verListaCorte(){ window.location.href = this.href; }
       function imprimirListaCorte(){ window.open(this.href, '_blank'); }
       function modificarListaCorte(){ window.location.href = this.href; }
-      function nuevoConjuntoListaCorte(){ window.location.href = this.href; }
 
       function cancelarLC(){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
@@ -808,29 +774,7 @@ include 'database.php';?>
                 }
               });
             });
-        
-            $(document).on("click","#dataTables-example667 tbody tr td", function(){
-              var t=$(this).parent();
-           
-              let id_con=t.find("td:first-child").html();
-              if(t.hasClass('selected')){
-                deselectRow(t);
-                $("#link_ver_conjunto_lc").attr("href","#");
-                $("#link_modificar_conjunto").attr("href","#");
-                //$("#link_eliminar_conjunto").attr("data-target","#");
-                $("#link_nueva_posicion").attr("href","#");
-              }else{
-                table.rows().nodes().each( function (rowNode, index) {
-                  $(rowNode).removeClass("selected");
-                });
-                selectRow(t);
-                $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_con);
-                $("#link_modificar_conjunto").attr("href","modificarConjuntoListaCorte.php?id="+id_con);
-                $("#link_nueva_posicion").attr("href","nuevaPosicionListaCorte.php?id="+id_con);
-                /*$("#link_eliminar_conjunto").attr("data-toggle","modal");
-                $("#link_eliminar_conjunto").attr("data-target","#eliminarModalConjunto_"+id_con);*/
-              }
-            });
+
           }
         });
       }
