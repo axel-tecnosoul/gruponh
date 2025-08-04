@@ -183,22 +183,7 @@ include 'database.php';?>
                               </td>
                               <td><?=$row["estado"]?></td>
                             </tr>
-
-                            <div class="modal fade" id="eliminarModal_<?=$row["id_lista_corte_revision"]?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                              <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                  </div>
-                                  <div class="modal-body">¿Está seguro que desea cancelar la Lista de Corte?</div>
-                                  <div class="modal-footer">
-                                    <a href="eliminarListaCorte.php?id=<?=$row["id_lista_corte_revision"]?>" class="btn btn-primary">Eliminar</a>
-                                    <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div><?php
+<?php
                           }
                           Database::disconnect();?>
                         </tbody>
@@ -274,6 +259,22 @@ include 'database.php';?>
         </div>
         <!-- footer start-->
         <?php include("footer.php"); ?>
+      </div>
+    </div>
+
+    <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="eliminarModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea cancelar la Lista de Corte?</div>
+          <div class="modal-footer">
+            <a href="#" id="btnEliminarListaCorte" class="btn btn-primary">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -638,6 +639,7 @@ include 'database.php';?>
             $("#link_ot_lc").attr("href","#");
             $("#link_imprimir_lc").attr("href","#");
             $("#link_eliminar_lc").attr("data-target","#");
+            $("#link_eliminar_lc").off("click.eliminar");
             $("#link_modificar_lc").attr("href","#");
             $("#link_clonar_lc").attr("href","#");
             $("#link_nuevo_conjunto").attr("href","#");
@@ -663,10 +665,16 @@ include 'database.php';?>
             $("#link_clonar_lc").attr("href","clonarListaCorte.php?id_lista_corte="+id_lc_revision+"&revision="+nro_revision);
               
             if ((estado == "Elaboración") || (estado == "Enviada")){
-              $("#link_eliminar_lc").attr("data-target","#eliminarModal_"+id_lc);
-              $("#link_eliminar_lc").on("click",function(){				$("#eliminarModal_"+id_lc).modal("show")             })
+              $("#link_eliminar_lc").attr("data-target","#eliminarModal");
+              $("#link_eliminar_lc").off("click.eliminar");
+              $("#link_eliminar_lc").on("click.eliminar",function(e){
+                e.preventDefault();
+                $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+id_lc_revision);
+                $("#eliminarModal").modal("show");
+              });
             } else {
               $("#link_eliminar_lc").attr("data-target","#");
+              $("#link_eliminar_lc").off("click.eliminar");
             }
           }
         });
