@@ -494,43 +494,53 @@ include 'database.php';?>
           });
         });
 
-        $("#link_ot_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una lista de corte para generar una Orden de trabajo")
+        const ESTADOS_TODOS = [1,2,3,4,5,6,7];
+
+        function validarAccionListaCorte(estadosPermitidos, nombreAccion) {
+          const idEstado = getIdEstadoListaCorteSeleccionada();
+          if (idEstado === null) {
+            alert("Por favor seleccione una lista de corte para " + nombreAccion);
+            return false;
           }
-        })
-        $("#link_ver_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una lista de corte para ver detalle")
+          if (estadosPermitidos.length && !estadosPermitidos.includes(idEstado)) {
+            alert("La acción no puede ejecutarse para la lista de corte en el estado actual (" + idEstado + ")");
+            return false;
           }
-        })
-        $("#link_imprimir_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una lista de corte para imprimir")
-          }
-        })
-        $("#link_eliminar_lc").on("click",function(){
-          let target=this.dataset.target;
-          if(target==undefined || target=="#"){
-            alert("Por favor seleccione una lista de corte para cancelar")
-          }
-        })
-        $("#link_modificar_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una lista de corte para modificar/revisar")
-          }
-        })
-        $("#link_clonar_lc").on("click",function(e){
-          e.preventDefault();
-          const filaActiva = $("#dataTables-example666 tbody tr.selected");
-          if (filaActiva.length === 0) {
-            alert("Por favor seleccione una lista de corte para clonar");
+          return true;
+        }
+
+        function bindAccionListaCorte(selector, estadosPermitidos, nombreAccion) {
+          $(selector).on("click", function(e){
+            if(!validarAccionListaCorte(estadosPermitidos, nombreAccion)){
+              e.preventDefault();
+            }
+          });
+        }
+
+        bindAccionListaCorte("#link_ot_lc", ESTADOS_TODOS, "generar una Orden de trabajo");
+        bindAccionListaCorte("#link_ver_lc", ESTADOS_TODOS, "ver detalle");
+        bindAccionListaCorte("#link_imprimir_lc", ESTADOS_TODOS, "imprimir");
+        bindAccionListaCorte("#link_modificar_lc", ESTADOS_TODOS, "modificar/revisar");
+        bindAccionListaCorte("#link_nuevo_conjunto", ESTADOS_TODOS, "crear un conjunto");
+
+        $("#link_eliminar_lc").on("click",function(e){
+          if(!validarAccionListaCorte(ESTADOS_TODOS, "cancelar")){
+            e.preventDefault();
             return;
           }
+          let target=this.dataset.target;
+          if(target==undefined || target=="#"){
+            e.preventDefault();
+            alert("La lista de corte seleccionada no puede cancelarse en su estado actual");
+          }
+        })
+
+        $("#link_clonar_lc").on("click",function(e){
+          e.preventDefault();
+          if(!validarAccionListaCorte(ESTADOS_TODOS, "clonar")){
+            return;
+          }
+          const filaActiva = $("#dataTables-example666 tbody tr.selected");
 
           const id = filaActiva.data("id-lista-corte");
           const numero = filaActiva.data("numero");
@@ -552,12 +562,6 @@ include 'database.php';?>
             window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}`;
           });
           $("#modalClonar").modal("show");
-        })
-        $("#link_nuevo_conjunto").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una lista de corte para crear un conjunto")
-          }
         })
 
         // Manejo de clic en botones de acción
@@ -758,7 +762,10 @@ include 'database.php';?>
 
       function getIdEstadoListaCorteSeleccionada() {
         let fila_seleccionada=$("#dataTables-example666 tbody tr.selected");
-        let id_estado=fila_seleccionada.data("estado-id");
+        if(fila_seleccionada.length===0){
+          return null;
+        }
+        let id_estado=parseInt(fila_seleccionada.data("estado-id"),10);
         console.log(id_estado);
         return id_estado;
       }
