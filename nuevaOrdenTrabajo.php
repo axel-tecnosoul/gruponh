@@ -158,6 +158,7 @@ Database::disconnect();?>
                           <table class="display" id="tablaLC">
                             <thead>
                               <tr>
+                                <th><input type="checkbox" id="select_all"></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cantidad</th>
@@ -171,6 +172,7 @@ Database::disconnect();?>
                             </thead>
                             <tfoot>
                               <tr>
+                                <th></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cantidad</th>
@@ -189,6 +191,7 @@ Database::disconnect();?>
                               $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, lcp.id AS id_posicion FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id WHERE lcc.id_lista_corte = ".$_GET['id_lista_corte']." GROUP BY lcp.id";
                               foreach ($pdo->query($sql) as $row) {
                                 echo '<tr id="'. $row["id_posicion"] . '">';
+                                echo '<td></td>';
                                 echo '<td class="d-none">'. $row["id_posicion"] . '</td>';
                                 echo '<td>'. $row["nombre"] . '</td>';
                                 echo '<td>'. $row["cant_conj"] . '</td>';
@@ -198,7 +201,7 @@ Database::disconnect();?>
                                 echo '<td>'. $row["procesos"] . '</td>';
                                 echo '<td>'. 0 . '</td>';
                                 echo '<td>'. $row["cant_pos"] . '</td>';
-                                
+
                                 echo '</tr>';
                               }
                               Database::disconnect();?>
@@ -372,15 +375,28 @@ Database::disconnect();?>
           }
         }
 
-        // Setup - add a text input to each footer cell
+        // Setup - add a text input to each footer cell (skip checkbox column)
         tablaLC.find('tfoot th').each( function () {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
+          if(title !== ''){
+            $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+          }
         } );
-	      tablaLC.DataTable(datatableDefault);
- 
+
+        var tablaLCDt = tablaLC.DataTable(Object.assign({}, datatableDefault, {
+          columnDefs: [
+            { orderable: false, className: 'select-checkbox', targets: 0 },
+            { targets: 1, visible: false }
+          ],
+          select: {
+            style: 'multi',
+            selector: 'td:first-child'
+          },
+          order: [[1, 'asc']]
+        }));
+
         // Apply the search
-        tablaLC.DataTable().columns().every( function () {
+        tablaLCDt.columns().every( function () {
           var that = this;
           $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
@@ -389,34 +405,38 @@ Database::disconnect();?>
           });
         } );
 
-        //tablaLC.find("tbody tr td").not(":last-child").on( 'click', function () {
-        $(document).on("click","#tablaLC tbody tr td", function(){
-          var t=$(this).parent();
-
-          let id_conjunto=t.find("td:first-child").html();
-          if(t.hasClass('selected')){
-            deselectRow(t);
-            //$("#link_agregar_posiciones").data("id","");
+        $('#select_all').on('click', function(){
+          if(this.checked){
+            tablaLCDt.rows({ search: 'applied' }).select();
           }else{
-            tablaLC.DataTable().rows().nodes().each( function (rowNode, index) {
-              $(rowNode).removeClass("selected");
-            });
-            selectRow(t);
+            tablaLCDt.rows().deselect();
           }
         });
 
+        tablaLCDt.on('select deselect', function(){
+          var all = tablaLCDt.rows({ search: 'applied' }).count();
+          var selected = tablaLCDt.rows({ selected: true, search: 'applied' }).count();
+          $('#select_all').prop('checked', selected === all && all > 0);
+        });
+
         $("#link_agregar_posiciones").on("click",function(){
-          var selectedRowsLC = tablaLC.DataTable().rows('.selected');
-          if(selectedRowsLC[0].length>0){
-            let newData=selectedRowsLC.data().map(function(elemento){
-              elemento[5] = `
-                <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
-                <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">
-              `;
-              return elemento;
-            })
+          var selectedRowsLC = tablaLCDt.rows({ selected: true });
+          if(selectedRowsLC.count()>0){
+            let newData=selectedRowsLC.data().toArray().map(function(elemento){
+              return [
+                elemento[1],
+                elemento[2],
+                elemento[3],
+                elemento[4],
+                elemento[5],
+                `<input type="hidden" name="id_posicion[]" value="${elemento[1]}">
+                <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">`
+              ];
+            });
             tablaOT.DataTable().rows.add(newData).draw();
-            $(selectedRowsLC.nodes()).hide().removeClass("selected")
+            selectedRowsLC.nodes().to$().hide();
+            tablaLCDt.rows().deselect();
+            $('#select_all').prop('checked', false);
 
           }else{
             alert("Por favor seleccione una posicion para agregar a la Orden de trabajo")
