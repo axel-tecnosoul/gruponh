@@ -626,28 +626,28 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
   $stmtCon = $pdo->prepare($sqlCon);
   $stmtCon->execute([$idOrigen]);
   while ($conj = $stmtCon->fetch(PDO::FETCH_ASSOC)) {
-    $sql = 'INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)';
+    $sql = 'INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES(?,?,?,?,?)';
     $q = $pdo->prepare($sql);
     $params = [$idDestino, $conj['nombre'], $conj['cantidad'], $conj['peso'], $conj['id_estado_lista_corte_conjuntos']];
-    if ($modoDebug==1) {
-      //$q->debugDumpParams();
-      echo debugQuery($pdo,$sql,$params);
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
+    if ($modoDebug) {
+      echo debugQuery($pdo, $sql, $params) . "<br>";
     }
     $q->execute($params);
+    if ($modoDebug) {
+      echo "Afe: " . $q->rowCount() . "<br><br>";
+    }
     $idConjNuevo = (int)$pdo->lastInsertId();
 
     $sql = 'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?';
     $stmtPos = $pdo->prepare($sql);
     $params = [$conj['id']];
-    if ($modoDebug==1) {
-      //$q->debugDumpParams();
-      echo debugQuery($pdo,$sql,$params);
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
+    if ($modoDebug) {
+      echo debugQuery($pdo, $sql, $params) . "<br>";
     }
     $stmtPos->execute($params);
+    if ($modoDebug) {
+      echo "Afe: " . $stmtPos->rowCount() . "<br><br>";
+    }
     while ($pos = $stmtPos->fetch(PDO::FETCH_ASSOC)) {
       $sql = 'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)';
       $q = $pdo->prepare($sql);
@@ -666,25 +666,25 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
         $pos['diametro'],
         $pos['calidad']
       ];
-      if ($modoDebug==1) {
-        //$q->debugDumpParams();
-        echo debugQuery($pdo,$sql,$params);
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
+      if ($modoDebug) {
+        echo debugQuery($pdo, $sql, $params) . "<br>";
       }
       $q->execute($params);
+      if ($modoDebug) {
+        echo "Afe: " . $q->rowCount() . "<br><br>";
+      }
       $idPosNuevo = (int)$pdo->lastInsertId();
 
       $sql = 'SELECT id_tipo_proceso, observaciones, id_estado_lista_corte_proceso FROM lista_corte_procesos WHERE id_lista_corte_posicion = ?';
       $stmtProc = $pdo->prepare($sql);
       $params = [$pos['id']];
-      if ($modoDebug==1) {
-        //$q->debugDumpParams();
-        echo debugQuery($pdo,$sql,$params);
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
+      if ($modoDebug) {
+        echo debugQuery($pdo, $sql, $params) . "<br>";
       }
       $stmtProc->execute($params);
+      if ($modoDebug) {
+        echo "Afe: " . $stmtProc->rowCount() . "<br><br>";
+      }
       while ($proc = $stmtProc->fetch(PDO::FETCH_ASSOC)) {
         $sql = 'INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,?)';
         $q = $pdo->prepare($sql);
@@ -694,14 +694,15 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
           $proc['observaciones'],
           $proc['id_estado_lista_corte_proceso']
         ];
-        if ($modoDebug==1) {
-          //$q->debugDumpParams();
-          echo debugQuery($pdo,$sql,$params);
-          echo "<br><br>Afe: ".$q->rowCount();
-          echo "<br><br>";
+        if ($modoDebug) {
+          echo debugQuery($pdo, $sql, $params) . "<br>";
         }
         $q->execute($params);
+        if ($modoDebug) {
+          echo "Afe: " . $q->rowCount() . "<br><br>";
+        }
       }
     }
   }
 }
+

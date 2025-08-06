@@ -17,26 +17,37 @@
     }
     
     if (!empty($_POST)) {
-        
-        // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $sql = "UPDATE `listas_corte` set `nro_revision` = `nro_revision` + 1 where id = ?";
-        $q = $pdo->prepare($sql);
-        $q->execute([$_GET['id']]);
-		
-		$sql = "INSERT INTO `listas_corte_revisiones`(`id_lista_corte`, `nro_revision`, `comentarios`, `fecha_hora`, `fecha_hora`) VALUES (?,?,?,now())";
-		$q = $pdo->prepare($sql);
-		$q->execute([$_GET['id'],$_POST['nro_revision']+1,$_POST['comentarios']]);
-		
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva revisión de lista de corte','Listas de Corte','imprimirListaCorte.php?id=$id')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
 
-        
+        // Datos de la revisión actual
+        $sql = "SELECT id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+
+        // Crear nueva revisión duplicando los datos anteriores
+        $nuevoNro = $data['nro_revision'] + 1;
+        $sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        $params = [$data['id_proyecto'], $data['id_tarea'], $data['fecha'], $data['id_usuario'], $data['id_estado_lista_corte'], $nuevoNro, $data['anulado'], $data['nombre'], $data['numero'], $data['adjunto'], $data['descripcion'], $data['id_cuenta_realizo'], $data['id_cuenta_reviso'], $data['id_cuenta_valido']];
+        $q = $pdo->prepare($sql);
+        $q->execute($params);
+        $idNueva = $pdo->lastInsertId();
+
+        // Copiar conjuntos y posiciones
+        duplicarListaCorteRevision($pdo, $id, $idNueva);
+
+        // Registrar en logs
+        $detalle = 'Nueva revisión de lista de corte';
+        if (!empty($_POST['comentarios'])) {
+            $detalle .= ' - ' . $_POST['comentarios'];
+        }
+        $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,?,'Listas de Corte','imprimirListaCorte.php?id=$idNueva')";
+        $q = $pdo->prepare($sql);
+        $q->execute([$_SESSION['user']['id'], $detalle]);
+
         Database::disconnect();
-        
+
         header("Location: listarListasCorte.php");
     } else {
         $pdo = Database::connect();
@@ -85,7 +96,6 @@
 						  <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Comentarios</label>
 							<div class="col-sm-9"><textarea name="comentarios" class="form-control" autofocus></textarea></div>
-							<input type="hidden" name="nro_revision" value="<?php echo $_GET['revision'];?>">
 						  </div>
                         </div>
                       </div>
