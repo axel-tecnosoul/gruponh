@@ -118,11 +118,11 @@ Database::disconnect();?>
                             <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$_GET['id_lista_corte']?>">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-3">
-                              <input name="fecha" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
+                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
                             </div>
                             <label class="col-sm-3 col-form-label">Titulo(*)</label>
                             <div class="col-sm-3">
-                              <input name="titulo" type="text" class="form-control">
+                              <input name="titulo" type="text" class="form-control" autofocus>
                             </div>
                           </div>
                           <div class="form-group row">
@@ -153,11 +153,23 @@ Database::disconnect();?>
                       </h5>
                     </div>
                     <div class="card-body">
+                      <div class="form-group row mb-3">
+                        <div class="col-sm-4 mb-2 mb-sm-0">
+                          <select id="filtro_conjunto" class="form-control" style="width:100%" multiple></select>
+                        </div>
+                        <div class="col-sm-4 mb-2 mb-sm-0">
+                          <select id="filtro_proceso" class="form-control" style="width:100%" multiple></select>
+                        </div>
+                        <div class="col-sm-4">
+                          <button type="button" id="seleccionar_filtradas" class="btn btn-primary" style="width:100%">Seleccionar filtradas</button>
+                        </div>
+                      </div>
                       <div class="form-group row">
                         <div class="dt-ext table-responsive">
                           <table class="display" id="tablaLC">
                             <thead>
                               <tr>
+                                <th><input type="checkbox" id="select_all"></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cantidad</th>
@@ -171,6 +183,7 @@ Database::disconnect();?>
                             </thead>
                             <tfoot>
                               <tr>
+                                <th></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cantidad</th>
@@ -190,6 +203,7 @@ Database::disconnect();?>
                               foreach ($pdo->query($sql) as $row) {
                                 $saldo = $row["cant_pos"] - $row["cant_bajada"];
                                 echo '<tr id="'. $row["id_posicion"] . '" data-cant-bajada="'.$row["cant_bajada"].'" data-cant-pos="'.$row["cant_pos"].'">';
+                                echo '<td></td>';
                                 echo '<td class="d-none">'. $row["id_posicion"] . '</td>';
                                 echo '<td>'. $row["nombre"] . '</td>';
                                 echo '<td>'. $row["cant_conj"] . '</td>';
@@ -199,7 +213,6 @@ Database::disconnect();?>
                                 echo '<td>'. $row["procesos"] . '</td>';
                                 echo '<td>'. $row["cant_bajada"] . '</td>';
                                 echo '<td>'. $saldo . '</td>';
-
                                 echo '</tr>';
                               }
                               Database::disconnect();?>
@@ -393,15 +406,87 @@ Database::disconnect();?>
           }
         }
 
-        // Setup - add a text input to each footer cell
+        // Setup - add a text input to each footer cell (skip checkbox column)
         tablaLC.find('tfoot th').each( function () {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
+          if(title !== ''){
+            $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+          }
         } );
-	      tablaLC.DataTable(datatableDefault);
- 
+
+        tablaLC.on("click","tbody tr td", function(){
+          var t=$(this).parent();
+          console.log(t);
+          if(t.hasClass('selected')){
+            deselectRow(t);
+          }else{
+            selectRow(t);
+          }
+        });
+
+        //var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
+        tablaLC.DataTable(Object.assign({}, datatableDefault, {
+          columnDefs: [
+            { orderable: false, className: 'select-checkbox', targets: 0 },
+            { targets: 1, visible: false }
+          ],
+          select: {
+            style: 'multi',
+            selector: 'td:first-child'
+          },
+          order: [[1, 'asc']]
+        }));
+
+        //populate filtros
+        var conjuntos = $(tablaLC).column(2).data().unique().sort();
+        //$('#filtro_conjunto').append('<option value="">- Todos los conjuntos -</option>');
+        conjuntos.each(function(d){
+          $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
+        });
+        var procesosSet = new Set();
+        tablaLC.column(7).data().each(function(d){
+          d.split(',').forEach(function(p){
+            procesosSet.add(p.trim());
+          });
+        });
+        //$('#filtro_proceso').append('<option value="">- Todos los procesos -</option>');
+        Array.from(procesosSet).sort().forEach(function(p){
+          $('#filtro_proceso').append('<option value="'+p+'">'+p+'</option>');
+        });
+
+        $('#filtro_conjunto').select2({placeholder:'Conjunto',allowClear:true});
+        $('#filtro_proceso').select2({placeholder:'Proceso',allowClear:true});
+
+        $('#filtro_conjunto').on('change', function () {
+          var selected = $(this).val(); // array de valores seleccionados
+          var search = selected && selected.length
+            ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
+            : '';
+          tablaLC.column(2).search(search, true, false).draw(); // regex=true, smart=false
+        });
+
+        $('#filtro_proceso').on('change', function () {
+          var selected = $(this).val();
+          var search = selected && selected.length
+            ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
+            : '';
+          tablaLC.column(7).search(search, true, false).draw();
+        });
+
+
+        $('#seleccionar_filtradas').on('click', function(){
+          tablaLC.rows().nodes().each(function(row){
+            deselectRow($(row));
+          });
+
+          var rows = tablaLC.rows({search:'applied'}).nodes();
+          $(rows).each(function(){
+            selectRow($(this));
+          });
+        });
+
         // Apply the search
-        tablaLC.DataTable().columns().every( function () {
+        tablaLC.columns().every( function () {
           var that = this;
           $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
@@ -410,35 +495,50 @@ Database::disconnect();?>
           });
         } );
 
-        //tablaLC.find("tbody tr td").not(":last-child").on( 'click', function () {
-        $(document).on("click","#tablaLC tbody tr td", function(){
-          var t=$(this).parent();
-
-          let id_conjunto=t.find("td:first-child").html();
-          if(t.hasClass('selected')){
-            deselectRow(t);
-            //$("#link_agregar_posiciones").data("id","");
+        $('#select_all').on('click', function(){
+          if(this.checked){
+            tablaLC.rows({ search: 'applied' }).select();
           }else{
-            tablaLC.DataTable().rows().nodes().each( function (rowNode, index) {
-              $(rowNode).removeClass("selected");
-            });
-            selectRow(t);
+            tablaLC.rows().deselect();
           }
         });
 
+        tablaLC.on('select deselect', function(){
+          var all = tablaLC.rows({ search: 'applied' }).count();
+          var selected = tablaLC.rows({ selected: true, search: 'applied' }).count();
+          $('#select_all').prop('checked', selected === all && all > 0);
+        });
+
         $("#link_agregar_posiciones").on("click",function(){
-          var selectedRowsLC = tablaLC.DataTable().rows('.selected');
+          //var selectedRowsLC = tablaLC.rows({ selected: true });
+          var selectedRowsLC = tablaLC.rows('.selected');
+          console.log(selectedRowsLC);
           if(selectedRowsLC[0].length>0){
             let newData=selectedRowsLC.data().map(function(elemento){
-              elemento[5] = `
+              let saldo = elemento[8];
+              let inputCantidad = `
                 <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
-                <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">
+                <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
+                <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
               `;
-              return elemento;
+              return [elemento[0], elemento[1], elemento[2], elemento[3], elemento[4], inputCantidad];
             })
             tablaOT.DataTable().rows.add(newData).draw();
             $(selectedRowsLC.nodes()).hide().removeClass("selected")
             refreshCantidades();
+          /*if(selectedRowsLC.count()>0){
+            let newData=selectedRowsLC.data().toArray().map(function(elemento){
+              return [
+                elemento[1],
+                elemento[2],
+                elemento[3],
+                elemento[4],
+                elemento[5],
+                `<input type="hidden" name="id_posicion[]" value="${elemento[1]}">
+                <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">`
+              ];
+            });*/
+            $('#select_all').prop('checked', false);
 
           }else{
             alert("Por favor seleccione una posicion para agregar a la Orden de trabajo")
@@ -513,7 +613,6 @@ Database::disconnect();?>
             //$(selectedRowsOT.nodes()).remove().draw();
             selectedRowsOT.remove().draw();
             refreshCantidades();
-  
           }else{
             alert("Por favor seleccione una posicion para eliminar")
           }
@@ -521,6 +620,17 @@ Database::disconnect();?>
     
         $(document).on('input change',"input[name='cantidad_bajar[]']",function(){
           refreshCantidades();
+
+        /*$(document).on('input', '.cantidad-bajar', function(){
+          var saldo = parseFloat($(this).data('saldo'));
+          var valor = parseFloat($(this).val());
+          if(valor > saldo){
+            $(this).val(saldo);
+            $(this).addClass('is-invalid');
+          }else{
+            $(this).removeClass('is-invalid');
+          }*/
+
         });
 
       });
