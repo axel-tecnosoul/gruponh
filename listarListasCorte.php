@@ -462,20 +462,16 @@ include 'database.php';?>
 
         formRevision.on("submit", function(e){
           e.preventDefault();
-          alert("La funcionalidad de nueva revisión está deshabilitada temporalmente.");
-          /*const motivo = $("#motivoRevision").val().trim();
+          //alert("La funcionalidad de nueva revisión está deshabilitada temporalmente.");
+          const motivo = $("#motivoRevision").val().trim();
           if(motivo === ""){
             alert("Por favor complete el motivo de la revisión.");
             return;
           }
-          const url = new URL(hrefToRedirect, window.location.origin);
-          const id = url.searchParams.get("id_lista_corte");
-          const fila = $("#dataTables-example666 tbody tr.selected");
-          const revision = fila.data("nro-revision");
-          formRevision.find("input[name='nro_revision']").remove();
-          formRevision.append(`<input type="hidden" name="nro_revision" value="${revision}">`);
-          formRevision.attr("action", `nuevaRevisionListaCorte.php?id=${id}`);
-          this.submit();*/
+          const filaActiva = $("#dataTables-example666 tbody tr.selected");
+          const id_lista_corte = filaActiva.data("id-lista-corte");
+          formRevision.attr("action", `nuevaRevisionListaCorte.php?id_lista_corte=${id_lista_corte}`);
+          this.submit();
         });
 
         bindAccionListaCorte("#link_ot_lc", generarOrdenTrabajoLC, "generar una Orden de trabajo", [3,4]);
