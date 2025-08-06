@@ -362,7 +362,7 @@ Database::disconnect();?>
         var tablaOT = $('#tablaOT');
 
         function refreshCantidades(){
-          tablaLC.DataTable().rows().every(function(){
+          tablaLCDT.rows().every(function(){
             let row = $(this.node());
             let base = parseFloat(row.data('cant-bajada')) || 0;
             let cantPos = parseFloat(row.data('cant-pos')) || 0;
@@ -424,8 +424,7 @@ Database::disconnect();?>
           }
         });
 
-        //var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
-        tablaLC.DataTable(Object.assign({}, datatableDefault, {
+        var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
           columnDefs: [
             { orderable: false, className: 'select-checkbox', targets: 0 },
             { targets: 1, visible: false }
@@ -438,13 +437,13 @@ Database::disconnect();?>
         }));
 
         //populate filtros
-        var conjuntos = $(tablaLC).column(2).data().unique().sort();
+        var conjuntos = tablaLCDT.column(2).data().unique().sort();
         //$('#filtro_conjunto').append('<option value="">- Todos los conjuntos -</option>');
         conjuntos.each(function(d){
           $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
         });
         var procesosSet = new Set();
-        tablaLC.column(7).data().each(function(d){
+        tablaLCDT.column(7).data().each(function(d){
           d.split(',').forEach(function(p){
             procesosSet.add(p.trim());
           });
@@ -462,7 +461,7 @@ Database::disconnect();?>
           var search = selected && selected.length
             ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
             : '';
-          tablaLC.column(2).search(search, true, false).draw(); // regex=true, smart=false
+          tablaLCDT.column(2).search(search, true, false).draw(); // regex=true, smart=false
         });
 
         $('#filtro_proceso').on('change', function () {
@@ -470,23 +469,23 @@ Database::disconnect();?>
           var search = selected && selected.length
             ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
             : '';
-          tablaLC.column(7).search(search, true, false).draw();
+          tablaLCDT.column(7).search(search, true, false).draw();
         });
 
 
         $('#seleccionar_filtradas').on('click', function(){
-          tablaLC.rows().nodes().each(function(row){
+          tablaLCDT.rows().nodes().each(function(row){
             deselectRow($(row));
           });
 
-          var rows = tablaLC.rows({search:'applied'}).nodes();
+          var rows = tablaLCDT.rows({search:'applied'}).nodes();
           $(rows).each(function(){
             selectRow($(this));
           });
         });
 
         // Apply the search
-        tablaLC.columns().every( function () {
+        tablaLCDT.columns().every( function () {
           var that = this;
           $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
@@ -497,21 +496,21 @@ Database::disconnect();?>
 
         $('#select_all').on('click', function(){
           if(this.checked){
-            tablaLC.rows({ search: 'applied' }).select();
+            tablaLCDT.rows({ search: 'applied' }).select();
           }else{
-            tablaLC.rows().deselect();
+            tablaLCDT.rows().deselect();
           }
         });
 
         tablaLC.on('select deselect', function(){
-          var all = tablaLC.rows({ search: 'applied' }).count();
-          var selected = tablaLC.rows({ selected: true, search: 'applied' }).count();
+          var all = tablaLCDT.rows({ search: 'applied' }).count();
+          var selected = tablaLCDT.rows({ selected: true, search: 'applied' }).count();
           $('#select_all').prop('checked', selected === all && all > 0);
         });
 
         $("#link_agregar_posiciones").on("click",function(){
-          //var selectedRowsLC = tablaLC.rows({ selected: true });
-          var selectedRowsLC = tablaLC.rows('.selected');
+          //var selectedRowsLC = tablaLCDT.rows({ selected: true });
+          var selectedRowsLC = tablaLCDT.rows('.selected');
           console.log(selectedRowsLC);
           if(selectedRowsLC[0].length>0){
             let newData=selectedRowsLC.data().map(function(elemento){
