@@ -153,6 +153,17 @@ Database::disconnect();?>
                       </h5>
                     </div>
                     <div class="card-body">
+                      <div class="form-group row mb-3">
+                        <div class="col-sm-4 mb-2 mb-sm-0">
+                          <select id="filtro_conjunto" class="form-control" style="width:100%"></select>
+                        </div>
+                        <div class="col-sm-4 mb-2 mb-sm-0">
+                          <select id="filtro_proceso" class="form-control" style="width:100%"></select>
+                        </div>
+                        <div class="col-sm-4">
+                          <button type="button" id="seleccionar_filtradas" class="btn btn-primary" style="width:100%">Seleccionar filtradas</button>
+                        </div>
+                      </div>
                       <div class="form-group row">
                         <div class="dt-ext table-responsive">
                           <table class="display" id="tablaLC">
@@ -383,7 +394,7 @@ Database::disconnect();?>
           }
         } );
 
-        var tablaLCDt = tablaLC.DataTable(Object.assign({}, datatableDefault, {
+        var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
           columnDefs: [
             { orderable: false, className: 'select-checkbox', targets: 0 },
             { targets: 1, visible: false }
@@ -395,8 +406,45 @@ Database::disconnect();?>
           order: [[1, 'asc']]
         }));
 
+        //populate filtros
+        var conjuntos = tablaLCDT.column(1).data().unique().sort();
+        conjuntos.each(function(d){
+          $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
+        });
+        var procesosSet = new Set();
+        tablaLCDT.column(6).data().each(function(d){
+          d.split(',').forEach(function(p){
+            procesosSet.add(p.trim());
+          });
+        });
+        Array.from(procesosSet).sort().forEach(function(p){
+          $('#filtro_proceso').append('<option value="'+p+'">'+p+'</option>');
+        });
+
+        $('#filtro_conjunto').select2({placeholder:'Conjunto',allowClear:true});
+        $('#filtro_proceso').select2({placeholder:'Proceso',allowClear:true});
+
+        $('#filtro_conjunto').on('change', function(){
+          var val = $(this).val();
+          tablaLCDT.column(1).search(val ? '^'+val+'$' : '', true, false).draw();
+        });
+        $('#filtro_proceso').on('change', function(){
+          var val = $(this).val();
+          tablaLCDT.column(6).search(val ? val : '', true, false).draw();
+        });
+
+        $('#seleccionar_filtradas').on('click', function(){
+          var rows = tablaLCDT.rows({search:'applied'}).nodes();
+          tablaLCDT.rows().nodes().each(function(row){
+            deselectRow($(row));
+          });
+          $(rows).each(function(){
+            selectRow($(this));
+          });
+        });
+
         // Apply the search
-        tablaLCDt.columns().every( function () {
+        tablaLCDT.columns().every( function () {
           var that = this;
           $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
