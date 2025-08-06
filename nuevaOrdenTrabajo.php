@@ -394,8 +394,9 @@ Database::disconnect();?>
           }
         } );
 
-        $(document).on("click","#dataTables-example666 tbody tr td", function(){
+        tablaLC.on("click","tbody tr td", function(){
           var t=$(this).parent();
+          console.log(t);
           if(t.hasClass('selected')){
             deselectRow(t);
           }else{
@@ -403,7 +404,8 @@ Database::disconnect();?>
           }
         });
 
-        var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
+        //var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
+        tablaLC.DataTable(Object.assign({}, datatableDefault, {
           columnDefs: [
             { orderable: false, className: 'select-checkbox', targets: 0 },
             { targets: 1, visible: false }
@@ -416,13 +418,13 @@ Database::disconnect();?>
         }));
 
         //populate filtros
-        var conjuntos = tablaLCDT.column(2).data().unique().sort();
+        var conjuntos = $(tablaLC).column(2).data().unique().sort();
         //$('#filtro_conjunto').append('<option value="">- Todos los conjuntos -</option>');
         conjuntos.each(function(d){
           $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
         });
         var procesosSet = new Set();
-        tablaLCDT.column(7).data().each(function(d){
+        tablaLC.column(7).data().each(function(d){
           d.split(',').forEach(function(p){
             procesosSet.add(p.trim());
           });
@@ -440,7 +442,7 @@ Database::disconnect();?>
           var search = selected && selected.length
             ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
             : '';
-          tablaLCDT.column(2).search(search, true, false).draw(); // regex=true, smart=false
+          tablaLC.column(2).search(search, true, false).draw(); // regex=true, smart=false
         });
 
         $('#filtro_proceso').on('change', function () {
@@ -448,23 +450,23 @@ Database::disconnect();?>
           var search = selected && selected.length
             ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
             : '';
-          tablaLCDT.column(7).search(search, true, false).draw();
+          tablaLC.column(7).search(search, true, false).draw();
         });
 
 
         $('#seleccionar_filtradas').on('click', function(){
-          tablaLCDT.rows().nodes().each(function(row){
+          tablaLC.rows().nodes().each(function(row){
             deselectRow($(row));
           });
 
-          var rows = tablaLCDT.rows({search:'applied'}).nodes();
+          var rows = tablaLC.rows({search:'applied'}).nodes();
           $(rows).each(function(){
             selectRow($(this));
           });
         });
 
         // Apply the search
-        tablaLCDT.columns().every( function () {
+        tablaLC.columns().every( function () {
           var that = this;
           $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
@@ -475,21 +477,21 @@ Database::disconnect();?>
 
         $('#select_all').on('click', function(){
           if(this.checked){
-            tablaLCDT.rows({ search: 'applied' }).select();
+            tablaLC.rows({ search: 'applied' }).select();
           }else{
-            tablaLCDT.rows().deselect();
+            tablaLC.rows().deselect();
           }
         });
 
-        tablaLCDT.on('select deselect', function(){
-          var all = tablaLCDT.rows({ search: 'applied' }).count();
-          var selected = tablaLCDT.rows({ selected: true, search: 'applied' }).count();
+        tablaLC.on('select deselect', function(){
+          var all = tablaLC.rows({ search: 'applied' }).count();
+          var selected = tablaLC.rows({ selected: true, search: 'applied' }).count();
           $('#select_all').prop('checked', selected === all && all > 0);
         });
 
         $("#link_agregar_posiciones").on("click",function(){
-          //var selectedRowsLC = tablaLCDT.rows({ selected: true });
-          var selectedRowsLC = tablaLCDT.DataTable().rows('.selected');
+          //var selectedRowsLC = tablaLC.rows({ selected: true });
+          var selectedRowsLC = tablaLC.rows('.selected');
           console.log(selectedRowsLC);
           if(selectedRowsLC[0].length>0){
             let newData=selectedRowsLC.data().map(function(elemento){
@@ -513,10 +515,10 @@ Database::disconnect();?>
                 <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">`
               ];
             });*/
-            tablaLCDT.DataTable().rows.add(newData).draw();
+            tablaLC.rows.add(newData).draw();
             $(selectedRowsLC.nodes()).hide().removeClass("selected");
             /*selectedRowsLC.nodes().to$().hide();
-            tablaLCDT.rows().deselect();*/
+            tablaLC.rows().deselect();*/
             $('#select_all').prop('checked', false);
 
           }else{
