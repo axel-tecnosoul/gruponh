@@ -357,10 +357,11 @@ Database::disconnect();?>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
+      var tablaLC = $('#tablaLC');
+      var tablaOT = $('#tablaOT');
+      var tablaLCDT;
+
       $(document).ready(function () {
-        var tablaLC = $('#tablaLC');
-        var tablaOT = $('#tablaOT');
-        var tablaLCDT;
 
         let datatableDefault={
           stateSave: false,
@@ -495,7 +496,9 @@ Database::disconnect();?>
           console.log(selectedRowsLC);
           if(selectedRowsLC[0].length>0){
             let newData=selectedRowsLC.data().map(function(elemento){
-              let saldo = elemento[8];
+              console.log(elemento);
+              let saldo = elemento[9];
+              console.log(saldo);
               let inputCantidad = `
                 <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
                 <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
