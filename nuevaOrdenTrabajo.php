@@ -161,7 +161,7 @@ Database::disconnect();?>
                           <select id="filtro_proceso" class="form-control" style="width:100%" multiple></select>
                         </div>
                         <div class="col-sm-4">
-                          <button type="button" id="seleccionar_filtradas" class="btn btn-primary" style="width:100%">Seleccionar filtradas</button>
+                          <button type="button" id="toggle_seleccion" class="btn btn-primary w-100">Seleccionar visibles</button>
                         </div>
                       </div>
                       <div class="form-group row">
@@ -169,7 +169,7 @@ Database::disconnect();?>
                           <table class="display" id="tablaLC">
                             <thead>
                               <tr>
-                                <th><input type="checkbox" id="select_all"></th>
+                                <th></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cantidad</th>
@@ -404,6 +404,7 @@ Database::disconnect();?>
           }else{
             selectRow(t);
           }
+          updateToggleButton();
         });
 
         tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
@@ -455,17 +456,6 @@ Database::disconnect();?>
         });
 
 
-        $('#seleccionar_filtradas').on('click', function(){
-          tablaLCDT.rows().nodes().each(function(row){
-            deselectRow($(row));
-          });
-
-          var rows = tablaLCDT.rows({search:'applied'}).nodes();
-          $(rows).each(function(){
-            selectRow($(this));
-          });
-        });
-
         // Apply the search
         tablaLCDT.columns().every( function () {
           var that = this;
@@ -475,21 +465,26 @@ Database::disconnect();?>
             }
           });
         } );
+        // Botón para seleccionar o deseleccionar según estado
+        $('#toggle_seleccion').on('click', function(){
+          var rows = tablaLCDT.rows({search:'applied'}).nodes();
+          var allSelected = $(rows).filter('.selected').length === rows.length && rows.length > 0;
 
-        $('#select_all').on('click', function(){
-          if(this.checked){
-            tablaLCDT.rows({ search: 'applied' }).select();
-          }else{
-            tablaLCDT.rows().deselect();
+          tablaLCDT.rows().nodes().each(function(row){
+            deselectRow($(row));
+          });
+
+          if(!allSelected){
+            $(rows).each(function(){
+              selectRow($(this));
+            });
           }
+
+          updateToggleButton();
         });
 
-        tablaLC.on('select deselect', function(){
-          var all = tablaLCDT.rows({ search: 'applied' }).count();
-          var selected = tablaLCDT.rows({ selected: true, search: 'applied' }).count();
-          $('#select_all').prop('checked', selected === all && all > 0);
-        });
-
+        tablaLCDT.on('draw', updateToggleButton);
+        updateToggleButton();
         $("#link_agregar_posiciones").on("click",function(){
           //var selectedRowsLC = tablaLCDT.rows({ selected: true });
           var selectedRowsLC = tablaLCDT.rows('.selected');
@@ -528,8 +523,6 @@ Database::disconnect();?>
                 <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">`
               ];
             });*/
-            $('#select_all').prop('checked', false);
-
           }else{
             alert("Por favor seleccione una posicion para agregar a la Orden de trabajo")
           }
@@ -651,6 +644,16 @@ Database::disconnect();?>
       }
       function deselectRow(t){
         t.removeClass('selected');
+      }
+      function updateToggleButton(){
+        var rows = tablaLCDT.rows({search:'applied'}).nodes();
+        var btn = $('#toggle_seleccion');
+        var allSelected = $(rows).filter('.selected').length === rows.length && rows.length > 0;
+        if(allSelected){
+          btn.text('Deseleccionar todo').removeClass('btn-primary').addClass('btn-secondary');
+        }else{
+          btn.text('Seleccionar visibles').removeClass('btn-secondary').addClass('btn-primary');
+        }
       }
     </script>
   </body>
