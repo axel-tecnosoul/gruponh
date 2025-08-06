@@ -139,20 +139,28 @@ include 'database.php';
                         <tbody><?php 
                           if (!empty($_POST)) {
                           $pdo = Database::connect();
-                          $sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lcr.id_lista_corte, lcr.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
-                          
-						  if (!empty($_POST['nro'])) {
-								$sql .= " and (p.nro = ".$_POST['nro']." or s.nro_sitio = ".$_POST['nro'].") ";
-							}
-							if (!empty($_POST['fecha'])) {
-								$sql .= " AND otr.fecha >= '".$_POST['fecha']."' ";
-							}
-							if (!empty($_POST['fechah'])) {
-								$sql .= " AND otr.fecha <= '".$_POST['fechah']."' ";
-							}
-							if (!empty($_POST['id_estado'][0])) {
-								$sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
-							}
+                          //$sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lcr.id_lista_corte, lcr.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
+                          $sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lc.id AS id_lista_corte, lc.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte lc ON otr.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
+                          if (!empty($_POST['nro'])) {
+                            $nro=$_POST['nro'];
+                            $ex=explode("/", $nro);
+                            if(count($ex)>1){
+                              $sitio = $ex[0];
+                              $proyecto = $ex[1];
+                              $sql .= " AND (p.nro = ".$proyecto." AND s.nro_sitio = ".$sitio.") ";
+                            }else{
+                              $sql .= " AND (p.nro = ".$nro." OR s.nro_sitio = ".$nro.") ";
+                            }
+                          }
+                          if (!empty($_POST['fecha'])) {
+                            $sql .= " AND otr.fecha >= '".$_POST['fecha']."' ";
+                          }
+                          if (!empty($_POST['fechah'])) {
+                            $sql .= " AND otr.fecha <= '".$_POST['fechah']."' ";
+                          }
+                          if (!empty($_POST['id_estado'][0])) {
+                            $sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
+                          }
 						  
                           foreach ($pdo->query($sql) as $row) {
                             echo '<tr>';

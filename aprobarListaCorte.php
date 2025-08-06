@@ -30,7 +30,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
         $detalle_accion = "Aprobación de la lista de corte";
 
         // Aprobar el cómputo
-        $pdo->prepare("UPDATE listas_corte SET id_estado = 3 WHERE id = ?")->execute([$id_lista_corte]);
+        $sql = "UPDATE listas_corte SET id_estado_lista_corte = 3 WHERE id = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id_lista_corte]);
+
+        if ($modoDebug == 1) {
+          echo debugQuery($pdo, $sql, [$id_lista_corte]);
+          echo "<br><br>Afe: " . $q->rowCount();
+        }
 
         break;
 

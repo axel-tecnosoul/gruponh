@@ -80,7 +80,7 @@ include 'database.php';?>
                         </select>
                       </div>
                       <div class="form-group mb-0">
-                        <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarListasCorte.php'">Buscar</button>
+                        <button class="btn btn-primary" id="btnFiltrar" onclick="document.form1.target='_self';document.form1.action='listarListasCorte.php'">Buscar</button>
                       </div>
                     </form>
                   </div>
@@ -114,7 +114,7 @@ include 'database.php';?>
                         &nbsp;&nbsp;<?php
                       }
                       if (!empty(tienePermiso(293))) {?>
-                        <a href="#" class="accion-lista-corte" data-accion="aprobar" title="Aprobar LC"><img src="img/estrella.png" width="24" height="25"></a>
+                        <a href="#" id="link_aprobar_lc" data-accion="aprobar" title="Aprobar LC"><img src="img/estrella.png" width="24" height="25"></a>
                         &nbsp;&nbsp;<?php
                       }?>
                       <a href="#" id="link_ot_lc" title="Nueva OT"><i style="vertical-align: middle;color: midnightblue;" class='fa fa-lg fa-briefcase'></i></a>
@@ -125,7 +125,6 @@ include 'database.php';?>
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
                           <tr>
-                            <th class="d-none"></th>
                             <th class="d-none">ID</th>
                             <th>Sitio</th>
                             <th>Sub</th>
@@ -141,7 +140,7 @@ include 'database.php';?>
                         <tbody><?php 
                           $pdo = Database::connect();
                           //$sql = "SELECT lc.id AS id_lista_corte, lcr.numero, lcr.nro_revision, lcr.nombre, p.nro AS nro_proyecto, date_format(lcr.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lcr.adjunto, s.nro_sitio, s.nro_subsitio, lcr.id AS id_lista_corte_revision, date_format(lcr.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto FROM listas_corte lc INNER JOIN listas_corte_revisiones lcr ON lcr.id_lista_corte=lc.id inner join estados_lista_corte e on e.id = lcr.id_estado_lista_corte inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
-                          $sql = "SELECT lc.id AS id_lista_corte, lc.numero, lc.nro_revision, lc.nombre, p.nro AS nro_proyecto, date_format(lc.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lc.adjunto, s.nro_sitio, s.nro_subsitio, lc.id AS id_lista_corte_revision, date_format(lc.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto, lc.id_estado_lista_corte FROM listas_corte lc inner join estados_lista_corte e on e.id = lc.id_estado_lista_corte inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
+                          $sql = "SELECT lc.id AS id_lista_corte, lc.numero AS numero_lc, lc.nro_revision, lc.nombre, p.nro AS nro_proyecto, date_format(lc.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lc.adjunto, s.nro_sitio, s.nro_subsitio, date_format(lc.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto, lc.id_estado_lista_corte FROM listas_corte lc inner join estados_lista_corte e on e.id = lc.id_estado_lista_corte inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
                           if (!empty($_POST['nro'])) {
                             $nro=$_POST['nro'];
                             $ex=explode("/", $nro);
@@ -166,14 +165,13 @@ include 'database.php';?>
                           }
                           //echo $sql;
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado_lista_corte"]?>" data-estado-nombre="<?=$row["estado"]?>" data-id-lista-corte="<?=$row["id_lista_corte"]?>" data-id-lc-revision="<?=$row["id_lista_corte_revision"]?>" data-numero="<?=$row["numero"]?>" data-revision="<?=$row["nro_revision"]?>" data-proyecto="<?=$row["nombre_proyecto"]?>" data-sitio="<?=$row["nro_sitio"]?>" data-subsitio="<?=$row["nro_subsitio"]?>" data-proy="<?=$row["nro_proyecto"]?>">
-                              <td class="d-none"><?=$row["id_lista_corte_revision"]?></td>
+                            <tr data-estado-id="<?=$row["id_estado_lista_corte"]?>" data-estado-nombre="<?=$row["estado"]?>" data-id-lista-corte="<?=$row["id_lista_corte"]?>" data-numero-lc="<?=$row["numero_lc"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-proyecto="<?=$row["nombre_proyecto"]?>" data-sitio="<?=$row["nro_sitio"]?>" data-subsitio="<?=$row["nro_subsitio"]?>" data-proy="<?=$row["nro_proyecto"]?>">
                               <td class="d-none"><?=$row["id_lista_corte"]?></td>
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
                               <td><?=$row["nombre_proyecto"]?></td>
-                              <td><?=$row["numero"]?></td>
+                              <td><?=$row["numero_lc"]?></td>
                               <td><?=$row["nro_revision"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_lc_numero"]?></span><?=$row["fecha_lc"]?></td>
                               <td><?php
@@ -182,14 +180,12 @@ include 'database.php';?>
                                 }?>
                               </td>
                               <td><?=$row["estado"]?></td>
-                            </tr>
-<?php
+                            </tr><?php
                           }
                           Database::disconnect();?>
                         </tbody>
 						            <tfoot>
                           <tr>
-                            <th class="d-none"></th>
                             <th class="d-none">ID</th>
                             <th>Sitio</th>
                             <th>Subsitio</th>
@@ -278,11 +274,11 @@ include 'database.php';?>
       </div>
     </div>
 
-    <div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
+    <div class="modal fade" id="modalConfirmarAprobacion" tabindex="-1" role="dialog" aria-labelledby="modalConfirmarAprobacionLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="modalConfirmacionLabel">Confirmación</h5>
+            <h5 class="modal-title" id="modalConfirmarAprobacionLabel">Confirmación</h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
               <span aria-hidden="true">&times;</span>
             </button>
@@ -310,22 +306,14 @@ include 'database.php';?>
           <div class="modal-body">
             <p id="textoClonar">¿Está seguro?</p>
             <select id="select_tarea_clonar" class="col-sm-12" style="width:100%; margin-top:10px;">
-              <option value="">Seleccione una tarea...</option>
-              <?php
-                $pdo = Database::connect();
-                $sqlT = "SELECT t.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre, tt.tipo, t.observaciones
-                          FROM tareas t
-                          INNER JOIN proyectos p ON p.id = t.id_proyecto
-                          INNER JOIN sitios s ON s.id = p.id_sitio
-                          INNER JOIN tipos_tarea tt ON tt.id = t.id_tipo_tarea
-                          WHERE t.anulado = 0 AND p.anulado = 0
-                          ORDER BY s.nro_sitio, s.nro_subsitio, p.nro, t.id";
-                foreach ($pdo->query($sqlT) as $filaT) {
-                  $desc = $filaT['nro_sitio'].'-'.$filaT['nro_subsitio'].'-'.$filaT['nro'].': '.$filaT['nombre'].' / '.$filaT['tipo'].' - '.$filaT['observaciones'];
-                  echo "<option value='{$filaT['id']}'>".$desc."</option>";
-                }
-                Database::disconnect();
-              ?>
+              <option value="">Seleccione una tarea...</option><?php
+              $pdo = Database::connect();
+              $sqlT = "SELECT t.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre, tt.tipo, t.observaciones FROM tareas t INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio INNER JOIN tipos_tarea tt ON tt.id = t.id_tipo_tarea WHERE t.anulado = 0 AND p.anulado = 0 ORDER BY s.nro_sitio, s.nro_subsitio, p.nro, t.id";
+              foreach ($pdo->query($sqlT) as $filaT) {
+                $desc = $filaT['nro_sitio'].'-'.$filaT['nro_subsitio'].'-'.$filaT['nro'].': '.$filaT['nombre'].' / '.$filaT['tipo'].' - '.$filaT['observaciones'];
+                echo "<option value='{$filaT['id']}'>".$desc."</option>";
+              }
+              Database::disconnect();?>
             </select>
           </div>
           <div class="modal-footer">
@@ -350,7 +338,7 @@ include 'database.php';?>
               <p>¿Está seguro que desea generar una nueva revisión?</p>
               <div class="form-group">
                 <label for="motivoRevision">Motivo de la revisión:</label>
-                <textarea id="motivoRevision" name="comentarios" class="form-control" required></textarea>
+                <textarea id="motivoRevision" name="motivoRevision" class="form-control" required></textarea>
               </div>
             </div>
             <div class="modal-footer">
@@ -362,58 +350,6 @@ include 'database.php';?>
       </div>
     </div>
 
-          <div style="width: 0;height: 0;display: none;">
-      <select id="select_estado_base"><?php
-        $pdo = Database::connect();
-        $sql = "SELECT id,estado FROM estados_lista_corte";
-        foreach ($pdo->query($sql) as $row) {
-          echo '<option value="'.$row["id"].'">'.$row["estado"].'</option>';
-        }
-        Database::disconnect();?>
-      </select>
-    </div><?php
-
-    /*$pdo = Database::connect();
-    $sql = "SELECT `id`, `id_lista_corte`, `nombre`, `cantidad`, `peso`, `id_estado_lista_corte_conjuntos` FROM `listas_corte_conjuntos` WHERE 1 "; 
-    foreach ($pdo->query($sql) as $row) {
-      $sql2 = "select count(*) cant from lista_corte_posiciones where id_lista_corte_conjunto = ".$row[0];
-      $q2 = $pdo->prepare($sql2);
-      $q2->execute();
-      $data2 = $q2->fetch(PDO::FETCH_ASSOC);
-      if (empty($data2['cant'])) {?>
-        <div class="modal fade" id="eliminarModalConjunto_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalConjuntoLabel">Confirmación</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              </div>
-              <div class="modal-body">¿Está seguro que desea eliminar el Detalle?</div>
-              <div class="modal-footer">
-                <a href="eliminarConjuntoListaCorte.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-              </div>
-            </div>
-          </div>
-        </div><?php
-		  } else {?>
-        <div class="modal fade" id="eliminarModalConjunto_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalConjuntoLabel">Alerta</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              </div>
-              <div class="modal-body">El Conjunto no puede ser eliminado debido a que tiene Posiciones sin cancelar.</div>
-              <div class="modal-footer">
-                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-              </div>
-            </div>
-          </div>
-        </div><?php
-      }
-    }
-	  Database::disconnect();*/?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -502,7 +438,7 @@ include 'database.php';?>
             }
           },
 		      "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            $('td:eq(10)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
+            //$('td:eq(10)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
           },
           initComplete: function(){
             $('[title]').tooltip();
@@ -526,7 +462,8 @@ include 'database.php';?>
 
         formRevision.on("submit", function(e){
           e.preventDefault();
-          const motivo = $("#motivoRevision").val().trim();
+          alert("La funcionalidad de nueva revisión está deshabilitada temporalmente.");
+          /*const motivo = $("#motivoRevision").val().trim();
           if(motivo === ""){
             alert("Por favor complete el motivo de la revisión.");
             return;
@@ -534,11 +471,11 @@ include 'database.php';?>
           const url = new URL(hrefToRedirect, window.location.origin);
           const id = url.searchParams.get("id_lista_corte");
           const fila = $("#dataTables-example666 tbody tr.selected");
-          const revision = fila.data("revision");
+          const revision = fila.data("nro-revision");
           formRevision.find("input[name='nro_revision']").remove();
           formRevision.append(`<input type="hidden" name="nro_revision" value="${revision}">`);
           formRevision.attr("action", `nuevaRevisionListaCorte.php?id=${id}`);
-          this.submit();
+          this.submit();*/
         });
 
         bindAccionListaCorte("#link_ot_lc", generarOrdenTrabajoLC, "generar una Orden de trabajo", [3,4]);
@@ -546,55 +483,25 @@ include 'database.php';?>
         bindAccionListaCorte("#link_modificar_lc", modificarListaCorte, "modificar/revisar", [1,2,3,4]);
         bindAccionListaCorte("#link_eliminar_lc", cancelarLC, "cancelar", [1,2]);
         bindAccionListaCorte("#link_clonar_lc", clonarLC, "clonar");
-
-        // Manejo de clic en botones de acción
-        $(document).on("click", ".accion-lista-corte", function (e) {
-          e.preventDefault();
-
-          const filaActiva = $("#dataTables-example666 tbody tr.selected");
-          if (filaActiva.length === 0) {
-            alert("Debe seleccionar una lista de corte de la tabla primero.");
-            return;
-          }
-
-          let quiereAprobar=true;
-          if(quiereAprobar){
-            let estado=getEstadoListaCorteSeleccionada();
-            if (estado.id != 2) {
-              alert("No se puede aprobar la lista de corte en este estado.");
-              return;
-            }
-          }
-          let mensaje = "¿Desea aprobar la lista de corte seleccionada?";
-          id_lista_corte = filaActiva.data("id-lista-corte");
-          console.log(id_lista_corte);
-
-          // Mostrar modal de confirmación
-          $("#textoConfirmacion").html(mensaje);
-          $("#modalConfirmacion").modal("show");
-          //$("#btnConfirmarAprobacion").attr("href","aprobarListaCorte.php?id_lista_corte="+id_lista_corte)
-        });
+        bindAccionListaCorte("#link_aprobar_lc", aprobarLC, "aprobar", [2]);
 
         $("#btnConfirmarAprobacion").on("click", function() {
-          
+
           if (!id_lista_corte) {
-            alert("No hay cómputo seleccionado.");
+            alert("No hay lista de corte seleccionada.");
             return;
           }
 
-          const data = {
-            ajax: true,
-            accion: "aprobar",
-            id_lista_corte: id_lista_corte
-          };
-
+          const data = {ajax: true, accion: "aprobar", id_lista_corte: id_lista_corte};
           $.ajax({
             url: "aprobarListaCorte.php",
             method: "POST",
             data: data,
             success: function (resp) {
               if (resp.trim() === "ok") {
-                location.reload();
+                alert("Lista de Corte aprobada correctamente.");
+                $("#btnFiltrar").click(); // Refiltrar la lista
+                //location.reload();
                 //console.log("funcionó");
               } else {
                 alert("Error: " + resp);
@@ -604,7 +511,7 @@ include 'database.php';?>
               alert("Error del servidor: " + xhr.responseText);
             },
             complete: function () {
-              $("#modalConfirmacion").modal("hide");
+              $("#modalConfirmarAprobacion").modal("hide");
               id_lista_corte = null;
             }
           });
@@ -615,8 +522,8 @@ include 'database.php';?>
           var t=$(this).parent();
 
           let id_lc=t.find("td:first-child").html();
-          let id_lc_revision=t.find("td:nth-child(2)").html();
-          let nro_revision = t.find("td:nth-child(8)").html();
+          /*let id_lc_revision=t.find("td:nth-child(2)").html();
+          let nro_revision = t.find("td:nth-child(8)").html();*/
 		      let estado = t.find("td:nth-child(11)").html();
 		  
           if(t.hasClass('selected')){
@@ -642,47 +549,6 @@ include 'database.php';?>
               $("#link_ot_lc").attr("href","#");
             }
           }
-        });
-		    
-        $("body").on('dblclick',".editable", function(event) {
-          var t=$(this);
-          
-          let old_padding=t.css("padding");
-          t.css({padding: '0'});
-          t.find('input[type="hidden"]');
-          
-          var idPosicion=t.data("idPosicion");
-          console.log(idPosicion);
-          var idEstado=t.data("idEstado");
-
-          dataString="idPosicion="+idPosicion;
-
-          let nuevo_select_estado=$("#select_estado_base").clone()
-          nuevo_select_estado.id="id_estado_nuevo"
-
-          t.html(nuevo_select_estado);
-          nuevo_select_estado.val(idEstado)
-
-          nuevo_select_estado.on('blur', function(event) {
-            nuevaEstado=nuevo_select_estado.val();
-            // Obtener el texto correspondiente al valor seleccionado
-            var textoSeleccionado = nuevo_select_estado.find('option[value="'+nuevaEstado+'"]').text();
-
-            $.ajax({
-              type: "POST",
-              url: "modificarEstadoListaCorte.php",
-              data: "idPosicion="+idPosicion+"&idEstado="+nuevaEstado,
-              success: function(data) {
-                if(data){
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
-                }else{
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
-				        }
-              }
-            });
-          });
         });
 
         // Setup - add a text input to each footer cell
@@ -732,21 +598,21 @@ include 'database.php';?>
 
       function cancelarLC(){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
-        const idRev = filaActiva.data("id-lc-revision");
-        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+idRev);
+        const id_lista_corte = filaActiva.data("id-lista-corte");
+        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+id_lista_corte);
         $("#eliminarModal").modal("show");
       }
 
       function clonarLC(){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
         const id = filaActiva.data("id-lista-corte");
-        const numero = filaActiva.data("numero");
-        const revision = filaActiva.data("revision");
+        const numero_lc = filaActiva.data("numero-lc");
+        const revision = filaActiva.data("nro-revision");
         const proyecto = filaActiva.data("proyecto");
         const sitio = filaActiva.data("sitio");
         const subsitio = filaActiva.data("subsitio");
         const proy = filaActiva.data("proy");
-        const mensaje = `¿Desea clonar la Lista de Corte #${numero} Rev. ${revision} del proyecto ${proyecto} (${sitio}/${subsitio}/${proy})?`;
+        const mensaje = `¿Desea clonar la Lista de Corte #${numero_lc} Rev. ${revision} del proyecto ${proyecto} (${sitio}/${subsitio}/${proy})?`;
         $("#textoClonar").text(mensaje);
         $("#btnConfirmarClonar").off('click').on('click', function(ev){
           ev.preventDefault();
@@ -759,6 +625,33 @@ include 'database.php';?>
         });
         $("#modalClonar").modal("show");
       }
+
+      function aprobarLC() {
+        const filaActiva = $("#dataTables-example666 tbody tr.selected");
+        /*e.preventDefault();
+
+        if (filaActiva.length === 0) {
+          alert("Debe seleccionar una lista de corte de la tabla primero.");
+          return;
+        }
+
+        let quiereAprobar=true;
+        if(quiereAprobar){
+          let estado=getEstadoListaCorteSeleccionada();
+          if (estado.id != 2) {
+            alert("No se puede aprobar la lista de corte en este estado.");
+            return;
+          }
+        }*/
+        let mensaje = "¿Desea aprobar la lista de corte seleccionada?";
+        id_lista_corte = filaActiva.data("id-lista-corte");
+        console.log(id_lista_corte);
+
+        // Mostrar modal de confirmación
+        $("#textoConfirmacion").html(mensaje);
+        $("#modalConfirmarAprobacion").modal("show");
+        //$("#btnConfirmarAprobacion").attr("href","aprobarListaCorte.php?id_lista_corte="+id_lista_corte)
+      };
 
       function getEstadoListaCorteSeleccionada() {
         let fila_seleccionada=$("#dataTables-example666 tbody tr.selected");
