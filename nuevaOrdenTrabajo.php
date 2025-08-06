@@ -201,19 +201,19 @@ Database::disconnect();?>
                               
                               $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ".$_GET['id_lista_corte']." GROUP BY lcp.id";
                               foreach ($pdo->query($sql) as $row) {
-                                $saldo = $row["cant_pos"] - $row["cant_bajada"];
-                                echo '<tr id="'. $row["id_posicion"] . '" data-cant-bajada="'.$row["cant_bajada"].'" data-cant-pos="'.$row["cant_pos"].'">';
-                                echo '<td></td>';
-                                echo '<td class="d-none">'. $row["id_posicion"] . '</td>';
-                                echo '<td>'. $row["nombre"] . '</td>';
-                                echo '<td>'. $row["cant_conj"] . '</td>';
-                                echo '<td>'. $row["posicion"] . '</td>';
-                                echo '<td>'. $row["cant_pos"] . '</td>';
-                                echo '<td>'. $row["concepto"] . '</td>';
-                                echo '<td>'. $row["procesos"] . '</td>';
-                                echo '<td>'. $row["cant_bajada"] . '</td>';
-                                echo '<td>'. $saldo . '</td>';
-                                echo '</tr>';
+                                $saldo = $row["cant_pos"] - $row["cant_bajada"];?>
+                                <tr id="<?=$row["id_posicion"]?>" data-cant-bajada="<?=$row["cant_bajada"]?>" data-cant-pos="<?=$row["cant_pos"]?>">
+                                  <td></td>
+                                  <td class="d-none"><?=$row["id_posicion"]?></td>
+                                  <td><?=$row["nombre"]?></td>
+                                  <td><?=$row["cant_conj"]?></td>
+                                  <td><?=$row["posicion"]?></td>
+                                  <td><?=$row["cant_pos"]?></td>
+                                  <td><?=$row["concepto"]?></td>
+                                  <td><?=$row["procesos"]?></td>
+                                  <td><?=$row["cant_bajada"]?></td>
+                                  <td><?=$saldo?></td>
+                                </tr><?php
                               }
                               Database::disconnect();?>
                             </tbody>
@@ -360,26 +360,7 @@ Database::disconnect();?>
       $(document).ready(function () {
         var tablaLC = $('#tablaLC');
         var tablaOT = $('#tablaOT');
-
-        function refreshCantidades(){
-          tablaLCDT.rows().every(function(){
-            let row = $(this.node());
-            let base = parseFloat(row.data('cant-bajada')) || 0;
-            let cantPos = parseFloat(row.data('cant-pos')) || 0;
-            let idPos = row.attr('id');
-            let extra = 0;
-            let input = tablaOT.find("input[name='id_posicion[]'][value='"+idPos+"']");
-            if(input.length){
-              let val = parseFloat(input.closest('tr').find("input[name='cantidad_bajar[]']").val());
-              if(!isNaN(val)) extra = val;
-            }
-            let total = base + extra;
-            let saldo = cantPos - total;
-            let cells = row.children('td');
-            $(cells[8]).text(total);
-            $(cells[9]).text(saldo);
-          });
-        }
+        var tablaLCDT;
 
         let datatableDefault={
           stateSave: false,
@@ -424,7 +405,7 @@ Database::disconnect();?>
           }
         });
 
-        var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
+        tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
           columnDefs: [
             { orderable: false, className: 'select-checkbox', targets: 0 },
             { targets: 1, visible: false }
@@ -556,6 +537,7 @@ Database::disconnect();?>
           var title = $(this).text();
           $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
         } );
+
 	      tablaOT.DataTable({
           stateSave: false,
           responsive: false,
@@ -637,11 +619,30 @@ Database::disconnect();?>
         });
 
       });
+
+      function refreshCantidades(){
+        tablaLCDT.rows().every(function(){
+          let row = $(this.node());
+          let base = parseFloat(row.data('cant-bajada')) || 0;
+          let cantPos = parseFloat(row.data('cant-pos')) || 0;
+          let idPos = row.attr('id');
+          let extra = 0;
+          let input = tablaOT.find("input[name='id_posicion[]'][value='"+idPos+"']");
+          if(input.length){
+            let val = parseFloat(input.closest('tr').find("input[name='cantidad_bajar[]']").val());
+            if(!isNaN(val)) extra = val;
+          }
+          let total = base + extra;
+          let saldo = cantPos - total;
+          let cells = row.children('td');
+          $(cells[8]).text(total);
+          $(cells[9]).text(saldo);
+        });
+      }
 	  
 	    function order(a, b) {
         return b.age - a.age;
       }
-
       function selectRow(t){
         t.addClass('selected');
       }
