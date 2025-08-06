@@ -376,8 +376,8 @@ Database::disconnect();?>
             let total = base + extra;
             let saldo = cantPos - total;
             let cells = row.children('td');
-            $(cells[7]).text(total);
-            $(cells[8]).text(saldo);
+            $(cells[8]).text(total);
+            $(cells[9]).text(saldo);
           });
         }
 
@@ -521,7 +521,14 @@ Database::disconnect();?>
                 <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
                 <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
               `;
-              return [elemento[0], elemento[1], elemento[2], elemento[3], elemento[4], inputCantidad];
+              return [
+                elemento[1],
+                elemento[2],
+                elemento[3],
+                elemento[4],
+                elemento[5],
+                inputCantidad
+              ];
             })
             tablaOT.DataTable().rows.add(newData).draw();
             $(selectedRowsLC.nodes()).hide().removeClass("selected")
@@ -619,9 +626,6 @@ Database::disconnect();?>
         });
     
         $(document).on('input change',"input[name='cantidad_bajar[]']",function(){
-          refreshCantidades();
-
-        /*$(document).on('input', '.cantidad-bajar', function(){
           var saldo = parseFloat($(this).data('saldo'));
           var valor = parseFloat($(this).val());
           if(valor > saldo){
@@ -629,8 +633,8 @@ Database::disconnect();?>
             $(this).addClass('is-invalid');
           }else{
             $(this).removeClass('is-invalid');
-          }*/
-
+          }
+          refreshCantidades();
         });
 
       });
