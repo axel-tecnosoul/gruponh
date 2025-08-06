@@ -186,9 +186,10 @@ Database::disconnect();?>
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                               
-                              $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, lcp.id AS id_posicion FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id WHERE lcc.id_lista_corte = ".$_GET['id_lista_corte']." GROUP BY lcp.id";
+                              $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ".$_GET['id_lista_corte']." GROUP BY lcp.id";
                               foreach ($pdo->query($sql) as $row) {
-                                echo '<tr id="'. $row["id_posicion"] . '">';
+                                $saldo = $row["cant_pos"] - $row["cant_bajada"];
+                                echo '<tr id="'. $row["id_posicion"] . '" data-cant-bajada="'.$row["cant_bajada"].'" data-cant-pos="'.$row["cant_pos"].'">';
                                 echo '<td class="d-none">'. $row["id_posicion"] . '</td>';
                                 echo '<td>'. $row["nombre"] . '</td>';
                                 echo '<td>'. $row["cant_conj"] . '</td>';
@@ -196,9 +197,9 @@ Database::disconnect();?>
                                 echo '<td>'. $row["cant_pos"] . '</td>';
                                 echo '<td>'. $row["concepto"] . '</td>';
                                 echo '<td>'. $row["procesos"] . '</td>';
-                                echo '<td>'. 0 . '</td>';
-                                echo '<td>'. $row["cant_pos"] . '</td>';
-                                
+                                echo '<td>'. $row["cant_bajada"] . '</td>';
+                                echo '<td>'. $saldo . '</td>';
+
                                 echo '</tr>';
                               }
                               Database::disconnect();?>
@@ -347,6 +348,26 @@ Database::disconnect();?>
         var tablaLC = $('#tablaLC');
         var tablaOT = $('#tablaOT');
 
+        function refreshCantidades(){
+          tablaLC.DataTable().rows().every(function(){
+            let row = $(this.node());
+            let base = parseFloat(row.data('cant-bajada')) || 0;
+            let cantPos = parseFloat(row.data('cant-pos')) || 0;
+            let idPos = row.attr('id');
+            let extra = 0;
+            let input = tablaOT.find("input[name='id_posicion[]'][value='"+idPos+"']");
+            if(input.length){
+              let val = parseFloat(input.closest('tr').find("input[name='cantidad_bajar[]']").val());
+              if(!isNaN(val)) extra = val;
+            }
+            let total = base + extra;
+            let saldo = cantPos - total;
+            let cells = row.children('td');
+            $(cells[7]).text(total);
+            $(cells[8]).text(saldo);
+          });
+        }
+
         let datatableDefault={
           stateSave: false,
           responsive: false,
@@ -417,6 +438,7 @@ Database::disconnect();?>
             })
             tablaOT.DataTable().rows.add(newData).draw();
             $(selectedRowsLC.nodes()).hide().removeClass("selected")
+            refreshCantidades();
 
           }else{
             alert("Por favor seleccione una posicion para agregar a la Orden de trabajo")
@@ -490,12 +512,17 @@ Database::disconnect();?>
             });
             //$(selectedRowsOT.nodes()).remove().draw();
             selectedRowsOT.remove().draw();
+            refreshCantidades();
   
           }else{
             alert("Por favor seleccione una posicion para eliminar")
           }
         });
     
+        $(document).on('input change',"input[name='cantidad_bajar[]']",function(){
+          refreshCantidades();
+        });
+
       });
 	  
 	    function order(a, b) {
