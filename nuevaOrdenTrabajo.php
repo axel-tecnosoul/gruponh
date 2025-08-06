@@ -488,9 +488,20 @@ Database::disconnect();?>
         });
 
         $("#link_agregar_posiciones").on("click",function(){
-          var selectedRowsLC = tablaLCDT.rows({ selected: true });
+          //var selectedRowsLC = tablaLCDT.rows({ selected: true });
+          var selectedRowsLC = tablaLCDT.DataTable().rows('.selected');
           console.log(selectedRowsLC);
-          if(selectedRowsLC.count()>0){
+          if(selectedRowsLC[0].length>0){
+            let newData=selectedRowsLC.data().map(function(elemento){
+              let saldo = elemento[8];
+              let inputCantidad = `
+                <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
+                <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
+                <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
+              `;
+              return [elemento[0], elemento[1], elemento[2], elemento[3], elemento[4], inputCantidad];
+            })
+          /*if(selectedRowsLC.count()>0){
             let newData=selectedRowsLC.data().toArray().map(function(elemento){
               return [
                 elemento[1],
@@ -501,10 +512,11 @@ Database::disconnect();?>
                 `<input type="hidden" name="id_posicion[]" value="${elemento[1]}">
                 <input type="number" step="0.01" class="form-control" name="cantidad_bajar[]">`
               ];
-            });
-            tablaOT.DataTable().rows.add(newData).draw();
-            selectedRowsLC.nodes().to$().hide();
-            tablaLCDT.rows().deselect();
+            });*/
+            tablaLCDT.DataTable().rows.add(newData).draw();
+            $(selectedRowsLC.nodes()).hide().removeClass("selected");
+            /*selectedRowsLC.nodes().to$().hide();
+            tablaLCDT.rows().deselect();*/
             $('#select_all').prop('checked', false);
 
           }else{
@@ -579,12 +591,23 @@ Database::disconnect();?>
             });
             //$(selectedRowsOT.nodes()).remove().draw();
             selectedRowsOT.remove().draw();
-  
+
           }else{
             alert("Por favor seleccione una posicion para eliminar")
           }
         });
-    
+
+        $(document).on('input', '.cantidad-bajar', function(){
+          var saldo = parseFloat($(this).data('saldo'));
+          var valor = parseFloat($(this).val());
+          if(valor > saldo){
+            $(this).val(saldo);
+            $(this).addClass('is-invalid');
+          }else{
+            $(this).removeClass('is-invalid');
+          }
+        });
+
       });
 	  
 	    function order(a, b) {
