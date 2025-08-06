@@ -5,11 +5,17 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$modoDebug=0;
 if (!empty($_POST)) {
-    
+
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+  if ($modoDebug==1) {
+    $pdo->beginTransaction();
+    var_dump($_POST);
+  }
 
   $redirect="listarOrdenesTrabajo.php";
 
@@ -20,20 +26,42 @@ if (!empty($_POST)) {
   $descripcion="Emision original";
 
   $sql = "INSERT INTO ordenes_trabajo (id_orden_trabajo,id_lista_corte, fecha, id_usuario, id_estado_orden_trabajo, nro_revision, anulado, titulo, numero, descripcion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+  $params = [null,
+             $_POST["id_lista_corte"],
+             $_POST['fecha'],
+             $_SESSION["user"]["id"],
+             $id_estado_orden_trabajo,
+             $nro_revision,
+             $anulado,
+             $_POST['titulo'],
+             $numero,
+             $descripcion,
+             $_POST['notas']];
   $q = $pdo->prepare($sql);
-  $q->execute([null,$_POST["id_lista_corte"],$_POST['fecha'],$_SESSION["user"]["id"],$id_estado_orden_trabajo,$nro_revision,$anulado,$_POST['titulo'],$numero,$descripcion,$_POST['notas']]);
+  $q->execute($params);
+  if ($modoDebug==1) {
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  }
   $id_orden_trabajo_revision = $pdo->lastInsertId();
 
   $sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
+  $params = [$id_orden_trabajo_revision,$id_orden_trabajo_revision];
   $q = $pdo->prepare($sql);
-  $q->execute([$id_orden_trabajo_revision,$id_orden_trabajo_revision]);
+  $q->execute($params);
+  if ($modoDebug==1) {
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  }
 
   if ($id_orden_trabajo_revision>0) {
     $numero="LC".$_POST["id_lista_corte"]."-OT".$id_orden_trabajo_revision;
-      
+
     $sql = "UPDATE ordenes_trabajo set numero = ? where id = ?";
+    $params = [$numero,$id_orden_trabajo_revision];
     $q = $pdo->prepare($sql);
-    $q->execute(array($numero,$id_orden_trabajo_revision));
+    $q->execute($params);
+    if ($modoDebug==1) {
+      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    }
 
   }
 
@@ -42,19 +70,29 @@ if (!empty($_POST)) {
       $id_estado_orden_trabajo_posicion=1;//Elaboración, Pendiente, Proceso, Terminada, Liberada, Reproceso, Rechazada, Cancelada
 
       $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?)";
+      $params = [$id_orden_trabajo_revision,$_POST['id_posicion'][$key],$cantidad,$id_estado_orden_trabajo_posicion];
       $q = $pdo->prepare($sql);
-      $q->execute([$id_orden_trabajo_revision,$_POST['id_posicion'][$key],$cantidad,$id_estado_orden_trabajo_posicion]);
+      $q->execute($params);
+      if ($modoDebug==1) {
+        echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+      }
 
     }
   }
 
   $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Nueva Orden de Trabajo','Orden de Trabajo')";
+  $params = [$_SESSION['user']['id']];
   $q = $pdo->prepare($sql);
-  $q->execute(array($_SESSION['user']['id']));
+  $q->execute($params);
+  if ($modoDebug==1) {
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    $pdo->rollBack();
+    die();
+  } else {
+    Database::disconnect();
+    header("Location: ".$redirect);
+  }
 
-  Database::disconnect();
-  header("Location: ".$redirect);
-  
 }
 
 if(isset($_GET['id_lista_corte'])){
@@ -562,10 +600,8 @@ Database::disconnect();?>
         //tablaOT.on('click',"tbody tr td", function () {
         $(document).on("click","#tablaOT tbody tr td", function(){
           var t=$(this).parent();
-          console.log(t.find("td:nth-child(5)"));
-          console.log($(this));
           let celdaClickeado=$(this)[0];
-          let celdaConInput=t.find("td:nth-child(5)")[0];
+          let celdaConInput=t.find("td:nth-child(6)")[0];
           if(celdaConInput!=celdaClickeado){
             if(t.hasClass('selected')){
               deselectRow(t);
