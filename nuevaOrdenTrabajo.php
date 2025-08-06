@@ -118,11 +118,11 @@ Database::disconnect();?>
                             <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$_GET['id_lista_corte']?>">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-3">
-                              <input name="fecha" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
+                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
                             </div>
                             <label class="col-sm-3 col-form-label">Titulo(*)</label>
                             <div class="col-sm-3">
-                              <input name="titulo" type="text" class="form-control">
+                              <input name="titulo" type="text" class="form-control" autofocus>
                             </div>
                           </div>
                           <div class="form-group row">
@@ -155,10 +155,10 @@ Database::disconnect();?>
                     <div class="card-body">
                       <div class="form-group row mb-3">
                         <div class="col-sm-4 mb-2 mb-sm-0">
-                          <select id="filtro_conjunto" class="form-control" style="width:100%"></select>
+                          <select id="filtro_conjunto" class="form-control" style="width:100%" multiple></select>
                         </div>
                         <div class="col-sm-4 mb-2 mb-sm-0">
-                          <select id="filtro_proceso" class="form-control" style="width:100%"></select>
+                          <select id="filtro_proceso" class="form-control" style="width:100%" multiple></select>
                         </div>
                         <div class="col-sm-4">
                           <button type="button" id="seleccionar_filtradas" class="btn btn-primary" style="width:100%">Seleccionar filtradas</button>
@@ -394,6 +394,15 @@ Database::disconnect();?>
           }
         } );
 
+        $(document).on("click","#dataTables-example666 tbody tr td", function(){
+          var t=$(this).parent();
+          if(t.hasClass('selected')){
+            deselectRow(t);
+          }else{
+            selectRow(t);
+          }
+        });
+
         var tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
           columnDefs: [
             { orderable: false, className: 'select-checkbox', targets: 0 },
@@ -407,16 +416,18 @@ Database::disconnect();?>
         }));
 
         //populate filtros
-        var conjuntos = tablaLCDT.column(1).data().unique().sort();
+        var conjuntos = tablaLCDT.column(2).data().unique().sort();
+        //$('#filtro_conjunto').append('<option value="">- Todos los conjuntos -</option>');
         conjuntos.each(function(d){
           $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
         });
         var procesosSet = new Set();
-        tablaLCDT.column(6).data().each(function(d){
+        tablaLCDT.column(7).data().each(function(d){
           d.split(',').forEach(function(p){
             procesosSet.add(p.trim());
           });
         });
+        //$('#filtro_proceso').append('<option value="">- Todos los procesos -</option>');
         Array.from(procesosSet).sort().forEach(function(p){
           $('#filtro_proceso').append('<option value="'+p+'">'+p+'</option>');
         });
@@ -424,20 +435,29 @@ Database::disconnect();?>
         $('#filtro_conjunto').select2({placeholder:'Conjunto',allowClear:true});
         $('#filtro_proceso').select2({placeholder:'Proceso',allowClear:true});
 
-        $('#filtro_conjunto').on('change', function(){
-          var val = $(this).val();
-          tablaLCDT.column(1).search(val ? '^'+val+'$' : '', true, false).draw();
-        });
-        $('#filtro_proceso').on('change', function(){
-          var val = $(this).val();
-          tablaLCDT.column(6).search(val ? val : '', true, false).draw();
+        $('#filtro_conjunto').on('change', function () {
+          var selected = $(this).val(); // array de valores seleccionados
+          var search = selected && selected.length
+            ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
+            : '';
+          tablaLCDT.column(2).search(search, true, false).draw(); // regex=true, smart=false
         });
 
+        $('#filtro_proceso').on('change', function () {
+          var selected = $(this).val();
+          var search = selected && selected.length
+            ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
+            : '';
+          tablaLCDT.column(7).search(search, true, false).draw();
+        });
+
+
         $('#seleccionar_filtradas').on('click', function(){
-          var rows = tablaLCDT.rows({search:'applied'}).nodes();
           tablaLCDT.rows().nodes().each(function(row){
             deselectRow($(row));
           });
+
+          var rows = tablaLCDT.rows({search:'applied'}).nodes();
           $(rows).each(function(){
             selectRow($(this));
           });
@@ -455,20 +475,21 @@ Database::disconnect();?>
 
         $('#select_all').on('click', function(){
           if(this.checked){
-            tablaLCDt.rows({ search: 'applied' }).select();
+            tablaLCDT.rows({ search: 'applied' }).select();
           }else{
-            tablaLCDt.rows().deselect();
+            tablaLCDT.rows().deselect();
           }
         });
 
-        tablaLCDt.on('select deselect', function(){
-          var all = tablaLCDt.rows({ search: 'applied' }).count();
-          var selected = tablaLCDt.rows({ selected: true, search: 'applied' }).count();
+        tablaLCDT.on('select deselect', function(){
+          var all = tablaLCDT.rows({ search: 'applied' }).count();
+          var selected = tablaLCDT.rows({ selected: true, search: 'applied' }).count();
           $('#select_all').prop('checked', selected === all && all > 0);
         });
 
         $("#link_agregar_posiciones").on("click",function(){
-          var selectedRowsLC = tablaLCDt.rows({ selected: true });
+          var selectedRowsLC = tablaLCDT.rows({ selected: true });
+          console.log(selectedRowsLC);
           if(selectedRowsLC.count()>0){
             let newData=selectedRowsLC.data().toArray().map(function(elemento){
               return [
@@ -483,7 +504,7 @@ Database::disconnect();?>
             });
             tablaOT.DataTable().rows.add(newData).draw();
             selectedRowsLC.nodes().to$().hide();
-            tablaLCDt.rows().deselect();
+            tablaLCDT.rows().deselect();
             $('#select_all').prop('checked', false);
 
           }else{
