@@ -7,8 +7,11 @@ if (empty($_SESSION['user'])) {
 require 'database.php';
 
 if(isset($_GET["id_lista_corte"])){
-  $id_lista_corte=$_GET["id_lista_corte"];
+  $id_lista_corte = filter_input(INPUT_GET, 'id_lista_corte', FILTER_VALIDATE_INT);
 } else {
+  $id_lista_corte = false;
+}
+if (!$id_lista_corte) {
   header("Location: listarListasCorte.php");
   die("Redirecting to listarListasCorte.php");
 }
@@ -27,11 +30,11 @@ if (!empty($_POST)) {
   if (isset($_POST['btn2']) or isset($_POST['btn3'])) {
 
     if(isset($_POST['btn2'])){
-      $id_lista_corte_conjunto=$_POST['btn2'];
+      $id_lista_corte_conjunto = filter_input(INPUT_POST,'btn2',FILTER_VALIDATE_INT);
       $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
     }
     if(isset($_POST['btn3'])){
-      $id_lista_corte_conjunto=$_POST['btn3'];
+      $id_lista_corte_conjunto = filter_input(INPUT_POST,'btn3',FILTER_VALIDATE_INT);
       $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto;
     }
 	
@@ -41,9 +44,10 @@ if (!empty($_POST)) {
 	$data = $q->fetch(PDO::FETCH_ASSOC);
 	
 	if ($data['cant'] == 0) {
-		$sql = "UPDATE listas_corte_conjuntos SET nombre = ?, cantidad = ? WHERE id = ?";
-		$q = $pdo->prepare($sql);
-		$q->execute([$_POST['nombre'],$_POST['cantidad'],$id_lista_corte_conjunto]);
+                $sql = "UPDATE listas_corte_conjuntos SET nombre = ?, cantidad = ? WHERE id = ?";
+                $q = $pdo->prepare($sql);
+                $cantidad = filter_input(INPUT_POST,'cantidad',FILTER_VALIDATE_FLOAT);
+                $q->execute([$_POST['nombre'],$cantidad,$id_lista_corte_conjunto]);
 		
 		$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificacion de Conjunto ID #$id_lista_corte_conjunto de Lista de Corte','Listas de Corte','')";
 		$q = $pdo->prepare($sql);
@@ -65,7 +69,8 @@ if (!empty($_POST)) {
     if ($data['cant'] == 0) {
       $sql = "INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)";
       $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte,$_POST['nombre'],$_POST['cantidad'],$peso,$id_estado_lista_corte_conjuntos]);
+      $cantidad = filter_input(INPUT_POST,'cantidad',FILTER_VALIDATE_FLOAT);
+      $q->execute([$id_lista_corte,$_POST['nombre'],$cantidad,$peso,$id_estado_lista_corte_conjuntos]);
       $id_lista_corte_conjunto = $pdo->lastInsertId();
       
       $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Conjunto ID #$id_lista_corte_conjunto de Lista de Corte','Listas de Corte','')";
@@ -162,8 +167,10 @@ Database::disconnect();?>
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                   
-                                  $sql = " SELECT c.id, c.nombre, c.cantidad, c.peso, e.estado FROM listas_corte_conjuntos c inner join estados_lista_corte_conjuntos e on e.id = c.id_estado_lista_corte_conjuntos WHERE c.id_lista_corte = ".$id_lista_corte;
-                                  foreach ($pdo->query($sql) as $row) {?>
+                                  $sql = " SELECT c.id, c.nombre, c.cantidad, c.peso, e.estado FROM listas_corte_conjuntos c inner join estados_lista_corte_conjuntos e on e.id = c.id_estado_lista_corte_conjuntos WHERE c.id_lista_corte = ?";
+                                  $q = $pdo->prepare($sql);
+                                  $q->execute([$id_lista_corte]);
+                                  while ($row = $q->fetch(PDO::FETCH_ASSOC)) {?>
                                     <tr>
                                       <td><?=$row["id"]?></td>
                                       <td><?=$row["nombre"]?></td>

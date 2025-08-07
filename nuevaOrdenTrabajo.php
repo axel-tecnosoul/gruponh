@@ -8,6 +8,7 @@ require 'database.php';
 $modoDebug=0;
 
 function obtenerSaldoPosicion($pdo,$id_posicion){
+  $id_posicion = intval($id_posicion);
   $sql = "SELECT lcp.cantidad AS cant_pos, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcp.id = ? GROUP BY lcp.id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_posicion]);
@@ -33,7 +34,7 @@ if (!empty($_POST)) {
   $anulado=0;
   $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
   $descripcion="Emision original";
-  $id_lista_corte=$_POST["id_lista_corte"];
+  $id_lista_corte = filter_input(INPUT_POST, 'id_lista_corte', FILTER_VALIDATE_INT);
 
   $sql = "SELECT max(nro_orden_trabajo) AS nro_orden_trabajo FROM ordenes_trabajo where id_lista_corte = ?";
   $q = $pdo->prepare($sql);
@@ -71,7 +72,7 @@ if (!empty($_POST)) {
   }*/
 
   /*if ($id_orden_trabajo>0) {
-    $numero="LC".$_POST["id_lista_corte"]."-OT".$id_orden_trabajo;
+    $numero="LC".$id_lista_corte."-OT".$id_orden_trabajo;
 
     $sql = "UPDATE ordenes_trabajo set numero = ? where id = ?";
     $params = [$numero,$id_orden_trabajo];
@@ -85,7 +86,7 @@ if (!empty($_POST)) {
 
   foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
     if($cantidad!=""){
-      $id_posicion = $_POST['id_posicion'][$key];
+      $id_posicion = intval($_POST['id_posicion'][$key]);
       $saldo = obtenerSaldoPosicion($pdo,$id_posicion);
       if(!is_numeric($cantidad) || $cantidad <= 0 || $cantidad > $saldo){
         $pdo->rollBack();
@@ -124,13 +125,14 @@ if (!empty($_POST)) {
 
 if(isset($_GET['id_lista_corte'])){
   //nueva revision
+  $id_lista_corte = filter_input(INPUT_GET, 'id_lista_corte', FILTER_VALIDATE_INT);
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   //$sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte_revisiones WHERE id = ? ";
   $sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
   $q = $pdo->prepare($sql);
-  $q->execute([$_GET['id_lista_corte']]);
+  $q->execute([$id_lista_corte]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
 }
@@ -183,7 +185,7 @@ Database::disconnect();?>
                             </div>
                           </div> -->
                           <div class="form-group row">
-                            <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$_GET['id_lista_corte']?>">
+                            <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$id_lista_corte?>">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-3">
                               <input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
@@ -267,8 +269,10 @@ Database::disconnect();?>
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                               
-                              $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ".$_GET['id_lista_corte']." GROUP BY lcp.id";
-                              foreach ($pdo->query($sql) as $row) {
+                                $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY lcp.id";
+                                $q = $pdo->prepare($sql);
+                                $q->execute([$id_lista_corte]);
+                                while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
                                 $saldo = $row["cant_pos"] - $row["cant_bajada"];?>
                                 <tr id="<?=$row["id_posicion"]?>" data-cant-bajada="<?=$row["cant_bajada"]?>" data-cant-pos="<?=$row["cant_pos"]?>">
                                   <td></td>
