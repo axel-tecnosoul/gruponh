@@ -40,13 +40,19 @@ if (!empty($_POST)) {
     var_dump($_POST);
   }
 
-  $redirect="listarOrdenesTrabajo.php";
+    $redirect="listarOrdenesTrabajo.php";
 
-  $id_estado_orden_trabajo=1;
-  $nro_revision=0;
-  $anulado=0;
-  $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
-  $descripcion="Emision original";
+    $id_estado_orden_trabajo=1;
+    $nro_revision=0;
+    $anulado=0;
+    $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
+    $descripcion="Emision original";
+
+    // Cantidad de órdenes de trabajo existentes para la lista antes de insertar
+    $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_lista_corte]);
+    $cant_ot_previas = (int)$q->fetchColumn();
 
   $sql = "SELECT max(nro_orden_trabajo) AS nro_orden_trabajo FROM ordenes_trabajo where id_lista_corte = ?";
   $q = $pdo->prepare($sql);
@@ -68,12 +74,31 @@ if (!empty($_POST)) {
     $descripcion,
     $_POST['notas']
   ];
-  $q = $pdo->prepare($sql);
-  $q->execute($params);
-  if ($modoDebug==1) {
-    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
-  }
-  $id_orden_trabajo = $pdo->lastInsertId();
+    $q = $pdo->prepare($sql);
+    $q->execute($params);
+    if ($modoDebug==1) {
+      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    }
+    $id_orden_trabajo = $pdo->lastInsertId();
+
+    // Cantidad de OTs luego de insertar la nueva
+    $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_lista_corte]);
+    $cant_ot_actuales = (int)$q->fetchColumn();
+
+    // Si antes no existían OTs y la lista estaba aprobada, pasarla a En Proceso (4)
+    if ($cant_ot_previas == 0 && $estadoLC['id_estado_lista_corte'] == 3) {
+      $sql = "UPDATE listas_corte SET id_estado_lista_corte = 4 WHERE id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_lista_corte]);
+
+      // Registrar el cambio de estado en logs
+      $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo) VALUES (now(), ?, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte')";
+      $params = [$_SESSION['user']['id']];
+      $q = $pdo->prepare($sql);
+      $q->execute($params);
+    }
 
   /*$sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
   $params = [$id_orden_trabajo,$id_orden_trabajo];
