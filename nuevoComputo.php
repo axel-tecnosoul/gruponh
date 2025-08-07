@@ -52,18 +52,27 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,$_POST['id_estado'],$nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
   
-  $id = $pdo->lastInsertId();
+  $id_computo = $pdo->lastInsertId();
   
   $sql = "UPDATE computos set nro_computo = ? where id = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$id,$id]);
+  $q->execute([$id_computo,$id_computo]);
 
-  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id')";
+  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id_computo')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
 
+  if ($_POST['id_estado']==2) {
+    $idTipoNotificacion=8;
+    $idEntidad=$id_computo;
+    $detalleNotificacion="ID Lista de Corte: #".$idEntidad;
+    $asuntoEmail="Módulo Producción - Nuevo Cómputo ({$descProyecto})";
+    $cuerpoEmail="Nuevo cómputo dado de alta en el sistema para aprobar: #$idEntidad";
+    crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+  }
+
   // --- Cargo configuración SMTP desde parámetros ---
-  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+  /*$stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
   $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
   list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
   
@@ -85,8 +94,8 @@ if (!empty($_POST)) {
       $mail->IsSMTP();
       $mail->SMTPAuth = true;
       $mail->Port = 25; 
-      /*$mail->SMTPSecure = 'ssl';
-      $mail->SMTPAutoTLS = false;*/
+      //$mail->SMTPSecure = 'ssl';
+      //$mail->SMTPAutoTLS = false;
       $mail->SMTPSecure = false;
       $mail->IsHTML(true); 
       $mail->CharSet = "utf-8";
@@ -103,7 +112,7 @@ if (!empty($_POST)) {
       $mail->Send();
     }
     
-  }
+  }*/
   
   Database::disconnect();
   header("Location: itemsComputo.php?id=".$id."&revision=0&modo=nuevo");

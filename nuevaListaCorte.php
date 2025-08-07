@@ -79,11 +79,18 @@ if (!empty($_POST)) {
     $q->execute(array($_SESSION['user']['id']));
     
     $descripcionProyecto = getDescripcionProyecto($pdo, $id_proyecto);
+
+    $idTipoNotificacion=5;
+    $idEntidad=$id_lista_corte;
+    $detalleNotificacion="ID Lista de Corte: #".$idEntidad;
+    $asuntoEmail="Módulo Ingeniería - Nueva Lista de Corte ({$descProyecto})";
+    $cuerpoEmail="Nueva lista de corte dada de alta en el sistema: #$idEntidad";
+    crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
     
     // --- Cargo configuración SMTP desde parámetros ---
-    $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+    /*$stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
     $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
-    list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
+    list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;*/
     
     /*$sql = "SELECT t.id_usuario, u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 5 ";
     foreach ($pdo->query($sql) as $row) {
@@ -121,7 +128,7 @@ if (!empty($_POST)) {
     }*/
 
     // 1) Recuperar todos los usuarios de golpe
-    $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t INNER JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 5";
+    /*$sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t INNER JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = 5";
     $users = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
     // 2) Batch-insert de notificaciones
@@ -170,7 +177,7 @@ if (!empty($_POST)) {
     if (!$mail->send()) {
       error_log('Error enviando notificación masiva: ' . $mail->ErrorInfo);
       // manejar el error según tu lógica
-    }
+    }*/
 
     $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
   }
