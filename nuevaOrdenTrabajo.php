@@ -21,8 +21,21 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+  $id_lista_corte = filter_input(INPUT_POST, 'id_lista_corte', FILTER_VALIDATE_INT);
+
+  // Verificar que la lista de corte esté aprobada
+  $sql = "SELECT id_estado_lista_corte FROM listas_corte WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $estadoLC = $q->fetch(PDO::FETCH_ASSOC);
+  if(!$estadoLC || $estadoLC['id_estado_lista_corte'] != 3){
+    Database::disconnect();
+    header("Location: listarListasCorte.php?error=lc_no_aprobada");
+    exit;
+  }
+
   $pdo->beginTransaction();
-  
+
   if ($modoDebug==1) {
     var_dump($_POST);
   }
@@ -34,7 +47,6 @@ if (!empty($_POST)) {
   $anulado=0;
   $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
   $descripcion="Emision original";
-  $id_lista_corte = filter_input(INPUT_POST, 'id_lista_corte', FILTER_VALIDATE_INT);
 
   $sql = "SELECT max(nro_orden_trabajo) AS nro_orden_trabajo FROM ordenes_trabajo where id_lista_corte = ?";
   $q = $pdo->prepare($sql);
@@ -134,6 +146,12 @@ if(isset($_GET['id_lista_corte'])){
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  if(!$data || $data['id_estado_lista_corte'] != 3){
+    Database::disconnect();
+    header("Location: listarListasCorte.php?error=lc_no_aprobada");
+    exit;
+  }
 
 }
 

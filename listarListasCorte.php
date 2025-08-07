@@ -48,6 +48,13 @@ include 'database.php';?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
+              <div class="col-sm-12">
+                <?php if(isset($_GET['error']) && $_GET['error']=='lc_no_aprobada'){?>
+                <div class="alert alert-danger">La lista de corte debe estar aprobada para generar una orden de trabajo.</div>
+                <?php }?>
+              </div>
+            </div>
+            <div class="row">
               <div class="col-md-12">
                 <div class="card">
                   <div class="card-body">
