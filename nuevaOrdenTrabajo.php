@@ -6,6 +6,14 @@ if (empty($_SESSION['user'])) {
 }
 require 'database.php';
 $modoDebug=0;
+
+function obtenerSaldoPosicion($pdo,$id_posicion){
+  $sql = "SELECT lcp.cantidad AS cant_pos, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcp.id = ? GROUP BY lcp.id";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_posicion]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  return $data ? $data['cant_pos'] - $data['cant_bajada'] : 0;
+}
 if (!empty($_POST)) {
 
   // insert data
@@ -76,11 +84,19 @@ if (!empty($_POST)) {
   }*/
 
   foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
-    if($cantidad!="" and $cantidad>0){
+    if($cantidad!=""){
+      $id_posicion = $_POST['id_posicion'][$key];
+      $saldo = obtenerSaldoPosicion($pdo,$id_posicion);
+      if(!is_numeric($cantidad) || $cantidad <= 0 || $cantidad > $saldo){
+        $pdo->rollBack();
+        Database::disconnect();
+        header("Location: nuevaOrdenTrabajo.php?error=1&id_lista_corte=".$id_lista_corte);
+        exit;
+      }
       $id_estado_orden_trabajo_posicion=1;//Elaboración, Pendiente, Proceso, Terminada, Liberada, Reproceso, Rechazada, Cancelada
 
       $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?)";
-      $params = [$id_orden_trabajo,$_POST['id_posicion'][$key],$cantidad,$id_estado_orden_trabajo_posicion];
+      $params = [$id_orden_trabajo,$id_posicion,$cantidad,$id_estado_orden_trabajo_posicion];
       $q = $pdo->prepare($sql);
       $q->execute($params);
       if ($modoDebug==1) {
@@ -145,6 +161,9 @@ Database::disconnect();?>
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
+                <?php if(isset($_GET['error']) && $_GET['error']==1){?>
+                <div class="alert alert-danger">La cantidad a bajar debe ser un número positivo y no superar el saldo disponible.</div>
+                <?php }?>
                 <form class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
                   <div class="card mb-0">
                     <div class="card-header">
