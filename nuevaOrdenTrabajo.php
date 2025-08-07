@@ -12,8 +12,9 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+  $pdo->beginTransaction();
+  
   if ($modoDebug==1) {
-    $pdo->beginTransaction();
     var_dump($_POST);
   }
 
@@ -24,53 +25,62 @@ if (!empty($_POST)) {
   $anulado=0;
   $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
   $descripcion="Emision original";
+  $id_lista_corte=$_POST["id_lista_corte"];
 
-  $sql = "INSERT INTO ordenes_trabajo (id_orden_trabajo,id_lista_corte, fecha, id_usuario, id_estado_orden_trabajo, nro_revision, anulado, titulo, numero, descripcion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
-  $params = [null,
-             $_POST["id_lista_corte"],
-             $_POST['fecha'],
-             $_SESSION["user"]["id"],
-             $id_estado_orden_trabajo,
-             $nro_revision,
-             $anulado,
-             $_POST['titulo'],
-             $numero,
-             $descripcion,
-             $_POST['notas']];
+  $sql = "SELECT max(nro_orden_trabajo) AS nro_orden_trabajo FROM ordenes_trabajo where id_lista_corte = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  $nro_orden_trabajo = $data['nro_orden_trabajo']+1;
+
+  $sql = "INSERT INTO ordenes_trabajo (nro_orden_trabajo,id_lista_corte, fecha, id_usuario, id_estado_orden_trabajo, nro_revision, anulado, titulo, numero, descripcion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+  $params = [
+    $nro_orden_trabajo,
+    $id_lista_corte,
+    $_POST['fecha'],
+    $_SESSION["user"]["id"],
+    $id_estado_orden_trabajo,
+    $nro_revision,
+    $anulado,
+    $_POST['titulo'],
+    $numero,
+    $descripcion,
+    $_POST['notas']
+  ];
   $q = $pdo->prepare($sql);
   $q->execute($params);
   if ($modoDebug==1) {
     echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
   }
-  $id_orden_trabajo_revision = $pdo->lastInsertId();
+  $id_orden_trabajo = $pdo->lastInsertId();
 
-  $sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
-  $params = [$id_orden_trabajo_revision,$id_orden_trabajo_revision];
+  /*$sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
+  $params = [$id_orden_trabajo,$id_orden_trabajo];
   $q = $pdo->prepare($sql);
   $q->execute($params);
   if ($modoDebug==1) {
     echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
-  }
+  }*/
 
-  if ($id_orden_trabajo_revision>0) {
-    $numero="LC".$_POST["id_lista_corte"]."-OT".$id_orden_trabajo_revision;
+  /*if ($id_orden_trabajo>0) {
+    $numero="LC".$_POST["id_lista_corte"]."-OT".$id_orden_trabajo;
 
     $sql = "UPDATE ordenes_trabajo set numero = ? where id = ?";
-    $params = [$numero,$id_orden_trabajo_revision];
+    $params = [$numero,$id_orden_trabajo];
     $q = $pdo->prepare($sql);
     $q->execute($params);
     if ($modoDebug==1) {
       echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
     }
 
-  }
+  }*/
 
   foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
     if($cantidad!="" and $cantidad>0){
       $id_estado_orden_trabajo_posicion=1;//Elaboración, Pendiente, Proceso, Terminada, Liberada, Reproceso, Rechazada, Cancelada
 
       $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?)";
-      $params = [$id_orden_trabajo_revision,$_POST['id_posicion'][$key],$cantidad,$id_estado_orden_trabajo_posicion];
+      $params = [$id_orden_trabajo,$_POST['id_posicion'][$key],$cantidad,$id_estado_orden_trabajo_posicion];
       $q = $pdo->prepare($sql);
       $q->execute($params);
       if ($modoDebug==1) {
@@ -89,6 +99,7 @@ if (!empty($_POST)) {
     $pdo->rollBack();
     die();
   } else {
+    $pdo->commit();
     Database::disconnect();
     header("Location: ".$redirect);
   }

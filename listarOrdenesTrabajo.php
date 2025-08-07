@@ -140,7 +140,7 @@ include 'database.php';
                           if (!empty($_POST)) {
                           $pdo = Database::connect();
                           //$sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lcr.id_lista_corte, lcr.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
-                          $sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lc.id AS id_lista_corte, lc.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte lc ON otr.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
+                          $sql = "SELECT ot.id, ot.numero, ot.nro_orden_trabajo, ot.nro_revision, ot.titulo, lc.id AS id_lista_corte, lc.nombre ,p.nombre AS proyecto, date_format(ot.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio, s.nro_subsitio, u.usuario,p.nro nro FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = ot.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON ot.id_usuario=u.id WHERE ot.anulado = 0";
                           if (!empty($_POST['nro'])) {
                             $nro=$_POST['nro'];
                             $ex=explode("/", $nro);
@@ -161,25 +161,19 @@ include 'database.php';
                           if (!empty($_POST['id_estado'][0])) {
                             $sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
                           }
-						  
-                          foreach ($pdo->query($sql) as $row) {
-                            echo '<tr>';
-                            echo '<td class="d-none">'.$row["id"].'</td>';
-                            if (empty($row["subsitio"])) {
-                              echo '<td>'.$row["sitio"].'</td>';
-                              echo '<td>0</td>';
-                            } else {
-                              echo '<td>'.$row["subsitio"].'</td>';
-                              echo '<td>'.$row["sitio"].'</td>';
-                            }
-                            echo '<td>'.$row["nro"].'</td>';
-                            echo '<td>'.$row["id_lista_corte"].'</td>';
-                            echo '<td>'.$row["nombre"].'</td>';
-                            echo '<td>'.$row["numero"].' / '.$row["nro_revision"]. '</td>';
-                            echo '<td>'.$row["fecha"].'</td>';
-                            echo '<td>'.$row["usuario"].'</td>';
-                            echo '<td>'. $row["estado"] . '</td>';
-                            echo '</tr>';?>
+                          foreach ($pdo->query($sql) as $row) {?>
+                            <tr>
+                              <td class="d-none"><?=$row["id"]?></td>
+                              <td><?=$row["nro_sitio"]?></td>
+                              <td><?=$row["nro_subsitio"]?></td>
+                              <td><?=$row["nro"]?></td>
+                              <td><?=$row["id_lista_corte"]?></td>
+                              <td><?=$row["nombre"]?></td>
+                              <td><?=$row["nro_orden_trabajo"].' / '.$row["nro_revision"]?></td>
+                              <td><?=$row["fecha"]?></td>
+                              <td><?=$row["usuario"]?></td>
+                              <td><?= $row["estado"]?></td>
+                            </tr>
 
                             <div class="modal fade" id="eliminarModal_<?=$row["id"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                               <div class="modal-dialog" role="document">

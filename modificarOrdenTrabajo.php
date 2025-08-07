@@ -164,7 +164,8 @@ if(isset($_GET['id'])){
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "SELECT id_orden_trabajo,fecha,id_lista_corte,nro_revision,titulo,numero,descripcion,notas FROM ordenes_trabajo WHERE id = ?";
+  //$sql = "SELECT id_orden_trabajo,fecha,id_lista_corte,nro_revision,titulo,numero,descripcion,notas FROM ordenes_trabajo WHERE id = ?";
+  $sql = "SELECT nro_orden_trabajo,fecha,id_lista_corte,nro_revision,titulo,numero,descripcion,notas FROM ordenes_trabajo WHERE id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$_GET['id']]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -209,7 +210,7 @@ Database::disconnect();?>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Revisión(*)</label>
                             <div class="col-sm-3">
-                              <input type="hidden" name="id_orden_trabajo" value='<?=$data["id_orden_trabajo"]?>'>
+                              <input type="hidden" name="nro_orden_trabajo" value='<?=$data["nro_orden_trabajo"]?>'>
                               <input name="nro_revision" readonly type="number" value="<?=$data["nro_revision"]?>" class="form-control">
                             </div>
                             <label class="col-sm-3 col-form-label">N° OT(*)</label>
@@ -285,8 +286,12 @@ Database::disconnect();?>
 
                               $posiciones_agregadas=[];
                               foreach ($pdo->query($sql) as $row) {
+                                $cant_pos=$row["cant_pos"] ?: 0;
+                                $cant_bajada=$row["cant_bajada"] ?: 0;
+                                $saldo=$cant_pos-$cant_bajada;
+
                                 $style="";
-                                if(!empty($row["cant_bajada"])){
+                                if(!empty($cant_bajada)){
                                   $style="display: none";
                                   $posiciones_agregadas[]=$row;
                                 }
@@ -298,8 +303,8 @@ Database::disconnect();?>
                                 echo '<td>'.$row["cant_pos"].'</td>';
                                 echo '<td>'.$row["concepto"].'</td>';
                                 echo '<td>'.$row["procesos"].'</td>';
-								echo '<td>'.$row["cant_bajada"].'</td>';
-								echo '<td>'.$row["cant_pos"]-$row["cant_bajada"].'</td>';
+                                echo '<td>'.$cant_bajada.'</td>';
+                                echo '<td>'.$saldo.'</td>';
                                 
                                 echo '</tr>';
                               }
