@@ -26,6 +26,9 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
 $descripcionProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
 $descripcion = "lista de corte #".$data["numero"]." - ".$data["nombre"]." ".$descripcionProyecto;
 
+/*$descProyecto = getDescripcionProyecto($pdo, $id_proyecto);
+$descripcion_lista_corte = " N° ".$numero_lc. "Rev. N° ".$nro_revision.$descProyecto;*/
+
 $idTipoNotificacion=5;
 $idEntidad=$id_lista_corte;
 $detalleNotificacion="ID Computo: #".$id_lista_corte;

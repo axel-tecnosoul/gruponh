@@ -47,27 +47,33 @@ if (!empty($_POST)) {
   if (!empty($data)) {
     $idCuentaRealizo = $data['id'];
   }
+  $nro_revision = 0;
+  $comentarios_revision = "Emision orignial";
 
-  $sql = "INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, nro,id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (0,?,?,?,?,?,?,?,?)";
+  $sql = "INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, comentarios_revision, nro, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?)";
   $q = $pdo->prepare($sql);
-  $q->execute([$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,$_POST['id_estado'],$nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
+  $q->execute([$nro_revision,$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,$_POST['id_estado'],$comentarios_revision, $nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
   
   $id_computo = $pdo->lastInsertId();
   
-  $sql = "UPDATE computos set nro_computo = ? where id = ?";
+  /*$sql = "UPDATE computos set nro_computo = ? where id = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$id_computo,$id_computo]);
+  $q->execute([$id_computo,$id_computo]);*/
 
   $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id_computo')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
 
   if ($_POST['id_estado']==2) {
+    
+    $descProyecto = getDescripcionProyecto($pdo, $idProyecto);
+    $descripcion_computo = " N° ".$nroComputo. "Rev. N° ".$nro_revision.$descProyecto;
+
     $idTipoNotificacion=8;
     $idEntidad=$id_computo;
     $detalleNotificacion="ID Lista de Corte: #".$idEntidad;
-    $asuntoEmail="Módulo Producción - Nuevo Cómputo ({$descProyecto})";
-    $cuerpoEmail="Nuevo cómputo dado de alta en el sistema para aprobar: #$idEntidad";
+    $asuntoEmail="Módulo Producción - Nuevo Cómputo $descripcion_computo";
+    $cuerpoEmail="Nuevo cómputo dado de alta en el sistema para aprobar: $descripcion_computo";
     crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
   }
 

@@ -15,6 +15,22 @@ function obtenerSaldoPosicion($pdo,$id_posicion){
   $data = $q->fetch(PDO::FETCH_ASSOC);
   return $data ? $data['cant_pos'] - $data['cant_bajada'] : 0;
 }
+
+function LCPermiteOR($pdo, $id_lista_corte){
+  $sql = "SELECT id_estado_lista_corte FROM listas_corte WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $estadoLC = $q->fetch(PDO::FETCH_ASSOC);
+  
+  if(!$estadoLC){
+    return false;
+  }
+  if(in_array($estadoLC['id_estado_lista_corte'],[3,4])){
+    return true;
+  } else {
+    return false;
+  }
+}
 if (!empty($_POST)) {
 
   // insert data
@@ -24,11 +40,8 @@ if (!empty($_POST)) {
   $id_lista_corte = filter_input(INPUT_POST, 'id_lista_corte', FILTER_VALIDATE_INT);
 
   // Verificar que la lista de corte esté aprobada
-  $sql = "SELECT id_estado_lista_corte FROM listas_corte WHERE id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lista_corte]);
-  $estadoLC = $q->fetch(PDO::FETCH_ASSOC);
-  if(!$estadoLC || $estadoLC['id_estado_lista_corte'] != 3){
+  
+  if(!LCPermiteOR($pdo, $id_lista_corte)){
     Database::disconnect();
     header("Location: listarListasCorte.php?error=lc_no_aprobada");
     exit;
@@ -40,19 +53,19 @@ if (!empty($_POST)) {
     var_dump($_POST);
   }
 
-    $redirect="listarOrdenesTrabajo.php";
+  $redirect="listarOrdenesTrabajo.php";
 
-    $id_estado_orden_trabajo=1;
-    $nro_revision=0;
-    $anulado=0;
-    $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
-    $descripcion="Emision original";
+  $id_estado_orden_trabajo=1;
+  $nro_revision=0;
+  $anulado=0;
+  $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
+  $descripcion="Emision original";
 
-    // Cantidad de órdenes de trabajo existentes para la lista antes de insertar
-    $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_lista_corte]);
-    $cant_ot_previas = (int)$q->fetchColumn();
+  // Cantidad de órdenes de trabajo existentes para la lista antes de insertar
+  $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $cant_ot_previas = (int)$q->fetchColumn();
 
   $sql = "SELECT max(nro_orden_trabajo) AS nro_orden_trabajo FROM ordenes_trabajo where id_lista_corte = ?";
   $q = $pdo->prepare($sql);
@@ -74,31 +87,31 @@ if (!empty($_POST)) {
     $descripcion,
     $_POST['notas']
   ];
-    $q = $pdo->prepare($sql);
-    $q->execute($params);
-    if ($modoDebug==1) {
-      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
-    }
-    $id_orden_trabajo = $pdo->lastInsertId();
+  $q = $pdo->prepare($sql);
+  $q->execute($params);
+  if ($modoDebug==1) {
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  }
+  $id_orden_trabajo = $pdo->lastInsertId();
 
-    // Cantidad de OTs luego de insertar la nueva
-    $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+  // Cantidad de OTs luego de insertar la nueva
+  $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $cant_ot_actuales = (int)$q->fetchColumn();
+
+  // Si antes no existían OTs y la lista estaba aprobada, pasarla a En Proceso (4)
+  if ($cant_ot_previas == 0 && $estadoLC['id_estado_lista_corte'] == 3) {
+    $sql = "UPDATE listas_corte SET id_estado_lista_corte = 4 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte]);
-    $cant_ot_actuales = (int)$q->fetchColumn();
 
-    // Si antes no existían OTs y la lista estaba aprobada, pasarla a En Proceso (4)
-    if ($cant_ot_previas == 0 && $estadoLC['id_estado_lista_corte'] == 3) {
-      $sql = "UPDATE listas_corte SET id_estado_lista_corte = 4 WHERE id = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte]);
-
-      // Registrar el cambio de estado en logs
-      $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo) VALUES (now(), ?, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte')";
-      $params = [$_SESSION['user']['id']];
-      $q = $pdo->prepare($sql);
-      $q->execute($params);
-    }
+    // Registrar el cambio de estado en logs
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo) VALUES (now(), ?, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte')";
+    $params = [$_SESSION['user']['id']];
+    $q = $pdo->prepare($sql);
+    $q->execute($params);
+  }
 
   /*$sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
   $params = [$id_orden_trabajo,$id_orden_trabajo];
@@ -148,6 +161,22 @@ if (!empty($_POST)) {
   $params = [$_SESSION['user']['id']];
   $q = $pdo->prepare($sql);
   $q->execute($params);
+
+  $sql = "SELECT id_proyecto FROM listas_corte WHERE id_lista_corte = ? ";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  $descProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
+  $descripcion_orden_trabajo = " LC".$id_lista_corte."-OT".$id_orden_trabajo.$descProyecto;
+
+  $idTipoNotificacion=8;
+  $idEntidad=$id_orden_trabajo;
+  $detalleNotificacion="ID Orden de Trabajo: #".$idEntidad;
+  $asuntoEmail="Módulo Producción - Nueva Orden de Trabajo $descripcion_orden_trabajo";
+  $cuerpoEmail="Nueva orden de trabajo dada de alta en el sistema: $descripcion_orden_trabajo";
+  crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+
   if ($modoDebug==1) {
     echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
     $pdo->rollBack();
@@ -166,17 +195,17 @@ if(isset($_GET['id_lista_corte'])){
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+  if(!LCPermiteOR($pdo, $id_lista_corte)){
+    Database::disconnect();
+    header("Location: listarListasCorte.php?error=lc_no_aprobada");
+    exit;
+  }
+
   //$sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte_revisiones WHERE id = ? ";
   $sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
-
-  if(!$data || $data['id_estado_lista_corte'] != 3){
-    Database::disconnect();
-    header("Location: listarListasCorte.php?error=lc_no_aprobada");
-    exit;
-  }
 
 }
 

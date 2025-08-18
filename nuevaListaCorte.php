@@ -74,18 +74,19 @@ if (!empty($_POST)) {
       $q->execute([$idTarea]);
     }
     
-    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte')";
+    /*$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
     
-    $descripcionProyecto = getDescripcionProyecto($pdo, $id_proyecto);
+    $descProyecto = getDescripcionProyecto($pdo, $id_proyecto);
+    $descripcion_lista_corte = " N° ".$numero_lc. "Rev. N° ".$nro_revision.$descProyecto;
 
     $idTipoNotificacion=5;
     $idEntidad=$id_lista_corte;
     $detalleNotificacion="ID Lista de Corte: #".$idEntidad;
-    $asuntoEmail="Módulo Ingeniería - Nueva Lista de Corte ({$descProyecto})";
-    $cuerpoEmail="Nueva lista de corte dada de alta en el sistema: #$idEntidad";
-    crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+    $asuntoEmail="Módulo Ingeniería - Nueva Lista de Corte $descripcion_lista_corte";
+    $cuerpoEmail="Nueva lista de corte dada de alta en el sistema: $descripcion_lista_corte";
+    crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);*/
     
     // --- Cargo configuración SMTP desde parámetros ---
     /*$stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");

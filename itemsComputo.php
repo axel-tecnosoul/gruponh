@@ -36,30 +36,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // Si viene confirmación de enviar a aprobación:
   if (isset($_POST['btn2_confirm'])) {
     // Parámetros
-    $idComp   = $_POST['id'];
+    $id_computo   = $_POST['id'];
     $revision = $_POST['revision'];
 
     // 1) Actualizar el estado de LA REVISIÓN ACTUAL a "Para aprobar" (id_estado = 2)
     $stmt = $pdo->prepare("UPDATE computos SET id_estado = 2 WHERE id = ?");
-    $stmt->execute([$idComp]);
+    $stmt->execute([$id_computo]);
 
     // --- Descripción del proyecto ---
     /*$stmt = $pdo->prepare("SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c JOIN tareas t ON t.id = c.id_tarea JOIN proyectos p ON p.id = t.id_proyecto JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ?");
-    $stmt->execute([$idComp]);
+    $stmt->execute([$id_computo]);
     $fila = $stmt->fetch(PDO::FETCH_NUM);
     $descProyecto = "{$fila[0]} - {$fila[1]} - {$fila[2]} - {$fila[3]}";*/
     
-    $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo, nro_revision FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
+    $sql = "SELECT c.nro AS nro_computo, c.nro_revision, t.id_proyecto FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id WHERE c.id = ? ";
     $q = $pdo->prepare($sql);
-    $q->execute([$idComp]);
+    $q->execute([$id_computo]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
-    $descProyecto = " N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+    
+    $descProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
+    $descripcion_computo = " N° ".$data["nro_computo"]. "Rev. N° ".$data["nro_revision"].$descProyecto;
 
     $idTipoNotificacion=8;
-    $idEntidad=$idComp;
-    $detalleNotificacion="ID Computo: #".$idComp;
-    $asuntoEmail="Producción - Aprobación de Cómputo ({$descProyecto})";
-    $cuerpoEmail="La revisión de cómputo #{$descProyecto} está lista para aprobación.";
+    $idEntidad=$id_computo;
+    $detalleNotificacion="ID Computo: #".$idEntidad;
+    $asuntoEmail="Producción - Aprobación de Cómputo $descripcion_computo";
+    $cuerpoEmail="La revisión de cómputo $descripcion_computo está lista para aprobación.";
     crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
 
     // 2) Marcar la revisión ANTERIOR como “Superada” (id_estado = 7)
