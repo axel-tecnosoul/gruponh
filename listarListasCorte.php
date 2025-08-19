@@ -400,6 +400,7 @@ include 'database.php';?>
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
+      var table;
       let accionPendiente = null;
       let id_lista_corte = null;
       var selectTarea;
@@ -416,7 +417,7 @@ include 'database.php';?>
           $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
         });
 
-        var table = $('#dataTables-example666').DataTable({
+        table = $('#dataTables-example666').DataTable({
           stateSave: false,
 		      //searching: false,//debemos quitar esta linea para que funcione el buscador
           responsive: false,
