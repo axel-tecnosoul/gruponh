@@ -90,7 +90,7 @@ if (!empty($_POST)) {
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT nombre, numero, id_proyecto FROM listas_corte WHERE id = ? ";
+$sql = "SELECT nombre, numero, nro_revision, id_proyecto FROM listas_corte WHERE id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$id_lista_corte]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -129,7 +129,7 @@ Database::disconnect();?>
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Conjuntos de la Lista de Corte #<?=$data['numero']." - ".$data['nombre'].$descripcionProyecto?>
+                    <h5>Conjuntos de la Lista de Corte Nº <?=$data['numero']?> - Rev <?=$data['nro_revision']?> - <?=$data['nombre'].$descripcionProyecto?>
                       &nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(329))) {?>
                         <img src="img/icon_modificar.png" id="link_modificar_conjunto" style="cursor: pointer;" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp;<?php

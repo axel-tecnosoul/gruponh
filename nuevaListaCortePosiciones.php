@@ -323,7 +323,7 @@ if (!empty($_POST)) {
 //$id_lista_corte_conjunto=$_GET['id_lista_corte_conjunto'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT lcc.nombre, lcc.id_lista_corte, lc.id_estado_lista_corte, lc.id AS id_lista_corte_revision, lc.id_proyecto, lc.numero FROM listas_corte_conjuntos lcc INNER JOIN listas_corte lc ON lcc.id_lista_corte=lc.id WHERE lcc.id = ? ";
+$sql = "SELECT lcc.nombre, lcc.id_lista_corte, lc.id_estado_lista_corte, lc.id AS id_lista_corte_revision, lc.id_proyecto, lc.numero, lc.nro_revision FROM listas_corte_conjuntos lcc INNER JOIN listas_corte lc ON lcc.id_lista_corte=lc.id WHERE lcc.id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$id_lista_corte_conjunto]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -358,7 +358,7 @@ Database::disconnect();?>
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Posiciones para el Conjunto <?=$data['nombre']?> LC #<?=$data['numero'].$descripcionProyecto?>
+                    <h5>Posiciones para el Conjunto <?=$data['nombre']?> LC Nº <?=$data['numero']?> - Rev <?=$data['nro_revision']?><?=$descripcionProyecto?>
                       &nbsp;&nbsp;<?php
                       /*if (!empty(tienePermiso(331))) {?>
                         <a href="nuevoPosicionListaCorte.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?>"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva Posicion" title="Nueva Posicion"></a>&nbsp;&nbsp;<?php
