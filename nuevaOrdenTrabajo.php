@@ -17,7 +17,7 @@ if(isset($_GET['id'])){
   $id_orden_trabajo=filter_input(INPUT_GET,'id',FILTER_VALIDATE_INT);
   $pdoTmp=Database::connect();
   $pdoTmp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql="SELECT ot.nro_orden_trabajo,ot.fecha,ot.id_lista_corte,ot.nro_revision,ot.titulo,ot.numero,ot.descripcion,ot.notas,lc.numero AS numero_lc,p.descripcion AS desc_proyecto FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte = lc.id INNER JOIN proyectos p ON lc.id_proyecto = p.id WHERE ot.id = ?";
+  $sql="SELECT ot.nro_orden_trabajo,ot.fecha,ot.id_lista_corte,ot.nro_revision,ot.titulo,ot.numero,ot.descripcion,ot.notas,lc.numero AS numero_lc,lc.id_proyecto FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte = lc.id WHERE ot.id = ?";
   $q=$pdoTmp->prepare($sql);
   $q->execute([$id_orden_trabajo]);
   $data_ot=$q->fetch(PDO::FETCH_ASSOC);
@@ -239,6 +239,9 @@ if (!empty($_POST)) {
 
 }
 
+$id_proyecto=$data_ot['id_proyecto'];
+$descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
+
 ?>
 
 <!DOCTYPE html>
@@ -259,7 +262,7 @@ if (!empty($_POST)) {
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion = $editing ? "Modificar Orden de Trabajo" : "Nueva Orden de Trabajo";
+          $ubicacion = $editing ? "Modificar OT ".$data_ot['nro_orden_trabajo'].' - LC '.$data_ot['numero_lc'].' '.htmlspecialchars($descProyecto) : "Nueva Orden de Trabajo";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -271,7 +274,7 @@ if (!empty($_POST)) {
                 <form class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
                   <div class="card mb-0">
                     <div class="card-header">
-                      <h5><?=$editing ? 'OT '.$data_ot['nro_orden_trabajo'].' - LC '.$data_ot['numero_lc'].' - '.htmlspecialchars($data_ot['desc_proyecto']) : $ubicacion?></h5>
+                      <h5><?=$ubicacion?></h5>
                     </div>
                     <div class="card-body">
                       <div class="row">
