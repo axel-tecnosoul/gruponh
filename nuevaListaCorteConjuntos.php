@@ -97,6 +97,11 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
 
 $descripcionProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
 
+$sql = "SELECT COUNT(*) FROM listas_corte_conjuntos WHERE id_lista_corte = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$id_lista_corte]);
+$cantidadConjuntos = (int)$q->fetchColumn();
+
 Database::disconnect();?>
 <!DOCTYPE html>
 <html lang="en">
@@ -211,7 +216,9 @@ Database::disconnect();?>
                         <button type="submit" value="2" name="btn2" id="editConjunto" class="btn btn-success d-none">Modificar</button>
                         <button type="submit" value="3" name="btn3" id="editConjuntoGoPosiciones" class="btn btn-primary d-none">Modificar e ir a Posiciones</button>
                         <button type="button" id="cancelEditConjunto" class="btn btn-light d-none">Cancelar Modificar</button>
+                        <?php if ($cantidadConjuntos > 0) { ?>
                         <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
+                        <?php } ?>
                         <a href='listarListasCorte.php' id="volverListaCorte" class="btn btn-light">Volver al Listas de corte</a>
                       </div>
                     </div>
