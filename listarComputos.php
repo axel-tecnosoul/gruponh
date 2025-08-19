@@ -152,9 +152,9 @@ include 'database.php';?>
                         </tr>
                       </thead>
                       <tbody><?php
-                        if (!empty($_POST)) {
+                        //if (!empty($_POST)) {
                           $pdo = Database::connect();
-                            $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
+                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
                           if (!empty($_POST['nro'])) {
                             $nro=$_POST['nro'];
                             $ex=explode("/", $nro);
@@ -172,9 +172,10 @@ include 'database.php';?>
                           if (!empty($_POST['fechah'])) {
                             $sql .= " AND c.fecha <= '".$_POST['fechah']."' ";
                           }
-                          
                           if (!empty($_POST['id_estado'][0])) {
                             $sql .= " AND ec.id in (".implode(', ',$_POST['id_estado']).") ";
+                          }else{
+                            $sql .= " AND ec.id in (1,2,3,4) ";
                           }
                           foreach ($pdo->query($sql) as $row) {?>
                             <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
@@ -192,7 +193,7 @@ include 'database.php';?>
                             </tr><?php
                           }
                           Database::disconnect();
-                        } else {
+                        /*} else {
                           $pdo = Database::connect();
                           $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
                             
@@ -212,7 +213,7 @@ include 'database.php';?>
                             </tr><?php
                           }
                           Database::disconnect();
-                        }?>
+                        }*/?>
                       </tbody>
 						          <tfoot>
                         <tr>
