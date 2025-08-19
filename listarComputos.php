@@ -154,7 +154,7 @@ include 'database.php';?>
                       <tbody><?php
                         if (!empty($_POST)) {
                           $pdo = Database::connect();
-                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
+                            $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
                           if (!empty($_POST['nro'])) {
                             $nro=$_POST['nro'];
                             $ex=explode("/", $nro);
@@ -177,7 +177,7 @@ include 'database.php';?>
                             $sql .= " AND ec.id in (".implode(', ',$_POST['id_estado']).") ";
                           }
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>">
+                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -194,10 +194,10 @@ include 'database.php';?>
                           Database::disconnect();
                         } else {
                           $pdo = Database::connect();
-                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
+                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
                             
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>">
+                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -596,13 +596,26 @@ include 'database.php';?>
         $("#link_items_computo").on("click", function (e) {
           e.preventDefault();
 
+          const fila = $("#dataTables-example666 tbody tr.selected");
+          if (fila.length === 0) {
+            alert("Por favor seleccione un cómputo para ver/añadir/modificar ítems");
+            return;
+          }
+
+          const revisionActual = parseInt(fila.data("nro-revision"), 10);
+          const revisionMaxima = parseInt(fila.data("max-revision"), 10);
+          if (revisionActual < revisionMaxima) {
+            alert("Hay revisiones más recientes generadas para el cómputo.");
+            return;
+          }
+
           let l = document.location.href;
           if (this.href == l || this.href == l + "#") {
             alert("Por favor seleccione un cómputo para ver/añadir/modificar ítems");
             return;
           }
 
-          const estado_id = parseInt($(this).data("estado-id"), 10);
+          const estado_id = parseInt(fila.data("estado-id"), 10);
 
           console.log("estado_id:", estado_id);
 
@@ -739,7 +752,6 @@ include 'database.php';?>
             }
           }
 
-          setEstadoIdParaItemsComputo(t);
         });
       
         $("body").on('dblclick',".editable", function(event) {
@@ -998,12 +1010,6 @@ include 'database.php';?>
         });
 
       });
-
-      function setEstadoIdParaItemsComputo(row) {
-        let estado_id = row.data("estado-id");
-        $("#link_items_computo").data("estado-id", estado_id);
-        console.log(estado_id);
-      }
 
       function getIdEstadoComputoSeleccionado() {
         let fila_seleccionada=$("#dataTables-example666 tbody tr.selected");
