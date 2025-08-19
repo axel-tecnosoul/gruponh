@@ -17,7 +17,7 @@ if(isset($_GET['id'])){
   $id_orden_trabajo=filter_input(INPUT_GET,'id',FILTER_VALIDATE_INT);
   $pdoTmp=Database::connect();
   $pdoTmp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql="SELECT nro_orden_trabajo,fecha,id_lista_corte,nro_revision,titulo,numero,descripcion,notas FROM ordenes_trabajo WHERE id = ?";
+  $sql="SELECT ot.nro_orden_trabajo,ot.fecha,ot.id_lista_corte,ot.nro_revision,ot.titulo,ot.numero,ot.descripcion,ot.notas,lc.numero AS numero_lc,p.descripcion AS desc_proyecto FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte = lc.id INNER JOIN proyectos p ON lc.id_proyecto = p.id WHERE ot.id = ?";
   $q=$pdoTmp->prepare($sql);
   $q->execute([$id_orden_trabajo]);
   $data_ot=$q->fetch(PDO::FETCH_ASSOC);
@@ -271,23 +271,11 @@ if (!empty($_POST)) {
                 <form class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
                   <div class="card mb-0">
                     <div class="card-header">
-                      <h5><?=$ubicacion?></h5>
+                      <h5><?=$editing ? 'OT '.$data_ot['nro_orden_trabajo'].' - LC '.$data_ot['numero_lc'].' - '.htmlspecialchars($data_ot['desc_proyecto']) : $ubicacion?></h5>
                     </div>
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-<?php if($editing){ ?>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Revisión</label>
-                            <div class="col-sm-3">
-                              <input name="nro_revision" type="number" class="form-control" value="<?=$data_ot['nro_revision']?>" readonly>
-                            </div>
-                            <label class="col-sm-3 col-form-label">N° OT</label>
-                            <div class="col-sm-3">
-                              <input name="numero" type="text" class="form-control" value="<?=$data_ot['numero']?>" readonly>
-                            </div>
-                          </div>
-<?php } ?>
                           <div class="form-group row">
                             <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$id_lista_corte?>">
 <?php if($editing){ ?><input type="hidden" name="id_orden_trabajo" value="<?=$id_orden_trabajo?>"><?php } ?>
