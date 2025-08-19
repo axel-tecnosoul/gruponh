@@ -331,22 +331,20 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                           <table class="display" id="tablaLC">
                             <thead>
                               <tr>
-                                <th style="width:40px"></th>
                                 <th class="d-none">ID Posicion</th>
-                                <th style="min-width:100px">Conjunto</th>
-                                <th style="width:40px">Cant. conj.</th>
-                                <th style="width:40px">Posicion</th>
-                                <th style="width:40px">Cant. pos.</th>
-                                <th style="width:40px">Cant. total</th>
-                                <th style="min-width:220px">Material</th>
-                                <th style="min-width:100px">Procesos</th>
-                                <th style="width:40px">Cant. bajada</th>
-                                <th style="width:40px">Saldo</th>
+                                <th>Conjunto</th>
+                                <th>Cant. conj.</th>
+                                <th>Posicion</th>
+                                <th>Cant. pos.</th>
+                                <th>Cant. total</th>
+                                <th>Material</th>
+                                <th>Procesos</th>
+                                <th>Cant. bajada</th>
+                                <th>Saldo</th>
                               </tr>
                             </thead>
                             <tfoot>
                               <tr>
-                                <th></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cant. conj.</th>
@@ -389,7 +387,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                   }else{
                                     echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$total_bajada.'" data-cant-total="'.$cant_total.'">';
                                   }
-                                  echo '<td></td>';
                                   echo '<td class="d-none">'.$row['id_posicion'].'</td>';
                                   echo '<td>'.$row['nombre'].'</td>';
                                   echo '<td class="text-end">'.$row['cant_conj'].'</td>';
@@ -410,7 +407,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                   $cant_total = $row['cant_conj']*$row['cant_pos'];
                                   $saldo = $cant_total - $row['cant_bajada'];
                                   echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$row['cant_bajada'].'" data-cant-total="'.$cant_total.'">';
-                                  echo '<td></td>';
                                   echo '<td class="d-none">'.$row['id_posicion'].'</td>';
                                   echo '<td>'.$row['nombre'].'</td>';
                                   echo '<td class="text-end">'.$row['cant_conj'].'</td>';
@@ -621,49 +617,47 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           }
         }
 
-        // Setup - add a text input to each footer cell (skip checkbox column)
+        // Setup - add a text input to each footer cell
         tablaLC.find('tfoot th').each( function () {
           var title = $(this).text();
-          if(title !== ''){
+          if(title !== '' && !$(this).hasClass('d-none')){
             $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
           }
         } );
 
-        tablaLC.on("click","tbody tr td", function(){
-          var t=$(this).parent();
-          console.log(t);
-          if(t.hasClass('selected')){
-            deselectRow(t);
-          }else{
-            selectRow(t);
-          }
-          updateToggleButton();
-        });
-
         tablaLCDT = tablaLC.DataTable(Object.assign({}, datatableDefault, {
           columnDefs: [
-            { orderable: false, className: 'select-checkbox', targets: 0 },
-            { targets: 1, visible: false }
+            { targets: 0, visible: false },
+            { targets: 1, width: '100px' },
+            { targets: 2, width: '40px' },
+            { targets: 3, width: '40px' },
+            { targets: 4, width: '40px' },
+            { targets: 5, width: '40px' },
+            { targets: 6, width: '220px' },
+            { targets: 7, width: '100px' },
+            { targets: 8, width: '40px' },
+            { targets: 9, width: '40px' }
           ],
           select: {
-            style: 'multi',
-            selector: 'td:first-child'
+            style: 'multi'
           },
-          order: [[1, 'asc']]
+          order: [[0, 'asc']]
         }));
 
+        tablaLCDT.on('select deselect', updateToggleButton);
+
         //populate filtros
-        var conjuntos = tablaLCDT.column(2).data().unique().sort();
+        var conjuntos = tablaLCDT.column(1).data().unique().sort();
         //$('#filtro_conjunto').append('<option value="">- Todos los conjuntos -</option>');
         conjuntos.each(function(d){
           $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
         });
-        var materiales = tablaLCDT.column(7).data().unique().sort();
+        var materiales = tablaLCDT.column(6).data().unique().sort();
         materiales.each(function(m){
           $('#filtro_material').append('<option value="'+m+'">'+m+'</option>');
         });
         var procesosSet = new Set();
-        tablaLCDT.column(8).data().each(function(d){
+        tablaLCDT.column(7).data().each(function(d){
           d.split(',').forEach(function(p){
             procesosSet.add(p.trim());
           });
@@ -682,7 +676,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           var search = selected && selected.length
             ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
             : '';
-          tablaLCDT.column(2).search(search, true, false).draw(); // regex=true, smart=false
+          tablaLCDT.column(1).search(search, true, false).draw(); // regex=true, smart=false
         });
 
         $('#filtro_proceso').on('change', function () {
@@ -690,7 +684,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           var search = selected && selected.length
             ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
             : '';
-          tablaLCDT.column(8).search(search, true, false).draw();
+          tablaLCDT.column(7).search(search, true, false).draw();
         });
 
         $('#filtro_material').on('change', function () {
@@ -698,7 +692,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           var search = selected && selected.length
             ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
             : '';
-          tablaLCDT.column(7).search(search, true, false).draw();
+          tablaLCDT.column(6).search(search, true, false).draw();
         });
 
 
@@ -713,17 +707,13 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         } );
         // Botón para seleccionar o deseleccionar según estado
         $('#toggle_seleccion').on('click', function(){
-          var rows = tablaLCDT.rows({search:'applied'}).nodes();
-          var allSelected = $(rows).filter('.selected').length === rows.length && rows.length > 0;
+          var rows = tablaLCDT.rows({search:'applied'});
+          var allSelected = rows.count() > 0 && rows.count() === tablaLCDT.rows({search:'applied', selected:true}).count();
 
-          tablaLCDT.rows().nodes().each(function(row){
-            deselectRow($(row));
-          });
-
-          if(!allSelected){
-            $(rows).each(function(){
-              selectRow($(this));
-            });
+          if(allSelected){
+            rows.deselect();
+          } else {
+            rows.select();
           }
 
           updateToggleButton();
@@ -732,33 +722,30 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         tablaLCDT.on('draw', updateToggleButton);
         updateToggleButton();
         $("#link_agregar_posiciones").on("click",function(){
-          //var selectedRowsLC = tablaLCDT.rows({ selected: true });
-          var selectedRowsLC = tablaLCDT.rows('.selected');
-          console.log(selectedRowsLC);
-          if(selectedRowsLC[0].length>0){
+          var selectedRowsLC = tablaLCDT.rows({ selected: true });
+          if(selectedRowsLC.count()>0){
             let newData=selectedRowsLC.data().map(function(elemento){
-              console.log(elemento);
-              let saldo = elemento[10];
-              console.log(saldo);
+              let saldo = elemento[9];
               let inputCantidad = `
                 <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
                 <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
                 <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
               `;
               return [
+                elemento[1],
                 elemento[2],
                 elemento[3],
                 elemento[4],
                 elemento[5],
                 elemento[6],
                 elemento[7],
-                elemento[8],
                 saldo,
                 inputCantidad
               ];
             })
             tablaOT.DataTable().rows.add(newData).draw();
-            $(selectedRowsLC.nodes()).hide().removeClass("selected")
+            $(selectedRowsLC.nodes()).hide();
+            selectedRowsLC.deselect();
             refreshCantidades();
           /*if(selectedRowsLC.count()>0){
             let newData=selectedRowsLC.data().toArray().map(function(elemento){
@@ -879,8 +866,8 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           let total = base + extra;
           let saldo = cantTotal - total;
           let cells = row.children('td');
-          $(cells[9]).text(total);
-          $(cells[10]).text(saldo);
+          $(cells[8]).text(total);
+          $(cells[9]).text(saldo);
         });
 
         tablaOT.find('tbody tr').each(function(){
@@ -902,9 +889,9 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         t.removeClass('selected');
       }
       function updateToggleButton(){
-        var rows = tablaLCDT.rows({search:'applied'}).nodes();
+        var rows = tablaLCDT.rows({search:'applied'});
         var btn = $('#toggle_seleccion');
-        var allSelected = $(rows).filter('.selected').length === rows.length && rows.length > 0;
+        var allSelected = rows.count() > 0 && tablaLCDT.rows({search:'applied', selected:true}).count() === rows.count();
         if(allSelected){
           btn.text('Deseleccionar todo').removeClass('btn-primary').addClass('btn-secondary');
         }else{
