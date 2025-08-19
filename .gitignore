@@ -20,6 +20,7 @@ composer.lock
 database.php
 # Environment specific configuration
 config.dev.php
+env.php
 .env.development
 #config.php
 save_log.txt
