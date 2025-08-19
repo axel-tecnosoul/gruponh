@@ -43,11 +43,11 @@ if(isset($_GET['id'])){
 
 function obtenerSaldoPosicion($pdo,$id_posicion){
   $id_posicion = intval($id_posicion);
-  $sql = "SELECT lcp.cantidad AS cant_pos, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcp.id = ? GROUP BY lcp.id";
+  $sql = "SELECT lcp.cantidad AS cant_pos, lcc.cantidad AS cant_conj, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp INNER JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto=lcc.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcp.id = ? GROUP BY lcp.id,lcc.cantidad";
   $q = $pdo->prepare($sql);
   $q->execute([$id_posicion]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
-  return $data ? $data['cant_pos'] - $data['cant_bajada'] : 0;
+  return $data ? ($data['cant_pos']*$data['cant_conj']) - $data['cant_bajada'] : 0;
 }
 
 function LCPermiteOR($pdo, $id_lista_corte){
@@ -334,16 +334,17 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                           <table class="display" id="tablaLC">
                             <thead>
                               <tr>
-                                <th></th>
+                                <th style="width:40px"></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
-                                <th>Cantidad</th>
-                                <th>Posicion</th>
-                                <th>Cantidad Pedida</th>
-                                <th>Material</th>
-                                <th>Procesos</th>
-                                <th>Cantidad Bajada</th>
-                                <th>Saldo</th>
+                                <th style="width:80px">Cant. conj.</th>
+                                <th style="width:80px">Posicion</th>
+                                <th style="width:80px">Cant. pos.</th>
+                                <th style="width:90px">Cant. total</th>
+                                <th style="min-width:220px">Material</th>
+                                <th style="min-width:150px">Procesos</th>
+                                <th style="width:90px">Cant. bajada</th>
+                                <th style="width:90px">Saldo</th>
                               </tr>
                             </thead>
                             <tfoot>
@@ -351,12 +352,13 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 <th></th>
                                 <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
-                                <th>Cantidad</th>
+                                <th>Cant. conj.</th>
                                 <th>Posicion</th>
-                                <th>Cantidad Pedida</th>
+                                <th>Cant. pos.</th>
+                                <th>Cant. total</th>
                                 <th>Material</th>
                                 <th>Procesos</th>
-                                <th>Cantidad Bajada</th>
+                                <th>Cant. bajada</th>
                                 <th>Saldo</th>
                               </tr>
                             </tfoot>
@@ -369,10 +371,11 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 $q = $pdo->prepare($sql);
                                 $q->execute([$id_orden_trabajo,$id_lista_corte]);
                                 while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  $cant_total=$row['cant_bajada_total'];
+                                  $total_bajada=$row['cant_bajada_total'];
                                   $cant_ot=$row['cant_bajada_ot'];
-                                  $cant_otros=$cant_total-$cant_ot;
-                                  $saldo=$row['cant_pos']-$cant_total;
+                                  $cant_otros=$total_bajada-$cant_ot;
+                                  $cant_total=$row['cant_conj']*$row['cant_pos'];
+                                  $saldo=$cant_total-$total_bajada;
                                   if($cant_ot>0){
                                     $posiciones_agregadas[]=[
                                       'id_posicion'=>$row['id_posicion'],
@@ -380,23 +383,26 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                       'cant_conj'=>$row['cant_conj'],
                                       'posicion'=>$row['posicion'],
                                       'cant_pos'=>$row['cant_pos'],
+                                      'concepto'=>$row['concepto'],
+                                      'procesos'=>$row['procesos'],
                                       'cant_bajada'=>$cant_ot,
                                       'cant_bajada_otros'=>$cant_otros
                                     ];
-                                    echo '<tr id="'.$row['id_posicion'].'" style="display: none" data-cant-bajada="'.$cant_otros.'" data-cant-pos="'.$row['cant_pos'].'">';
+                                    echo '<tr id="'.$row['id_posicion'].'" style="display: none" data-cant-bajada="'.$cant_otros.'" data-cant-total="'.$cant_total.'">';
                                   }else{
-                                    echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$cant_total.'" data-cant-pos="'.$row['cant_pos'].'">';
+                                    echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$total_bajada.'" data-cant-total="'.$cant_total.'">';
                                   }
                                   echo '<td></td>';
                                   echo '<td class="d-none">'.$row['id_posicion'].'</td>';
                                   echo '<td>'.$row['nombre'].'</td>';
-                                  echo '<td>'.$row['cant_conj'].'</td>';
-                                  echo '<td>'.$row['posicion'].'</td>';
-                                  echo '<td>'.$row['cant_pos'].'</td>';
+                                  echo '<td class="text-end">'.$row['cant_conj'].'</td>';
+                                  echo '<td class="text-end">'.$row['posicion'].'</td>';
+                                  echo '<td class="text-end">'.$row['cant_pos'].'</td>';
+                                  echo '<td class="text-end">'.($cant_total).'</td>';
                                   echo '<td>'.$row['concepto'].'</td>';
                                   echo '<td>'.$row['procesos'].'</td>';
-                                  echo '<td>'.($cant_ot>0?$cant_otros:$cant_total).'</td>';
-                                  echo '<td>'.$saldo.'</td>';
+                                  echo '<td class="text-end">'.($cant_ot>0?$cant_otros:$total_bajada).'</td>';
+                                  echo '<td class="text-end">'.$saldo.'</td>';
                                   echo '</tr>';
                                 }
                               }else{
@@ -404,18 +410,20 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 $q = $pdo->prepare($sql);
                                 $q->execute([$id_lista_corte]);
                                 while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  $saldo = $row['cant_pos'] - $row['cant_bajada'];
-                                  echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$row['cant_bajada'].'" data-cant-pos="'.$row['cant_pos'].'">';
+                                  $cant_total = $row['cant_conj']*$row['cant_pos'];
+                                  $saldo = $cant_total - $row['cant_bajada'];
+                                  echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$row['cant_bajada'].'" data-cant-total="'.$cant_total.'">';
                                   echo '<td></td>';
                                   echo '<td class="d-none">'.$row['id_posicion'].'</td>';
                                   echo '<td>'.$row['nombre'].'</td>';
-                                  echo '<td>'.$row['cant_conj'].'</td>';
-                                  echo '<td>'.$row['posicion'].'</td>';
-                                  echo '<td>'.$row['cant_pos'].'</td>';
+                                  echo '<td class="text-end">'.$row['cant_conj'].'</td>';
+                                  echo '<td class="text-end">'.$row['posicion'].'</td>';
+                                  echo '<td class="text-end">'.$row['cant_pos'].'</td>';
+                                  echo '<td class="text-end">'.$cant_total.'</td>';
                                   echo '<td>'.$row['concepto'].'</td>';
                                   echo '<td>'.$row['procesos'].'</td>';
-                                  echo '<td>'.$row['cant_bajada'].'</td>';
-                                  echo '<td>'.$saldo.'</td>';
+                                  echo '<td class="text-end">'.$row['cant_bajada'].'</td>';
+                                  echo '<td class="text-end">'.$saldo.'</td>';
                                   echo '</tr>';
                                 }
                               }
@@ -440,38 +448,45 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                           <table class="display" id="tablaOT">
                           <thead>
                               <tr>
-                                <th>ID Posicion</th>
                                 <th>Conjunto</th>
-                                <th>Cantidad</th>
-                                <th>Posicion</th>
-                                <th>Cantidad Pedida</th>
-                                <th>Cantidad a Bajar</th>
-                                <!-- <th>Material</th>
-                                <th>Procesos</th> -->
+                                <th style="width:80px">Cant. conj.</th>
+                                <th style="width:80px">Posicion</th>
+                                <th style="width:80px">Cant. pos.</th>
+                                <th style="width:90px">Cant. total</th>
+                                <th style="min-width:220px">Material</th>
+                                <th style="min-width:150px">Procesos</th>
+                                <th style="width:90px">Saldo</th>
+                                <th style="width:90px">Cant. a Bajar</th>
                               </tr>
                             </thead>
                             <tfoot>
                               <tr>
-                                <th>ID Posicion</th>
                                 <th>Conjunto</th>
-                                <th>Cantidad</th>
+                                <th>Cant. conj.</th>
                                 <th>Posicion</th>
-                                <th>Cantidad Pedida</th>
-                                <th>Cantidad a Bajar</th>
-                                <!-- <th>Material</th>
-                                <th>Procesos</th> -->
+                                <th>Cant. pos.</th>
+                                <th>Cant. total</th>
+                                <th>Material</th>
+                                <th>Procesos</th>
+                                <th>Saldo</th>
+                                <th>Cant. a Bajar</th>
                               </tr>
                             </tfoot>
                             <tbody><?php
                               if($editing){
                                 foreach($posiciones_agregadas as $row){
-                                  $max = $row['cant_pos'] - $row['cant_bajada_otros'];
+                                  $cant_total = $row['cant_conj']*$row['cant_pos'];
+                                  $max = $cant_total - $row['cant_bajada_otros'];
+                                  $saldo = $max - $row['cant_bajada'];
                                   echo '<tr id="'.$row['id_posicion'].'">';
-                                  echo '<td>'.$row['id_posicion'].'</td>';
                                   echo '<td>'.$row['nombre'].'</td>';
-                                  echo '<td>'.$row['cant_conj'].'</td>';
-                                  echo '<td>'.$row['posicion'].'</td>';
-                                  echo '<td>'.$row['cant_pos'].'</td>';
+                                  echo '<td class="text-end">'.$row['cant_conj'].'</td>';
+                                  echo '<td class="text-end">'.$row['posicion'].'</td>';
+                                  echo '<td class="text-end">'.$row['cant_pos'].'</td>';
+                                  echo '<td class="text-end">'.$cant_total.'</td>';
+                                  echo '<td>'.$row['concepto'].'</td>';
+                                  echo '<td>'.$row['procesos'].'</td>';
+                                  echo '<td class="text-end">'.$saldo.'</td>';
                                   echo '<td>';
                                   echo '<input type="hidden" name="id_posicion[]" value="'.$row['id_posicion'].'">';
                                   echo '<input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="'.$row['cant_bajada'].'" max="'.$max.'" data-saldo="'.$max.'" min="0">';
@@ -646,12 +661,12 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         conjuntos.each(function(d){
           $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
         });
-        var materiales = tablaLCDT.column(6).data().unique().sort();
+        var materiales = tablaLCDT.column(7).data().unique().sort();
         materiales.each(function(m){
           $('#filtro_material').append('<option value="'+m+'">'+m+'</option>');
         });
         var procesosSet = new Set();
-        tablaLCDT.column(7).data().each(function(d){
+        tablaLCDT.column(8).data().each(function(d){
           d.split(',').forEach(function(p){
             procesosSet.add(p.trim());
           });
@@ -678,7 +693,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           var search = selected && selected.length
             ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
             : '';
-          tablaLCDT.column(7).search(search, true, false).draw();
+          tablaLCDT.column(8).search(search, true, false).draw();
         });
 
         $('#filtro_material').on('change', function () {
@@ -686,7 +701,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           var search = selected && selected.length
             ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
             : '';
-          tablaLCDT.column(6).search(search, true, false).draw();
+          tablaLCDT.column(7).search(search, true, false).draw();
         });
 
 
@@ -726,7 +741,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           if(selectedRowsLC[0].length>0){
             let newData=selectedRowsLC.data().map(function(elemento){
               console.log(elemento);
-              let saldo = elemento[9];
+              let saldo = elemento[10];
               console.log(saldo);
               let inputCantidad = `
                 <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
@@ -734,11 +749,14 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                 <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
               `;
               return [
-                elemento[1],
                 elemento[2],
                 elemento[3],
                 elemento[4],
                 elemento[5],
+                elemento[6],
+                elemento[7],
+                elemento[8],
+                saldo,
                 inputCantidad
               ];
             })
@@ -797,7 +815,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         $(document).on("click","#tablaOT tbody tr td", function(){
           var t=$(this).parent();
           let celdaClickeado=$(this)[0];
-          let celdaConInput=t.find("td:nth-child(6)")[0];
+          let celdaConInput=t.find("td:nth-child(9)")[0];
           if(celdaConInput!=celdaClickeado){
             if(t.hasClass('selected')){
               deselectRow(t);
@@ -853,7 +871,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         tablaLCDT.rows().every(function(){
           let row = $(this.node());
           let base = parseFloat(row.data('cant-bajada')) || 0;
-          let cantPos = parseFloat(row.data('cant-pos')) || 0;
+          let cantTotal = parseFloat(row.data('cant-total')) || 0;
           let idPos = row.attr('id');
           let extra = 0;
           let input = tablaOT.find("input[name='id_posicion[]'][value='"+idPos+"']");
@@ -862,10 +880,18 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
             if(!isNaN(val)) extra = val;
           }
           let total = base + extra;
-          let saldo = cantPos - total;
+          let saldo = cantTotal - total;
           let cells = row.children('td');
-          $(cells[8]).text(total);
-          $(cells[9]).text(saldo);
+          $(cells[9]).text(total);
+          $(cells[10]).text(saldo);
+        });
+
+        tablaOT.find('tbody tr').each(function(){
+          let input = $(this).find("input[name='cantidad_bajar[]']");
+          let saldo = parseFloat(input.data('saldo')) || 0;
+          let val = parseFloat(input.val()) || 0;
+          let restante = saldo - val;
+          $(this).find('td:nth-child(8)').text(restante);
         });
       }
 	  
