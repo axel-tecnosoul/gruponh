@@ -1,0 +1,8 @@
+<?php
+return [
+    'host' => 'smtp.example.local',
+    'username' => 'user@example.local',
+    'password' => 'secret',
+    'from' => 'noreply@example.local',
+    'from_name' => 'GrupoNH Dev'
+];
