@@ -2,6 +2,33 @@
 require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");
 
+/**
+ * Obtiene la configuración SMTP.
+ * Si APP_ENV=development y existe un archivo config.dev.php en la raíz,
+ * se cargarán los datos desde ese archivo. Caso contrario se consultarán
+ * desde la base de datos (tabla parametros id 1-5).
+ *
+ * @param PDO $pdo
+ * @return array [host, usuario, clave, from, from_name]
+ */
+function getSmtpConfig(PDO $pdo): array {
+  if (getenv('APP_ENV') === 'development') {
+    $configFile = __DIR__ . '/config.dev.php';
+    if (file_exists($configFile)) {
+      $config = require $configFile;
+      return [
+        $config['host'] ?? '',
+        $config['username'] ?? '',
+        $config['password'] ?? '',
+        $config['from'] ?? '',
+        $config['from_name'] ?? ''
+      ];
+    }
+  }
+  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
+  return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
 function debugQuery(PDO $pdo, string $sql, array $params): string {
   foreach ($params as $key => $value) {
     // PDO::quote() añade comillas y escapa caracteres especiales
@@ -533,9 +560,8 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
   // Se asume que $pdo es una conexión válida y con la configuración adecuada
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
-  // --- Cargo configuración SMTP desde parámetros ---
-  $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
-  $smtp = $stmt->fetchAll(PDO::FETCH_COLUMN);// 2. $smtp[0] → id=1, $smtp[1] → id=2, … $smtp[4] → id=5
+  // --- Cargo configuración SMTP ---
+  $smtp = getSmtpConfig($pdo); // [host, usuario, clave, from, from_name]
   list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
 
   //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO

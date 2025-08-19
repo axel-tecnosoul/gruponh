@@ -18,6 +18,9 @@ composer.lock
 #!.env.example
 #/img/*
 database.php
+# Environment specific configuration
+config.dev.php
+.env.development
 #config.php
 save_log.txt
 
