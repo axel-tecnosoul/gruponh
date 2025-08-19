@@ -536,7 +536,7 @@ Database::disconnect();?>
                         <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear y volver a Conjuntos</button>
                         <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?>' class="btn btn-light">Volver</a>
+                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?>' class="btn btn-danger">Guardar y volver a Conjuntos</a>
                       </div>
                     </div>
                   </form>
