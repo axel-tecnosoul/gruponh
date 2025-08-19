@@ -715,24 +715,21 @@ Database::disconnect();?>
         console.log(largo_m,ancho_m,peso);
         let pesoCalculado = 0;
 
-        if (isNaN(largo_m) || isNaN(ancho_m) || isNaN(peso)) {
+        // Para materiales como caños o perfiles no se requiere ancho
+        const requiereAncho = tipoMaterial.startsWith("Chapa");
+
+        if (isNaN(largo_m) || isNaN(peso) || (requiereAncho && isNaN(ancho_m))) {
           pesoCalculado = 0;
-        }else{
-          // Si el tipo comienza con "Chapa" => cálculo por área
+        } else {
           if (tipoMaterial.startsWith("Chapa")) {
             const area = largo_m * ancho_m; // m²
             pesoCalculado = +(area * peso).toFixed(2); // kg
-          }else{
+          } else {
+            // Cálculo lineal para caños, perfiles u otros
             pesoCalculado = +(largo_m * peso).toFixed(2); // kg
-          }
-
-          // Si el tipo comienza con "Perfil" => cálculo lineal
-          if (tipoMaterial.startsWith("Perfil")) {
-            
           }
         }
 
-        // Otros tipos pueden extenderse aquí
         $("#pesoCalculado").text(`${pesoCalculado} kg`);
         $("#hiddenPesoCalculado").val(pesoCalculado);
       }
