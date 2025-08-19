@@ -411,7 +411,7 @@ Database::disconnect();?>
                                 Database::disconnect();?>
                               </tbody>
                             </table>
-							              <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,1,",",".");?>&nbsp;kgs</b>
+                                                                      <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,2,",",".");?>&nbsp;kgs</b>
                           </div>
                         </div>
                       </div>
