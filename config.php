@@ -1,5 +1,19 @@
 <?php
 
+// Load application environment from env.php or environment variables
+$envFile = __DIR__ . '/env.php';
+if (file_exists($envFile)) {
+    require_once $envFile;
+}
+
+if (!getenv('APP_ENV')) {
+    putenv('APP_ENV=production');
+}
+
+if (!defined('APP_ENV')) {
+    define('APP_ENV', getenv('APP_ENV'));
+}
+
 /*$host = "localhost";
 $username = "root";
 $password = "";
