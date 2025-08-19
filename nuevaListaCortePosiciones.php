@@ -397,18 +397,18 @@ Database::disconnect();?>
                         </div>
                       </div>
                       <div class="row">
-                        <div class="form-group col-3">
+                        <div class="form-group col-2">
                           <label>Posicion(*)</label>
                           <input name="nombre_posicion" type="text" maxlength="99" autofocus class="form-control nombre_posicion" required="required" value=""><?php
                           if (!empty($_GET['error_repetido'])) {
                             echo "<font color='red'><b>El nombre de Posición utilizado ya está en uso</b></font>";
                           }?>
 						            </div>
-                        <div class="form-group col-3">
+                        <div class="form-group col-2">
                           <label>Cantidad(*)</label>
                           <input name="cantidad_posicion" type="number" step="0.01" min="0.01" maxlength="99" class="form-control cantidad_posicion" required="required" value="">
                         </div>
-                        <div class="form-group col-6">
+                        <div class="form-group col-8">
                           <label>Concepto(*)</label><br>
                           <select name="id_material" class="js-example-basic-single id_material" onchange="jsCompletarPeso(this.value);">
                             <option value="">Seleccione...</option><?php
@@ -416,11 +416,11 @@ Database::disconnect();?>
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                             //$sqlZon = "SELECT distinct m.id, m.codigo, m.concepto, c.nro_computo, max(c.nro_revision) from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte lc on lc.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lc.id where lcc.id = ".$id_lista_corte_conjunto." GROUP BY m.id, m.codigo, m.concepto, c.nro_computo ";
 							              //$sqlZon = "SELECT `id`, `concepto`, `codigo` FROM `materiales` WHERE anulado = 0 "; //que traiga los conceptos 
-                            $sqlZon = "SELECT cd.id AS id_computo_detalle, c.id AS id_computo, m.id AS id_material, m.codigo, m.concepto FROM listas_corte_conjuntos lcc JOIN listas_corte lc ON lcc.id_lista_corte=lc.id JOIN proyectos p ON lc.id_proyecto=p.id JOIN tareas t ON t.id_proyecto=p.id JOIN computos c ON c.id_tarea=t.id JOIN computos_detalle cd ON cd.id_computo=c.id JOIN materiales m ON cd.id_material=m.id WHERE lcc.id=$id_lista_corte_conjunto AND c.id_estado IN (3,4,5) ORDER BY m.concepto";
+                            $sqlZon = "SELECT cd.id AS id_computo_detalle, c.id AS id_computo, m.id AS id_material, m.codigo, m.concepto, c.nro AS nro_computo, c.nro_revision FROM listas_corte_conjuntos lcc JOIN listas_corte lc ON lcc.id_lista_corte=lc.id JOIN proyectos p ON lc.id_proyecto=p.id JOIN tareas t ON t.id_proyecto=p.id JOIN computos c ON c.id_tarea=t.id JOIN computos_detalle cd ON cd.id_computo=c.id JOIN materiales m ON cd.id_material=m.id WHERE lcc.id=$id_lista_corte_conjunto AND c.id_estado IN (3,4,5) ORDER BY m.concepto";
 							              $q = $pdo->prepare($sqlZon);
                             $q->execute();
                             while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
-                              <option value='<?=$fila['id_material']?>'><?=$fila['concepto']." (".$fila['codigo'].") - Computo ".$fila['id_computo']?></option><?php
+                              <option value='<?=$fila['id_material']?>'><?=$fila['concepto']." (".$fila['codigo'].") - Computo N° ".$fila['nro_computo']. " Rev. ".$fila['nro_revision']?></option><?php
                             }
                             Database::disconnect();?>
                           </select>
