@@ -313,13 +313,16 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-body">
                       <div class="form-group row mb-3">
-                        <div class="col-sm-4 mb-2 mb-sm-0">
+                        <div class="col-sm-3 mb-2 mb-sm-0">
                           <select id="filtro_conjunto" class="form-control" style="width:100%" multiple></select>
                         </div>
-                        <div class="col-sm-4 mb-2 mb-sm-0">
+                        <div class="col-sm-3 mb-2 mb-sm-0">
                           <select id="filtro_proceso" class="form-control" style="width:100%" multiple></select>
                         </div>
-                        <div class="col-sm-4">
+                        <div class="col-sm-3 mb-2 mb-sm-0">
+                          <select id="filtro_material" class="form-control" style="width:100%" multiple></select>
+                        </div>
+                        <div class="col-sm-3">
                           <button type="button" id="toggle_seleccion" class="btn btn-primary w-100">Seleccionar visibles</button>
                         </div>
                       </div>
@@ -640,6 +643,10 @@ if (!empty($_POST)) {
         conjuntos.each(function(d){
           $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
         });
+        var materiales = tablaLCDT.column(6).data().unique().sort();
+        materiales.each(function(m){
+          $('#filtro_material').append('<option value="'+m+'">'+m+'</option>');
+        });
         var procesosSet = new Set();
         tablaLCDT.column(7).data().each(function(d){
           d.split(',').forEach(function(p){
@@ -653,6 +660,7 @@ if (!empty($_POST)) {
 
         $('#filtro_conjunto').select2({placeholder:'Conjunto',allowClear:true});
         $('#filtro_proceso').select2({placeholder:'Proceso',allowClear:true});
+        $('#filtro_material').select2({placeholder:'Material',allowClear:true});
 
         $('#filtro_conjunto').on('change', function () {
           var selected = $(this).val(); // array de valores seleccionados
@@ -668,6 +676,14 @@ if (!empty($_POST)) {
             ? selected.map(val => $.fn.dataTable.util.escapeRegex(val)).join('|')
             : '';
           tablaLCDT.column(7).search(search, true, false).draw();
+        });
+
+        $('#filtro_material').on('change', function () {
+          var selected = $(this).val();
+          var search = selected && selected.length
+            ? selected.map(val => '^' + $.fn.dataTable.util.escapeRegex(val) + '$').join('|')
+            : '';
+          tablaLCDT.column(6).search(search, true, false).draw();
         });
 
 
