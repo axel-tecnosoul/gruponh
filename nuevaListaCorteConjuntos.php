@@ -311,10 +311,16 @@ Database::disconnect();?>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
-      $(document).ready(function () {
-        $('#btnEnviarAprobacion').on('click', function(){
-          $('#modalEnviarAprobacion').modal('show');
-        });
+        $(document).ready(function () {
+          $('#btnEnviarAprobacion').on('click', function(){
+            let nombre = $("input[name='nombre']").val();
+            let cantidad = $("input[name='cantidad']").val();
+            if(nombre !== "" || cantidad !== ""){
+              alert("No se puede enviar a aprobación si hay datos sin guardar.");
+              return false;
+            }
+            $('#modalEnviarAprobacion').modal('show');
+          });
 
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
