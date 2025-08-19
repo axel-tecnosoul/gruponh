@@ -211,6 +211,7 @@ Database::disconnect();?>
                         <button type="submit" value="2" name="btn2" id="editConjunto" class="btn btn-success d-none">Modificar</button>
                         <button type="submit" value="3" name="btn3" id="editConjuntoGoPosiciones" class="btn btn-primary d-none">Modificar e ir a Posiciones</button>
                         <button type="button" id="cancelEditConjunto" class="btn btn-light d-none">Cancelar Modificar</button>
+                        <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
                         <a href='listarListasCorte.php' id="volverListaCorte" class="btn btn-light">Volver al Listas de corte</a>
                       </div>
                     </div>
@@ -220,6 +221,26 @@ Database::disconnect();?>
             </div>
           </div>
           <!-- Container-fluid Ends-->
+        </div>
+
+        <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$id_lista_corte?>">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirmar envío a aprobación</h5>
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <p>¿Estás seguro de que quieres enviar esta revisión a aprobación?</p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
 
         <!-- Modal para eliminas conjuntos -->
@@ -284,6 +305,10 @@ Database::disconnect();?>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
       $(document).ready(function () {
+        $('#btnEnviarAprobacion').on('click', function(){
+          $('#modalEnviarAprobacion').modal('show');
+        });
+
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
           var title = $(this).text();
