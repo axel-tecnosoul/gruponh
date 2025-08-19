@@ -306,7 +306,7 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?php if($numero !== null && $nro_revision !== null){ echo "Lista de Corte Nº {$numero} - Rev {$nro_revision}"; } else { echo $ubicacion; } ?></h5>
+                    <h5><?php if($numero !== null && $nro_revision !== null){ echo $titulo." Lista de Corte Nº {$numero} - Rev {$nro_revision}"; } else { echo $ubicacion; } ?></h5>
                   </div>
 				          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
                     <div class="card-body">
