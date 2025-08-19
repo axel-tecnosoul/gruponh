@@ -7,6 +7,8 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$numero = null;
+$nro_revision = null;
 $hoy=date("Y-m-d");
 $modo="create";
 if(isset($_GET["modo"])){
@@ -224,7 +226,7 @@ if (!empty($_POST)) {
     $id_lista_corte = $_GET['id_lista_corte'];
     $formAction="nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte;
 
-    $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto FROM listas_corte WHERE id = ?";
+    $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto, numero, nro_revision FROM listas_corte WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -234,6 +236,8 @@ if (!empty($_POST)) {
       $id_proyecto=$data["id_proyecto"];
       $nombre=$data["nombre"];
       $adjunto=$data["adjunto"];
+      $numero=$data["numero"];
+      $nro_revision=$data["nro_revision"];
     }
   }
 
@@ -302,7 +306,7 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
+                    <h5><?php if($numero !== null && $nro_revision !== null){ echo "Lista de Corte Nº {$numero} - Rev {$nro_revision}"; } else { echo $ubicacion; } ?></h5>
                   </div>
 				          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
                     <div class="card-body">
