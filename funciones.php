@@ -530,8 +530,7 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
 
 
 function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, string $detalleNotificacion, string $asuntoEmail,string $cuerpoEmail): void{
-  // 3) Conexión PDO
-  $pdo = Database::connect();
+  // Se asume que $pdo es una conexión válida y con la configuración adecuada
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
   // --- Cargo configuración SMTP desde parámetros ---
