@@ -702,37 +702,47 @@ Database::disconnect();?>
       });
 
       function calcularPesoMaterial() {
-        const tipoMaterial = $("select[name='id_material'] option:selected").text(); // contiene "Chapa" o "Perfil"
-        const largo = $("input[name='largo']").val();
-        const ancho = $("input[name='ancho']").val();
-        const pesoConcepto = $("input[name='peso']").val();
+        const tipoMaterial = $("select[name='id_material'] option:selected").text().trim(); // "Chapa", "Perfil", "Caño", etc.
+        const largoRaw = $("input[name='largo']").val();
+        const anchoRaw = $("input[name='ancho']").val();
+        const pesoRaw  = $("input[name='peso']").val();
 
-        // Convertir milímetros a metros
-        const largo_m = parseFloat(largo) / 1000;
-        const ancho_m = parseFloat(ancho) / 1000;
-        const peso = parseFloat(pesoConcepto);
+        // Permite coma decimal y convierte a número
+        const largo = parseFloat(String(largoRaw).replace(',', '.'));   // mm
+        const ancho = parseFloat(String(anchoRaw).replace(',', '.'));   // mm
+        const peso  = parseFloat(String(pesoRaw ).replace(',', '.'));   // kg/m (lineal) o kg/m² (chapa)
 
-        console.log(largo_m,ancho_m,peso);
+        // Helper para redondear a 2 decimales sin problemas de flotantes
+        const r2 = (n) => Math.round(n * 100) / 100;
+
         let pesoCalculado = 0;
 
-        // Para materiales como caños o perfiles no se requiere ancho
-        const requiereAncho = tipoMaterial.startsWith("Chapa");
-
-        if (isNaN(largo_m) || isNaN(peso) || (requiereAncho && isNaN(ancho_m))) {
+        // Validaciones mínimas
+        if (!isFinite(largo) || !isFinite(peso)) {
           pesoCalculado = 0;
-        } else {
-          if (tipoMaterial.startsWith("Chapa")) {
-            const area = largo_m * ancho_m; // m²
-            pesoCalculado = +(area * peso).toFixed(2); // kg
+        } else if (tipoMaterial.startsWith("Chapa")) {
+          // Chapa: cálculo por área = (largo * ancho) en m²
+          if (!isFinite(ancho)) {
+            pesoCalculado = 0; // falta ancho para chapa
           } else {
-            // Cálculo lineal para caños, perfiles u otros
-            pesoCalculado = +(largo_m * peso).toFixed(2); // kg
+            const area_m2 = (largo / 1000) * (ancho / 1000);
+            pesoCalculado = r2(area_m2 * peso); // kg (peso es kg/m²)
           }
+        } else if (tipoMaterial.startsWith("Perfil") || tipoMaterial.startsWith("Caño")) {
+          // Perfil / Caño: cálculo lineal; se IGNORA el ancho
+          const largo_m = largo / 1000;
+          pesoCalculado = r2(largo_m * peso); // kg (peso es kg/m)
+        } else {
+          // Otros tipos: por defecto, lineal (si querés otro comportamiento, ajustá acá)
+          const largo_m = largo / 1000;
+          pesoCalculado = r2(largo_m * peso);
         }
 
-        $("#pesoCalculado").text(`${pesoCalculado} kg`);
-        $("#hiddenPesoCalculado").val(pesoCalculado);
+        // Actualiza UI / hidden
+        $("#pesoCalculado").text(`${pesoCalculado.toFixed(2)} kg`);
+        $("#hiddenPesoCalculado").val(pesoCalculado); // valor numérico (con . decimal)
       }
+
 
       function selectRow(t){
         t.addClass('selected');
