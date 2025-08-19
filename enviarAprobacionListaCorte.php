@@ -31,7 +31,7 @@ $descripcion_lista_corte = " N° ".$numero_lc. "Rev. N° ".$nro_revision.$descPr
 
 $idTipoNotificacion=5;
 $idEntidad=$id_lista_corte;
-$detalleNotificacion="ID Computo: #".$id_lista_corte;
+$detalleNotificacion="ID Lista de Corte: #".$id_lista_corte;
 $asuntoEmail="Ingenieria - Aprobación de ".$descripcion;
 $cuerpoEmail="La $descripcion está lista para aprobación.";
 crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
