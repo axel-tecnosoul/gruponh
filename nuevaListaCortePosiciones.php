@@ -38,6 +38,28 @@ if (!empty($_POST)) {
   $peso_calculado_posicion=trim($_POST['hiddenPesoCalculado']);
   $diametro=trim($_POST['diametro']);
 
+  // Validación de dimensiones según el tipo de material
+  if (!empty($id_material)) {
+    $sqlVal = "SELECT concepto FROM materiales WHERE id = ?";
+    $qVal = $pdo->prepare($sqlVal);
+    $qVal->execute([$id_material]);
+    $conceptoMat = $qVal->fetchColumn();
+
+    if (str_starts_with($conceptoMat, 'Chapa')) {
+      if (!is_numeric($ancho) || $ancho <= 0 || !is_numeric($largo) || $largo <= 0) {
+        Database::disconnect();
+        header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        exit;
+      }
+    } else {
+      if (!is_numeric($largo) || $largo <= 0) {
+        Database::disconnect();
+        header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        exit;
+      }
+    }
+  }
+
   if (!empty($_POST['btn3'])) {
     //editar posicion
     $id_lista_corte_posicion=$_POST['btn3'];
@@ -449,6 +471,7 @@ Database::disconnect();?>
                         <div class="form-group col-2">
                           <label>Ancho (En mm)</label>
                           <input name="ancho" type="number" step="0.01" maxlength="99" class="form-control ancho" value="">
+                          <?php if (!empty($_GET['error_medidas'])) { echo "<font color='red'><b>Complete las medidas requeridas para el material seleccionado</b></font>"; } ?>
                         </div>
                         <div class="form-group col-2">
                           <label>Largo (En mm)</label>
@@ -718,6 +741,25 @@ Database::disconnect();?>
           $("#editPosicion").val("")
           $("#cancelEditPosicion").toggleClass("d-none")
         })
+
+        $("form.theme-form").on("submit", function(e){
+          const tipoMaterial = $("select[name='id_material'] option:selected").text().trim();
+          const largo = parseFloat(String($("input[name='largo']").val()).replace(',', '.'));
+          const ancho = parseFloat(String($("input[name='ancho']").val()).replace(',', '.'));
+          let errores = [];
+
+          if (tipoMaterial.startsWith("Chapa")) {
+            if (!isFinite(ancho) || ancho <= 0) { errores.push('el ancho'); }
+            if (!isFinite(largo) || largo <= 0) { errores.push('el largo'); }
+          } else {
+            if (!isFinite(largo) || largo <= 0) { errores.push('el largo'); }
+          }
+
+          if (errores.length > 0) {
+            alert('Debe especificar ' + errores.join(' y ') + ' de la posición.');
+            e.preventDefault();
+          }
+        });
       });
 
       function calcularPesoMaterial() {
