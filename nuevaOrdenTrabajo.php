@@ -7,6 +7,40 @@ if (empty($_SESSION['user'])) {
 require 'database.php';
 $modoDebug=0;
 
+$editing=false;
+$id_orden_trabajo=null;
+$id_lista_corte=null;
+$data_ot=[];
+
+if(isset($_GET['id'])){
+  $editing=true;
+  $id_orden_trabajo=filter_input(INPUT_GET,'id',FILTER_VALIDATE_INT);
+  $pdoTmp=Database::connect();
+  $pdoTmp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sql="SELECT nro_orden_trabajo,fecha,id_lista_corte,nro_revision,titulo,numero,descripcion,notas FROM ordenes_trabajo WHERE id = ?";
+  $q=$pdoTmp->prepare($sql);
+  $q->execute([$id_orden_trabajo]);
+  $data_ot=$q->fetch(PDO::FETCH_ASSOC);
+  if($data_ot){
+    $id_lista_corte=$data_ot['id_lista_corte'];
+  }
+  Database::disconnect();
+}elseif(isset($_GET['id_lista_corte'])){
+  $id_lista_corte=filter_input(INPUT_GET,'id_lista_corte',FILTER_VALIDATE_INT);
+  $pdoTmp=Database::connect();
+  $pdoTmp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  if(!LCPermiteOR($pdoTmp,$id_lista_corte)){
+    Database::disconnect();
+    header("Location: listarListasCorte.php?error=lc_no_aprobada");
+    exit;
+  }
+  $sql="SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
+  $q=$pdoTmp->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $data_ot=$q->fetch(PDO::FETCH_ASSOC);
+  Database::disconnect();
+}
+
 function obtenerSaldoPosicion($pdo,$id_posicion){
   $id_posicion = intval($id_posicion);
   $sql = "SELECT lcp.cantidad AS cant_pos, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcp.id = ? GROUP BY lcp.id";
@@ -33,14 +67,62 @@ function LCPermiteOR($pdo, $id_lista_corte){
 }
 if (!empty($_POST)) {
 
-  // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $redirect="listarOrdenesTrabajo.php";
+
+  if(!empty($_POST['id_orden_trabajo'])){
+    $id_orden_trabajo=intval($_POST['id_orden_trabajo']);
+    $pdo->beginTransaction();
+
+    $sql = "UPDATE ordenes_trabajo set fecha = ?, titulo = ?, notas = ? where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST["fecha"],$_POST["titulo"],$_POST["notas"],$id_orden_trabajo]);
+
+    foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
+      if($cantidad!="" and $cantidad>0){
+        $id_posicion=$_POST['id_posicion'][$key];
+
+        $cant_liberadas=0;
+        $cant_proceso=0;
+        $cant_rechazadas=0;
+        $id_estado_orden_trabajo_posicion=1;
+
+        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_proceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ? AND otd.id_orden_trabajo = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id_posicion,$id_orden_trabajo]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+
+        if($data){
+          $cant_liberadas=$data["cant_liberadas"];
+          $cant_proceso=$data["cant_proceso"];
+          $cant_rechazadas=$data["cant_rechazadas"];
+          $id_estado_orden_trabajo_posicion=$data["id_estado_orden_trabajo_posicion"];
+        }
+
+        $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id_orden_trabajo,$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
+      }
+    }
+
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Orden de Trabajo','Orden de Trabajo')";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_SESSION['user']['id']]);
+
+    if ($modoDebug==1) {
+      $pdo->rollBack();
+      die();
+    } else {
+      $pdo->commit();
+      Database::disconnect();
+      header("Location: ".$redirect);
+    }
+    exit;
+  }
 
   $id_lista_corte = filter_input(INPUT_POST, 'id_lista_corte', FILTER_VALIDATE_INT);
 
-  // Verificar que la lista de corte esté aprobada
-  
   if(!LCPermiteOR($pdo, $id_lista_corte)){
     Database::disconnect();
     header("Location: listarListasCorte.php?error=lc_no_aprobada");
@@ -53,15 +135,12 @@ if (!empty($_POST)) {
     var_dump($_POST);
   }
 
-  $redirect="listarOrdenesTrabajo.php";
-
   $id_estado_orden_trabajo=1;
   $nro_revision=0;
   $anulado=0;
-  $numero="";//insertamos vacío y una vez que obtenemos el ID lo modificamos
+  $numero="";
   $descripcion="Emision original";
 
-  // Cantidad de órdenes de trabajo existentes para la lista antes de insertar
   $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte]);
@@ -94,45 +173,21 @@ if (!empty($_POST)) {
   }
   $id_orden_trabajo = $pdo->lastInsertId();
 
-  // Cantidad de OTs luego de insertar la nueva
   $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte]);
   $cant_ot_actuales = (int)$q->fetchColumn();
 
-  // Si antes no existían OTs y la lista estaba aprobada, pasarla a En Proceso (4)
   if ($cant_ot_previas == 0 && $estadoLC['id_estado_lista_corte'] == 3) {
     $sql = "UPDATE listas_corte SET id_estado_lista_corte = 4 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte]);
 
-    // Registrar el cambio de estado en logs
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo) VALUES (now(), ?, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte')";
     $params = [$_SESSION['user']['id']];
     $q = $pdo->prepare($sql);
     $q->execute($params);
   }
-
-  /*$sql = "UPDATE ordenes_trabajo set id_orden_trabajo=? where id =?";
-  $params = [$id_orden_trabajo,$id_orden_trabajo];
-  $q = $pdo->prepare($sql);
-  $q->execute($params);
-  if ($modoDebug==1) {
-    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
-  }*/
-
-  /*if ($id_orden_trabajo>0) {
-    $numero="LC".$id_lista_corte."-OT".$id_orden_trabajo;
-
-    $sql = "UPDATE ordenes_trabajo set numero = ? where id = ?";
-    $params = [$numero,$id_orden_trabajo];
-    $q = $pdo->prepare($sql);
-    $q->execute($params);
-    if ($modoDebug==1) {
-      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
-    }
-
-  }*/
 
   foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
     if($cantidad!=""){
@@ -144,16 +199,12 @@ if (!empty($_POST)) {
         header("Location: nuevaOrdenTrabajo.php?error=1&id_lista_corte=".$id_lista_corte);
         exit;
       }
-      $id_estado_orden_trabajo_posicion=1;//Elaboración, Pendiente, Proceso, Terminada, Liberada, Reproceso, Rechazada, Cancelada
+      $id_estado_orden_trabajo_posicion=1;
 
       $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?)";
       $params = [$id_orden_trabajo,$id_posicion,$cantidad,$id_estado_orden_trabajo_posicion];
       $q = $pdo->prepare($sql);
       $q->execute($params);
-      if ($modoDebug==1) {
-        echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
-      }
-
     }
   }
 
@@ -178,7 +229,6 @@ if (!empty($_POST)) {
   crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
 
   if ($modoDebug==1) {
-    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
     $pdo->rollBack();
     die();
   } else {
@@ -189,27 +239,7 @@ if (!empty($_POST)) {
 
 }
 
-if(isset($_GET['id_lista_corte'])){
-  //nueva revision
-  $id_lista_corte = filter_input(INPUT_GET, 'id_lista_corte', FILTER_VALIDATE_INT);
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-  if(!LCPermiteOR($pdo, $id_lista_corte)){
-    Database::disconnect();
-    header("Location: listarListasCorte.php?error=lc_no_aprobada");
-    exit;
-  }
-
-  //$sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte_revisiones WHERE id = ? ";
-  $sql = "SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lista_corte]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-
-}
-
-Database::disconnect();?>
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -229,7 +259,7 @@ Database::disconnect();?>
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Nueva Orden de Trabajo";
+          $ubicacion = $editing ? "Modificar Orden de Trabajo" : "Nueva Orden de Trabajo";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -246,40 +276,39 @@ Database::disconnect();?>
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-                          <!-- <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Revisión(*)</label>
+<?php if($editing){ ?>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Revisión</label>
                             <div class="col-sm-3">
-                              <input name="revision" data-original="" type="number" class="form-control">
+                              <input name="nro_revision" type="number" class="form-control" value="<?=$data_ot['nro_revision']?>" readonly>
                             </div>
-                            <label class="col-sm-3 col-form-label">N° OT(*)</label>
+                            <label class="col-sm-3 col-form-label">N° OT</label>
                             <div class="col-sm-3">
-                              <input name="numero" data-original="" type="text" class="form-control">
+                              <input name="numero" type="text" class="form-control" value="<?=$data_ot['numero']?>" readonly>
                             </div>
-                          </div> -->
+                          </div>
+<?php } ?>
                           <div class="form-group row">
                             <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$id_lista_corte?>">
+<?php if($editing){ ?><input type="hidden" name="id_orden_trabajo" value="<?=$id_orden_trabajo?>"><?php } ?>
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-3">
-                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control">
+                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$editing ? $data_ot['fecha'] : date('Y-m-d');?>" class="form-control">
                             </div>
                             <label class="col-sm-3 col-form-label">Titulo(*)</label>
                             <div class="col-sm-3">
-                              <input name="titulo" type="text" class="form-control" autofocus>
+                              <input name="titulo" type="text" class="form-control" value="<?=$editing ? htmlspecialchars($data_ot['titulo']) : ''?>" autofocus>
                             </div>
                           </div>
                           <div class="form-group row">
-                            <!-- <label class="col-sm-3 col-form-label">Descripcion del cambio(*)</label>
-                            <div class="col-sm-3">
-                              <textarea name="descripcion" class="form-control"></textarea>
-                            </div> -->
                             <label class="col-sm-3 col-form-label">Notas de la OT(*)</label>
                             <div class="col-sm-9">
-                              <textarea name="notas" class="form-control"></textarea>
+                              <textarea name="notas" class="form-control"><?=$editing ? htmlspecialchars($data_ot['notas']) : ''?></textarea>
                             </div>
                           </div>
                           <div class="form-group row">
                             <div class="col-12">
-                              
+
                             </div>
                           </div>
                         </div>
@@ -340,24 +369,61 @@ Database::disconnect();?>
                             <tbody><?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              
+                              $posiciones_agregadas=[];
+                              if($editing){
+                                $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada_total,COALESCE(SUM(CASE WHEN otd.id_orden_trabajo = ? THEN otd.cantidad END),0) AS cant_bajada_ot FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY lcp.id";
+                                $q = $pdo->prepare($sql);
+                                $q->execute([$id_orden_trabajo,$id_lista_corte]);
+                                while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                                  $cant_total=$row['cant_bajada_total'];
+                                  $cant_ot=$row['cant_bajada_ot'];
+                                  $cant_otros=$cant_total-$cant_ot;
+                                  $saldo=$row['cant_pos']-$cant_total;
+                                  if($cant_ot>0){
+                                    $posiciones_agregadas[]=[
+                                      'id_posicion'=>$row['id_posicion'],
+                                      'nombre'=>$row['nombre'],
+                                      'cant_conj'=>$row['cant_conj'],
+                                      'posicion'=>$row['posicion'],
+                                      'cant_pos'=>$row['cant_pos'],
+                                      'cant_bajada'=>$cant_ot,
+                                      'cant_bajada_otros'=>$cant_otros
+                                    ];
+                                    echo '<tr id="'.$row['id_posicion'].'" style="display: none" data-cant-bajada="'.$cant_otros.'" data-cant-pos="'.$row['cant_pos'].'">';
+                                  }else{
+                                    echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$cant_total.'" data-cant-pos="'.$row['cant_pos'].'">';
+                                  }
+                                  echo '<td></td>';
+                                  echo '<td class="d-none">'.$row['id_posicion'].'</td>';
+                                  echo '<td>'.$row['nombre'].'</td>';
+                                  echo '<td>'.$row['cant_conj'].'</td>';
+                                  echo '<td>'.$row['posicion'].'</td>';
+                                  echo '<td>'.$row['cant_pos'].'</td>';
+                                  echo '<td>'.$row['concepto'].'</td>';
+                                  echo '<td>'.$row['procesos'].'</td>';
+                                  echo '<td>'.($cant_ot>0?$cant_otros:$cant_total).'</td>';
+                                  echo '<td>'.$saldo.'</td>';
+                                  echo '</tr>';
+                                }
+                              }else{
                                 $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY lcp.id";
                                 $q = $pdo->prepare($sql);
                                 $q->execute([$id_lista_corte]);
                                 while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                                $saldo = $row["cant_pos"] - $row["cant_bajada"];?>
-                                <tr id="<?=$row["id_posicion"]?>" data-cant-bajada="<?=$row["cant_bajada"]?>" data-cant-pos="<?=$row["cant_pos"]?>">
-                                  <td></td>
-                                  <td class="d-none"><?=$row["id_posicion"]?></td>
-                                  <td><?=$row["nombre"]?></td>
-                                  <td><?=$row["cant_conj"]?></td>
-                                  <td><?=$row["posicion"]?></td>
-                                  <td><?=$row["cant_pos"]?></td>
-                                  <td><?=$row["concepto"]?></td>
-                                  <td><?=$row["procesos"]?></td>
-                                  <td><?=$row["cant_bajada"]?></td>
-                                  <td><?=$saldo?></td>
-                                </tr><?php
+                                  $saldo = $row['cant_pos'] - $row['cant_bajada'];
+                                  echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$row['cant_bajada'].'" data-cant-pos="'.$row['cant_pos'].'">';
+                                  echo '<td></td>';
+                                  echo '<td class="d-none">'.$row['id_posicion'].'</td>';
+                                  echo '<td>'.$row['nombre'].'</td>';
+                                  echo '<td>'.$row['cant_conj'].'</td>';
+                                  echo '<td>'.$row['posicion'].'</td>';
+                                  echo '<td>'.$row['cant_pos'].'</td>';
+                                  echo '<td>'.$row['concepto'].'</td>';
+                                  echo '<td>'.$row['procesos'].'</td>';
+                                  echo '<td>'.$row['cant_bajada'].'</td>';
+                                  echo '<td>'.$saldo.'</td>';
+                                  echo '</tr>';
+                                }
                               }
                               Database::disconnect();?>
                             </tbody>
@@ -402,14 +468,31 @@ Database::disconnect();?>
                                 <th>Procesos</th> -->
                               </tr>
                             </tfoot>
-                            <tbody></tbody>
+                            <tbody><?php
+                              if($editing){
+                                foreach($posiciones_agregadas as $row){
+                                  $max = $row['cant_pos'] - $row['cant_bajada_otros'];
+                                  echo '<tr id="'.$row['id_posicion'].'">';
+                                  echo '<td>'.$row['id_posicion'].'</td>';
+                                  echo '<td>'.$row['nombre'].'</td>';
+                                  echo '<td>'.$row['cant_conj'].'</td>';
+                                  echo '<td>'.$row['posicion'].'</td>';
+                                  echo '<td>'.$row['cant_pos'].'</td>';
+                                  echo '<td>';
+                                  echo '<input type="hidden" name="id_posicion[]" value="'.$row['id_posicion'].'">';
+                                  echo '<input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="'.$row['cant_bajada'].'" max="'.$max.'" data-saldo="'.$max.'" min="0">';
+                                  echo '</td>';
+                                  echo '</tr>';
+                                }
+                              }
+                            ?></tbody>
                           </table>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-12">
-                        <button type="submit" class="btn btn-primary">Crear</button>
+                        <button type="submit" class="btn btn-primary"><?=$editing ? 'Modificar' : 'Crear'?></button>
                         <a href='listarOrdenesTrabajo.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -756,6 +839,7 @@ Database::disconnect();?>
           refreshCantidades();
         });
 
+        refreshCantidades();
       });
 
       function refreshCantidades(){
