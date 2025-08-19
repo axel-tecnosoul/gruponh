@@ -34,7 +34,7 @@ if(isset($_GET['id'])){
     header("Location: listarListasCorte.php?error=lc_no_aprobada");
     exit;
   }
-  $sql="SELECT id AS id_lista_corte_revision, nombre, numero, id_estado_lista_corte, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
+  $sql="SELECT id AS id_lista_corte_revision, nombre, numero AS numero_lc, id_estado_lista_corte, id_proyecto, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
   $q=$pdoTmp->prepare($sql);
   $q->execute([$id_lista_corte]);
   $data_ot=$q->fetch(PDO::FETCH_ASSOC);
@@ -262,26 +262,28 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion = $editing ? "Modificar OT ".$data_ot['nro_orden_trabajo'].' - LC '.$data_ot['numero_lc'].' '.htmlspecialchars($descProyecto) : "Nueva Orden de Trabajo";
+          $ubicacion = $editing ? "Modificar OT ".$data_ot['nro_orden_trabajo'].' - ' : "Nueva Orden de Trabajo para la ";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
-              <div class="col-sm-12">
-                <?php if(isset($_GET['error']) && $_GET['error']==1){?>
-                <div class="alert alert-danger">La cantidad a bajar debe ser un número positivo y no superar el saldo disponible.</div>
-                <?php }?>
+              <div class="col-sm-12"><?php
+                if(isset($_GET['error']) && $_GET['error']==1){?>
+                  <div class="alert alert-danger">La cantidad a bajar debe ser un número positivo y no superar el saldo disponible.</div><?php
+                }?>
                 <form class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
                   <div class="card mb-0">
                     <div class="card-header">
-                      <h5><?=$ubicacion?></h5>
+                      <h5><?=$ubicacion.' LC '.$data_ot['numero_lc'].' '.htmlspecialchars($descProyecto)?></h5>
                     </div>
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
-                            <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$id_lista_corte?>">
-<?php if($editing){ ?><input type="hidden" name="id_orden_trabajo" value="<?=$id_orden_trabajo?>"><?php } ?>
+                            <input type="hidden" name="id_lista_corte" id="id_lista_corte" value="<?=$id_lista_corte?>"><?php
+                            if($editing){?>
+                              <input type="hidden" name="id_orden_trabajo" value="<?=$id_orden_trabajo?>"><?php
+                            }?>
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-3">
                               <input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$editing ? $data_ot['fecha'] : date('Y-m-d');?>" class="form-control">
@@ -295,11 +297,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                             <label class="col-sm-3 col-form-label">Notas de la OT(*)</label>
                             <div class="col-sm-9">
                               <textarea name="notas" class="form-control"><?=$editing ? htmlspecialchars($data_ot['notas']) : ''?></textarea>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <div class="col-12">
-
                             </div>
                           </div>
                         </div>
@@ -336,15 +333,15 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                               <tr>
                                 <th style="width:40px"></th>
                                 <th class="d-none">ID Posicion</th>
-                                <th>Conjunto</th>
-                                <th style="width:80px">Cant. conj.</th>
-                                <th style="width:80px">Posicion</th>
-                                <th style="width:80px">Cant. pos.</th>
-                                <th style="width:90px">Cant. total</th>
+                                <th style="min-width:100px">Conjunto</th>
+                                <th style="width:40px">Cant. conj.</th>
+                                <th style="width:40px">Posicion</th>
+                                <th style="width:40px">Cant. pos.</th>
+                                <th style="width:40px">Cant. total</th>
                                 <th style="min-width:220px">Material</th>
-                                <th style="min-width:150px">Procesos</th>
-                                <th style="width:90px">Cant. bajada</th>
-                                <th style="width:90px">Saldo</th>
+                                <th style="min-width:100px">Procesos</th>
+                                <th style="width:40px">Cant. bajada</th>
+                                <th style="width:40px">Saldo</th>
                               </tr>
                             </thead>
                             <tfoot>

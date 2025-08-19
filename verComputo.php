@@ -125,50 +125,7 @@ if (!empty($_POST)) {
                               <label class="col-form-label font-weight-bold">Realizó:</label>
                               <label class="col-form-label"><?=$data['cuenta_realizo']?></label>
                             </div>
-                          </div>
-                          <!-- <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Realizó</label>
-                            <div class="col-sm-9">
-                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single col-sm-12">
-                                <option value="">Seleccione...</option><?php
-                                /*$pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  if ($fila['id'] == $data['id_cuenta_solicitante']) {
-                                      echo " selected ";
-                                    }	
-                                  echo ">".$fila['nombre']."</option>";
-                                }
-                                Database::disconnect();*/?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Estado</label>
-                            <div class="col-sm-9">
-                              <select name="id_estado" id="id_estado" class="js-example-basic-single col-sm-12" disabled="disabled"><?php
-                                /*$pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT `id`, `estado` FROM `estados_computos` WHERE 1";
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  if ($fila['id']==$data['id_estado']) {
-                                    echo " selected ";
-                                  }
-                                  echo ">".$fila['estado']."</option>";
-                                }
-                                Database::disconnect();*/?>
-                              </select>
-                            </div>
-                          </div> -->
-							
-                          <?php
+                          </div><?php
                           $tienePermisoParaReservar = false;
                           if(tienePermiso(310)){
                             $tienePermisoParaReservar = true;
@@ -186,15 +143,19 @@ if (!empty($_POST)) {
                                   <thead>
                                     <tr>
                                       <th class="text-narrow" title="Concepto">Concepto</th>
-                                      <th class="text-narrow"title="Solicitado">Solicitado</th>
-                                      <th class="text-narrow"title="Necesidad">Necesidad</th>
-                                      <th class="text-narrow"title="En Stock">En Stock</th>
-                                      <th class="text-narrow"title="Reservado">Reservado</th>
-                                      <th class="text-narrow"title="Pedido">Pedido</th>
-                                      <th class="text-narrow"title="Comprando">Comprando</th>
-                                      <th class="text-narrow"title="Saldo">Saldo</th>
-                                      <?php if ($tienePermisoParaReservar) { ?><th class="text-narrow"title="Reservar">Reservar</th><?php } ?>
-                                      <?php if ($tienePermisoParaPedir) { ?><th class="text-narrow"title="Pedir">Pedir</th><?php } ?>
+                                      <th class="text-narrow" title="Solicitado">Solicitado</th>
+                                      <th class="text-narrow" title="Necesidad">Necesidad</th>
+                                      <th class="text-narrow" title="En Stock">En Stock</th>
+                                      <th class="text-narrow" title="Reservado">Reservado</th>
+                                      <th class="text-narrow" title="Pedido">Pedido</th>
+                                      <th class="text-narrow" title="Comprando">Comprando</th>
+                                      <th class="text-narrow" title="Saldo">Saldo</th><?php
+                                      if ($tienePermisoParaReservar) {?>
+                                        <th class="text-narrow" title="Reservar">Reservar</th><?php
+                                      }
+                                      if ($tienePermisoParaPedir) {?>
+                                        <th class="text-narrow" title="Pedir">Pedir</th><?php
+                                      }?>
                                       <th class="text-narrow"title="Opciones">Opciones</th>
                                     </tr>
                                   </thead>
@@ -203,34 +164,6 @@ if (!empty($_POST)) {
                                     //$sql = " SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, cd.comprado, m.id AS id_material FROM computos_detalle cd inner join materiales m on m.id = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ".$_GET['id'];
                                     $sql = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad AS cantidad_solicitada, date_format(cd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, SUM(pd.cantidad) AS cantidad_pedida, cd.comprado, m.id AS id_material FROM computos_detalle cd inner join materiales m on m.id = cd.id_material LEFT JOIN pedidos p ON cd.id_computo=p.id_computo LEFT JOIN pedidos_detalle pd ON pd.id_pedido=p.id AND pd.id_material=m.id WHERE cd.cancelado = 0 and cd.id_computo = ".$_GET['id']." GROUP BY cd.id";
                                     foreach ($pdo->query($sql) as $row) {
-                                      /*$id_computo_detalle=$row["id_computo_detalle"];
-                                      $cantidad_solicitada=$row["cantidad"];
-                                      $aprobado=$row["aprobado"];
-                                      $reservado=$row["reservado"];
-                                      $comprado=$row["comprado"];
-
-                                      $sql3 = "SELECT SUM(saldo) disponible FROM ingresos_detalle WHERE id_material = ".$row["id_material"];
-                                      $q3 = $pdo->prepare($sql3);
-                                      $q3->execute();
-                                      $data3 = $q3->fetch(PDO::FETCH_ASSOC);
-                                      $enStock = 0;
-                                      if (!empty($data3['disponible'])) {
-                                        $enStock = $data3['disponible'];
-                                      }
-                                      
-                                      $saldo = $cantidad_solicitada-$reservado-$comprado;
-                                      
-                                      $lblAprobado="No";
-                                      $inputReservar="";
-                                      $inputPedir="";
-                                      if ($aprobado==1) {
-                                        $lblAprobado="Si";
-                                        
-                                        $inputReservar="<input type='number' class='form-control' name='cantidad_reservar_".$id_computo_detalle."' min='0' max='".$saldo."' step='0' value='".$saldo."' onkeyup='validateMax(this)' required='required'>";
-
-                                        $inputPedir="<input type='number' class='form-control' name='cantidad_pedir_".$id_computo_detalle."' min='0' max='".$saldo."' step='0' value='".$saldo."' onkeyup='validateMax(this)' required='required'>";
-                                      }*/
-                                      
                                       $id_computo_detalle  = $row["id_computo_detalle"];
                                       $cantidad_solicitada = $row["cantidad_solicitada"];
                                       $aprobado           = $row["aprobado"];
@@ -303,22 +236,16 @@ if (!empty($_POST)) {
                                         <td>
                                           <input type="hidden" name="saldo[<?=$id_computo_detalle?>]" value="<?=$saldo?>">
                                           <span class="saldo"><?=$saldo?></span>
-                                        </td>
-                                        <?php if ($tienePermisoParaReservar) { ?><td><?=$inputReservar?></td><?php }?>
-                                        <?php if ($tienePermisoParaPedir) { ?><td><?=$inputPedir?></td><?php }
-                                          /*if ($aprobado==1) {?>
-                                            <td>Si</td>
-                                            <td><input type="number" class="form-control" name="cantidad_<?=$id_computo_detalle?>" min="0" max="<?=$saldo?>" step="0" value="<?=$saldo?>" onkeyup="validateMax(this)" required="required"></td><?php
-                                          } else {?>
-                                            <td>No</td>	
-                                            <td><input type="number" class="form-control" name="cantidad_<?=$id_computo_detalle?>" min="0" max="<?=$saldo?>" step="0.01" disabled="disabled"></td><?php
-                                          }*/?>
+                                        </td><?php
+                                        if ($tienePermisoParaReservar) {?>
+                                          <td><?=$inputReservar?></td><?php
+                                        }
+                                        if ($tienePermisoParaPedir) {?>
+                                          <td><?=$inputPedir?></td><?php
+                                        }?>
                                         <td><?php
                                           if (!empty(tienePermiso(294))) {
-                                            /*if ($aprobado==0) {?>
-                                              <a href="#" data-toggle="modal" data-target="#aprobarModal_<?=$id_computo_detalle?>"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Aprobar" title="Aprobar"></a>
-                                              &nbsp;&nbsp;<?php
-                                            }*/
+                                            
                                           }
                                           if (!empty(tienePermiso(311))) {
                                             if ($reservado > 0) {?>
