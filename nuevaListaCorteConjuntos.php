@@ -38,16 +38,16 @@ if (!empty($_POST)) {
       $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto;
     }
 	
-	$sql = "SELECT count(*) cant FROM `listas_corte_conjuntos` WHERE nombre = ? and id_lista_corte = ? and id <> ? ";
-	$q = $pdo->prepare($sql);
-	$q->execute([$_POST['nombre'],$id_lista_corte,$id_lista_corte_conjunto]);
-	$data = $q->fetch(PDO::FETCH_ASSOC);
+    $sql = "SELECT count(*) cant FROM `listas_corte_conjuntos` WHERE nombre = ? and id_lista_corte = ? and id <> ? ";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['nombre'],$id_lista_corte,$id_lista_corte_conjunto]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
 	
 	if ($data['cant'] == 0) {
-                $sql = "UPDATE listas_corte_conjuntos SET nombre = ?, cantidad = ? WHERE id = ?";
-                $q = $pdo->prepare($sql);
-                $cantidad = filter_input(INPUT_POST,'cantidad',FILTER_VALIDATE_FLOAT);
-                $q->execute([$_POST['nombre'],$cantidad,$id_lista_corte_conjunto]);
+    $sql = "UPDATE listas_corte_conjuntos SET nombre = ?, cantidad = ? WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $cantidad = filter_input(INPUT_POST,'cantidad',FILTER_VALIDATE_FLOAT);
+    $q->execute([$_POST['nombre'],$cantidad,$id_lista_corte_conjunto]);
 		
 		$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificacion de Conjunto ID #$id_lista_corte_conjunto de Lista de Corte','Listas de Corte','')";
 		$q = $pdo->prepare($sql);
@@ -219,7 +219,7 @@ Database::disconnect();?>
                         <?php if ($cantidadConjuntos > 0) { ?>
                         <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
                         <?php } ?>
-                        <a href='listarListasCorte.php' id="volverListaCorte" class="btn btn-light">Volver al Listas de corte</a>
+                        <a href='listarListasCorte.php' id="volverListaCorte" class="btn btn-danger">Guardar y volver al listado</a>
                       </div>
                     </div>
                   </form>
