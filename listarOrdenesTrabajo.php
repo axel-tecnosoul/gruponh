@@ -456,7 +456,7 @@ include 'database.php';
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
             if ((estado == "Elaborando") || (estado == "Pendiente")) {
-				$("#link_modificar_ot").attr("href","modificarOrdenTrabajo.php?id="+id_ot);	
+                            $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
 			} else {
 				$("#link_modificar_ot").attr("href","#");
 			}
