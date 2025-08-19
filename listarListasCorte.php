@@ -51,6 +51,10 @@ include 'database.php';?>
               <div class="col-sm-12">
                 <?php if(isset($_GET['error']) && $_GET['error']=='lc_no_aprobada'){?>
                 <div class="alert alert-danger">La lista de corte debe estar aprobada para generar una orden de trabajo.</div>
+                <?php } else if(isset($_GET['error']) && $_GET['error']=='lc_revision_mas_reciente'){?>
+                <div class="alert alert-danger">Hay revisiones más recientes generadas para la lista de corte.</div>
+                <?php } else if(isset($_GET['error']) && $_GET['error']=='lc_estado_revision'){?>
+                <div class="alert alert-danger">La lista de corte seleccionada no permite generar una nueva revisión.</div>
                 <?php }?>
               </div>
             </div>
@@ -589,6 +593,23 @@ include 'database.php';?>
       function generarOrdenTrabajoLC(){ window.location.href = this.href; }
       function imprimirListaCorte(){ window.open(this.href, '_blank'); }
       function modificarListaCorte(e){
+        const filaActiva = $("#dataTables-example666 tbody tr.selected");
+        const numeroLc = filaActiva.data("numero-lc");
+        const revision = parseInt(filaActiva.data("nro-revision"),10);
+        let maxRevision = revision;
+        table.rows().every(function(){
+          const tr = $(this.node());
+          if(tr.data("numero-lc") == numeroLc){
+            const rev = parseInt(tr.data("nro-revision"),10);
+            if(rev > maxRevision){
+              maxRevision = rev;
+            }
+          }
+        });
+        if(revision < maxRevision){
+          alert("Hay revisiones más recientes generadas para la lista de corte.");
+          return;
+        }
         const estado = getEstadoListaCorteSeleccionada();
         if(estado && (estado.id === 3 || estado.id === 4)){
           hrefToRedirect = this.href;
