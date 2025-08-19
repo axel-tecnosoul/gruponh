@@ -26,6 +26,24 @@ if (!empty($_POST)) {
   $q->execute([$id_lista_corte]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
+  // Validar que se genera desde la última revisión
+  $sql = "SELECT MAX(nro_revision) AS max_rev FROM listas_corte WHERE numero = ? AND anulado = 0";
+  $q = $pdo->prepare($sql);
+  $q->execute([$data['numero']]);
+  $maxRev = $q->fetchColumn();
+  if ($data['nro_revision'] < $maxRev) {
+    Database::disconnect();
+    header("Location: listarListasCorte.php?error=lc_revision_mas_reciente");
+    exit;
+  }
+
+  // Validar estado que permita revisión
+  if ($data['id_estado_lista_corte'] != 3 && $data['id_estado_lista_corte'] != 4) {
+    Database::disconnect();
+    header("Location: listarListasCorte.php?error=lc_estado_revision");
+    exit;
+  }
+
   // Crear nueva revisión duplicando los datos anteriores
   $nuevoNro = $data['nro_revision'] + 1;
   $motivo = trim($_POST['motivoRevision']);
