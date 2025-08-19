@@ -53,15 +53,34 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute([$data['cantidad'],$data['id_material'],$id_lista_corte_conjunto]);*/
 
+    //recalculo de colada y calidad del nuevo material
+    $idColada = null;
+    $sql = "SELECT col.id FROM coladas col inner join compras com on com.id = col.id_compra inner join pedidos p on p.id = com.id_pedido inner join computos c on c.id = p.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos pr on pr.id = t.id_proyecto inner join listas_corte lc on lc.id_proyecto = pr.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lc.id WHERE col.id_material = ? and lcc.id = ? ";
+    $qCol = $pdo->prepare($sql);
+    $qCol->execute([$id_material,$id_lista_corte_conjunto]);
+    $dataCol = $qCol->fetch(PDO::FETCH_ASSOC);
+    if (!empty($dataCol['id'])) {
+      $idColada = $dataCol['id'];
+    }
+
+    $calidad = null;
+    if (!empty($id_material)) {
+      $sqlM = " SELECT calidad from materiales where id = ?";
+      $qM = $pdo->prepare($sqlM);
+      $qM->execute([$id_material]);
+      $dataM = $qM->fetch(PDO::FETCH_ASSOC);
+      $calidad = $dataM['calidad'];
+    }
+
     if ($modoDebug==1) {
       $q->debugDumpParams();
       echo "<br><br>Afe: ".$q->rowCount();
       echo "<br><br>";
     }
-    
-    $sql = "UPDATE lista_corte_posiciones set largo=?, ancho=?, marca=?, peso=?, peso_calculado_posicion=?, diametro=? where id = ?";
+
+    $sql = "UPDATE lista_corte_posiciones set id_material=?, largo=?, ancho=?, marca=?, peso=?, peso_calculado_posicion=?, diametro=?, id_colada=?, calidad=? where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$diametro,$id_lista_corte_posicion]);
+    $q->execute([$id_material,$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$diametro,$idColada,$calidad,$id_lista_corte_posicion]);
 
     if(isset($cantidad_posicion) and isset($nombre_posicion)){
       $sql = "UPDATE lista_corte_posiciones set cantidad=?, posicion=? where id = ?";
@@ -84,7 +103,7 @@ if (!empty($_POST)) {
     $sql = "DELETE from lista_corte_procesos WHERE id_lista_corte_posicion = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte_posicion]);
-    
+
     //pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
     $procesos=$_POST["proceso"];
     $procesos[]=$_POST["id_terminacion"];
@@ -92,7 +111,7 @@ if (!empty($_POST)) {
     if ($modoDebug==1) {
       var_dump($procesos);
     }
-    
+
     foreach ($procesos as $key => $id_proceso) {
       $observaciones="";
 
@@ -116,7 +135,7 @@ if (!empty($_POST)) {
       echo "<br><br>Afe: ".$q->rowCount();
       echo "<br><br>";
     }
-      
+
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de posición ID #$id_lista_corte_posicion en conjunto de lista de corte','Listas de Corte','')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
@@ -126,7 +145,7 @@ if (!empty($_POST)) {
       echo "<br><br>Afe: ".$q->rowCount();
       echo "<br><br>";
     }
-      
+
     if ($modoDebug==1) {
       $pdo->rollBack();
       die();
