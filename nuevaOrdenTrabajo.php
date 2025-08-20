@@ -390,21 +390,22 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                     'cant_bajada'       => $cant_ot,
                                     'cant_bajada_otros' => $cant_otros
                                   ];
-                                  echo '<tr id="'.$row['id_posicion'].'" style="display: none" data-cant-bajada="'.$cant_otros.'" data-cant-total="'.$cant_total.'">';
+                                  $cant_bajada=$cant_otros;
                                 } else {
-                                  echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$total_bajada.'" data-cant-total="'.$cant_total.'">';
-                                }
-                                echo '<td class="d-none">'.$row['id_posicion'].'</td>';
-                                echo '<td>'.$row['nombre'].'</td>';
-                                echo '<td class="text-end">'.$row['cant_conj'].'</td>';
-                                echo '<td class="text-end">'.$row['posicion'].'</td>';
-                                echo '<td class="text-end">'.$row['cant_pos'].'</td>';
-                                echo '<td class="text-end">'.$cant_total.'</td>';
-                                echo '<td>'.$row['concepto'].'</td>';
-                                echo '<td>'.$row['procesos'].'</td>';
-                                echo '<td class="text-end">'.($editing && $cant_ot>0 ? $cant_otros : $total_bajada).'</td>';
-                                echo '<td class="text-end">'.$saldo.'</td>';
-                                echo '</tr>';
+                                  $cant_bajada=$total_bajada;
+                                }?>
+                                <tr id="<?=$row['id_posicion']?>" data-cant-bajada="<?=$cant_bajada?>" data-cant-total="<?=$cant_total?>">
+                                  <td class="d-none"><?=$row['id_posicion']?></td>
+                                  <td><?=$row['nombre']?></td>
+                                  <td class="text-end"><?=$row['cant_conj']?></td>
+                                  <td class="text-end"><?=$row['posicion']?></td>
+                                  <td class="text-end"><?=$row['cant_pos']?></td>
+                                  <td class="text-end"><?=$cant_total?></td>
+                                  <td><?=$row['concepto']?></td>
+                                  <td><?=$row['procesos']?></td>
+                                  <td class="text-end"><?=$cant_bajada?></td>
+                                  <td class="text-end"><?=$saldo?></td>
+                                </tr><?php
                               }
                               Database::disconnect();?>
                             </tbody>
@@ -456,24 +457,24 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 foreach($posiciones_agregadas as $row){
                                   $cant_total = $row['cant_conj']*$row['cant_pos'];
                                   $max = $cant_total - $row['cant_bajada_otros'];
-                                  $saldo = $max - $row['cant_bajada'];
-                                  echo '<tr id="'.$row['id_posicion'].'">';
-                                  echo '<td>'.$row['nombre'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_conj'].'</td>';
-                                  echo '<td class="text-end">'.$row['posicion'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_pos'].'</td>';
-                                  echo '<td class="text-end">'.$cant_total.'</td>';
-                                  echo '<td>'.$row['concepto'].'</td>';
-                                  echo '<td>'.$row['procesos'].'</td>';
-                                  echo '<td class="text-end">'.$saldo.'</td>';
-                                  echo '<td>';
-                                  echo '<input type="hidden" name="id_posicion[]" value="'.$row['id_posicion'].'">';
-                                  echo '<input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="'.$row['cant_bajada'].'" max="'.$max.'" data-saldo="'.$max.'" min="0">';
-                                  echo '</td>';
-                                  echo '</tr>';
+                                  $saldo = $max - $row['cant_bajada'];?>
+                                  <tr id="<?=$row['id_posicion']?>">
+                                    <td><?=$row['nombre']?></td>
+                                    <td class="text-end"><?=$row['cant_conj']?></td>
+                                    <td class="text-end"><?=$row['posicion']?></td>
+                                    <td class="text-end"><?=$row['cant_pos']?></td>
+                                    <td class="text-end"><?=$cant_total?></td>
+                                    <td><?=$row['concepto']?></td>
+                                    <td><?=$row['procesos']?></td>
+                                    <td class="text-end"><?=$saldo?></td>
+                                    <td>
+                                      <input type="hidden" name="id_posicion[]" value="<?=$row['id_posicion']?>">
+                                      <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="<?=$row['cant_bajada']?>" max="<?=$max?>" data-saldo="<?=$max?>" min="0">
+                                    </td>
+                                  </tr><?php
                                 }
-                              }
-                            ?></tbody>
+                              }?>
+                            </tbody>
                           </table>
                         </div>
                       </div>
