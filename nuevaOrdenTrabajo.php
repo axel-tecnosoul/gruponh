@@ -733,6 +733,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
             tablaOT.DataTable().rows.add(newData).draw();
             $(selectedRowsLC.nodes()).hide();
             selectedRowsLC.deselect();
+            console.log("entro 3");
             refreshCantidades();
           /*if(selectedRowsLC.count()>0){
             let newData=selectedRowsLC.data().toArray().map(function(elemento){
@@ -817,6 +818,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
             });
             //$(selectedRowsOT.nodes()).remove().draw();
             selectedRowsOT.remove().draw();
+            console.log("entro 4");
             refreshCantidades();
           }else{
             alert("Por favor seleccione una posicion para eliminar")
@@ -832,17 +834,19 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           }else{
             $(this).removeClass('is-invalid');
           }
+          console.log("entro 1");
           refreshCantidades();
         });
 
+        console.log("entro 2");
         refreshCantidades();
       });
 
       function refreshCantidades(){
         tablaLCDT.rows().every(function(){
           let row = $(this.node());
-          let base = parseFloat(row.data('cant-bajada')) || 0;
-          let cantTotal = parseFloat(row.data('cant-total')) || 0;
+          let cantidad_bajada = parseFloat(row.data('cant-bajada')) || 0;
+          let cantTotalPosiciones = parseFloat(row.data('cant-total')) || 0;
           let idPos = row.attr('id');
           let extra = 0;
           let input = tablaOT.find("input[name='id_posicion[]'][value='"+idPos+"']");
@@ -850,11 +854,15 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
             let val = parseFloat(input.closest('tr').find("input[name='cantidad_bajar[]']").val());
             if(!isNaN(val)) extra = val;
           }
-          let total = base + extra;
-          let saldo = cantTotal - total;
-          let cells = row.children('td');
+          let total = cantidad_bajada + extra;
+          let saldo = cantTotalPosiciones - total;
+          /*let cells = row.children('td');
           $(cells[8]).text(total);
-          $(cells[9]).text(saldo);
+          $(cells[9]).text(saldo);*/
+          const rowIdx = tablaLCDT.row(row).index();
+          tablaLCDT.cell(rowIdx, 8).data(total); // Col 8 = Cant. bajada (contando la oculta)
+          tablaLCDT.cell(rowIdx, 9).data(saldo); // Col 9 = Saldo
+
         });
 
         tablaOT.find('tbody tr').each(function(){
