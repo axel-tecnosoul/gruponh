@@ -17,12 +17,16 @@ if(isset($_GET['id'])){
   $id_orden_trabajo=filter_input(INPUT_GET,'id',FILTER_VALIDATE_INT);
   $pdoTmp=Database::connect();
   $pdoTmp->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql="SELECT ot.nro_orden_trabajo,ot.fecha,ot.id_lista_corte,ot.nro_revision,ot.titulo,ot.numero,ot.descripcion,ot.notas,lc.numero AS numero_lc,lc.id_proyecto FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte = lc.id WHERE ot.id = ?";
+  $sql="SELECT nro_orden_trabajo,fecha,id_lista_corte,nro_revision,titulo,numero,descripcion,notas FROM ordenes_trabajo WHERE id = ?";
   $q=$pdoTmp->prepare($sql);
   $q->execute([$id_orden_trabajo]);
   $data_ot=$q->fetch(PDO::FETCH_ASSOC);
   if($data_ot){
     $id_lista_corte=$data_ot['id_lista_corte'];
+    $data_lc=obtenerDatosListaCorte($pdoTmp,$id_lista_corte);
+    if($data_lc){
+      $data_ot=array_merge($data_ot,$data_lc);
+    }
   }
   Database::disconnect();
 }elseif(isset($_GET['id_lista_corte'])){
@@ -34,10 +38,7 @@ if(isset($_GET['id'])){
     header("Location: listarListasCorte.php?error=lc_no_aprobada");
     exit;
   }
-  $sql="SELECT id AS id_lista_corte_revision, nombre, numero AS numero_lc, id_estado_lista_corte, id_proyecto, descripcion, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ? ";
-  $q=$pdoTmp->prepare($sql);
-  $q->execute([$id_lista_corte]);
-  $data_ot=$q->fetch(PDO::FETCH_ASSOC);
+  $data_ot=obtenerDatosListaCorte($pdoTmp,$id_lista_corte);
   Database::disconnect();
 }
 
@@ -64,6 +65,13 @@ function LCPermiteOR($pdo, $id_lista_corte){
   } else {
     return false;
   }
+}
+
+function obtenerDatosListaCorte($pdo, $id_lista_corte){
+  $sql = "SELECT id AS id_lista_corte_revision, nombre, numero AS numero_lc, id_estado_lista_corte, id_proyecto, nro_revision, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido FROM listas_corte WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  return $q->fetch(PDO::FETCH_ASSOC);
 }
 if (!empty($_POST)) {
 
@@ -361,64 +369,42 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                               $posiciones_agregadas=[];
-                              if($editing){
-                                $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada_total,COALESCE(SUM(CASE WHEN otd.id_orden_trabajo = ? THEN otd.cantidad END),0) AS cant_bajada_ot FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY lcp.id";
-                                $q = $pdo->prepare($sql);
-                                $q->execute([$id_orden_trabajo,$id_lista_corte]);
-                                while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  $total_bajada=$row['cant_bajada_total'];
-                                  $cant_ot=$row['cant_bajada_ot'];
-                                  $cant_otros=$total_bajada-$cant_ot;
-                                  $cant_total=$row['cant_conj']*$row['cant_pos'];
-                                  $saldo=$cant_total-$total_bajada;
-                                  if($cant_ot>0){
-                                    $posiciones_agregadas[]=[
-                                      'id_posicion'=>$row['id_posicion'],
-                                      'nombre'=>$row['nombre'],
-                                      'cant_conj'=>$row['cant_conj'],
-                                      'posicion'=>$row['posicion'],
-                                      'cant_pos'=>$row['cant_pos'],
-                                      'concepto'=>$row['concepto'],
-                                      'procesos'=>$row['procesos'],
-                                      'cant_bajada'=>$cant_ot,
-                                      'cant_bajada_otros'=>$cant_otros
-                                    ];
-                                    echo '<tr id="'.$row['id_posicion'].'" style="display: none" data-cant-bajada="'.$cant_otros.'" data-cant-total="'.$cant_total.'">';
-                                  }else{
-                                    echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$total_bajada.'" data-cant-total="'.$cant_total.'">';
-                                  }
-                                  echo '<td class="d-none">'.$row['id_posicion'].'</td>';
-                                  echo '<td>'.$row['nombre'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_conj'].'</td>';
-                                  echo '<td class="text-end">'.$row['posicion'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_pos'].'</td>';
-                                  echo '<td class="text-end">'.($cant_total).'</td>';
-                                  echo '<td>'.$row['concepto'].'</td>';
-                                  echo '<td>'.$row['procesos'].'</td>';
-                                  echo '<td class="text-end">'.($cant_ot>0?$cant_otros:$total_bajada).'</td>';
-                                  echo '<td class="text-end">'.$saldo.'</td>';
-                                  echo '</tr>';
+                              $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada_total,COALESCE(SUM(CASE WHEN otd.id_orden_trabajo = ? THEN otd.cantidad END),0) AS cant_bajada_ot FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY lcp.id";
+                              $q = $pdo->prepare($sql);
+                              $q->execute([$editing ? $id_orden_trabajo : 0,$id_lista_corte]);
+                              while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                                $total_bajada = $row['cant_bajada_total'];
+                                $cant_ot      = $row['cant_bajada_ot'];
+                                $cant_otros   = $total_bajada - $cant_ot;
+                                $cant_total   = $row['cant_conj'] * $row['cant_pos'];
+                                $saldo        = $cant_total - $total_bajada;
+                                if ($editing && $cant_ot > 0) {
+                                  $posiciones_agregadas[] = [
+                                    'id_posicion'       => $row['id_posicion'],
+                                    'nombre'            => $row['nombre'],
+                                    'cant_conj'         => $row['cant_conj'],
+                                    'posicion'          => $row['posicion'],
+                                    'cant_pos'          => $row['cant_pos'],
+                                    'concepto'          => $row['concepto'],
+                                    'procesos'          => $row['procesos'],
+                                    'cant_bajada'       => $cant_ot,
+                                    'cant_bajada_otros' => $cant_otros
+                                  ];
+                                  echo '<tr id="'.$row['id_posicion'].'" style="display: none" data-cant-bajada="'.$cant_otros.'" data-cant-total="'.$cant_total.'">';
+                                } else {
+                                  echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$total_bajada.'" data-cant-total="'.$cant_total.'">';
                                 }
-                              }else{
-                                $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY lcp.id";
-                                $q = $pdo->prepare($sql);
-                                $q->execute([$id_lista_corte]);
-                                while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  $cant_total = $row['cant_conj']*$row['cant_pos'];
-                                  $saldo = $cant_total - $row['cant_bajada'];
-                                  echo '<tr id="'.$row['id_posicion'].'" data-cant-bajada="'.$row['cant_bajada'].'" data-cant-total="'.$cant_total.'">';
-                                  echo '<td class="d-none">'.$row['id_posicion'].'</td>';
-                                  echo '<td>'.$row['nombre'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_conj'].'</td>';
-                                  echo '<td class="text-end">'.$row['posicion'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_pos'].'</td>';
-                                  echo '<td class="text-end">'.$cant_total.'</td>';
-                                  echo '<td>'.$row['concepto'].'</td>';
-                                  echo '<td>'.$row['procesos'].'</td>';
-                                  echo '<td class="text-end">'.$row['cant_bajada'].'</td>';
-                                  echo '<td class="text-end">'.$saldo.'</td>';
-                                  echo '</tr>';
-                                }
+                                echo '<td class="d-none">'.$row['id_posicion'].'</td>';
+                                echo '<td>'.$row['nombre'].'</td>';
+                                echo '<td class="text-end">'.$row['cant_conj'].'</td>';
+                                echo '<td class="text-end">'.$row['posicion'].'</td>';
+                                echo '<td class="text-end">'.$row['cant_pos'].'</td>';
+                                echo '<td class="text-end">'.$cant_total.'</td>';
+                                echo '<td>'.$row['concepto'].'</td>';
+                                echo '<td>'.$row['procesos'].'</td>';
+                                echo '<td class="text-end">'.($editing && $cant_ot>0 ? $cant_otros : $total_bajada).'</td>';
+                                echo '<td class="text-end">'.$saldo.'</td>';
+                                echo '</tr>';
                               }
                               Database::disconnect();?>
                             </tbody>
