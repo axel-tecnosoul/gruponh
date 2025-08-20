@@ -233,13 +233,13 @@ include 'database.php';?>
                         <thead>
                           <tr>
                             <th>Conjunto</th>
-                            <th>C. Conj</th>
+                            <th>Cant. Conj</th>
                             <th>Posicion</th>
                             <th>Concepto</th>
-                            <th>C. Pos</th>
-                            <th>C. Tot</th>
-                            <th>C. Lib</th>
-                            <th>C. Proc</th>
+                            <th>Cant. Pos</th>
+                            <th>Cant. Tot</th>
+                            <th>Cant. Lib</th>
+                            <th>Cant. Proc</th>
                             <th>Procesos</th>
                             <th>Estado</th>
                           </tr>
@@ -248,13 +248,13 @@ include 'database.php';?>
                                                             <tfoot>
                           <tr>
                             <th>Conjunto</th>
-                            <th>C. Conj</th>
+                            <th>Cant. Conj</th>
                             <th>Posicion</th>
                             <th>Concepto</th>
-                            <th>C. Pos</th>
-                            <th>C. Tot</th>
-                            <th>C. Lib</th>
-                            <th>C. Proc</th>
+                            <th>Cant. Pos</th>
+                            <th>Cant. Tot</th>
+                            <th>Cant. Lib</th>
+                            <th>Cant. Proc</th>
                             <th>Procesos</th>
                             <th>Estado</th>
                           </tr>
