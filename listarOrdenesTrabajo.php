@@ -115,7 +115,8 @@ include 'database.php';
                             <th>Proy</th>
                             <th>LC</th>
                             <th>Nombre LC</th>
-                            <th>N° OT / Revisión</th>
+                            <!-- <th>N° OT / Revisión</th> -->
+                             <th>N° OT</th>
                             <th>Fecha</th>
                             <th>Usuario</th>
                             <th>Estado</th>
@@ -125,7 +126,7 @@ include 'database.php';
                           if (!empty($_POST)) {
                             $pdo = Database::connect();
                             //$sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lcr.id_lista_corte, lcr.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
-                            $sql = "SELECT ot.id, ot.numero, ot.nro_orden_trabajo, ot.nro_revision, ot.titulo, lc.id AS id_lista_corte, lc.nombre ,p.nombre AS proyecto, date_format(ot.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio, s.nro_subsitio, u.usuario,p.nro nro FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = ot.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON ot.id_usuario=u.id WHERE ot.anulado = 0";
+                            $sql = "SELECT ot.id, ot.numero, ot.nro_orden_trabajo, ot.nro_revision, ot.titulo, lc.id AS id_lista_corte, lc.nombre, lc.numero AS nro_lc ,p.nombre AS proyecto, date_format(ot.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio, s.nro_subsitio, u.usuario,p.nro nro FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = ot.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON ot.id_usuario=u.id WHERE ot.anulado = 0";
                             if (!empty($_POST['nro'])) {
                               $nro=$_POST['nro'];
                               $ex=explode("/", $nro);
@@ -154,9 +155,10 @@ include 'database.php';
                                 <td><?=$row["nro_sitio"]?></td>
                                 <td><?=$row["nro_subsitio"]?></td>
                                 <td><?=$row["nro"]?></td>
-                                <td><?=$row["id_lista_corte"]?></td>
+                                <td><?=$row["nro_lc"]?></td>
                                 <td><?=$row["nombre"]?></td>
-                                <td><?=$row["nro_orden_trabajo"].' / '.$row["nro_revision"]?></td>
+                                <!-- <td><?=$row["nro_orden_trabajo"].' / '.$row["nro_revision"]?></td> -->
+                                 <td><?=$row["nro_orden_trabajo"]?></td>
                                 <td><?=$row["fecha"]?></td>
                                 <td><?=$row["usuario"]?></td>
                                 <td><?= $row["estado"]?></td>
