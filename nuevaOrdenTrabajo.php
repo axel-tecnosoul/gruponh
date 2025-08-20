@@ -282,7 +282,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                 <form class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
                   <div class="card mb-0">
                     <div class="card-header">
-                      <h5><?=$ubicacion.' LC '.$data_ot['numero_lc'].' '.htmlspecialchars($descProyecto)?></h5>
+                      <h5><?=$ubicacion.' LC N° '.$data_ot['numero_lc'].' - Rev '.$data_ot['nro_revision'].' '.htmlspecialchars($descProyecto)?></h5>
                     </div>
                     <div class="card-body">
                       <div class="row">
