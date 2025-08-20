@@ -233,22 +233,28 @@ include 'database.php';?>
                         <thead>
                           <tr>
                             <th>Conjunto</th>
-                            <th>Cantidad Conjuntos</th>
+                            <th>C. Conj</th>
                             <th>Posicion</th>
                             <th>Concepto</th>
-                            <th>Cantidad Posiciones</th>
+                            <th>C. Pos</th>
+                            <th>C. Tot</th>
+                            <th>C. Lib</th>
+                            <th>C. Proc</th>
                             <th>Procesos</th>
                             <th>Estado</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
-						            <tfoot>
+                                                            <tfoot>
                           <tr>
                             <th>Conjunto</th>
-                            <th>Cantidad Conjuntos</th>
+                            <th>C. Conj</th>
                             <th>Posicion</th>
                             <th>Concepto</th>
-                            <th>Cantidad Posiciones</th>
+                            <th>C. Pos</th>
+                            <th>C. Tot</th>
+                            <th>C. Lib</th>
+                            <th>C. Proc</th>
                             <th>Procesos</th>
                             <th>Estado</th>
                           </tr>
