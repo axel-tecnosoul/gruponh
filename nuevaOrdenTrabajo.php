@@ -371,7 +371,29 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                               $posiciones_agregadas=[];
-                              $sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada_total,COALESCE(SUM(CASE WHEN otd.id_orden_trabajo = ? THEN otd.cantidad END),0) AS cant_bajada_ot FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY otd.id_orden_trabajo, lcp.id";
+                              //$sql = " SELECT lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',' ) AS procesos, lcp.id AS id_posicion,COALESCE(SUM(otd.cantidad),0) AS cant_bajada_total,COALESCE(SUM(CASE WHEN otd.id_orden_trabajo = ? THEN otd.cantidad END),0) AS cant_bajada_ot FROM listas_corte_conjuntos lcc INNER JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id WHERE lcc.id_lista_corte = ? GROUP BY otd.id_orden_trabajo, lcp.id";
+                              $sql = "SELECT lcc.nombre, lcc.cantidad AS cant_conj,
+                                lcp.posicion, lcp.cantidad AS cant_pos,
+                                m.concepto,
+                                GROUP_CONCAT(DISTINCT tp.tipo SEPARATOR ',') AS procesos,
+                                lcp.id AS id_posicion,
+                                COALESCE(otd.cant_bajada_total,0) AS cant_bajada_total,
+                                COALESCE(otd.cant_bajada_ot,0)     AS cant_bajada_ot
+                              FROM listas_corte_conjuntos lcc
+                              JOIN lista_corte_posiciones lcp ON lcp.id_lista_corte_conjunto = lcc.id
+                              JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion = lcp.id
+                              JOIN materiales m ON lcp.id_material = m.id
+                              JOIN tipos_procesos tp ON lcpr.id_tipo_proceso = tp.id
+                              LEFT JOIN (
+                                SELECT id_posicion,
+                                  SUM(cantidad) AS cant_bajada_total,
+                                  SUM(CASE WHEN id_orden_trabajo = ? THEN cantidad END) AS cant_bajada_ot
+                                FROM ordenes_trabajo_detalle
+                                GROUP BY id_posicion
+                              ) otd ON otd.id_posicion = lcp.id
+                              WHERE lcc.id_lista_corte = ?
+                              GROUP BY lcp.id";
+
                               //echo $sql;
                               $q = $pdo->prepare($sql);
                               $q->execute([$editing ? $id_orden_trabajo : 0,$id_lista_corte]);
