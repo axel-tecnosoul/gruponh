@@ -111,11 +111,14 @@ include 'database.php';
                         echo '<a href="#" id="link_modificar_ot"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
                         echo '&nbsp;&nbsp;';
                       }
-					  echo '<a href="#" id="link_ver_ot"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
-						echo '&nbsp;&nbsp;';
-					
-					  ?>
-					  
+                      echo '<a href="#" id="link_ver_ot"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
+                      echo '&nbsp;&nbsp;';
+                      if (!empty(tienePermiso(317))) {
+                        echo '<a href="#" id="link_cancelar_ot"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
+                        echo '&nbsp;&nbsp;';
+                      }
+                      ?>
+
                       <a href="#" id="link_nuevo_consumo" title="Nuevo Consumo"><i style="width: 24px; height: 20px;color: midnightblue;" class='fa fa-lg fa-shopping-basket'></i></a>
                     </h5>
                   </div>
@@ -182,7 +185,7 @@ include 'database.php';
                                     <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
                                     <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                                   </div>
-                                  <div class="modal-body">¿Está seguro que desea cancelar la Lista de Corte?</div>
+                                  <div class="modal-body">¿Está seguro que desea cancelar la Orden de Trabajo?</div>
                                   <div class="modal-footer">
                                     <a href="eliminarOrdenTrabajo.php?id=<?=$row["id"]; ?>" class="btn btn-primary">Eliminar</a>
                                     <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
@@ -445,9 +448,10 @@ include 'database.php';
             deselectRow(t);
             get_detalle_orden_trabajo(0)
 
-            $("#link_modificar_ot").attr("href","#");
-			$("#link_ver_ot").attr("href","#");
+          $("#link_modificar_ot").attr("href","#");
+                        $("#link_ver_ot").attr("href","#");
             $("#link_nuevo_consumo").attr("href","#");
+            $("#link_cancelar_ot").attr("data-target","#");
           }else{
             //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
@@ -456,18 +460,24 @@ include 'database.php';
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
             if ((estado == "Elaborando") || (estado == "Pendiente")) {
-                            $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
-			} else {
-				$("#link_modificar_ot").attr("href","#");
-			}
-			if (estado == "En Producción") {
-				$("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
-			} else {
-				$("#link_nuevo_consumo").attr("href","#");
-			}
-            
-			$("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
-            
+            $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
+                        } else {
+                                $("#link_modificar_ot").attr("href","#");
+                        }
+                        if (estado == "En Producción") {
+                                $("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
+                        } else {
+                                $("#link_nuevo_consumo").attr("href","#");
+                        }
+
+                        $("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
+                        if ((estado == "Elaborando") || (estado == "Pendiente")) {
+                                $("#link_cancelar_ot").attr("data-toggle","modal");
+                                $("#link_cancelar_ot").attr("data-target","#eliminarModal_"+id_ot);
+                        } else {
+                                $("#link_cancelar_ot").attr("data-target","#");
+                        }
+
           }
         });
 
@@ -489,9 +499,9 @@ include 'database.php';
             alert("Por favor seleccione una orden de trabajo para ver detalle")
           }
         })
-        $("#link_cancelar_lc").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
+        $("#link_cancelar_ot").on("click",function(){
+          let target=this.dataset.target;
+          if(target==undefined || target=="#"){
             alert("Por favor seleccione una orden de trabajo para eliminarla")
           }
         })
