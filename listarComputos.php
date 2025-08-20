@@ -178,7 +178,7 @@ include 'database.php';?>
                             $sql .= " AND ec.id in (1,2,3,4) ";
                           }
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
+                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -198,7 +198,7 @@ include 'database.php';?>
                           $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
                             
                           foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id-computo="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
+                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
                               <td><?=$row["nro_sitio"]?></td>
                               <td><?=$row["nro_subsitio"]?></td>
                               <td><?=$row["nro_proyecto"]?></td>
@@ -404,61 +404,56 @@ include 'database.php';?>
           </div>
         </div>
       </div>
-    </div><?php
+    </div>
 
-    $pdo = Database::connect();
-    $sql = " SELECT c.id AS id_computo,s.nro_sitio, s.nro_subsitio, p.id, p.nombre, c.id, c.nro_revision, date_format(c.fecha,'%d/%m/%y'), cu.nombre, ec.estado FROM computos c inner join estados_computos ec on ec.id = c.id_estado inner join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
-    foreach ($pdo->query($sql) as $row) {?>
-      
-      <div class="modal fade" id="eliminarModal_<?=$row["id_computo"]?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-              <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            </div>
-            <div class="modal-body">¿Está seguro que desea eliminar el cómputo?</div>
-            <div class="modal-footer">
-              <a href="eliminarComputo.php?id=<?=$row["id_computo"]?>" class="btn btn-primary">Eliminar</a>
-              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-            </div>
+    <!-- Modales genéricos para aprobar, enviar a aprobación y eliminar cómputos -->
+    <div class="modal fade" id="modalEliminar" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el cómputo?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnEliminar">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="modal fade" id="aprobarModal_<?=$row["id_computo"]?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-              <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            </div>
-            <div class="modal-body">¿Está seguro que desea aprobar todos los items del cómputo?</div>
-            <div class="modal-footer">
-              <a href="aprobarComputo.php?id=<?=$row["id_computo"]?>" class="btn btn-primary">Aprobar</a>
-              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-            </div>
+    <div class="modal fade" id="modalAprobar" tabindex="-1" role="dialog" aria-labelledby="modalAprobarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalAprobarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea aprobar todos los items del cómputo?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnAprobar">Aprobar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="modal fade" id="enviarAprobarModal_<?=$row["id_computo"]?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-              <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            </div>
-            <div class="modal-body">¿Está seguro que desea enviar a aprobación el cómputo?</div>
-            <div class="modal-footer">
-              <a href="aprobarComputo.php?id=<?=$row["id_computo"]?>" class="btn btn-primary">Aprobar</a>
-              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-            </div>
+    <div class="modal fade" id="modalEnviarAprobar" tabindex="-1" role="dialog" aria-labelledby="modalEnviarAprobarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEnviarAprobarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea enviar a aprobación el cómputo?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnEnviarAprobar">Enviar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
-      </div><?php
-    }
-    Database::disconnect();?>
+      </div>
+    </div>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -674,29 +669,32 @@ include 'database.php';?>
 
       
         $("#link_aprobar_computo").on("click",function(){
-          /*let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){*/
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
             alert("Por favor seleccione un cómputo para aprobar")
+          } else {
+            let id=$(this).data('id');
+            $("#btnAprobar").attr("href","aprobarComputo.php?id="+id);
           }
         })
-      
+
         $("#link_enviar_aprobar_computo").on("click",function(){
-          /*let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){*/
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
             alert("Por favor seleccione un cómputo para enviar a aprobación")
+          } else {
+            let id=$(this).data('id');
+            $("#btnEnviarAprobar").attr("href","aprobarComputo.php?id="+id);
           }
         })
-      
+
         $("#link_eliminar_computo").on("click",function(){
-          /*let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){*/
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
             alert("Por favor seleccione un cómputo no aprobado para eliminar")
+          } else {
+            let id=$(this).data('id');
+            $("#btnEliminar").attr("href","eliminarComputo.php?id="+id);
           }
         })
       
@@ -705,7 +703,7 @@ include 'database.php';?>
           var t=$(this).parent();
           //t.parent().find("tr").removeClass("selected");
 
-          let id_computo=t.find("td:nth-child(5)").html();
+          let id_computo=t.data('id');
           let nro_revision = t.find("td:nth-child(7)").html();
           let estado = t.find("td:nth-child(10)").html();
       
@@ -734,22 +732,28 @@ include 'database.php';?>
             }
             if (estado == 'Para Aprobar') {
               $("#link_aprobar_computo").attr("data-toggle","modal");
-              $("#link_aprobar_computo").attr("data-target","#aprobarModal_"+id_computo);
+              $("#link_aprobar_computo").attr("data-target","#modalAprobar");
+              $("#link_aprobar_computo").data('id', id_computo);
             } else {
-              $("#link_aprobar_computo").attr("href","#");
+              $("#link_aprobar_computo").attr("data-target","#");
+              $("#link_aprobar_computo").removeData('id');
             }
             if (estado == 'Elaboración') {
               $("#link_enviar_aprobar_computo").attr("data-toggle","modal");
-              $("#link_enviar_aprobar_computo").attr("data-target","#enviarAprobarModal_"+id_computo);
+              $("#link_enviar_aprobar_computo").attr("data-target","#modalEnviarAprobar");
+              $("#link_enviar_aprobar_computo").data('id', id_computo);
             } else {
-              $("#link_enviar_aprobar_computo").attr("href","#");
+              $("#link_enviar_aprobar_computo").attr("data-target","#");
+              $("#link_enviar_aprobar_computo").removeData('id');
             }
-        
+
             if ((estado == 'Elaboración') || (estado == 'Para Aprobar')) {
               $("#link_eliminar_computo").attr("data-toggle","modal");
-              $("#link_eliminar_computo").attr("data-target","#eliminarModal_"+id_computo);
+              $("#link_eliminar_computo").attr("data-target","#modalEliminar");
+              $("#link_eliminar_computo").data('id', id_computo);
             } else {
               $("#link_eliminar_computo").attr("data-target","#");
+              $("#link_eliminar_computo").removeData('id');
             }
           }
 
