@@ -223,9 +223,9 @@ include 'database.php';
                           <tr>
                             <th class="d-none">ID</th>
                             <th>Conjunto</th>
-                            <th>Cantidad Conjuntos</th>
+                            <th class="d-none">Cant. Conjuntos</th>
                             <th>Posicion</th>
-                            <th>Cantidad Pedida</th>
+                            <th>Cant. Pedida</th>
                             <th>Material</th>
                             <th>Procesos</th>
                             <th>Estado</th>
@@ -241,9 +241,9 @@ include 'database.php';
                           <tr>
                             <th class="d-none">ID</th>
                             <th>Conjunto</th>
-                            <th>Cantidad Conjuntos</th>
+                            <th class="d-none">Cant. Conjuntos</th>
                             <th>Posicion</th>
-                            <th>Cantidad Pedida</th>
+                            <th>Cant. Pedida</th>
                             <th>Material</th>
                             <th>Procesos</th>
                             <th>Estado</th>
@@ -636,10 +636,11 @@ include 'database.php';
             $('#tablaDetalleOT').DataTable({
               stateSave: false,
               responsive: false,
-			        "columnDefs": [{
-                "targets": [0],
-                "className": 'd-none'
-              }],
+              order: [[0, 'asc']],
+              "columnDefs": [
+                { "targets": [0], "className": 'd-none', "visible": false },
+                { "targets": [2], "visible": false }
+              ],
               data: data,
               language: {
                 "decimal": "",

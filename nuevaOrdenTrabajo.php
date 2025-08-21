@@ -107,11 +107,15 @@ if (!empty($_POST)) {
           $cant_proceso=$data["cant_proceso"];
           $cant_rechazadas=$data["cant_rechazadas"];
           $id_estado_orden_trabajo_posicion=$data["id_estado_orden_trabajo_posicion"];
-        }
 
-        $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id_orden_trabajo,$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
+          $sql = "UPDATE ordenes_trabajo_detalle SET cantidad = ?, cant_liberadas = ?, cant_proceso = ?, cant_rechazadas = ?, id_estado_orden_trabajo_posicion = ? WHERE id_orden_trabajo = ? AND id_posicion = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion,$id_orden_trabajo,$id_posicion]);
+        }else{
+          $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
+          $q = $pdo->prepare($sql);
+          $q->execute([$id_orden_trabajo,$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
+        }
       }
     }
 
@@ -392,7 +396,10 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 GROUP BY id_posicion
                               ) otd ON otd.id_posicion = lcp.id
                               WHERE lcc.id_lista_corte = ?
-                              GROUP BY lcp.id";
+                              GROUP BY lcp.id
+                              ORDER BY lcp.id";
+
+                              //echo $sql;
                               $q = $pdo->prepare($sql);
                               $q->execute([$editing ? $id_orden_trabajo : 0,$id_lista_corte]);
                               while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
