@@ -98,7 +98,7 @@ include 'database.php';
                       <a href="#" id="link_ver_ot"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
                       &nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(318))) {?>
-                        <a href="#" id="link_enviar_produccion_ot"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Enviar a Producción" title="Enviar a Producción"></a>
+                        <a href="#" id="link_enviar_produccion_ot"><img src="img/estrella.png" width="24" height="25" border="0" alt="Enviar a Producción" title="Enviar a Producción"></a>
                         &nbsp;&nbsp;<?php
                       }?>
                       <?php
@@ -276,28 +276,6 @@ include 'database.php';
         <?php include("footer.php"); ?>
       </div>
     </div>
-	
-	  <div style="width: 0;height: 0;display: none;">
-      <select id="select_estadoOT_base"><?php
-        $pdo = Database::connect();
-        $sql = "SELECT id,estado FROM estados_orden_trabajo";
-        foreach ($pdo->query($sql) as $row) {
-          echo '<option value="'.$row["id"].'">'.$row["estado"].'</option>';
-        }
-        Database::disconnect();?>
-      </select>
-    </div>
-
-    <div style="width: 0;height: 0;display: none;">
-      <select id="select_estado_base"><?php
-        $pdo = Database::connect();
-        $sql = "SELECT id,estado FROM estados_orden_trabajo_posicion";
-        foreach ($pdo->query($sql) as $row) {
-          echo '<option value="'.$row["id"].'">'.$row["estado"].'</option>';
-        }
-        Database::disconnect();?>
-      </select>
-    </div>
     
     <div class="modal fade" id="modificarCantidades" tabindex="-1" role="dialog" aria-labelledby="exampleModalModificarCantidades" aria-hidden="true">
       <div class="modal-dialog" role="document">
@@ -448,12 +426,12 @@ include 'database.php';
             });
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
-            if ((estado == "Elaborando") || (estado == "Pendiente")) {
+            if ((estado == "Elaborando") || (estado == "Para Aprobar")) {
               $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
             } else {
               $("#link_modificar_ot").attr("href","#");
             }
-            if ((estado == "Pendiente") || (estado == "Para Aprobar")) {
+            if (estado == "Para Aprobar") {
               $("#link_enviar_produccion_ot").attr("href","enviarProduccionOT.php?id="+id_ot);
             } else {
               $("#link_enviar_produccion_ot").attr("href","#");
@@ -465,7 +443,7 @@ include 'database.php';
             }
 
             $("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
-            if ((estado == "Elaborando") || (estado == "Pendiente")) {
+            if ((estado == "Elaborando") || (estado == "Para Aprobar")) {
               $("#link_cancelar_ot").attr("data-toggle","modal");
               $("#link_cancelar_ot").attr("data-target","#eliminarModal_"+id_ot);
             } else {
@@ -502,7 +480,7 @@ include 'database.php';
         $("#link_enviar_produccion_ot").on("click",function(){
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una orden de trabajo en estado 'Pendiente' para enviarla a producción")
+            alert("Por favor seleccione una orden de trabajo en estado 'Para Aprobar' para enviarla a producción")
           }
         })
 
@@ -548,86 +526,6 @@ include 'database.php';
             form.submit();
           }
         });
-
-        /*$("body").on('dblclick',".editable", function(event) {
-          var t=$(this);
-          
-          let old_padding=t.css("padding");
-          t.css({padding: '0'});
-          t.find('input[type="hidden"]');
-          
-          var idPosicion=t.data("idPosicion");
-		      console.log(idPosicion);
-          var idEstado=t.data("idEstado");
-          console.log(idEstado);
-
-          dataString="idPosicion="+idPosicion;
-
-          let nuevo_select_estado=$("#select_estado_base").clone()
-          nuevo_select_estado.id="id_estado_nuevo"
-
-          t.html(nuevo_select_estado);
-          nuevo_select_estado.val(idEstado)
-
-          nuevo_select_estado.on('blur', function(event) {
-            nuevaEstado=nuevo_select_estado.val();
-            // Obtener el texto correspondiente al valor seleccionado
-            var textoSeleccionado = nuevo_select_estado.find('option[value="'+nuevaEstado+'"]').text();
-
-            $.ajax({
-              type: "POST",
-              url: "modificarEstadoPosicionOT.php",
-              data: "idPosicion="+idPosicion+"&idEstado="+nuevaEstado,
-              success: function(data) {
-                //console.log(data)
-                if(data==1){
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
-                }
-              }
-            });
-          });
-        });*/
-		
-		    /*$("body").on('dblclick',".editable1", function(event) {
-          var t=$(this);
-          
-          let old_padding=t.css("padding");
-          t.css({padding: '0'});
-          t.find('input[type="hidden"]');
-          
-          var idPosicion=t.data("idPosicion");
-		      console.log(idPosicion);
-          var idEstado=t.data("idEstado");
-          console.log(idEstado);
-
-          dataString="idPosicion="+idPosicion;
-
-          let nuevo_select_estado=$("#select_estadoOT_base").clone()
-          nuevo_select_estado.id="id_estado_nuevo"
-
-          t.html(nuevo_select_estado);
-          nuevo_select_estado.val(idEstado)
-
-          nuevo_select_estado.on('blur', function(event) {
-            nuevaEstado=nuevo_select_estado.val();
-            // Obtener el texto correspondiente al valor seleccionado
-            var textoSeleccionado = nuevo_select_estado.find('option[value="'+nuevaEstado+'"]').text();
-
-            $.ajax({
-              type: "POST",
-              url: "modificarEstadoOT.php",
-              data: "idPosicion="+idPosicion+"&idEstado="+nuevaEstado,
-              success: function(data) {
-                //console.log(data)
-                if(data==1){
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
-                }
-              }
-            });
-          });
-        });*/
       
       });
 
