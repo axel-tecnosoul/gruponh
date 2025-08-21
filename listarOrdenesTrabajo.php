@@ -167,26 +167,10 @@ include 'database.php';
                                 <td><?=$row["fecha"]?></td>
                                 <td><?=$row["usuario"]?></td>
                                 <td><?= $row["estado"]?></td>
-                              </tr>
-
-                              <div class="modal fade" id="eliminarModal_<?=$row["id"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                <div class="modal-dialog" role="document">
-                                  <div class="modal-content">
-                                    <div class="modal-header">
-                                      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                    </div>
-                                    <div class="modal-body">¿Está seguro que desea cancelar la Orden de Trabajo?</div>
-                                    <div class="modal-footer">
-                                      <a href="eliminarOrdenTrabajo.php?id=<?=$row["id"]; ?>" class="btn btn-primary">Eliminar</a>
-                                      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div><?php
+                              </tr><?php
                             }
                             Database::disconnect();
-						              }?>
+                                                              }?>
                         </tbody>
 						            <tfoot>
                           <tr>
@@ -276,7 +260,23 @@ include 'database.php';
         <?php include("footer.php"); ?>
       </div>
     </div>
-    
+
+    <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea cancelar la Orden de Trabajo?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnEliminarOT">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="modal fade" id="modificarCantidades" tabindex="-1" role="dialog" aria-labelledby="exampleModalModificarCantidades" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -419,6 +419,7 @@ include 'database.php';
             $("#link_enviar_produccion_ot").attr("href","#");
             $("#link_nuevo_consumo").attr("href","#");
             $("#link_cancelar_ot").attr("data-target","#");
+            $("#btnEliminarOT").attr("href","#");
           }else{
             //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
@@ -445,9 +446,11 @@ include 'database.php';
             $("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
             if ((estado == "Elaborando") || (estado == "Para Aprobar")) {
               $("#link_cancelar_ot").attr("data-toggle","modal");
-              $("#link_cancelar_ot").attr("data-target","#eliminarModal_"+id_ot);
+              $("#link_cancelar_ot").attr("data-target","#eliminarModal");
+              $("#btnEliminarOT").attr("href","eliminarOrdenTrabajo.php?id="+id_ot);
             } else {
               $("#link_cancelar_ot").attr("data-target","#");
+              $("#btnEliminarOT").attr("href","#");
             }
           }
         });
