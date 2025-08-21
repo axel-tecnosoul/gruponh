@@ -525,7 +525,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                     <td class="text-end"><?=$saldo?></td>
                                     <td>
                                       <input type="hidden" name="id_posicion[]" value="<?=$row['id_posicion']?>">
-                                      <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="<?=$row['cant_bajada']?>" max="<?=$max?>" data-saldo="<?=$max?>" min="0">
+                                      <input type="number" step="1" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="<?=$row['cant_bajada']?>" max="<?=$max?>" data-saldo="<?=$max?>" min="0">
                                     </td>
                                   </tr><?php
                                 }
@@ -769,39 +769,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
 
         updateToggleButton();
 
-        /*$("#link_agregar_posiciones").on("click", function () {
-          var selectedRowsLC = tablaLCDT.rows({ selected: true });
-          if (selectedRowsLC.count() > 0) {
-            let newData = selectedRowsLC.data().map(function (elemento) {
-              let saldo = elemento[9];
-              let inputCantidad = `
-                <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
-                <input type="number" step="0.01" class="form-control cantidad-bajar" name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
-                <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
-              `;
-              return [
-                elemento[0],
-                elemento[1],
-                elemento[2],
-                elemento[3],
-                elemento[4],
-                elemento[5],
-                elemento[6],
-                elemento[7],
-                saldo,
-                inputCantidad
-              ];
-            })
-            tablaOT.DataTable().rows.add(newData).draw();
-            $(selectedRowsLC.nodes()).hide();
-            selectedRowsLC.deselect();
-            console.log("entro 3");
-            refreshCantidades();
-          }else{
-            alert("Por favor seleccione una posicion para agregar a la Orden de trabajo")
-          }
-        });*/
-
         $("#link_agregar_posiciones").on("click", function () {
           var selectedRowsLC = tablaLCDT.rows({ selected: true });
           if (selectedRowsLC.count() > 0) {
@@ -811,7 +778,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
               let saldo   = elemento[9]; // Saldo visible en LC
               let inputCantidad = `
                 <input type="hidden" name="id_posicion[]" value="${elemento["DT_RowId"]}">
-                <input type="number" step="0.01" class="form-control cantidad-bajar"
+                <input type="number" step="1" class="form-control cantidad-bajar"
                       name="cantidad_bajar[]" value="${saldo}" data-saldo="${saldo}" max="${saldo}" min="0">
                 <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
               `;
@@ -877,23 +844,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           }}
         });
 		
-		   //$(document).find(tablaOT).find(" tbody tr td").not(":last-child").on( 'click', function () {
-        //tablaOT.on('click',"tbody tr td", function () {
-        /*$(document).on("click","#tablaOT tbody tr td", function(){
-          var t=$(this).parent();
-          let celdaClickeado=$(this)[0];
-          let celdaConInput=t.find("td:nth-child(10)")[0];
-          if(celdaConInput!=celdaClickeado){
-            if(t.hasClass('selected')){
-              deselectRow(t);
-            }else{
-              tablaOT.DataTable().rows().nodes().each( function (rowNode, index) {
-                $(rowNode).removeClass("selected");
-              });
-              selectRow(t);
-            }
-          }
-        });*/
         $(document).on("click", "#tablaOT tbody tr td", function () {
           var $tr = $(this).parent();
           var celdaConInput = $tr.find("input[name='cantidad_bajar[]']").closest('td')[0]; // <— sin hardcodear índice
@@ -908,7 +858,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           }
         });
 
-
         // Apply the search
         tablaOT.DataTable().columns().every( function () {
           var that = this;
@@ -919,20 +868,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           });
         } );
 
-        /*$("#link_eliminar_posiciones").on("click",function(){
-          var selectedRowsOT = tablaOT.DataTable().rows('.selected');
-          if(selectedRowsOT[0].length>0){
-            $(selectedRowsOT.nodes()).find("input[name='id_posicion[]']").each(function() {
-              tablaLC.find("#"+$(this).val()).show()
-            });
-            //$(selectedRowsOT.nodes()).remove().draw();
-            selectedRowsOT.remove().draw();
-            console.log("entro 4");
-            refreshCantidades();
-          }else{
-            alert("Por favor seleccione una posicion para eliminar")
-          }
-        });*/
         $("#link_eliminar_posiciones").on("click", function () {
           var selectedRowsOT = dtOT.rows('.selected');
           if (selectedRowsOT[0].length > 0) {
@@ -946,7 +881,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
             alert("Por favor seleccione una posicion para eliminar");
           }
         });
-
     
         $(document).on('input change',"input[name='cantidad_bajar[]']",function(){
           var saldo = parseFloat($(this).data('saldo'));
@@ -964,38 +898,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         console.log("entro 2");
         refreshCantidades();
       });
-
-      /*function refreshCantidades(){
-        tablaLCDT.rows().every(function(){
-          let row = $(this.node());
-          let cantidad_bajada = parseFloat(row.data('cant-bajada')) || 0;
-          let cantTotalPosiciones = parseFloat(row.data('cant-total')) || 0;
-          let idPos = row.attr('id');
-          let extra = 0;
-          let input = tablaOT.find("input[name='id_posicion[]'][value='"+idPos+"']");
-          if(input.length){
-            let val = parseFloat(input.closest('tr').find("input[name='cantidad_bajar[]']").val());
-            if(!isNaN(val)) extra = val;
-          }
-          let total = cantidad_bajada + extra;
-          let saldo = cantTotalPosiciones - total;
-          //let cells = row.children('td');
-          //$(cells[8]).text(total);
-          //$(cells[9]).text(saldo);
-          const rowIdx = tablaLCDT.row(row).index();
-          tablaLCDT.cell(rowIdx, 8).data(total); // Col 8 = Cant. bajada (contando la oculta)
-          tablaLCDT.cell(rowIdx, 9).data(saldo); // Col 9 = Saldo
-
-        });
-
-        tablaOT.find('tbody tr').each(function(){
-          let input = $(this).find("input[name='cantidad_bajar[]']");
-          let saldo = parseFloat(input.data('saldo')) || 0;
-          let val = parseFloat(input.val()) || 0;
-          let restante = saldo - val;
-          $(this).find('td:nth-child(9)').text(restante);
-        });
-      }*/
 
       function refreshCantidades() {
         // ----- Actualiza LC (Cant. bajada y Saldo)
