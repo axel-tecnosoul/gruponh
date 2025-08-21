@@ -97,6 +97,11 @@ include 'database.php';
                       }?>
                       <a href="#" id="link_ver_ot"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
                       &nbsp;&nbsp;<?php
+                      if (!empty(tienePermiso(318))) {?>
+                        <a href="#" id="link_enviar_produccion_ot"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Enviar a Producción" title="Enviar a Producción"></a>
+                        &nbsp;&nbsp;<?php
+                      }?>
+                      <?php
                       if (!empty(tienePermiso(317))) {?>
                         <a href="#" id="link_cancelar_ot"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>
                         &nbsp;&nbsp;<?php
@@ -426,13 +431,14 @@ include 'database.php';
           var t=$(this).parent();
 
           let id_ot=t.find("td:first-child").html();
-		      let estado = t.find("td:nth-child(10)").html();
+                      let estado = t.find("td:nth-child(10)").html();
           if(t.hasClass('selected')){
             deselectRow(t);
             get_detalle_orden_trabajo(0)
 
             $("#link_modificar_ot").attr("href","#");
             $("#link_ver_ot").attr("href","#");
+            $("#link_enviar_produccion_ot").attr("href","#");
             $("#link_nuevo_consumo").attr("href","#");
             $("#link_cancelar_ot").attr("data-target","#");
           }else{
@@ -446,6 +452,11 @@ include 'database.php';
               $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
             } else {
               $("#link_modificar_ot").attr("href","#");
+            }
+            if ((estado == "Pendiente") || (estado == "Para Aprobar")) {
+              $("#link_enviar_produccion_ot").attr("href","enviarProduccionOT.php?id="+id_ot);
+            } else {
+              $("#link_enviar_produccion_ot").attr("href","#");
             }
             if (estado == "En Producción") {
               $("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
@@ -485,6 +496,13 @@ include 'database.php';
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
             alert("Por favor seleccione una orden de trabajo para eliminarla")
+          }
+        })
+
+        $("#link_enviar_produccion_ot").on("click",function(){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            alert("Por favor seleccione una orden de trabajo en estado 'Pendiente' para enviarla a producción")
           }
         })
 
