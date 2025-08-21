@@ -22,9 +22,9 @@ foreach ($pdo->query($sql) as $row) {
     8=>$row["cant_liberadas"],
     9=>$row["cant_proceso"],
     10=>$row["cant_rechazadas"],
-	11=>$row["fecha"],
-	12=>$row["usuario"],
-	13=>$row["id_estado"]
+    11=>$row["fecha"],
+    12=>$row["usuario"],
+    13=>$row["id_estado"]
   ];
 }
 
