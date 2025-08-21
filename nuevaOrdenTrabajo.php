@@ -393,8 +393,6 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                               ) otd ON otd.id_posicion = lcp.id
                               WHERE lcc.id_lista_corte = ?
                               GROUP BY lcp.id";
-
-                              //echo $sql;
                               $q = $pdo->prepare($sql);
                               $q->execute([$editing ? $id_orden_trabajo : 0,$id_lista_corte]);
                               while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
@@ -403,6 +401,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 $cant_otros   = $total_bajada - $cant_ot;
                                 $cant_total   = $row['cant_conj'] * $row['cant_pos'];
                                 $saldo        = $cant_total - $total_bajada;
+                                $style = "";
                                 if ($editing && $cant_ot > 0) {
                                   $posiciones_agregadas[] = [
                                     'id_posicion'       => $row['id_posicion'],
@@ -416,10 +415,11 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                     'cant_bajada_otros' => $cant_otros
                                   ];
                                   $cant_bajada=$cant_otros;
+                                  $style = " display: none;";
                                 } else {
                                   $cant_bajada=$total_bajada;
                                 }?>
-                                <tr id="<?=$row['id_posicion']?>" data-cant-bajada="<?=$cant_bajada?>" data-cant-total="<?=$cant_total?>">
+                                <tr id="<?=$row['id_posicion']?>" data-cant-bajada="<?=$cant_bajada?>" data-cant-total="<?=$cant_total?>" style="<?=$style?>">
                                   <td class="d-none"><?=$row['id_posicion']?></td>
                                   <td><?=$row['nombre']?></td>
                                   <td class="text-end"><?=$row['cant_conj']?></td>
