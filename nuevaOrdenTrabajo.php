@@ -89,9 +89,17 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute([$_POST["fecha"],$_POST["titulo"],$_POST["notas"],$id_orden_trabajo]);
 
+    // posiciones actuales en la OT
+    $sql = "SELECT id_posicion FROM ordenes_trabajo_detalle WHERE id_orden_trabajo = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_orden_trabajo]);
+    $posicionesActuales = $q->fetchAll(PDO::FETCH_COLUMN,0);
+    $posicionesProcesadas = [];
+
     foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
       if($cantidad!="" and $cantidad>0){
         $id_posicion=$_POST['id_posicion'][$key];
+        $posicionesProcesadas[] = $id_posicion;
 
         $cant_liberadas=0;
         $cant_proceso=0;
@@ -118,6 +126,16 @@ if (!empty($_POST)) {
           $q->execute([$id_orden_trabajo,$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
         }
       }
+    }
+
+    // eliminar posiciones que fueron quitadas en la edición
+    $posicionesEliminar = array_diff($posicionesActuales, $posicionesProcesadas);
+    if(!empty($posicionesEliminar)){
+      $marks = implode(',', array_fill(0, count($posicionesEliminar), '?'));
+      $sql = "DELETE FROM ordenes_trabajo_detalle WHERE id_orden_trabajo = ? AND id_posicion IN ($marks)";
+      $params = array_merge([$id_orden_trabajo], $posicionesEliminar);
+      $q = $pdo->prepare($sql);
+      $q->execute($params);
     }
 
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Orden de Trabajo','Orden de Trabajo')";
@@ -918,10 +936,11 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           let saldo = cantTotalPosiciones - total;
 
           const rIdx = this.index();
-          tablaLCDT.cell(rIdx, 8).data(total); // col 8 = Cant. bajada (0-based, contando la oculta ID)
-          tablaLCDT.cell(rIdx, 9).data(saldo); // col 9 = Saldo
+          tablaLCDT.cell(rIdx, 8).data(total);
+          tablaLCDT.cell(rIdx, 9).data(saldo);
+          $(tablaLCDT.cell(rIdx, 8).node()).text(total);
+          $(tablaLCDT.cell(rIdx, 9).node()).text(saldo);
         });
-        tablaLCDT.draw(false);
 
         // ----- Actualiza OT (Saldo restante = max - valor)
         dtOT.rows().every(function () {
@@ -932,9 +951,9 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           let restante = Math.max(0, max - val);
 
           const rIdx = this.index();
-          dtOT.cell(rIdx, 8).data(restante); // col 8 = Saldo en OT (0-based)
+          dtOT.cell(rIdx, 8).data(restante);
+          $(dtOT.cell(rIdx, 8).node()).text(restante);
         });
-        dtOT.draw(false);
       }
 
 	  
