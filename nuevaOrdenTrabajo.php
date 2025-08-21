@@ -136,7 +136,7 @@ if (!empty($_POST)) {
       $descProyecto = getDescripcionProyecto($pdo, $data['id_proyecto']);
       $descripcion_orden_trabajo = " LC".$data['numero_lc']."-OT".$data['nro_orden_trabajo'].$descProyecto;
 
-      $idTipoNotificacion=8;
+      $idTipoNotificacion=19;
       $idEntidad=$id_orden_trabajo;
       $detalleNotificacion="ID Orden de Trabajo: #".$idEntidad;
       $asuntoEmail="Producción - Aprobación de Orden de Trabajo $descripcion_orden_trabajo";
@@ -248,7 +248,7 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute($params);
 
-  $sql = "SELECT id_proyecto FROM listas_corte WHERE id = ? ";
+  /*$sql = "SELECT id_proyecto FROM listas_corte WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -261,7 +261,7 @@ if (!empty($_POST)) {
   $detalleNotificacion="ID Orden de Trabajo: #".$idEntidad;
   $asuntoEmail="Módulo Producción - Nueva Orden de Trabajo $descripcion_orden_trabajo";
   $cuerpoEmail="Nueva orden de trabajo dada de alta en el sistema: $descripcion_orden_trabajo";
-  crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+  crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);*/
 
   if ($modoDebug==1) {
     $pdo->rollBack();
