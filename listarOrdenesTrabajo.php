@@ -234,10 +234,11 @@ include 'database.php';
                             <th>Rechazados</th>
                             <th>F.Revisión</th>
                             <th>Usuario</th>
+                            <th class="d-none">ID Posición</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
-						            <tfoot>
+                                                            <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
                             <th>Conjunto</th>
@@ -252,6 +253,7 @@ include 'database.php';
                             <th>Rechazados</th>
                             <th>F.Revisión</th>
                             <th>Usuario</th>
+                            <th class="d-none">ID Posición</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -636,10 +638,27 @@ include 'database.php';
             $('#tablaDetalleOT').DataTable({
               stateSave: false,
               responsive: false,
-              order: [[0, 'asc']],
-              "columnDefs": [
-                { "targets": [0], "className": 'd-none', "visible": false },
-                { "targets": [2], "visible": false }
+              order: [[13, 'asc']],
+              columns: [
+                { data: 0 },
+                { data: 1 },
+                { data: 2 },
+                { data: 3 },
+                { data: 4 },
+                { data: 5 },
+                { data: 6 },
+                { data: 7 },
+                { data: 8 },
+                { data: 9 },
+                { data: 10 },
+                { data: 11 },
+                { data: 12 },
+                { data: 14 }
+              ],
+              columnDefs: [
+                { targets: [0], className: 'd-none', visible: false },
+                { targets: [2], visible: false },
+                { targets: [13], className: 'd-none', visible: false }
               ],
               data: data,
               language: {
@@ -684,7 +703,7 @@ include 'database.php';
               });
             });
         
-            $('#tablaDetalleOT').find("tbody tr td").not(":last-child").on( 'click', function () {
+            $('#tablaDetalleOT').find("tbody tr td").not(":last-child").not(":nth-last-child(2)").on( 'click', function () {
             //$(document).on("click","#tablaDetalleOT tbody tr td", function(){
               var t=$(this).parent();
               //t.parent().find("tr").removeClass("selected");
