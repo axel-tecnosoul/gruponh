@@ -82,6 +82,7 @@ if (!empty($_POST)) {
 
   if(!empty($_POST['id_orden_trabajo'])){
     $id_orden_trabajo=intval($_POST['id_orden_trabajo']);
+    $enviarAprobacion = !empty($_POST['enviar_aprobacion']);
     $pdo->beginTransaction();
 
     $sql = "UPDATE ordenes_trabajo set fecha = ?, titulo = ?, notas = ? where id = ?";
@@ -122,6 +123,26 @@ if (!empty($_POST)) {
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Orden de Trabajo','Orden de Trabajo')";
     $q = $pdo->prepare($sql);
     $q->execute([$_SESSION['user']['id']]);
+
+    if ($enviarAprobacion) {
+      $sql = "UPDATE ordenes_trabajo SET id_estado_orden_trabajo = 2 WHERE id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_orden_trabajo]);
+
+      $sql = "SELECT l.numero AS numero_lc, l.id_proyecto, ot.nro_orden_trabajo FROM ordenes_trabajo ot JOIN listas_corte l ON l.id = ot.id_lista_corte WHERE ot.id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_orden_trabajo]);
+      $data = $q->fetch(PDO::FETCH_ASSOC);
+      $descProyecto = getDescripcionProyecto($pdo, $data['id_proyecto']);
+      $descripcion_orden_trabajo = " LC".$data['numero_lc']."-OT".$data['nro_orden_trabajo'].$descProyecto;
+
+      $idTipoNotificacion=8;
+      $idEntidad=$id_orden_trabajo;
+      $detalleNotificacion="ID Orden de Trabajo: #".$idEntidad;
+      $asuntoEmail="Producción - Aprobación de Orden de Trabajo $descripcion_orden_trabajo";
+      $cuerpoEmail="La orden de trabajo $descripcion_orden_trabajo está lista para aprobación.";
+      crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
+    }
 
     if ($modoDebug==1) {
       $pdo->rollBack();
@@ -516,7 +537,10 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                     </div>
                     <div class="card-footer">
                       <div class="col-12">
-                        <button type="submit" class="btn btn-primary"><?=$editing ? 'Modificar' : 'Crear'?></button>
+                        <button type="submit" class="btn btn-success"><?=$editing ? 'Modificar' : 'Crear'?></button>
+                        <?php if($editing){?>
+                          <button type="submit" name="enviar_aprobacion" value="1" class="btn btn-primary">Enviar a aprobación</button>
+                        <?php }?>
                         <a href='listarOrdenesTrabajo.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>
