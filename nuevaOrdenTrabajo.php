@@ -460,6 +460,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                           <table class="display" id="tablaOT">
                           <thead>
                               <tr>
+                                <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th style="width:80px">Cant. conj.</th>
                                 <th style="width:80px">Posicion</th>
@@ -473,6 +474,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                             </thead>
                             <tfoot>
                               <tr>
+                                <th class="d-none">ID Posicion</th>
                                 <th>Conjunto</th>
                                 <th>Cant. conj.</th>
                                 <th>Posicion</th>
@@ -491,6 +493,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                   $max = $cant_total - $row['cant_bajada_otros'];
                                   $saldo = $max - $row['cant_bajada'];?>
                                   <tr id="<?=$row['id_posicion']?>">
+                                    <td class="d-none"><?=$row['id_posicion']?></td>
                                     <td><?=$row['nombre']?></td>
                                     <td class="text-end"><?=$row['cant_conj']?></td>
                                     <td class="text-end"><?=$row['posicion']?></td>
@@ -751,6 +754,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                 <div class="invalid-feedback">La cantidad no puede superar el saldo (${saldo}).</div>
               `;
               return [
+                elemento[0],
                 elemento[1],
                 elemento[2],
                 elemento[3],
@@ -785,14 +789,20 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         });
 		
 		    // Setup - add a text input to each footer cell
-        tablaOT.find('tfoot th').each( function () {
+        tablaOT.find('tfoot th').each(function(){
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
+          if(title !== '' && !$(this).hasClass('d-none')){
+            $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+          }
+        });
 
-	      tablaOT.DataTable({
+              tablaOT.DataTable({
           stateSave: false,
           responsive: false,
+          columnDefs: [
+            { targets: 0, visible: false }
+          ],
+          order: [[0, 'asc']],
           language: {
           "decimal": "",
           "emptyTable": "No hay información",
@@ -819,7 +829,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
         $(document).on("click","#tablaOT tbody tr td", function(){
           var t=$(this).parent();
           let celdaClickeado=$(this)[0];
-          let celdaConInput=t.find("td:nth-child(9)")[0];
+          let celdaConInput=t.find("td:nth-child(10)")[0];
           if(celdaConInput!=celdaClickeado){
             if(t.hasClass('selected')){
               deselectRow(t);
@@ -902,7 +912,7 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
           let saldo = parseFloat(input.data('saldo')) || 0;
           let val = parseFloat(input.val()) || 0;
           let restante = saldo - val;
-          $(this).find('td:nth-child(8)').text(restante);
+          $(this).find('td:nth-child(9)').text(restante);
         });
       }
 	  
