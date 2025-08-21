@@ -636,6 +636,7 @@ include 'database.php';
             $('#tablaDetalleOT').DataTable({
               stateSave: false,
               responsive: false,
+              order: [[0, 'asc']],
               "columnDefs": [
                 { "targets": [0], "className": 'd-none', "visible": false },
                 { "targets": [2], "visible": false }

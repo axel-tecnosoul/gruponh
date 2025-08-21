@@ -396,7 +396,8 @@ $descProyecto=getDescripcionProyecto($pdoTmp,$id_proyecto);
                                 GROUP BY id_posicion
                               ) otd ON otd.id_posicion = lcp.id
                               WHERE lcc.id_lista_corte = ?
-                              GROUP BY lcp.id";
+                              GROUP BY lcp.id
+                              ORDER BY lcp.id";
 
                               //echo $sql;
                               $q = $pdo->prepare($sql);
