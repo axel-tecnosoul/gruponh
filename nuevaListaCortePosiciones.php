@@ -39,7 +39,8 @@ if (!empty($_POST)) {
   $marca=trim($_POST['marca']);
   $peso=trim($_POST['peso']);
   $peso_calculado_posicion=trim($_POST['hiddenPesoCalculado']);
-  $diametro=trim($_POST['diametro']);
+  // Normalizamos el diámetro para evitar diferencias entre 0 y cadena vacía
+  $diametro = isset($_POST['diametro']) && $_POST['diametro'] !== '' ? trim($_POST['diametro']) : 0;
 
   $procesosSeleccionados = $_POST['proceso'] ?? [];
   $id_terminacion = $_POST['id_terminacion'] ?? null;
@@ -118,7 +119,12 @@ if (!empty($_POST)) {
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
 
     if (!empty($dataNum)) {
-      if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
+      if (
+        $dataNum['id_material'] != $id_material ||
+        $dataNum['ancho'] != $ancho ||
+        $dataNum['largo'] != $largo ||
+        floatval($dataNum['diametro']) != floatval($diametro)
+      ) {
         Database::disconnect();
         header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
@@ -254,7 +260,12 @@ if (!empty($_POST)) {
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
 
     if (!empty($dataNum)) {
-      if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
+      if (
+        $dataNum['id_material'] != $id_material ||
+        $dataNum['ancho'] != $ancho ||
+        $dataNum['largo'] != $largo ||
+        floatval($dataNum['diametro']) != floatval($diametro)
+      ) {
         Database::disconnect();
         header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
