@@ -5,6 +5,9 @@ if (empty($_SESSION['user'])) {
     die("Redirecting to index.php");
 }
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id_lista_corte_conjunto = null;
 if (!empty($_GET['id_lista_corte_conjunto'])) {
@@ -12,7 +15,7 @@ if (!empty($_GET['id_lista_corte_conjunto'])) {
 }
 
 if (null==$id_lista_corte_conjunto) {
-  header("Location: listarListasCorte.php");
+  header("Location: listarListasCorte.php$prodQuery");
 }
 
 if (!empty($_POST)) {
@@ -38,6 +41,15 @@ if (!empty($_POST)) {
   $peso_calculado_posicion=trim($_POST['hiddenPesoCalculado']);
   $diametro=trim($_POST['diametro']);
 
+  $procesosSeleccionados = $_POST['proceso'] ?? [];
+  $id_terminacion = $_POST['id_terminacion'] ?? null;
+
+  if (empty($procesosSeleccionados) && empty($id_terminacion)) {
+    Database::disconnect();
+    header("Location: nuevaListaCortePosiciones.php?error_proceso=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
+    exit;
+  }
+
   // Validación de dimensiones según el tipo de material
   if (!empty($id_material)) {
     $sqlVal = "SELECT concepto FROM materiales WHERE id = ?";
@@ -48,13 +60,13 @@ if (!empty($_POST)) {
     if (str_starts_with($conceptoMat, 'Chapa')) {
       if (!is_numeric($ancho) || $ancho <= 0 || !is_numeric($largo) || $largo <= 0) {
         Database::disconnect();
-        header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
       }
     } else {
       if (!is_numeric($largo) || $largo <= 0) {
         Database::disconnect();
-        header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
       }
     }
@@ -108,7 +120,7 @@ if (!empty($_POST)) {
     if (!empty($dataNum)) {
       if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
         Database::disconnect();
-        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
       }
     }
@@ -147,8 +159,10 @@ if (!empty($_POST)) {
     $q->execute([$id_lista_corte_posicion]);
 
     //pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
-    $procesos=$_POST["proceso"];
-    $procesos[]=$_POST["id_terminacion"];
+    $procesos = $procesosSeleccionados;
+    if (!empty($id_terminacion)) {
+      $procesos[] = $id_terminacion;
+    }
 
     if ($modoDebug==1) {
       var_dump($procesos);
@@ -193,11 +207,11 @@ if (!empty($_POST)) {
       die();
     } else {
       Database::disconnect();
-      header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+      header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
       /*if (!empty($_POST['btn2'])) {
-        header("Location: nuevoConjuntoListaCorte.php?id_lista_corte=".$id_lista_corte);
+        header("Location: nuevoConjuntoListaCorte.php?id_lista_corte=".$id_lista_corte.$prodParam);
       } else {
-        header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
       }*/
     }
 
@@ -242,7 +256,7 @@ if (!empty($_POST)) {
     if (!empty($dataNum)) {
       if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
         Database::disconnect();
-        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
       }
     }
@@ -270,8 +284,10 @@ if (!empty($_POST)) {
       }
       
       //pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
-      $procesos=$_POST["proceso"];
-      $procesos[]=$_POST["id_terminacion"];
+      $procesos = $procesosSeleccionados;
+      if (!empty($id_terminacion)) {
+        $procesos[] = $id_terminacion;
+      }
 
       if ($modoDebug==1) {
         var_dump($procesos);
@@ -346,13 +362,13 @@ if (!empty($_POST)) {
           $q->execute([$id_lista_corte_conjunto]);
           $data = $q->fetch(PDO::FETCH_ASSOC);
 
-          header("Location: nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$data["id_lista_corte"]);
+          header("Location: nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$data["id_lista_corte"].$prodParam);
         } else {
-          header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+          header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         }
       }
     } else {
-      header("Location: nuevaListaCortePosiciones.php?error_repetido=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+      header("Location: nuevaListaCortePosiciones.php?error_repetido=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
     }
       
     
@@ -416,7 +432,8 @@ Database::disconnect();?>
                       <a href="#" data-toggle="modal" data-target="#modalPosicionesProyecto"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver todas las posiciones" title="Ver todas las posiciones"></a>&nbsp;&nbsp;
                     </h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?>">
+                                            <form class="form theme-form" role="form" method="post" action="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?><?= $prodParam ?>">
+                    <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="form-group col-12">
@@ -547,7 +564,7 @@ Database::disconnect();?>
                         </div>
                         <div class="form-group col-3">
                           <label>Terminación(*)</label><br>
-                          <select name="id_terminacion" class="js-example-basic-single id_terminacion" required="required">
+                          <select name="id_terminacion" class="js-example-basic-single id_terminacion">
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -560,6 +577,7 @@ Database::disconnect();?>
                             Database::disconnect();?>
                           </select>
                         </div>
+                        <?php if (!empty($_GET['error_proceso'])) { echo "<div class='col-12'><font color='red'><b>Seleccione al menos un proceso</b></font></div>"; } ?>
                       </div>
                     </div>
                     <div class="card-footer">
@@ -568,7 +586,7 @@ Database::disconnect();?>
                         <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear y volver a Conjuntos</button>
                         <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?>' class="btn btn-danger">Guardar y volver a Conjuntos</a>
+                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?><?= $prodParam ?>' class="btn btn-danger">Guardar y volver a Conjuntos</a>
                       </div>
                     </div>
                   </form>
@@ -871,6 +889,14 @@ Database::disconnect();?>
         })
 
         $("form.theme-form").on("submit", function(e){
+          const procesos = $("input[name='proceso[]']:checked").length;
+          const terminacion = $("select[name='id_terminacion']").val();
+          if (procesos === 0 && (!terminacion || terminacion === "")) {
+            alert('Seleccione al menos un proceso');
+            e.preventDefault();
+            return;
+          }
+
           const tipoMaterial = $("select[name='id_material'] option:selected").text().trim();
           const largo = parseFloat(String($("input[name='largo']").val()).replace(',', '.'));
           const ancho = parseFloat(String($("input[name='ancho']").val()).replace(',', '.'));

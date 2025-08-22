@@ -5,6 +5,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -12,7 +15,7 @@ if (!empty($_GET['id'])) {
 }
 
 if (null==$id) {
-  header("Location: listarComputos.php");
+  header("Location: listarComputos.php$prodQuery");
 }
 
 if (!empty($_POST)) {
@@ -34,7 +37,7 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$_POST['id_cuenta_solicitante'],$_GET['id']]);
 
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de computo','Computos','verComputo.php?id=$id')";
+  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de computo','Computos','verComputo.php?id=$id$prodParam')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
 
@@ -76,7 +79,7 @@ if (!empty($_POST)) {
     }
 
     // 2) INSERT log
-    $link = "verComputo.php?id={$id}";
+    $link = "verComputo.php?id={$id}$prodParam";
     $sql  = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (NOW(), ?, 'Modificación de computo', 'Computos', ?)";
     $q = $pdo->prepare($sql);
     $ok = $q->execute([$_SESSION['user']['id'],$link]);
@@ -158,7 +161,7 @@ if (!empty($_POST)) {
         $sqlLogR = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nueva reserva de stock', 'Computos', ?)";
         $stmtLogR = $pdo->prepare($sqlLogR);
 
-        $params = [$userId, "verComputo.php?id={$idComputo}"];
+        $params = [$userId, "verComputo.php?id={$idComputo}$prodParam"];
 
         if ($modoDebug == 1) {
           // Generar y mostrar la consulta “real”
@@ -295,7 +298,7 @@ if (!empty($_POST)) {
   }
 
   
-  header("Location: verComputo.php?id=".$_GET['id']);
+  header("Location: verComputo.php?id=".$_GET['id'].$prodParam);
 } else {
-  header("Location: listarComputos.php");
+  header("Location: listarComputos.php$prodQuery");
 }

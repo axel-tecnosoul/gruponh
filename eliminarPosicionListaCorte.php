@@ -6,6 +6,9 @@ if (empty($_SESSION['user'])) {
 }
 
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -13,7 +16,7 @@ if (!empty($_GET['id'])) {
 }
 
 if (null==$id) {
-    header("Location: listarListasCorte.php");
+    header("Location: listarListasCorte.php$prodQuery");
 }
 
 $pdo = Database::connect();
@@ -110,5 +113,5 @@ if ($modoDebug==1) {
   die();
 } else {
   Database::disconnect();
-  header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$idConjunto);
+  header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$idConjunto.$prodParam);
 }

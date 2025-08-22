@@ -6,6 +6,9 @@ if (empty($_SESSION['user'])) {
 }
 
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 // funciones.php is included from config.php. Ensure it is available for helper utilities
 
 $id = null;
@@ -14,7 +17,7 @@ if (!empty($_GET['id_lista_corte'])) {
 }
 
 if (null==$id) {
-  header("Location: listarListasCorte.php");
+  header("Location: listarListasCorte.php$prodQuery");
 }
 
 // insert data
@@ -124,7 +127,7 @@ if ($modoDebug==1) {
 } else {
   Database::disconnect();
   //header("Location: nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte);
-  header("Location: nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte);
+  header("Location: nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte.$prodParam);
   exit();
 }
 ?>

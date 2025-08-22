@@ -5,7 +5,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }*/
 include 'config.php';
-include 'database.php';?>
+include 'database.php';
+$prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head><?php
@@ -54,7 +56,7 @@ include 'database.php';?>
               <div class="col-md-12">
                 <div class="card">
                   <div class="card-body">
-                  <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarComputos.php">
+                  <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarComputos.php<?= $prodQuery ?>">
                     <div class="form-group mb-0">
                       N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro" id="nro">
                     </div>
@@ -83,7 +85,7 @@ include 'database.php';?>
 							        </select>
 					          </div>
                     <div class="form-group mb-0">
-                      <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php'">Buscar</button>
+                      <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php<?= $prodQuery ?>'">Buscar</button>
                     </div>
                   </form>
                 </div>
@@ -493,6 +495,8 @@ include 'database.php';?>
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
+      const prod = <?= isset($_GET['prod']) ? (int)$_GET['prod'] : 0 ?>;
+      const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function() {
         // Setup - add a text input to each footer cell
         $('#dataTables-example666 tfoot th').each( function () {
@@ -722,13 +726,13 @@ include 'database.php';?>
             });
             selectRow(t);
             get_conceptos(id_computo)
-            $("#link_ver_computo").attr("href","verComputo.php?id="+id_computo);
+            $("#link_ver_computo").attr("href","verComputo.php?id="+id_computo+prodParam);
             $("#link_imprimir_computo").attr("target","_blank");
-            $("#link_imprimir_computo").attr("href","imprimirComputo.php?id="+id_computo);
+            $("#link_imprimir_computo").attr("href","imprimirComputo.php?id="+id_computo+prodParam);
             if ((estado == 'Para Aprobar') || (estado == 'Elaboración')) {
-              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=nuevo&revision="+nro_revision);
+              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=nuevo&revision="+nro_revision+prodParam);
             } else {
-              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=update&revision="+nro_revision);  
+              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=update&revision="+nro_revision+prodParam);
             }
             if (estado == 'Para Aprobar') {
               $("#link_aprobar_computo").attr("data-toggle","modal");

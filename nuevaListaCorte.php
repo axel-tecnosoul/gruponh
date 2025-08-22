@@ -7,6 +7,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 $numero = null;
 $nro_revision = null;
 $hoy=date("Y-m-d");
@@ -36,7 +39,7 @@ if (!empty($_POST)) {
     $params = [$fecha, $id_tarea, $id_proyecto, $nombre, $adjunto, $id_lista_corte];
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte;
+    $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte.$prodParam;
   //}elseif(empty($advertencia)){
   }else{
   
@@ -182,7 +185,7 @@ if (!empty($_POST)) {
       // manejar el error según tu lógica
     }*/
 
-    $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
+    $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte.$prodParam;
   }
 
   //if(empty($advertencia)){
@@ -219,12 +222,12 @@ if (!empty($_POST)) {
   $adjunto="";
   $titulo="Nueva";
   $accion="Crear";
-  $formAction="nuevaListaCorte.php";
+  $formAction="nuevaListaCorte.php$prodQuery";
   if($modo == 'update' && isset($_GET['id_lista_corte'])) {
     $titulo="Modificar";
     $accion=$titulo;
     $id_lista_corte = $_GET['id_lista_corte'];
-    $formAction="nuevaListaCorte.php?modo=update&id_lista_corte=".$id_lista_corte;
+    $formAction .= ($prodQuery ? '&' : '?')."modo=update&id_lista_corte=".$id_lista_corte;
 
     $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto, numero, nro_revision FROM listas_corte WHERE id = ?";
     $q = $pdo->prepare($sql);
@@ -308,7 +311,8 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?php if($numero !== null && $nro_revision !== null){ echo $titulo." Lista de Corte Nº {$numero} - Rev {$nro_revision}"; } else { echo $ubicacion; } ?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
+                                          <form class="form theme-form" role="form" method="post" action="<?=$formAction?>" enctype="multipart/form-data">
+                    <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -393,7 +397,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-success" type="submit"><?=$accion?> y agregar Conjuntos</button>
-                        <a href="listarListasCorte.php" class="btn btn-light">Volver</a>
+                        <a href="listarListasCorte.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
