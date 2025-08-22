@@ -54,8 +54,16 @@ if (!empty($_POST)) {
   if (!empty($id_material)) {
     $sqlVal = "SELECT concepto FROM materiales WHERE id = ?";
     $qVal = $pdo->prepare($sqlVal);
-    $qVal->execute([$id_material]);
+    $params = [$id_material];
+    $qVal->execute($params);
     $conceptoMat = $qVal->fetchColumn();
+
+    if ($modoDebug == 1) {
+      // Generar y mostrar la consulta “real”
+      $fullSql = debugQuery($pdo, $sqlVal, $params);
+      echo $fullSql . "<br><br>";
+      echo "Concepto material: " . $conceptoMat . "<br><br>";
+    }
 
     if (str_starts_with($conceptoMat, 'Chapa')) {
       if (!is_numeric($ancho) || $ancho <= 0 || !is_numeric($largo) || $largo <= 0) {
@@ -78,10 +86,18 @@ if (!empty($_POST)) {
 
     $sql = "SELECT pos.cantidad, id_material, id_lista_corte_conjunto, id_lista_corte FROM lista_corte_posiciones pos INNER JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto=lcc.id WHERE pos.id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$id_lista_corte_posicion]);
+    $params = [$id_lista_corte_posicion];
+    $q->execute($params);
     $data = $q->fetch(PDO::FETCH_ASSOC);
     $id_lista_corte=$data['id_lista_corte'];
     $id_lista_corte_conjunto=$data['id_lista_corte_conjunto'];
+
+    if ($modoDebug == 1) {
+      // Generar y mostrar la consulta “real”
+      $fullSql = debugQuery($pdo, $sql, $params);
+      echo $fullSql . "<br><br>";
+      var_dump($data);
+    }
 
     /*$sql = "UPDATE listas_corte_conjuntos set peso = peso - (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
     $q = $pdo->prepare($sql);
@@ -91,10 +107,18 @@ if (!empty($_POST)) {
     $idColada = null;
     $sql = "SELECT col.id FROM coladas col inner join compras com on com.id = col.id_compra inner join pedidos p on p.id = com.id_pedido inner join computos c on c.id = p.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos pr on pr.id = t.id_proyecto inner join listas_corte lc on lc.id_proyecto = pr.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lc.id WHERE col.id_material = ? and lcc.id = ? ";
     $qCol = $pdo->prepare($sql);
-    $qCol->execute([$id_material,$id_lista_corte_conjunto]);
+    $params = [$id_material,$id_lista_corte_conjunto];
+    $qCol->execute($params);
     $dataCol = $qCol->fetch(PDO::FETCH_ASSOC);
     if (!empty($dataCol['id'])) {
       $idColada = $dataCol['id'];
+    }
+
+    if ($modoDebug == 1) {
+      // Generar y mostrar la consulta “real”
+      $fullSql = debugQuery($pdo, $sql, $params);
+      echo $fullSql . "<br><br>";
+      var_dump($dataCol);
     }
 
     $calidad = null;
@@ -114,8 +138,16 @@ if (!empty($_POST)) {
     //validación del número de posición a nivel de proyecto
     $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
-    $qNum->execute([$id_proyecto, $nombre_posicion]);
+    $params = [$id_proyecto, $nombre_posicion];
+    $qNum->execute($params);
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
+
+    if ($modoDebug == 1) {
+      // Generar y mostrar la consulta “real”
+      $fullSql = debugQuery($pdo, $sqlNum, $params);
+      echo $fullSql . "<br><br>";
+      var_dump($dataNum);
+    }
 
     if (!empty($dataNum)) {
       if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
@@ -224,13 +256,14 @@ if (!empty($_POST)) {
     $q->execute([$_POST['id_material'],$id_lista_corte_conjunto]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
     if (!empty($data['id'])) {
-      $idColada = $data['id'];	
+      $idColada = $data['id'];
     }
 
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
+    if ($modoDebug == 1) {
+      // Generar y mostrar la consulta “real”
+      $fullSql = debugQuery($pdo, $sql, $params);
+      echo $fullSql . "<br><br>";
+      var_dump($data);
     }
 
     $calidad = null;
@@ -250,8 +283,16 @@ if (!empty($_POST)) {
     //validación del número de posición a nivel de proyecto
     $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
-    $qNum->execute([$id_proyecto, $nombre_posicion]);
+    $params = [$id_proyecto, $nombre_posicion];
+    $qNum->execute($params);
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
+
+    if ($modoDebug == 1) {
+      // Generar y mostrar la consulta “real”
+      $fullSql = debugQuery($pdo, $sqlNum, $params);
+      echo $fullSql . "<br><br>";
+      var_dump($dataNum);
+    }
 
     if (!empty($dataNum)) {
       if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
@@ -500,7 +541,7 @@ Database::disconnect();?>
                         </div>
                         <div class="form-group col-8">
                           <label>Concepto(*)</label><br>
-                          <select name="id_material" class="js-example-basic-single id_material" onchange="jsCompletarPeso(this.value);">
+                          <select name="id_material" class="js-example-basic-single id_material" onchange="jsCompletarPeso(this.value);" required="required">
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -564,7 +605,7 @@ Database::disconnect();?>
                         </div>
                         <div class="form-group col-3">
                           <label>Terminación(*)</label><br>
-                          <select name="id_terminacion" class="js-example-basic-single id_terminacion">
+                          <select name="id_terminacion" class="js-example-basic-single id_terminacion" required="required">
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -890,8 +931,9 @@ Database::disconnect();?>
 
         $("form.theme-form").on("submit", function(e){
           const procesos = $("input[name='proceso[]']:checked").length;
-          const terminacion = $("select[name='id_terminacion']").val();
-          if (procesos === 0 && (!terminacion || terminacion === "")) {
+          //const terminacion = $("select[name='id_terminacion']").val();
+          //if (procesos === 0 && (!terminacion || terminacion === "")) {
+          if (procesos === 0) {
             alert('Seleccione al menos un proceso');
             e.preventDefault();
             return;
