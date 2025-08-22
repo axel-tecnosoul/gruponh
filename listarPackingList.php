@@ -5,7 +5,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 include 'database.php';
-$prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -182,7 +184,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                                       </div>
                                       <div class="modal-body">¿Está seguro que desea cancelar el Packing List?</div>
                                       <div class="modal-footer">
-                                        <a href="eliminarPackingList.php?id=<?=$row[5]?>" class="btn btn-primary">Eliminar</a>
+                                        <a href="eliminarPackingList.php?id=<?=$row[5]?><?= $prodParam ?>" class="btn btn-primary">Eliminar</a>
                                         <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
                                       </div>
                                     </div>
@@ -413,7 +415,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 			  </div>
 			  <div class="modal-body">¿Está seguro que desea eliminar el Componente?</div>
 			  <div class="modal-footer">
-			  <a href="eliminarComponentePackingList.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
+                          <a href="eliminarComponentePackingList.php?id=<?php echo $row[0]; ?><?= $prodParam ?>" class="btn btn-primary">Eliminar</a>
 			  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
 			  </div>
 			</div>
@@ -442,7 +444,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 				  </div>
 				  <div class="modal-body">¿Está seguro que desea eliminar la Sección?</div>
 				  <div class="modal-footer">
-				  <a href="eliminarSeccionPackingList.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
+                                  <a href="eliminarSeccionPackingList.php?id=<?php echo $row[0]; ?><?= $prodParam ?>" class="btn btn-primary">Eliminar</a>
 				  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
 				  </div>
 				</div>
@@ -508,7 +510,10 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-  <script>
+    <script>
+    const prod = <?= $prod ?? 0 ?>;
+    const prodQuery = prod ? '?prod=' + prod : '';
+    const prodParam = prod ? '&prod=' + prod : '';
     $(document).ready(function() {
     // Setup - add a text input to each footer cell
     $('#dataTables-example666 tfoot th').each( function () {
@@ -643,11 +648,11 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           });
           selectRow(t);
 		      get_secciones(id_pl_revision)
-          $("#link_ver_pl").attr("href","verPackingList.php?id="+id_pl_revision);
-		  $("#link_imprimir_pl_con").attr("target","_blank");
-          $("#link_imprimir_pl_con").attr("href","imprimirPackingList.php?peso=1&id="+id_pl_revision);
-		  $("#link_imprimir_pl_sin").attr("target","_blank");
-          $("#link_imprimir_pl_sin").attr("href","imprimirPackingList.php?peso=0&id="+id_pl_revision);
+          $("#link_ver_pl").attr("href","verPackingList.php?id="+id_pl_revision+prodParam);
+                  $("#link_imprimir_pl_con").attr("target","_blank");
+          $("#link_imprimir_pl_con").attr("href","imprimirPackingList.php?peso=1&id="+id_pl_revision+prodParam);
+                  $("#link_imprimir_pl_sin").attr("target","_blank");
+          $("#link_imprimir_pl_sin").attr("href","imprimirPackingList.php?peso=0&id="+id_pl_revision+prodParam);
 		  if ((estado == "Elaboración") || (estado == "Enviado")){
 			  $("#link_eliminar_pl").attr("data-toggle","modal");
 			  $("#link_eliminar_pl").attr("data-target","#eliminarModal_"+id_pl+"_"+id_pl_revision);
@@ -656,10 +661,10 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 		  }
 		  
 		  
-          $("#link_nueva_seccion").attr("href","nuevaSeccionPackingList.php?id="+id_pl_revision);
+          $("#link_nueva_seccion").attr("href","nuevaSeccionPackingList.php?id="+id_pl_revision+prodParam);
           //$("#link_modificar_pl").attr("href","modificarPackingList.php?id="+id_pl_revision+"&revision="+nro_revision);
-          $("#link_modificar_pl").attr("href","modificarPackingList.php?id_packing_list_revision="+id_pl_revision);
-          $("#link_nueva_despacho").attr("href","nuevoDespacho.php?id_packing_list="+id_pl_revision);
+          $("#link_modificar_pl").attr("href","modificarPackingList.php?id_packing_list_revision="+id_pl_revision+prodParam);
+          $("#link_nueva_despacho").attr("href","nuevoDespacho.php?id_packing_list="+id_pl_revision+prodParam);
         }
       });
 	  
@@ -869,9 +874,9 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           });
           selectRow(t);
           get_componentes(id_sec)
-          $("#link_ver_seccion_pl").attr("href","verSeccionPackingList.php?id="+id_sec);
-          $("#link_modificar_seccion").attr("href","modificarSeccionPackingList.php?id="+id_sec);
-          $("#link_nuevo_componente").attr("href","nuevoComponentePackingList.php?id="+id_sec);
+          $("#link_ver_seccion_pl").attr("href","verSeccionPackingList.php?id="+id_sec+prodParam);
+          $("#link_modificar_seccion").attr("href","modificarSeccionPackingList.php?id="+id_sec+prodParam);
+          $("#link_nuevo_componente").attr("href","nuevoComponentePackingList.php?id="+id_sec+prodParam);
           $("#link_eliminar_seccion").attr("data-toggle","modal");
           $("#link_eliminar_seccion").attr("data-target","#eliminarModalSeccion_"+id_sec);
         }
@@ -1024,8 +1029,8 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
-          $("#link_ver_componente_pl").attr("href","verComponenteSeccionPackingList.php?id="+id_componente);
-          $("#link_modificar_componente").attr("href","modificarComponenteSeccionPackingList.php?id="+id_componente);
+          $("#link_ver_componente_pl").attr("href","verComponenteSeccionPackingList.php?id="+id_componente+prodParam);
+          $("#link_modificar_componente").attr("href","modificarComponenteSeccionPackingList.php?id="+id_componente+prodParam);
           $("#link_eliminar_componente").attr("data-toggle","modal");
           $("#link_eliminar_componente").attr("data-target","#eliminarModalComponente_"+id_componente);
         }

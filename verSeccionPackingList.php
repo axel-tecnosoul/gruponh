@@ -7,13 +7,17 @@
     
     require 'database.php';
 
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
+
     $id = null;
     if (!empty($_GET['id'])) {
         $id = $_REQUEST['id'];
     }
     
     if (null==$id) {
-        header("Location: listarPackingList.php");
+        header("Location: listarPackingList.php$prodQuery");
     }
     
     if (!empty($_POST)) {
@@ -59,7 +63,7 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				  <form class="form theme-form" role="form" method="post" action="#">
+                                  <form class="form theme-form" role="form" method="post" action="#">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -77,7 +81,8 @@
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-						<a onclick="document.location.href='listarPackingList.php'" class="btn btn-light">Volver</a>
+                                                <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+                                                <a onclick="document.location.href='listarPackingList.php<?= $prodQuery ?>'" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

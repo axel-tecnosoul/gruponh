@@ -6,7 +6,11 @@
     }
     
     require 'database.php';
-    
+
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
+
     if (!empty($_POST)) {
         
         // insert data
@@ -17,12 +21,12 @@
         $q = $pdo->prepare($sql);
         $q->execute([$_GET['id'],$_POST['cantidad'],$_POST['observaciones']]);
         
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva Sección de Packing List','Packing List','verPackingList.php?id=$id')";
+                $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva Sección de Packing List','Packing List','verPackingList.php?id=$id$prodParam')";
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
 		
         Database::disconnect();
-        header("Location: listarPackingList.php");
+        header("Location: listarPackingList.php$prodQuery");
     }
     
 ?>
@@ -54,7 +58,7 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-					<form class="form theme-form" role="form" method="post" action="nuevaSeccionPackingList.php?id=<?php echo $_GET['id']?>">
+                                        <form class="form theme-form" role="form" method="post" action="nuevaSeccionPackingList.php?id=<?php echo $_GET['id']?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -73,7 +77,8 @@
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Crear</button>
-						<a href="listarPackingList.php" class="btn btn-light">Volver</a>
+                                                <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+                                                <a href="listarPackingList.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

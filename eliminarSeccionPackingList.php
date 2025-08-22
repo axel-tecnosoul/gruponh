@@ -7,13 +7,17 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
+
 $id = null;
 if (!empty($_GET['id'])) {
   $id = $_REQUEST['id'];
 }
 
 if (null==$id) {
-  header("Location: listarPackingList.php");
+  header("Location: listarPackingList.php$prodQuery");
 }
 
 $pdo = Database::connect();
@@ -35,4 +39,4 @@ $q->execute(array($_SESSION['user']['id']));
 Database::disconnect();
   
 //header("Location: listarPackingList.php");
-header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$data["id_packing_list_revision"]);
+header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$data["id_packing_list_revision"].$prodParam);
