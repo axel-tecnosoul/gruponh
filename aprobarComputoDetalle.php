@@ -46,6 +46,8 @@ Database::disconnect();*/
 
 require("config.php");
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodParam = $prod ? '&prod=' . $prod : '';
 //require 'funciones.php';
 
 // Siempre devolvemos JSON
@@ -132,7 +134,7 @@ try {
     }
 
     // 3) Insertar log
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Aprobación de detalle de cómputo', 'Cómputos', 'verComputo.php?id={$idComputo}')";
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Aprobación de detalle de cómputo', 'Cómputos', 'verComputo.php?id={$idComputo}$prodParam')";
     $q = $pdo->prepare($sql);
     $q->execute([ $_SESSION['user']['id'] ]);
 

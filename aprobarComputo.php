@@ -6,6 +6,9 @@
     }
     
     require 'database.php';
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
 
     $id = null;
     if (!empty($_GET['id'])) {
@@ -13,7 +16,7 @@
     }
     
     if (null==$id) {
-        header("Location: listarComputos.php");
+        header("Location: listarComputos.php$prodQuery");
     }
     
     $pdo = Database::connect();
@@ -50,11 +53,11 @@
 		$q->execute([$id]);		
 	}
     
-	$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Aprobación de cómputo','Cómputos','verComputo.php?id=$id')";
+        $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Aprobación de cómputo','Cómputos','verComputo.php?id=$id$prodParam')";
 	$q = $pdo->prepare($sql);
 	$q->execute(array($_SESSION['user']['id']));
 
 
     Database::disconnect();
         
-    header("Location: listarComputos.php");
+    header("Location: listarComputos.php$prodQuery");

@@ -6,6 +6,9 @@ require("config.php");
 }*/
 
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -13,7 +16,7 @@ if (!empty($_GET['id'])) {
 }
 
 if (null==$id) {
-  header("Location: listarComputos.php");
+  header("Location: listarComputos.php$prodQuery");
 }
 
 $pdo = Database::connect();
@@ -26,4 +29,4 @@ $q->execute(array($id));
     
 Database::disconnect();
     
-header("Location: itemsComputo.php?id=".$_GET['idComputo']."&modo=update&revision=".$_GET['revision']);
+header("Location: itemsComputo.php?id=".$_GET['idComputo']."&modo=update&revision=".$_GET['revision'].$prodParam);

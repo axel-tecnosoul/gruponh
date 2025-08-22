@@ -5,6 +5,9 @@ require("config.php");
     die("Redirecting to index.php");
 }*/
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -12,7 +15,7 @@ if (!empty($_GET['id'])) {
 }
 
 if (null==$id) {
-    header("Location: listarComputos.php");
+    header("Location: listarComputos.php$prodQuery");
 }
 
 if (!empty($_POST)) {
@@ -56,13 +59,13 @@ if (!empty($_POST)) {
     
   }
 
-  $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha modificado un item de un cómputo','Cómputos','verComputo.php?id=$id')";
+  $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha modificado un item de un cómputo','Cómputos','verComputo.php?id=$id$prodParam')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
   */
   Database::disconnect();
   
-  header("Location: itemsComputo.php?id=".$_GET['idRetorno']."&modo=".$_GET['modo']."&revision=".$nro_revision);
+  header("Location: itemsComputo.php?id=".$_GET['idRetorno']."&modo=".$_GET['modo']."&revision=".$nro_revision.$prodParam);
 } else {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -101,7 +104,7 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				  <form class="form theme-form" role="form" method="post" action="modificarItemComputo.php?id=<?php echo $id?>&idRetorno=<?php echo $_GET['idRetorno']?>&modo=<?php echo $_GET['modo']?>&revision=<?php echo $_GET['revision']?>">
+                                  <form class="form theme-form" role="form" method="post" action="modificarItemComputo.php?id=<?php echo $id?>&idRetorno=<?php echo $_GET['idRetorno']?>&modo=<?php echo $_GET['modo']?>&revision=<?php echo $_GET['revision']?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -140,8 +143,9 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Comentarios</label>
 							<div class="col-sm-9"><textarea name="comentarios" class="form-control"><?php echo $data['comentarios'];?></textarea></div>
-							<input type="hidden" name="nro_revision" value="<?php if (!empty($_GET['revision'])) { echo $_GET['revision']; }else { echo "0"; } ?>">
-							<input type="hidden" name="modo" value="<?php echo $_GET['modo']; ?>">
+                                                        <input type="hidden" name="nro_revision" value="<?php if (!empty($_GET['revision'])) { echo $_GET['revision']; }else { echo "0"; } ?>">
+                                                        <input type="hidden" name="modo" value="<?php echo $_GET['modo']; ?>">
+                                                        <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
 						  </div>
 						</div>
                       </div>
@@ -149,7 +153,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Modificar</button>
-						<a onclick="document.location.href='listarComputos.php'" class="btn btn-light">Volver</a>
+                                            <a href="listarComputos.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
