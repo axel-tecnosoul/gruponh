@@ -6,6 +6,9 @@
     }
     
     require 'database.php';
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
 
     $id = null;
     if (!empty($_GET['id'])) {
@@ -17,7 +20,7 @@
     
     
     if (null==$id) {
-        header("Location: listarListasCorte.php");
+        header("Location: listarListasCorte.php$prodQuery");
     }
     
     if (!empty($_POST)) {
@@ -49,11 +52,11 @@
             //echo "btn1";
             //echo "modificarListaCorte.php?id=".$_GET["id_lista_corte"]."&revision=".$_GET["revision"];
             //die();
-            header("Location: modificarListaCorte.php?id=".$_GET["id_lista_corte"]."&revision=".$_GET["revision"]);
+            header("Location: modificarListaCorte.php?id=".$_GET["id_lista_corte"]."&revision=".$_GET["revision"].$prodParam);
           }else{
             //echo "btn2";
             //die();
-            header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$_POST['id_conjunto']);
+            header("Location: nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$_POST['id_conjunto'].$prodParam);
           }
         
         }else{
@@ -68,7 +71,7 @@
 
           Database::disconnect();
         
-          header("Location: listarListasCorte.php");
+          header("Location: listarListasCorte.php$prodQuery");
 
         }
     } else {
@@ -111,7 +114,8 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				  <form class="form theme-form" role="form" method="post" action="modificarConjuntoListaCorte.php?id=<?php echo $id?>">
+          <form class="form theme-form" role="form" method="post" action="modificarConjuntoListaCorte.php?id=<?php echo $id?><?= $prodParam ?>">
+            <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -156,7 +160,7 @@
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Modificar</button>
-						<a onclick="document.location.href='listarListasCorte.php'" class="btn btn-light">Volver</a>
+                                                <a onclick="document.location.href='listarListasCorte.php<?= $prodQuery ?>'" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

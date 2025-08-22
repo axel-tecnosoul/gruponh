@@ -6,6 +6,9 @@ if (empty($_SESSION['user'])) {
 }
 
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -13,7 +16,7 @@ if (!empty($_GET['id'])) {
 }
 
 if (null==$id) {
-  header("Location: listarListasCorte.php");
+  header("Location: listarListasCorte.php$prodQuery");
 }
 
 if (!empty($_POST)) {
@@ -58,7 +61,8 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="">
+                                                <form class="form theme-form" role="form" method="post" action="">
+                    <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -100,7 +104,7 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-                        <a href='nuevaListaCorteConjuntos.php?id_lista_corte_revision=<?=$id_lista_corte?>' class="btn btn-light">Volver</a>
+                        <a href='nuevaListaCorteConjuntos.php?id_lista_corte_revision=<?=$id_lista_corte?><?= $prodParam ?>' class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
