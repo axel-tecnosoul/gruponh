@@ -7,6 +7,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 if (!empty($_POST)) {
   // var_dump($_POST);
   // die;
@@ -60,7 +63,7 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$id_computo,$id_computo]);*/
 
-  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id_computo')";
+  $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Cómputo','Cómputos','verComputo.php?id=$id_computo$prodParam')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
 
@@ -121,7 +124,7 @@ if (!empty($_POST)) {
   }*/
   
   Database::disconnect();
-  header("Location: itemsComputo.php?id=".$id."&revision=0&modo=nuevo");
+  header("Location: itemsComputo.php?id=".$id_computo."&revision=0&modo=nuevo".$prodParam);
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -219,10 +222,11 @@ if (!empty($_POST)) {
                                   }
                                 }
                                 Database::disconnect();?>
-							                </select>
-							                <input type="hidden" name="id_tarea" value="<?php echo $_GET['id'];?>">
-							              </div>
-							            </div>
+                                                                        </select>
+                                                                        <input type="hidden" name="id_tarea" value="<?php echo $_GET['id'];?>">
+                                                                        <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+                                                                      </div>
+                                                                    </div>
                           <!--<div class="form-group row">
                             <label class="col-sm-3 col-form-label">Revisó(*)</label>
                             <div class="col-sm-9">
@@ -283,7 +287,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Crear</button>
-                        <a href="listarComputos.php" class="btn btn-light">Volver</a>
+                        <a href="listarComputos.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

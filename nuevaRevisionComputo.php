@@ -6,6 +6,9 @@
     }
     
     require 'database.php';
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
 
     $id = null;
     if (!empty($_GET['id'])) {
@@ -13,7 +16,7 @@
     }
     
     if (null==$id) {
-        header("Location: listarComputos.php");
+        header("Location: listarComputos.php$prodQuery");
     }
     
     if (!empty($_POST)) {
@@ -30,14 +33,14 @@
 		$q = $pdo->prepare($sql);
 		$q->execute([$_GET['id'],$_POST['nro_revision']+1,$_POST['comentarios']]);
 		
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva revisión de cómputo','Cómputos','verComputo.php?id=$id')";
+                $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva revisión de cómputo','Cómputos','verComputo.php?id=$id$prodParam')";
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
 
         
         Database::disconnect();
         
-        header("Location: listarComputos.php");
+        header("Location: listarComputos.php$prodQuery");
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -78,14 +81,15 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				  <form class="form theme-form" role="form" method="post" action="nuevaRevisionComputo.php?id=<?php echo $id?>">
+                                  <form class="form theme-form" role="form" method="post" action="nuevaRevisionComputo.php?id=<?php echo $id?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
 						  <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Comentarios</label>
 							<div class="col-sm-9"><textarea name="comentarios" class="form-control" required="required" autofocus></textarea></div>
-							<input type="hidden" name="nro_revision" value="<?php echo $_GET['revision'];?>">
+                                                        <input type="hidden" name="nro_revision" value="<?php echo $_GET['revision'];?>">
+                                                        <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
 						  </div>
                         </div>
                       </div>
@@ -93,7 +97,7 @@
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Agregar Revisión</button>
-						<a onclick="document.location.href='listarComputos.php'" class="btn btn-light">Volver</a>
+                                            <a href="listarComputos.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

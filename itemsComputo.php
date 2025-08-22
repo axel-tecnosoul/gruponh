@@ -1,6 +1,9 @@
 <?php
 require("config.php");
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 /*require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");*/
 
@@ -17,7 +20,7 @@ $idOrigen  = $_REQUEST['id']        ?? null;         // id del cómputo original
 $nroRev    = $_REQUEST['revision']  ?? 0;            // número de revisión actual
 
 if (!$idOrigen) {
-  header("Location: listarComputos.php");
+  header("Location: listarComputos.php$prodQuery");
   exit;
 }
 
@@ -118,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }*/
 
     // 4) Redirijo al listado
-    header("Location: listarComputos.php");
+    header("Location: listarComputos.php$prodQuery");
     exit;
   }
 
@@ -194,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt = $pdo->prepare("SELECT COUNT(*) FROM computos_detalle WHERE cancelado = 0 AND id_computo = ? AND id_material = ?");
     $stmt->execute([$id, $_POST['id_material']]);
     if ($stmt->fetchColumn() > 0) {
-      header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev&error=1");
+      header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev&error=1$prodParam");
       exit;
     }
 
@@ -206,17 +209,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Logueo la acción
     $stmt = $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Se ha modificado un item de un cómputo', 'Cómputos', ?)");
-    $link = "verComputo.php?id=$id";
+    $link = "verComputo.php?id=$id$prodParam";
     $stmt->execute([$userId, $link]);
   }
 
   // 6) Redirección final
   if (isset($_POST['btn2'])) {
     // Solo "Enviar a aprobación" (cambia de nombre en el HTML)
-    header("Location: listarComputos.php");
+    header("Location: listarComputos.php$prodQuery");
   } else {
     // "Crear y agregar otro"
-    header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev");
+    header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev$prodParam");
   }
   exit;
 }
@@ -309,11 +312,12 @@ Database::disconnect();
                   <div class="card-header">
                     <h5><?=$ubicacion." N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")"?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" id="miFormulario" action="itemsComputo.php?modo=<?=$_GET['modo']?>&id=<?=$id?>">
+                                          <form class="form theme-form" role="form" method="post" id="miFormulario" action="itemsComputo.php?modo=<?=$_GET['modo']?>&id=<?=$id?><?= $prodParam ?>">
                     <!-- Hidden inputs para los parámetros -->
                     <input type="hidden" name="modo"      value="<?= htmlspecialchars($modo) ?>">
                     <input type="hidden" name="id"        value="<?= htmlspecialchars($id) ?>">
                     <input type="hidden" name="revision"  value="<?= htmlspecialchars($revision) ?>">
+                    <input type="hidden" name="prod"      value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -469,12 +473,12 @@ Database::disconnect();
                          if($b==1){?>
                           <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button><?php
                          }?>
-						            <!-- <a href="listarComputos.php" class="btn btn-danger">Guardar y volver al Listado</a> -->
+                                                            <!-- <a href="listarComputos.php<?= $prodQuery ?>" class="btn btn-danger">Guardar y volver al Listado</a> -->
                          <button class="btn btn-danger" type="button" id="guardarYVolver">Guardar y volver al Listado</button>
 
                         <!-- <button type="submit" name="btn1" class="btn btn-success">Crear y Agregar Otro</button>
                         <button type="submit" name="btn2" class="btn btn-primary">Enviar a aprobación</button>
-                        <a href="listarComputos.php" class="btn btn-danger">Volver al Listado</a> -->
+                        <a href="listarComputos.php<?= $prodQuery ?>" class="btn btn-danger">Volver al Listado</a> -->
 
                       </div>
                     </div>
@@ -494,11 +498,12 @@ Database::disconnect();
     <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
-          <form id="formEnviarAprobacion" method="post" action="itemsComputo.php">
+          <form id="formEnviarAprobacion" method="post" action="itemsComputo.php<?= $prodQuery ?>">
             <!-- mantenemos ocultos los campos esenciales -->
             <input type="hidden" name="modo"      value="<?= htmlspecialchars($modo) ?>">
             <input type="hidden" name="id"        value="<?= htmlspecialchars($id) ?>">
             <input type="hidden" name="revision"  value="<?= htmlspecialchars($revision) ?>">
+            <input type="hidden" name="prod"      value="<?= $_REQUEST['prod'] ?? '' ?>">
             <input type="hidden" name="btn2_confirm" value="1">
             <div class="modal-header">
               <h5 class="modal-title">Confirmar envío a aprobación</h5>
@@ -582,6 +587,9 @@ Database::disconnect();
 	
     <!-- Plugins JS Ends-->
     <script>
+      const prod = <?= $prod ?? 0 ?>;
+      const prodQuery = prod ? '?prod=' + prod : '';
+      const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function() {
 
         // dentro de tu $(document).ready(...)
@@ -607,7 +615,7 @@ Database::disconnect();
 
           if(id_material=="" && cantidad=="" && fecha_necesidad==""){
             // Redirige a la página de listado
-            window.location.href = "listarComputos.php";
+            window.location.href = "listarComputos.php"+prodQuery;
             return false;
           }
 

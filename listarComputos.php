@@ -495,6 +495,8 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
+      const prod = <?= isset($_GET['prod']) ? (int)$_GET['prod'] : 0 ?>;
+      const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function() {
         // Setup - add a text input to each footer cell
         $('#dataTables-example666 tfoot th').each( function () {
@@ -724,13 +726,13 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             });
             selectRow(t);
             get_conceptos(id_computo)
-            $("#link_ver_computo").attr("href","verComputo.php?id="+id_computo);
+            $("#link_ver_computo").attr("href","verComputo.php?id="+id_computo+prodParam);
             $("#link_imprimir_computo").attr("target","_blank");
-            $("#link_imprimir_computo").attr("href","imprimirComputo.php?id="+id_computo);
+            $("#link_imprimir_computo").attr("href","imprimirComputo.php?id="+id_computo+prodParam);
             if ((estado == 'Para Aprobar') || (estado == 'Elaboración')) {
-              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=nuevo&revision="+nro_revision);
+              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=nuevo&revision="+nro_revision+prodParam);
             } else {
-              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=update&revision="+nro_revision);  
+              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=update&revision="+nro_revision+prodParam);
             }
             if (estado == 'Para Aprobar') {
               $("#link_aprobar_computo").attr("data-toggle","modal");
