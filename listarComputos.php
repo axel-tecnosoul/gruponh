@@ -5,7 +5,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }*/
 include 'config.php';
-include 'database.php';?>
+include 'database.php';
+$prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head><?php
@@ -54,7 +56,7 @@ include 'database.php';?>
               <div class="col-md-12">
                 <div class="card">
                   <div class="card-body">
-                  <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarComputos.php">
+                  <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarComputos.php<?= $prodQuery ?>">
                     <div class="form-group mb-0">
                       N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro" id="nro">
                     </div>
@@ -83,7 +85,7 @@ include 'database.php';?>
 							        </select>
 					          </div>
                     <div class="form-group mb-0">
-                      <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php'">Buscar</button>
+                      <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php<?= $prodQuery ?>'">Buscar</button>
                     </div>
                   </form>
                 </div>
