@@ -41,6 +41,15 @@ if (!empty($_POST)) {
   $peso_calculado_posicion=trim($_POST['hiddenPesoCalculado']);
   $diametro=trim($_POST['diametro']);
 
+  $procesosSeleccionados = $_POST['proceso'] ?? [];
+  $id_terminacion = $_POST['id_terminacion'] ?? null;
+
+  if (empty($procesosSeleccionados) && empty($id_terminacion)) {
+    Database::disconnect();
+    header("Location: nuevaListaCortePosiciones.php?error_proceso=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
+    exit;
+  }
+
   // Validación de dimensiones según el tipo de material
   if (!empty($id_material)) {
     $sqlVal = "SELECT concepto FROM materiales WHERE id = ?";
@@ -150,8 +159,10 @@ if (!empty($_POST)) {
     $q->execute([$id_lista_corte_posicion]);
 
     //pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
-    $procesos=$_POST["proceso"];
-    $procesos[]=$_POST["id_terminacion"];
+    $procesos = $procesosSeleccionados;
+    if (!empty($id_terminacion)) {
+      $procesos[] = $id_terminacion;
+    }
 
     if ($modoDebug==1) {
       var_dump($procesos);
@@ -273,8 +284,10 @@ if (!empty($_POST)) {
       }
       
       //pasamos los procesos a un nuevo array y le agregamos el id_terminación que lo manejamos como un proceso mas
-      $procesos=$_POST["proceso"];
-      $procesos[]=$_POST["id_terminacion"];
+      $procesos = $procesosSeleccionados;
+      if (!empty($id_terminacion)) {
+        $procesos[] = $id_terminacion;
+      }
 
       if ($modoDebug==1) {
         var_dump($procesos);
@@ -562,7 +575,7 @@ Database::disconnect();?>
                         </div>
                         <div class="form-group col-3">
                           <label>Terminación(*)</label><br>
-                          <select name="id_terminacion" class="js-example-basic-single id_terminacion" required="required">
+                          <select name="id_terminacion" class="js-example-basic-single id_terminacion">
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -575,6 +588,7 @@ Database::disconnect();?>
                             Database::disconnect();?>
                           </select>
                         </div>
+                        <?php if (!empty($_GET['error_proceso'])) { echo "<div class='col-12'><font color='red'><b>Seleccione al menos un proceso</b></font></div>"; } ?>
                       </div>
                     </div>
                     <div class="card-footer">
@@ -887,6 +901,14 @@ Database::disconnect();?>
         })
 
         $("form.theme-form").on("submit", function(e){
+          const procesos = $("input[name='proceso[]']:checked").length;
+          const terminacion = $("select[name='id_terminacion']").val();
+          if (procesos === 0 && (!terminacion || terminacion === "")) {
+            alert('Seleccione al menos un proceso');
+            e.preventDefault();
+            return;
+          }
+
           const tipoMaterial = $("select[name='id_material'] option:selected").text().trim();
           const largo = parseFloat(String($("input[name='largo']").val()).replace(',', '.'));
           const ancho = parseFloat(String($("input[name='ancho']").val()).replace(',', '.'));
