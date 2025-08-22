@@ -93,6 +93,26 @@ if (!empty($_POST)) {
       $dataM = $qM->fetch(PDO::FETCH_ASSOC);
       $calidad = $dataM['calidad'];
     }
+    //obtener el id_proyecto del conjunto actual
+    $sqlProyecto = "SELECT lc.id_proyecto FROM listas_corte_conjuntos lcc JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lcc.id = ?";
+    $qProyecto = $pdo->prepare($sqlProyecto);
+    $qProyecto->execute([$id_lista_corte_conjunto]);
+    $id_proyecto = $qProyecto->fetchColumn();
+
+    //validación del número de posición a nivel de proyecto
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
+    $qNum = $pdo->prepare($sqlNum);
+    $qNum->execute([$id_proyecto, $nombre_posicion]);
+    $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
+
+    if (!empty($dataNum)) {
+      if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
+        Database::disconnect();
+        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        exit;
+      }
+    }
+
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -207,6 +227,26 @@ if (!empty($_POST)) {
       $dataM = $qM->fetch(PDO::FETCH_ASSOC);
       $calidad = $dataM['calidad'];
     }
+    //obtener el id_proyecto del conjunto actual
+    $sqlProyecto = "SELECT lc.id_proyecto FROM listas_corte_conjuntos lcc JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lcc.id = ?";
+    $qProyecto = $pdo->prepare($sqlProyecto);
+    $qProyecto->execute([$id_lista_corte_conjunto]);
+    $id_proyecto = $qProyecto->fetchColumn();
+
+    //validación del número de posición a nivel de proyecto
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
+    $qNum = $pdo->prepare($sqlNum);
+    $qNum->execute([$id_proyecto, $nombre_posicion]);
+    $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
+
+    if (!empty($dataNum)) {
+      if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || $dataNum['diametro'] != $diametro) {
+        Database::disconnect();
+        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto);
+        exit;
+      }
+    }
+
 	
 	  //validacion de repetido
 	  $sqlP = " SELECT count(*) cant from lista_corte_posiciones where posicion = ? and id_lista_corte_conjunto = ? AND id_material = ? AND cantidad = ? AND largo = ? AND ancho = ? AND marca = ? AND peso = ? AND diametro = ?";// AND id_colada = ? AND calidad = ?
@@ -443,8 +483,11 @@ Database::disconnect();?>
                           <input name="nombre_posicion" type="text" maxlength="99" autofocus class="form-control nombre_posicion" required="required" value=""><?php
                           if (!empty($_GET['error_repetido'])) {
                             echo "<font color='red'><b>El nombre de Posición utilizado ya está en uso</b></font>";
+                          }
+                          if (!empty($_GET['error_numero'])) {
+                            echo "<font color='red'><b>El número de Posición ya existe con otro material o medidas en el proyecto</b></font>";
                           }?>
-						            </div>
+                                                            </div>
                         <div class="form-group col-2">
                           <label>Cantidad(*)</label>
                           <input name="cantidad_posicion" type="number" step="0.01" min="0.01" maxlength="99" class="form-control cantidad_posicion" required="required" value="">
