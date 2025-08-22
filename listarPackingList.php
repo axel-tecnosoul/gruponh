@@ -35,6 +35,7 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
+    <input type="hidden" id="prod" value="<?= htmlspecialchars($prod ?? '', ENT_QUOTES) ?>">
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <!-- Page Header Start-->
@@ -511,7 +512,8 @@ $prodParam = $prod ? '&prod=' . $prod : '';
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
-    const prod = <?= $prod ?? 0 ?>;
+    const params = new URLSearchParams(window.location.search);
+    const prod = params.get('prod') || document.getElementById('prod')?.value || '';
     const prodQuery = prod ? '?prod=' + prod : '';
     const prodParam = prod ? '&prod=' + prod : '';
     $(document).ready(function() {
@@ -1041,7 +1043,7 @@ $prodParam = $prod ? '&prod=' . $prod : '';
     }
     
 	function jsExportar() {
-		document.location.href="exportPackingList.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value;
+           document.location.href="exportPackingList.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value+prodParam;
 	}	
     
     </script>
