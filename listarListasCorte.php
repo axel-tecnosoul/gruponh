@@ -238,6 +238,7 @@ include 'database.php';?>
                             <th>Concepto</th>
                             <th>Cant. Pos</th>
                             <th>Cant. Tot</th>
+                            <th>Cant. OT</th>
                             <th>Cant. Lib</th>
                             <th>Cant. Rech</th>
                             <th>Cant. Reproc</th>
@@ -254,6 +255,7 @@ include 'database.php';?>
                             <th>Concepto</th>
                             <th>Cant. Pos</th>
                             <th>Cant. Tot</th>
+                            <th>Cant. OT</th>
                             <th>Cant. Lib</th>
                             <th>Cant. Rech</th>
                             <th>Cant. Reproc</th>

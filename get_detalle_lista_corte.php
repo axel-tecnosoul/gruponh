@@ -14,6 +14,7 @@ $sql = " SELECT
     m.concepto,
     lcp.cantidad AS cant_pos,
     (lcc.cantidad * lcp.cantidad) AS cant_total,
+    COALESCE(otd.cant_ot,0) AS cant_ot,
     COALESCE(otd.cant_liberadas,0) AS cant_liberadas,
     COALESCE(otd.cant_rechazadas,0) AS cant_rechazadas,
     COALESCE(otd.cant_reproceso,0) AS cant_reproceso,
@@ -26,9 +27,14 @@ $sql = " SELECT
   LEFT JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion = lcp.id
   LEFT JOIN tipos_procesos tp ON lcpr.id_tipo_proceso = tp.id
   LEFT JOIN (
-      SELECT id_posicion, SUM(cant_liberadas) AS cant_liberadas, SUM(cant_rechazadas) AS cant_rechazadas, SUM(cant_proceso) AS cant_reproceso
-      FROM ordenes_trabajo_detalle
-      GROUP BY id_posicion
+      SELECT otd.id_posicion,
+             SUM(otd.cant_liberadas) AS cant_liberadas,
+             SUM(otd.cant_rechazadas) AS cant_rechazadas,
+             SUM(otd.cant_proceso) AS cant_reproceso,
+             SUM(CASE WHEN ot.id_estado_orden_trabajo = 3 THEN otd.cantidad ELSE 0 END) AS cant_ot
+      FROM ordenes_trabajo_detalle otd
+      INNER JOIN ordenes_trabajo ot ON ot.id = otd.id_orden_trabajo
+      GROUP BY otd.id_posicion
   ) otd ON otd.id_posicion = lcp.id
   WHERE lcc.id_lista_corte = $id_lc
   GROUP BY lcp.id";
@@ -47,11 +53,12 @@ foreach ($pdo->query($sql) as $row) {
     3=>$row["concepto"],
     4=>$row["cant_pos"],
     5=>$row["cant_total"],
-    6=>$row["cant_liberadas"],
-    7=>$row["cant_rechazadas"],
-    8=>$row["cant_reproceso"],
-    9=>$row["procesos"],
-    10=>$row["estado"]
+    6=>$row["cant_ot"],
+    7=>$row["cant_liberadas"],
+    8=>$row["cant_rechazadas"],
+    9=>$row["cant_reproceso"],
+    10=>$row["procesos"],
+    11=>$row["estado"]
   ];
 }
 
