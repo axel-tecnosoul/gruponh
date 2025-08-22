@@ -1,6 +1,7 @@
 <?php
 // tests/quicktests.php
 
+$_REQUEST['prod'] = 1;
 require '../config.php';
 require '../database.php';
 //require '../funciones.php'; // aquí está superarRevisionAnterior()
