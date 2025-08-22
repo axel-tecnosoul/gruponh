@@ -170,7 +170,7 @@ include 'database.php';
                               </tr><?php
                             }
                             Database::disconnect();
-                                                              }?>
+                          }?>
                         </tbody>
 						            <tfoot>
                           <tr>
@@ -227,7 +227,7 @@ include 'database.php';
                           </tr>
                         </thead>
                         <tbody></tbody>
-                                                            <tfoot>
+                        <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
                             <th>Conjunto</th>
