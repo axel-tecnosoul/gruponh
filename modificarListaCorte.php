@@ -6,6 +6,9 @@ if (empty($_SESSION['user'])) {
 }
 
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 $id_lista_corte_revision = null;
 if (!empty($_GET['id_lista_corte_revision'])) {
@@ -13,7 +16,7 @@ if (!empty($_GET['id_lista_corte_revision'])) {
 }
 
 if (null==$id_lista_corte_revision) {
-  header("Location: listarListasCorte.php");
+  header("Location: listarListasCorte.php$prodQuery");
 }
 
 if (!empty($_POST)) {
@@ -76,10 +79,10 @@ if (!empty($_POST)) {
       
       //chequear si cambia el estado y llevar al listado de listas de corte o permitir modificar conjuntos
 
-      $redirect="nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision;
+      $redirect="nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision.$prodParam;
       //header("Location: nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision);
     }elseif($_POST['btn1']=="revisar"){
-      $redirect="revisionListasCorte.php?id_lista_corte_revision=".$id_lista_corte_revision;
+      $redirect="revisionListasCorte.php?id_lista_corte_revision=".$id_lista_corte_revision.$prodParam;
       //header("Location: revisionListasCorte.php?id_lista_corte_revision=".$id_lista_corte_revision);
     }
 
@@ -138,7 +141,7 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
 
-    $redirect="nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision;
+    $redirect="nuevaListaCorteConjuntos.php?id_lista_corte_revision=".$id_lista_corte_revision.$prodParam;
   }
 
   if ($modoDebug==1) {
@@ -209,7 +212,8 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="modificarListaCorte.php?id_lista_corte_revision=<?=$id_lista_corte_revision?>" enctype="multipart/form-data">
+                                            <form class="form theme-form" role="form" method="post" action="modificarListaCorte.php?id_lista_corte_revision=<?=$id_lista_corte_revision?><?= $prodParam ?>" enctype="multipart/form-data">
+                    <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body"><?php
                       if($id_estado_lista_corte!=1){?>
                         <div class="row">
@@ -476,7 +480,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
 					              <button class="btn btn-primary" value="<?=$accion?>" name="btn1" type="submit">Modificar</button>
-                        <a href='listarListasCorte.php' class="btn btn-light">Volver</a>
+                        <a href='listarListasCorte.php<?= $prodQuery ?>' class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -493,7 +497,8 @@ if (!empty($_POST)) {
     <div class="modal fade" id="modalConjuntos" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
 		  <div class="modal-dialog" role="document">
 		    <div class="modal-content">
-          <form action="modificarConjuntoListaCorte.php?id_lista_corte=<?=$id?>&revision=<?=$_GET['revision']?>" method="POST">
+          <form action="modificarConjuntoListaCorte.php?id_lista_corte=<?=$id?>&revision=<?=$_GET['revision']?><?= $prodParam ?>" method="POST">
+            <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
             <div class="modal-header">
               <h5 class="modal-title" id="exampleModalConjuntoLabel">Modificacion de conjunto</h5>
               <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>

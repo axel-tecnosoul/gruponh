@@ -5,6 +5,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 
 if(isset($_GET["id_lista_corte"])){
   $id_lista_corte = filter_input(INPUT_GET, 'id_lista_corte', FILTER_VALIDATE_INT);
@@ -12,7 +15,7 @@ if(isset($_GET["id_lista_corte"])){
   $id_lista_corte = false;
 }
 if (!$id_lista_corte) {
-  header("Location: listarListasCorte.php");
+  header("Location: listarListasCorte.php$prodQuery");
   die("Redirecting to listarListasCorte.php");
 }
 
@@ -31,11 +34,11 @@ if (!empty($_POST)) {
 
     if(isset($_POST['btn2'])){
       $id_lista_corte_conjunto = filter_input(INPUT_POST,'btn2',FILTER_VALIDATE_INT);
-      $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte;
+      $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte.$prodParam;
     }
     if(isset($_POST['btn3'])){
       $id_lista_corte_conjunto = filter_input(INPUT_POST,'btn3',FILTER_VALIDATE_INT);
-      $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto;
+      $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam;
     }
 	
     $sql = "SELECT count(*) cant FROM `listas_corte_conjuntos` WHERE nombre = ? and id_lista_corte = ? and id <> ? ";
@@ -53,7 +56,7 @@ if (!empty($_POST)) {
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
 	} else {
-		$redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte=".$id_lista_corte;
+        $redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte=".$id_lista_corte.$prodParam;
 	}
     
 
@@ -77,9 +80,9 @@ if (!empty($_POST)) {
       $q = $pdo->prepare($sql);
       $q->execute(array($_SESSION['user']['id']));
 
-      $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto;
+      $redirect="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam;
     } else {
-      $redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte=".$id_lista_corte;
+      $redirect="nuevaListaCorteConjuntos.php?error=1&id_lista_corte=".$id_lista_corte.$prodParam;
     }
   }
 
@@ -143,7 +146,8 @@ Database::disconnect();?>
                       <a href="#" id="link_ver_posicion"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Posiciones" title="Ver Posiciones"></a>&nbsp;&nbsp;
                     </h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="nuevaListaCorteConjuntos.php?id_lista_corte=<?=$id_lista_corte?>">
+                                                <form class="form theme-form" role="form" method="post" action="nuevaListaCorteConjuntos.php?id_lista_corte=<?=$id_lista_corte?><?= $prodParam ?>">
+                    <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -219,7 +223,7 @@ Database::disconnect();?>
                         <?php if ($cantidadConjuntos > 0) { ?>
                         <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
                         <?php } ?>
-                        <a href='listarListasCorte.php' id="volverListaCorte" class="btn btn-danger">Guardar y volver al listado</a>
+                        <a href='listarListasCorte.php<?= $prodQuery ?>' id="volverListaCorte" class="btn btn-danger">Guardar y volver al listado</a>
                       </div>
                     </div>
                   </form>
@@ -233,7 +237,8 @@ Database::disconnect();?>
         <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
-              <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$id_lista_corte?>">
+              <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$id_lista_corte?><?= $prodParam ?>">
+                <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                 <div class="modal-header">
                   <h5 class="modal-title">Confirmar envío a aprobación</h5>
                   <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -384,7 +389,7 @@ Database::disconnect();?>
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
-            $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_conjunto);
+            $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_conjunto+"<?= $prodParam ?>");
             //$("#link_modificar_conjunto").attr("href","modificarListaCorteConjunto.php?id="+id_conjunto);
             $("#link_modificar_conjunto").on("click",function(){
               let nombre = t.find("td:nth-child(2)").html();
@@ -402,10 +407,10 @@ Database::disconnect();?>
                 $("#volverListaCorte").toggleClass("d-none")
               }
             })
-            $("#link_ver_posicion").attr("href","nuevaListaCortePosiciones.php?modo=update&id_lista_corte_conjunto="+id_conjunto);
+            $("#link_ver_posicion").attr("href","nuevaListaCortePosiciones.php?modo=update&id_lista_corte_conjunto="+id_conjunto+"<?= $prodParam ?>");
             //$("#link_eliminar_conjunto").attr("href","eliminarConjuntoListaCorte.php?id="+id_conjunto);
             $("#link_eliminar_conjunto").data("id",id_conjunto);
-            $("#link_nueva_posicion").attr("href","nuevaListaCortePosiciones.php?id_lista_corte_conjunto="+id_conjunto);
+            $("#link_nueva_posicion").attr("href","nuevaListaCortePosiciones.php?id_lista_corte_conjunto="+id_conjunto+"<?= $prodParam ?>");
           }
         });
     
@@ -416,7 +421,7 @@ Database::disconnect();?>
         if(id_conjunto!="" && id_conjunto>0){
           let modal=$("#eliminarConjunto")
           modal.modal("show")
-          modal.find(".modal-footer a").attr("href","eliminarConjuntoListaCorte.php?id="+id_conjunto)
+          modal.find(".modal-footer a").attr("href","eliminarConjuntoListaCorte.php?id="+id_conjunto+"<?= $prodParam ?>")
         }
       });
 
