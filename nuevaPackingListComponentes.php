@@ -6,13 +6,17 @@ if (empty($_SESSION['user'])) {
 }
 require 'database.php';
 
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
+
 $id_packing_list_seccion = null;
 if (!empty($_GET['id_packing_list_seccion'])) {
   $id_packing_list_seccion = $_REQUEST['id_packing_list_seccion'];
 }
 
 if (null==$id_packing_list_seccion) {
-  header("Location: listarPackingList.php");
+  header("Location: listarPackingList.php$prodQuery");
 }
 
 $pdo = Database::connect();
@@ -100,7 +104,7 @@ if (!empty($_POST)) {
       die();
     } else {
       Database::disconnect();
-      header("Location: nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion);
+      header("Location: nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion.$prodParam);
       
     }
 
@@ -165,7 +169,7 @@ if (!empty($_POST)) {
 			  }
 			}
 			  
-			$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Componente ID #$id_componente en Seccion de Packing List','Packing List','verPackingList.php?id=$id_packing_list')";
+                    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Componente ID #$id_componente en Seccion de Packing List','Packing List','verPackingList.php?id=$id_packing_list$prodParam')";
 			$q = $pdo->prepare($sql);
 			$q->execute(array($_SESSION['user']['id']));
 
@@ -186,10 +190,10 @@ if (!empty($_POST)) {
 				$q->execute([$id_packing_list_seccion]);
 				$data = $q->fetch(PDO::FETCH_ASSOC);
 
-				header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$data["id_packing_list_revision"]);
-			  } else {
-				header("Location: nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion);
-			  }
+                                header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$data["id_packing_list_revision"].$prodParam);
+                          } else {
+                                header("Location: nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion.$prodParam);
+                          }
 			}	
 		}
 		
@@ -256,7 +260,7 @@ Database::disconnect();
                       <!-- <a href="#" id="link_ver_componente_lc"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>&nbsp;&nbsp; -->
                     </h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="nuevaPackingListComponentes.php?id_packing_list_seccion=<?=$id_packing_list_seccion?>">
+                                                <form class="form theme-form" role="form" method="post" action="nuevaPackingListComponentes.php?id_packing_list_seccion=<?=$id_packing_list_seccion?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="form-group col-12">
@@ -355,6 +359,7 @@ Database::disconnect();
                           <label for="observaciones">Observaciones</label>
                           <textarea name="observaciones" id="observaciones" class="form-control"></textarea>
                         </div>
+                        <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                       </div>
                     </div>
                     <div class="card-footer">
@@ -363,7 +368,7 @@ Database::disconnect();
                         <button type="submit" value="2" name="btn2" class="btn btn-primary addComponente">Crear y volver a Secciones</button>
                         <button type="submit" value="3" name="btn3" id="editComponente" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditComponente" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='nuevaPackingListSecciones.php?id_packing_list_revision=<?=$data["id_packing_list"]?>' class="btn btn-light">Volver</a>
+                        <a href='nuevaPackingListSecciones.php?id_packing_list_revision=<?=$data["id_packing_list"]?><?= $prodParam ?>' class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -434,6 +439,9 @@ Database::disconnect();
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
+      const prod = <?= $prod ?? 0 ?>;
+      const prodQuery = prod ? '?prod=' + prod : '';
+      const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function () {
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
@@ -491,7 +499,7 @@ Database::disconnect();
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
-            $("#link_modificar_componente").attr("href","modificarComponentePackingList.php?id="+id_componente);
+            $("#link_modificar_componente").attr("href","modificarComponentePackingList.php?id="+id_componente+prodParam);
             $("#link_modificar_componente").on("click",function(){
               let id_concepto = t.find("td:nth-child(2)").data("id");
               let id_conjunto = t.find("td:nth-child(3)").data("id");
@@ -526,7 +534,7 @@ Database::disconnect();
         if(id_componente!="" && id_componente>0){
           let modal=$("#eliminarComponente")
           modal.modal("show")
-          modal.find(".modal-footer a").attr("href","eliminarComponentePackingList.php?id="+id_componente)
+          modal.find(".modal-footer a").attr("href","eliminarComponentePackingList.php?id="+id_componente+prodParam)
         }
       });
 

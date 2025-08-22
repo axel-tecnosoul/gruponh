@@ -7,13 +7,17 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
+
 $id = null;
 if (!empty($_GET['id'])) {
   $id = $_REQUEST['id'];
 }
 
 if (null==$id) {
-  header("Location: listarPackingList.php");
+  header("Location: listarPackingList.php$prodQuery");
 }
 
 if (!empty($_POST)) {

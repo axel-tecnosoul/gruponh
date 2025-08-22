@@ -6,6 +6,10 @@
     }
     
     require 'database.php';
+
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
     
     if (!empty($_POST)) {
         
@@ -17,12 +21,12 @@
         $q = $pdo->prepare($sql);
         $q->execute([$_GET['id'],$_POST['id_conjunto_lista_corte'],$_POST['id_concepto'],$_POST['cantidad'],$_POST['observaciones']]);
         
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Componente de Sección en Packing List','Packing List','verPackingList.php?id=$id')";
+                $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Componente de Sección en Packing List','Packing List','verPackingList.php?id=$id$prodParam')";
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
 		
         Database::disconnect();
-        header("Location: listarPackingList.php");
+        header("Location: listarPackingList.php$prodQuery");
     } 
 	$pdo = Database::connect();
 	$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -64,7 +68,7 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-					<form class="form theme-form" role="form" method="post" action="nuevoComponentePackingList.php?id=<?php echo $_GET['id']?>">
+                                        <form class="form theme-form" role="form" method="post" action="nuevoComponentePackingList.php?id=<?php echo $_GET['id']?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -112,17 +116,18 @@
 							<label class="col-sm-3 col-form-label">Cantidad(*)</label>
 							<div class="col-sm-9"><input name="cantidad" type="number" step="0.01" class="form-control" required="required"></div>
 						  </div>
-						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Observaciones(*)</label>
-							<div class="col-sm-9"><textarea name="observaciones" class="form-control" required="required"></textarea></div>
-						  </div>
+                                                  <div class="form-group row">
+                                                        <label class="col-sm-3 col-form-label">Observaciones(*)</label>
+                                                        <div class="col-sm-9"><textarea name="observaciones" class="form-control" required="required"></textarea></div>
+                                                  </div>
+                                                  <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
 						<button class="btn btn-primary" type="submit">Crear</button>
-						<a href="listarPackingList.php" class="btn btn-light">Volver</a>
+                                                <a href="listarPackingList.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
