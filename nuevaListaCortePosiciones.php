@@ -594,7 +594,7 @@ Database::disconnect();?>
           <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="modalPosicionesProyectoLabel">Posiciones del Proyecto</h5>
+                <h5 class="modal-title" id="modalPosicionesProyectoLabel">Posiciones del Proyecto <?=$descripcionProyecto?></h5>
                 <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
               </div>
               <div class="modal-body">
@@ -602,24 +602,32 @@ Database::disconnect();?>
                   <table class="table" id="tablaPosicionesProyecto">
                     <thead>
                       <tr>
-                        <th>LC Nº</th>
-                        <th>Rev</th>
-                        <th>Conjunto</th>
-                        <th>Posición</th>
-                        <th>Cantidad</th>
-                        <th>Material</th>
+                        <th style="width:70px;">LC Nº</th>
+                        <th style="width:50px;">Rev</th>
+                        <th style="width:100px;">Conjunto</th>
+                        <th style="width:70px;">Posicion</th>
+                        <th style="width:70px;">Cantidad</th>
+                        <th style="width:300px;">Material</th>
+                        <th style="width:70px;">Ancho</th>
+                        <th style="width:70px;">Largo</th>
+                        <th style="width:70px;">Diametro</th>
+                        <th style="width:70px;">Marca</th>
+                        <th style="width:120px;">Procesos</th>
                       </tr>
                     </thead>
                     <tbody>
                       <?php
                         $pdoModal = Database::connect();
                         $pdoModal->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                        $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto "
+                        $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto, pos.ancho, pos.largo, pos.diametro, pos.marca, "
+                                   ."GROUP_CONCAT(tp.tipo SEPARATOR ', ') AS procesos "
                                    ."FROM listas_corte lc "
                                    ."JOIN listas_corte_conjuntos lcc ON lcc.id_lista_corte = lc.id "
                                    ."JOIN lista_corte_posiciones pos ON pos.id_lista_corte_conjunto = lcc.id "
                                    ."JOIN materiales m ON m.id = pos.id_material "
-                                   ."WHERE lc.id_proyecto = ? ORDER BY lc.numero, lcc.nombre, pos.posicion";
+                                   ."LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion = pos.id "
+                                   ."LEFT JOIN tipos_procesos tp ON tp.id = lcp.id_tipo_proceso "
+                                   ."WHERE lc.id_proyecto = ? GROUP BY pos.id ORDER BY lc.numero, lcc.nombre, pos.posicion";
                         $qModal = $pdoModal->prepare($sqlModal);
                         $qModal->execute([$data['id_proyecto']]);
                         while ($rowModal = $qModal->fetch(PDO::FETCH_ASSOC)) {
@@ -630,6 +638,11 @@ Database::disconnect();?>
                           echo "<td>".$rowModal['posicion']."</td>";
                           echo "<td>".$rowModal['cantidad']."</td>";
                           echo "<td>".$rowModal['concepto']."</td>";
+                          echo "<td>".$rowModal['ancho']."</td>";
+                          echo "<td>".$rowModal['largo']."</td>";
+                          echo "<td>".$rowModal['diametro']."</td>";
+                          echo "<td>".$rowModal['marca']."</td>";
+                          echo "<td>".$rowModal['procesos']."</td>";
                           echo "</tr>";
                         }
                         Database::disconnect();
@@ -742,6 +755,11 @@ Database::disconnect();?>
         $('#tablaPosicionesProyecto').DataTable({
           stateSave: false,
           responsive: true,
+          columnDefs: [
+            { width: '70px', targets: [0,1,3,4,6,7,8,9] },
+            { width: '100px', targets: [2,10] },
+            { width: '300px', targets: [5] }
+          ],
           language: {
           "decimal": "",
           "emptyTable": "No hay información",
