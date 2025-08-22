@@ -445,17 +445,6 @@ Database::disconnect();?>
                                 $sql = " SELECT pos.id, pos.posicion, pos.cantidad, m.concepto, pos.id_material, pos.ancho, pos.largo, pos.diametro, pos.marca, pos.peso_calculado_posicion, GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, GROUP_CONCAT(tp.id SEPARATOR ',') AS id_procesos, pos.finalizado FROM lista_corte_posiciones pos inner join materiales m on m.id = pos.id_material LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion=pos.id LEFT JOIN tipos_procesos tp ON lcp.id_tipo_proceso=tp.id WHERE pos.id_lista_corte_conjunto = ".$id_lista_corte_conjunto." GROUP BY pos.id ";
                                 foreach ($pdo->query($sql) as $row) {
                                   $pesoPosicion = $row["peso_calculado_posicion"];
-                                  /*if (str_starts_with($row["concepto"], "Chapa")) {
-                                    if (empty($row["largo"]) && empty($row["ancho"])) {
-                                      $pesoPosicion = $row["peso"]*$row["diametro"]*$row["diametro"];
-                                    } else {
-                                      $pesoPosicion = $row["peso"]*$row["largo"]*$row["ancho"]/1000;	
-                                    }
-                                  }
-                                  if (str_starts_with($row["concepto"], "Perfil")) {
-                                    $pesoPosicion = $row["peso"]*$row["largo"]/1000000;
-                                  }*/
-                                  //hacer la logica y sumar el peso
                                   $pesoTotal += $pesoPosicion;?>
                                   <tr>
                                     <td class="d-none"><?=$row["id"]?></td>
@@ -473,7 +462,7 @@ Database::disconnect();?>
                                 Database::disconnect();?>
                               </tbody>
                             </table>
-                                                                      <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,2,",",".");?>&nbsp;kgs</b>
+                            <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,2,",",".");?>&nbsp;kgs</b>
                           </div>
                         </div>
                       </div>
@@ -615,38 +604,35 @@ Database::disconnect();?>
                         <th style="width:120px;">Procesos</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      <?php
-                        $pdoModal = Database::connect();
-                        $pdoModal->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                        $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto, pos.ancho, pos.largo, pos.diametro, pos.marca, "
-                                   ."GROUP_CONCAT(tp.tipo SEPARATOR ', ') AS procesos "
-                                   ."FROM listas_corte lc "
-                                   ."JOIN listas_corte_conjuntos lcc ON lcc.id_lista_corte = lc.id "
-                                   ."JOIN lista_corte_posiciones pos ON pos.id_lista_corte_conjunto = lcc.id "
-                                   ."JOIN materiales m ON m.id = pos.id_material "
-                                   ."LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion = pos.id "
-                                   ."LEFT JOIN tipos_procesos tp ON tp.id = lcp.id_tipo_proceso "
-                                   ."WHERE lc.id_proyecto = ? GROUP BY pos.id ORDER BY lc.numero, lcc.nombre, pos.posicion";
-                        $qModal = $pdoModal->prepare($sqlModal);
-                        $qModal->execute([$data['id_proyecto']]);
-                        while ($rowModal = $qModal->fetch(PDO::FETCH_ASSOC)) {
-                          echo "<tr>";
-                          echo "<td>".$rowModal['numero']."</td>";
-                          echo "<td>".$rowModal['nro_revision']."</td>";
-                          echo "<td>".$rowModal['nombre']."</td>";
-                          echo "<td>".$rowModal['posicion']."</td>";
-                          echo "<td>".$rowModal['cantidad']."</td>";
-                          echo "<td>".$rowModal['concepto']."</td>";
-                          echo "<td>".$rowModal['ancho']."</td>";
-                          echo "<td>".$rowModal['largo']."</td>";
-                          echo "<td>".$rowModal['diametro']."</td>";
-                          echo "<td>".$rowModal['marca']."</td>";
-                          echo "<td>".$rowModal['procesos']."</td>";
-                          echo "</tr>";
-                        }
-                        Database::disconnect();
-                      ?>
+                    <tbody><?php
+                      $pdoModal = Database::connect();
+                      $pdoModal->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                      $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto, pos.ancho, pos.largo, pos.diametro, pos.marca, GROUP_CONCAT(tp.tipo SEPARATOR ', ') AS procesos
+                      FROM listas_corte lc
+                        JOIN listas_corte_conjuntos lcc ON lcc.id_lista_corte = lc.id
+                        JOIN lista_corte_posiciones pos ON pos.id_lista_corte_conjunto = lcc.id
+                        JOIN materiales m ON m.id = pos.id_material
+                        LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion = pos.id
+                        LEFT JOIN tipos_procesos tp ON tp.id = lcp.id_tipo_proceso
+                      WHERE lc.id_proyecto = ? AND lc.id_estado_lista_corte IN (3,4,5) GROUP BY pos.id ORDER BY lc.numero, lcc.nombre, pos.posicion";
+                      $qModal = $pdoModal->prepare($sqlModal);
+                      $qModal->execute([$data['id_proyecto']]);
+                      while ($rowModal = $qModal->fetch(PDO::FETCH_ASSOC)) {?>
+                        <tr>
+                          <td><?=$rowModal['numero']?></td>
+                          <td><?=$rowModal['nro_revision']?></td>
+                          <td><?=$rowModal['nombre']?></td>
+                          <td><?=$rowModal['posicion']?></td>
+                          <td><?=$rowModal['cantidad']?></td>
+                          <td><?=$rowModal['concepto']?></td>
+                          <td><?=$rowModal['ancho']?></td>
+                          <td><?=$rowModal['largo']?></td>
+                          <td><?=$rowModal['diametro']?></td>
+                          <td><?=$rowModal['marca']?></td>
+                          <td><?=$rowModal['procesos']?></td>
+                        </tr><?php
+                      }
+                      Database::disconnect();?>
                     </tbody>
                   </table>
                 </div>
@@ -810,7 +796,9 @@ Database::disconnect();?>
               let marca = t.find("td:nth-child(8)").html();
               let peso = t.find("td:nth-child(9)").html();
               let procesos = t.find("td:nth-child(10)").data("id");
-              let aProcesos = procesos.split(",");
+              console.log(procesos);
+              //let aProcesos = procesos.split(",");
+              let aProcesos = String(procesos ?? '').split(',').filter(Boolean)
 
               let disablePosicion=false
               if(id_estado_lista_corte>1){
