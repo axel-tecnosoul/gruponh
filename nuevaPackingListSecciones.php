@@ -5,6 +5,9 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
 if (!empty($_POST)) {
     
   // insert data
@@ -20,11 +23,11 @@ if (!empty($_POST)) {
 
     if(isset($_POST['btn2'])){
       $id_packing_list_seccion=$_POST['btn2'];
-      $redirect="nuevaPackingListSecciones.php?id_packing_list_revision=".$_GET["id_packing_list_revision"];
+      $redirect="nuevaPackingListSecciones.php?id_packing_list_revision=".$_GET["id_packing_list_revision"].$prodParam;
     }
     if(isset($_POST['btn3'])){
       $id_packing_list_seccion=$_POST['btn3'];
-      $redirect="nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion;
+      $redirect="nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion.$prodParam;
     }
 
     $sql = "UPDATE packing_lists_secciones SET cantidad = ?, observaciones = ? WHERE id = ?";
@@ -48,7 +51,7 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
 
-    $redirect="nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion;
+    $redirect="nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion.$prodParam;
   }
 
   Database::disconnect();
@@ -104,7 +107,7 @@ Database::disconnect();
                       }*/?>
                     </h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="nuevaPackingListSecciones.php?id_packing_list_revision=<?=$id_packing_list_revision?>">
+                                                <form class="form theme-form" role="form" method="post" action="nuevaPackingListSecciones.php?id_packing_list_revision=<?=$id_packing_list_revision?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -154,6 +157,7 @@ Database::disconnect();
                             </div>
                           </div>
                           
+                        <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                         </div>
                       </div>
                     </div>
@@ -166,7 +170,7 @@ Database::disconnect();
                         <button type="submit" value="2" name="btn2" id="editSeccion" class="btn btn-success d-none">Modificar</button>
                         <button type="submit" value="3" name="btn3" id="editSeccionGoComponentes" class="btn btn-primary d-none">Modificar e ir a Componentes</button>
                         <button type="button" id="cancelEditSeccion" class="btn btn-light d-none">Cancelar Modificar</button>
-                        <a href='listarPackingList.php' id="volverPackingList" class="btn btn-light">Volver al Packing list</a>
+                        <a href='listarPackingList.php<?= $prodQuery ?>' id="volverPackingList" class="btn btn-light">Volver al Packing list</a>
                       </div>
                     </div>
                   </form>
@@ -237,6 +241,9 @@ Database::disconnect();
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
+      const prod = <?= $prod ?? 0 ?>;
+      const prodQuery = prod ? '?prod=' + prod : '';
+      const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function () {
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
@@ -297,7 +304,7 @@ Database::disconnect();
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
-            $("#link_ver_seccion_pl").attr("href","verSeccionPackingList.php?id="+id_seccion);
+            $("#link_ver_seccion_pl").attr("href","verSeccionPackingList.php?id="+id_seccion+prodParam);
             //$("#link_modificar_seccion").attr("href","modificarPackingListSeccion.php?id="+id_seccion);
             $("#link_modificar_seccion").on("click",function(){
               let cantidad = t.find("td:nth-child(3)").html();
@@ -317,7 +324,7 @@ Database::disconnect();
             })
             //$("#link_eliminar_seccion").attr("href","eliminarSeccionPackingList.php?id="+id_seccion);
             $("#link_eliminar_seccion").data("id",id_seccion);
-            $("#link_nueva_componente").attr("href","nuevaPackingListComponentes.php?id_packing_list_seccion="+id_seccion);
+            $("#link_nueva_componente").attr("href","nuevaPackingListComponentes.php?id_packing_list_seccion="+id_seccion+prodParam);
           }
         });
     
@@ -328,7 +335,7 @@ Database::disconnect();
         if(id_seccion!="" && id_seccion>0){
           let modal=$("#eliminarSeccion")
           modal.modal("show")
-          modal.find(".modal-footer a").attr("href","eliminarSeccionPackingList.php?id="+id_seccion)
+          modal.find(".modal-footer a").attr("href","eliminarSeccionPackingList.php?id="+id_seccion+prodParam)
         }
       });
 

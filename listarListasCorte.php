@@ -32,6 +32,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 	  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
+    <input type="hidden" id="prod" value="<?= isset($_GET['prod']) ? (int)$_GET['prod'] : '' ?>">
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <!-- Page Header Start--><?php
@@ -412,6 +413,9 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
+      const params = new URLSearchParams(window.location.search);
+      const prod = params.get('prod') || document.getElementById('prod')?.value || '';
+      const prodParam = prod ? '&prod=' + prod : '';
       var table;
       let accionPendiente = null;
       let id_lista_corte = null;
@@ -494,7 +498,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           }
           const filaActiva = $("#dataTables-example666 tbody tr.selected");
           const id_lista_corte = filaActiva.data("id-lista-corte");
-          formRevision.attr("action", `nuevaRevisionListaCorte.php?id_lista_corte=${id_lista_corte}`);
+          formRevision.attr("action", `nuevaRevisionListaCorte.php?id_lista_corte=${id_lista_corte}${prodParam}`);
           this.submit();
         });
 
@@ -559,11 +563,11 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             //t.parent().find("tr").removeClass("selected");
             selectRow(t);
             get_detalle_lista_corte(id_lc)
-            $("#link_imprimir_lc").attr("target","_blank").attr("href","imprimirListaCorte.php?id="+id_lc);
+            $("#link_imprimir_lc").attr("target","_blank").attr("href","imprimirListaCorte.php?id="+id_lc+prodParam);
             if (estado != "Cancelada") {
               //$("#link_modificar_lc").attr("href","modificarListaCorte.php?id_lista_corte_revision="+id_lc);//old version
-              $("#link_modificar_lc").attr("href","nuevaListaCorte.php?modo=update&id_lista_corte="+id_lc);
-              $("#link_ot_lc").attr("href","nuevaOrdenTrabajo.php?id_lista_corte="+id_lc);
+              $("#link_modificar_lc").attr("href","nuevaListaCorte.php?modo=update&id_lista_corte="+id_lc+prodParam);
+              $("#link_ot_lc").attr("href","nuevaOrdenTrabajo.php?id_lista_corte="+id_lc+prodParam);
             } else {
               $("#link_modificar_lc").attr("href","#");
               $("#link_ot_lc").attr("href","#");
@@ -636,7 +640,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
       function cancelarLC(){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
         const id_lista_corte = filaActiva.data("id-lista-corte");
-        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+id_lista_corte);
+        $("#btnEliminarListaCorte").attr("href","eliminarListaCorte.php?id="+id_lista_corte+prodParam);
         $("#eliminarModal").modal("show");
       }
 
@@ -658,7 +662,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             alert('Debe seleccionar una tarea');
             return;
           }
-          window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}`;
+          window.location.href = `clonarListaCorte.php?id_lista_corte=${id}&revision=${revision}&id_tarea=${idTarea}${prodParam}`;
         });
         $("#modalClonar").modal("show");
       }
@@ -765,7 +769,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
       }
 	  
       function jsExportar() {
-        document.location.href="exportListasCorte.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value;
+        document.location.href="exportListasCorte.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value+prodParam;
       }
 
     </script>

@@ -35,6 +35,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 	  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
+    <input type="hidden" id="prod" value="<?= isset($_GET['prod']) ? (int)$_GET['prod'] : '' ?>">
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <!-- Page Header Start--><?php
@@ -495,7 +496,8 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
-      const prod = <?= isset($_GET['prod']) ? (int)$_GET['prod'] : 0 ?>;
+      const params = new URLSearchParams(window.location.search);
+      const prod = params.get('prod') || document.getElementById('prod')?.value || '';
       const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function() {
         // Setup - add a text input to each footer cell
@@ -664,10 +666,14 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           formRevision.append(`<input type="hidden" name="id"       value="${id}">`);
           formRevision.append(`<input type="hidden" name="modo"     value="${modo}">`);
           formRevision.append(`<input type="hidden" name="revision" value="${revision}">`);
+          if(prod){
+            formRevision.find("input[name='prod']").remove();
+            formRevision.append(`<input type="hidden" name="prod" value="${prod}">`);
+          }
           // motivo ya lo tiene como textarea name="motivoRevision"
 
           // Finalmente envío el POST al mismo script
-          formRevision.attr("action", url.pathname);
+          formRevision.attr("action", url.pathname + (prod ? '?prod=' + prod : ''));
           this.submit();
         });
 
@@ -678,7 +684,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             alert("Por favor seleccione un cómputo para aprobar")
           } else {
             let id=$(this).data('id');
-            $("#btnAprobar").attr("href","aprobarComputo.php?id="+id);
+            $("#btnAprobar").attr("href","aprobarComputo.php?id="+id+prodParam);
           }
         })
 
@@ -688,7 +694,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             alert("Por favor seleccione un cómputo para enviar a aprobación")
           } else {
             let id=$(this).data('id');
-            $("#btnEnviarAprobar").attr("href","aprobarComputo.php?id="+id);
+            $("#btnEnviarAprobar").attr("href","aprobarComputo.php?id="+id+prodParam);
           }
         })
 
@@ -698,7 +704,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             alert("Por favor seleccione un cómputo no aprobado para eliminar")
           } else {
             let id=$(this).data('id');
-            $("#btnEliminar").attr("href","eliminarComputo.php?id="+id);
+            $("#btnEliminar").attr("href","eliminarComputo.php?id="+id+prodParam);
           }
         })
       
@@ -1015,7 +1021,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           let id_computo=this.dataset.id_computo;
           let modal=$("#cancelarReservaModal");
           modal.modal("show");
-          modal.find(".btn-primary").attr("href","cancelarStockPedido.php?id="+id_computo_detalle+"&idComputo="+id_computo);
+          modal.find(".btn-primary").attr("href","cancelarStockPedido.php?id="+id_computo_detalle+"&idComputo="+id_computo+prodParam);
         });
 
       });
@@ -1094,7 +1100,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
       }
 
       function jsExportar() {
-        document.location.href="exportComputos.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value;
+        document.location.href="exportComputos.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value+prodParam;
       }
       
     </script>

@@ -10,6 +10,10 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
+$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+$prodQuery = $prod ? '?prod=' . $prod : '';
+$prodParam = $prod ? '&prod=' . $prod : '';
+
 if (!empty($_POST)) {
     
   // insert data
@@ -67,7 +71,7 @@ if (!empty($_POST)) {
   $id_packing_list_revision = $pdo->lastInsertId();
 
 
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Packing List','Listas de Corte','verPackingList.php?id=$id_packing_list_revision')";
+  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Packing List','Listas de Corte','verPackingList.php?id=$id_packing_list_revision$prodParam')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
   
@@ -140,7 +144,7 @@ if (!empty($_POST)) {
 
   Database::disconnect();
   //header("Location: listarPackingList.php");
-  header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$id_packing_list_revision);
+  header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$id_packing_list_revision.$prodParam);
 }?>
 <!DOCTYPE html>
 <html lang="en">
@@ -174,7 +178,7 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" action="nuevaPackingList.php" enctype="multipart/form-data">
+                                          <form class="form theme-form" role="form" method="post" action="nuevaPackingList.php<?= $prodQuery ?>" enctype="multipart/form-data">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -256,14 +260,15 @@ if (!empty($_POST)) {
 							</select>
 							</div>
 							</div>
-						  <input type="hidden" name="id_tarea" value="<?php if (!empty($_GET['idTarea'])) echo $_GET['idTarea'];?>" />
+                                                  <input type="hidden" name="id_tarea" value="<?php if (!empty($_GET['idTarea'])) echo $_GET['idTarea'];?>" />
+                                                  <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>" />
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Crear y agregar Secciones</button>
-						            <a href="listarPackingList.php" class="btn btn-light">Volver</a>
+                                                            <a href="listarPackingList.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

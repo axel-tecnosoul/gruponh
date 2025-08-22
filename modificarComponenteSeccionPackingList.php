@@ -7,13 +7,17 @@
     
     require 'database.php';
 
+    $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
+    $prodQuery = $prod ? '?prod=' . $prod : '';
+    $prodParam = $prod ? '&prod=' . $prod : '';
+
     $id = null;
     if (!empty($_GET['id'])) {
         $id = $_REQUEST['id'];
     }
     
     if (null==$id) {
-        header("Location: listarPackingList.php");
+        header("Location: listarPackingList.php$prodQuery");
     }
     
     if (!empty($_POST)) {
@@ -26,13 +30,13 @@
         $q = $pdo->prepare($sql);
         $q->execute([$_POST['id_conjunto_lista_corte'],$_POST['id_concepto'],$_POST['cantidad'],$_POST['observaciones'],$_POST['id_estado_componente_packing_list'],$_GET['id']]);
 
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de componente en sección de packing list','Packing List','verPackingList.php?id=$id')";
+                $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de componente en sección de packing list','Packing List','verPackingList.php?id=$id$prodParam')";
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
         
         Database::disconnect();
         
-        header("Location: listarPackingList.php");
+        header("Location: listarPackingList.php$prodQuery");
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -80,7 +84,7 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				  <form class="form theme-form" role="form" method="post" action="modificarComponenteSeccionPackingList.php?id=<?php echo $id?>">
+                                  <form class="form theme-form" role="form" method="post" action="modificarComponenteSeccionPackingList.php?id=<?php echo $id?><?= $prodParam ?>">
                     <div class="card-body">
                       <div class="row">
 						<div class="col">
@@ -167,7 +171,8 @@
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Modificar</button>
-						<a onclick="document.location.href='listarPackingList.php'" class="btn btn-light">Volver</a>
+                                                <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+                                                <a onclick="document.location.href='listarPackingList.php<?= $prodQuery ?>'" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
