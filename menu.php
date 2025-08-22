@@ -1,7 +1,8 @@
 <?php include("permisos.php");?>
 <?php
 function abrirMenu($op) {
-	$current_page = basename($_SERVER['SCRIPT_NAME']);
+        $current_page = basename($_SERVER['SCRIPT_NAME']);
+        $isProd = isset($_GET['prod']) && $_GET['prod'] == 1;
 	if ($op == "1") {
 		if ($current_page == "dashboard.php") {
 			echo 'class="active"';
@@ -36,24 +37,24 @@ function abrirMenu($op) {
 		($current_page == "listarFacturasCompra.php")) {
 			echo 'class="active"';
 		}
-	} else if ($op == "6") {
-		if (($current_page == "listarIngresos.php") || 
-		($current_page == "listarEgresos.php") || 
-		($current_page == "listarOrdenesTrabajo.php") || 
-		($current_page == "listarConsumos.php") || 
-		($current_page == "listarComputos.php") || 
-		($current_page == "listarColadas.php") ||
-		($current_page == "listarListasCorte.php") || 
-		($current_page == "listarPackingList.php")) {
-			echo 'class="active"';
-		}
-	} else if ($op == "7") {
-		if (($current_page == "listarTareas.php") || 
-		($current_page == "listarComputos.php") || 
-		($current_page == "listarListasCorte.php") || 
-		($current_page == "listarPackingList.php")) {
-			echo 'class="active"';
-		}
+        } else if ($op == "6") {
+                if (($current_page == "listarIngresos.php") ||
+                ($current_page == "listarEgresos.php") ||
+                ($current_page == "listarOrdenesTrabajo.php") ||
+                ($current_page == "listarConsumos.php") ||
+                ($current_page == "listarComputos.php" && $isProd) ||
+                ($current_page == "listarColadas.php") ||
+                ($current_page == "listarListasCorte.php" && $isProd) ||
+                ($current_page == "listarPackingList.php" && $isProd)) {
+                        echo 'class="active"';
+                }
+        } else if ($op == "7") {
+                if (($current_page == "listarTareas.php") ||
+                ($current_page == "listarComputos.php" && !$isProd) ||
+                ($current_page == "listarListasCorte.php" && !$isProd) ||
+                ($current_page == "listarPackingList.php" && !$isProd)) {
+                        echo 'class="active"';
+                }
 	} else if ($op == "8") {
 		if ($current_page == "listarDespachos.php") {
 			echo 'class="active"';
