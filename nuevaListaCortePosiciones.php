@@ -413,7 +413,7 @@ Database::disconnect();?>
                       /*if (!empty(tienePermiso(331))) {?>
                         <a href="#" id="link_nueva_posicion"><img src="img/edit3.png" width="24" height="25" border="0" alt="Nueva Posición" title="Nueva Posición"></a>&nbsp;&nbsp;<?php
                       }*/?>
-                      <!-- <a href="#" id="link_ver_posicion_lc"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>&nbsp;&nbsp; -->
+                      <a href="#" data-toggle="modal" data-target="#modalPosicionesProyecto"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver todas las posiciones" title="Ver todas las posiciones"></a>&nbsp;&nbsp;
                     </h5>
                   </div>
 					        <form class="form theme-form" role="form" method="post" action="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?>">
@@ -589,6 +589,61 @@ Database::disconnect();?>
           </div>
           <!-- Container-fluid Ends-->
         </div>
+        <!-- Modal con todas las posiciones del proyecto -->
+        <div class="modal fade" id="modalPosicionesProyecto" tabindex="-1" role="dialog" aria-labelledby="modalPosicionesProyectoLabel" aria-hidden="true">
+          <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalPosicionesProyectoLabel">Posiciones del Proyecto</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+              </div>
+              <div class="modal-body">
+                <div class="table-responsive">
+                  <table class="table" id="tablaPosicionesProyecto">
+                    <thead>
+                      <tr>
+                        <th>LC Nº</th>
+                        <th>Rev</th>
+                        <th>Conjunto</th>
+                        <th>Posición</th>
+                        <th>Cantidad</th>
+                        <th>Material</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <?php
+                        $pdoModal = Database::connect();
+                        $pdoModal->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                        $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto "
+                                   ."FROM listas_corte lc "
+                                   ."JOIN listas_corte_conjuntos lcc ON lcc.id_lista_corte = lc.id "
+                                   ."JOIN lista_corte_posiciones pos ON pos.id_lista_corte_conjunto = lcc.id "
+                                   ."JOIN materiales m ON m.id = pos.id_material "
+                                   ."WHERE lc.id_proyecto = ? ORDER BY lc.numero, lcc.nombre, pos.posicion";
+                        $qModal = $pdoModal->prepare($sqlModal);
+                        $qModal->execute([$data['id_proyecto']]);
+                        while ($rowModal = $qModal->fetch(PDO::FETCH_ASSOC)) {
+                          echo "<tr>";
+                          echo "<td>".$rowModal['numero']."</td>";
+                          echo "<td>".$rowModal['nro_revision']."</td>";
+                          echo "<td>".$rowModal['nombre']."</td>";
+                          echo "<td>".$rowModal['posicion']."</td>";
+                          echo "<td>".$rowModal['cantidad']."</td>";
+                          echo "<td>".$rowModal['concepto']."</td>";
+                          echo "</tr>";
+                        }
+                        Database::disconnect();
+                      ?>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-light" type="button" data-dismiss="modal">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <!-- Modal para eliminas posiciones -->
         <div class="modal fade" id="eliminarPosicion" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
@@ -663,6 +718,30 @@ Database::disconnect();?>
           responsive: false,
           paging: false,
           searching: false,
+          language: {
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
+          }}
+        });
+
+        $('#tablaPosicionesProyecto').DataTable({
+          stateSave: false,
+          responsive: true,
           language: {
           "decimal": "",
           "emptyTable": "No hay información",
