@@ -415,20 +415,47 @@ Database::disconnect();
                         <table class="display" id="tablaLC">
                           <thead>
                             <tr>
-                              <th></th>
                               <th>Conjunto</th>
                               <th>Cant. conj.</th>
                               <th>Saldo</th>
+                              <th>Posiciones</th>
                             </tr>
                           </thead>
                           <tbody>
-                            <?php foreach($conjuntosLC as $conj){ 
+                            <?php foreach($conjuntosLC as $conj){
                               $json = htmlspecialchars(json_encode($conj['posiciones']), ENT_QUOTES, 'UTF-8'); ?>
                               <tr data-posiciones='<?=$json?>' data-nombre='<?=htmlspecialchars($conj['nombre'],ENT_QUOTES)?>' data-cantconj='<?=$conj['cantidad']?>' data-saldo='<?=$conj['saldo']?>'>
-                                <td class="details-control"></td>
                                 <td><?=htmlspecialchars($conj['nombre'])?></td>
                                 <td class="text-end"><?=$conj['cantidad']?></td>
                                 <td class="text-end"><?=$conj['saldo']?></td>
+                                <td>
+                                  <table class="table table-sm mb-0">
+                                    <thead>
+                                      <tr>
+                                        <th class="d-none">ID</th>
+                                        <th>Posición</th>
+                                        <th>Cant. pos.</th>
+                                        <th>Cant. total</th>
+                                        <th>Material</th>
+                                        <th>Procesos</th>
+                                        <th>Saldo</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      <?php foreach($conj['posiciones'] as $p){ ?>
+                                        <tr>
+                                          <td class="d-none"><?=$p['id']?></td>
+                                          <td><?=$p['posicion']?></td>
+                                          <td class="text-end"><?=$p['cant_pos']?></td>
+                                          <td class="text-end"><?=$p['cant_total']?></td>
+                                          <td><?=$p['concepto']?></td>
+                                          <td><?=$p['procesos']?></td>
+                                          <td class="text-end"><?=$p['saldo']?></td>
+                                        </tr>
+                                      <?php } ?>
+                                    </tbody>
+                                  </table>
+                                </td>
                               </tr>
                             <?php } ?>
                           </tbody>
@@ -455,6 +482,7 @@ Database::disconnect();
                                 <th>Cant. conj.</th>
                                 <th>Saldo conj.</th>
                                 <th>Cant. conj. a bajar</th>
+                                <th>Posiciones</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -566,80 +594,52 @@ Database::disconnect();
         var tablaOT = $('#tablaOT');
         var tablaLCDT, dtOT;
 
-        function formatPosiciones(json){
-          //var rows = JSON.parse(json);
-          var rows = json;
-          var html = '<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th></tr></thead><tbody>';
-          rows.forEach(function(p){
-            html += '<tr>'+
-                    '<td class="d-none">'+p.id+'</td>'+
-                    '<td>'+p.posicion+'</td>'+
-                    '<td class="text-end">'+p.cant_pos+'</td>'+
-                    '<td class="text-end">'+p.cant_total+'</td>'+
-                    '<td>'+p.concepto+'</td>'+
-                    '<td>'+p.procesos+'</td>'+
-                    '<td class="text-end">'+p.saldo+'</td>'+
-                    '</tr>';
-          });
-          html += '</tbody></table>';
-          console.log(html);
-          return html;
-        }
-
         tablaLCDT = tablaLC.DataTable({
-          columnDefs:[{targets:0,orderable:false,className:'details-control',defaultContent:''}],
-          select:{style:'multi',selector:'td:not(.details-control)'},
-          order:[[1,'asc']]
+          order:[[0,'asc']]
         });
 
-        // Mostrar todas las posiciones desplegadas por defecto
-        tablaLCDT.rows().every(function(){
-          var tr = $(this.node());
-          var data = tr.data('posiciones');
-          this.child(formatPosiciones(data)).show();
-          tr.addClass('shown');
-        });
-
-        $('#tablaLC tbody').on('click','td.details-control',function(){
-          var tr=$(this).closest('tr');
-          var row=tablaLCDT.row(tr);
-          var data=tr.data('posiciones');
-          if(row.child.isShown()){
-            row.child.hide();
-            tr.removeClass('shown');
-          }else{
-            console.log(data);
-            row.child(formatPosiciones(data)).show();
-            tr.addClass('shown');
-          }
-        });
-
-        $('#tablaLC tbody').on('click','tr',function(e){
-          if($(e.target).hasClass('details-control')) return;
+        $('#tablaLC tbody').on('click','tr',function(){
           $(this).toggleClass('selected');
         });
 
         dtOT = tablaOT.DataTable({
-          columnDefs:[{targets:0,visible:false}],
-          order:[[1,'asc']]
+          order:[[1,'asc']],
+          autoWidth: false,
+          columnDefs: [
+            { visible:false, targets:0},
+            { orderable:false, targets:[4,5]},
+            { width: '70px', targets: [0,2,3] },
+            { width: '100px', targets: [1,4] },
+            //{ width: '300px', targets: [5] }
+          ],
         });
 
-        function formatPosicionesOT(posiciones,cant){
+        function formatPosicionesOT(posiciones,cant,origTable){
           console.log(posiciones,cant);
-          var html='<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Material</th><th>Procesos</th><th>Cant. a bajar</th></tr></thead><tbody>';
+          var table;
+          if(origTable){
+            table = origTable.clone();
+          } else {
+            table = $('<table class="table table-sm mb-0 w-100"><thead><tr>\n' +
+                    '<th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th>' +
+                    '</tr></thead><tbody></tbody></table>');
+          }
+          table.addClass('w-100');
+          var tbody = table.find('tbody');
+          tbody.empty();
           posiciones.forEach(function(p){
             var cantidad=p.cant_pos*cant;
-            html+='<tr>'+
-              `<td class="d-none"><input type="hidden" name="id_posicion[]" value="${p.id}"></td>`+
-              `<td>${p.posicion}</td>`+
-              `<td class="text-end">${p.cant_pos}</td>`+
-              `<td>${p.concepto}</td>`+
-              `<td>${p.procesos}</td>`+
-              `<td class="text-end cantidad-pos">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`+
-              '</tr>';
+            var row = $('<tr></tr>');
+            row.append(`<td class="d-none"><input type="hidden" name="id_posicion[]" value="${p.id}"></td>`);
+            row.append(`<td>${p.posicion}</td>`);
+            row.append(`<td class="text-end">${p.cant_pos}</td>`);
+            row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
+            row.append(`<td>${p.concepto}</td>`);
+            row.append(`<td>${p.procesos}</td>`);
+            row.append(`<td class="text-end">${p.saldo}</td>`);
+            tbody.append(row);
           });
-          html+='</tbody></table>';
-          return html;
+          return table.prop('outerHTML');
         }
 
         $('#link_agregar_posiciones').on('click',function(){
@@ -650,41 +650,23 @@ Database::disconnect();
             var nombre=tr.data('nombre');
             var cantConj=parseInt(tr.data('cantconj'),10);
             var saldo=parseInt(tr.data('saldo'),10);
-            //var posiciones=JSON.parse(tr.data('posiciones'));
             var posiciones=tr.data('posiciones');
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
-            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input]).draw(false).node();
-            $(rowNode).data('posiciones',posiciones)
-                     .data('nombre',nombre)
-                     .data('cantconj',cantConj)
-                     .data('saldo',saldo);
-            dtOT.row(rowNode).child(formatPosicionesOT(posiciones,saldo)).show();
-            // Ocultar conjunto de la lista de la LC
-            tablaLCDT.row(tr).remove();
+            var origTable=tr.find('td:eq(3) table').clone();
+            var posHtml=formatPosicionesOT(posiciones,saldo,origTable);
+            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input,posHtml]).draw(false).node();
+            $(rowNode).data('posiciones',posiciones).data('lcrow',tr).data('origTable',origTable);
+            tr.addClass('d-none').removeClass('selected');
           });
-          tablaLCDT.draw(false);
         });
 
         $('#link_eliminar_posiciones').on('click',function(){
           var selected=dtOT.rows('.selected');
           if(selected.count()===0){alert('Por favor seleccione un conjunto para eliminar');return;}
           selected.nodes().each(function(node){
-            var tr=$(node);
-            var nombre=tr.data('nombre');
-            var cantConj=tr.data('cantconj');
-            var saldo=tr.data('saldo');
-            var posiciones=tr.data('posiciones');
-            // Volver a agregar el conjunto a la lista de la LC
-            var rowNode=tablaLCDT.row.add(['',nombre,cantConj,saldo]).draw(false).node();
-            $(rowNode).data('posiciones',posiciones)
-                     .data('nombre',nombre)
-                     .data('cantconj',cantConj)
-                     .data('saldo',saldo);
-            $(rowNode).find('td:eq(0)').addClass('details-control');
-            $(rowNode).find('td:eq(2),td:eq(3)').addClass('text-end');
-            tablaLCDT.row(rowNode).child(formatPosiciones(posiciones)).show();
-            $(rowNode).addClass('shown');
+            var lcrow=$(node).data('lcrow');
+            if(lcrow){ lcrow.removeClass('d-none'); }
           });
           selected.remove().draw();
         });
@@ -705,7 +687,9 @@ Database::disconnect();
           if(val>max){val=max;$(this).val(max);}
           var tr=$(this).closest('tr');
           var posiciones=tr.data('posiciones');
-          dtOT.row(tr).child(formatPosicionesOT(posiciones,val)).show();
+          var origTable=tr.data('origTable');
+          var posHtml=formatPosicionesOT(posiciones,val,origTable);
+          dtOT.cell(tr,5).data(posHtml).draw(false);
         });
 
       });

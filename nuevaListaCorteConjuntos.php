@@ -146,7 +146,7 @@ Database::disconnect();?>
                       <a href="#" id="link_ver_posicion"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Posiciones" title="Ver Posiciones"></a>&nbsp;&nbsp;
                     </h5>
                   </div>
-                                                <form class="form theme-form" role="form" method="post" action="nuevaListaCorteConjuntos.php?id_lista_corte=<?=$id_lista_corte?><?= $prodParam ?>">
+                  <form class="form theme-form" role="form" method="post" action="nuevaListaCorteConjuntos.php?id_lista_corte=<?=$id_lista_corte?><?= $prodParam ?>">
                     <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
