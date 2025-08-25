@@ -484,7 +484,7 @@ Database::disconnect();?>
                       <a href="#" data-toggle="modal" data-target="#modalPosicionesProyecto"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver todas las posiciones" title="Ver todas las posiciones"></a>&nbsp;&nbsp;
                     </h5>
                   </div>
-                                            <form class="form theme-form" role="form" method="post" action="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?><?= $prodParam ?>">
+                  <form class="form theme-form" role="form" method="post" action="nuevaListaCortePosiciones.php?id_lista_corte_conjunto=<?=$id_lista_corte_conjunto?><?= $prodParam ?>">
                     <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
                     <div class="card-body">
                       <div class="row">
@@ -650,7 +650,7 @@ Database::disconnect();?>
         </div>
         <!-- Modal con todas las posiciones del proyecto -->
         <div class="modal fade" id="modalPosicionesProyecto" tabindex="-1" role="dialog" aria-labelledby="modalPosicionesProyectoLabel" aria-hidden="true">
-          <div class="modal-dialog modal-xl" role="document">
+          <div class="modal-dialog modal-xl" style="max-width: 80%;" role="document">
             <div class="modal-content">
               <div class="modal-header">
                 <h5 class="modal-title" id="modalPosicionesProyectoLabel">Posiciones del Proyecto <?=$descripcionProyecto?></h5>
