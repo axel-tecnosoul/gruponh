@@ -567,7 +567,8 @@ Database::disconnect();
         var tablaLCDT, dtOT;
 
         function formatPosiciones(json){
-          var rows = JSON.parse(json);
+          //var rows = JSON.parse(json);
+          var rows = json;
           var html = '<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th></tr></thead><tbody>';
           rows.forEach(function(p){
             html += '<tr>'+
@@ -581,6 +582,7 @@ Database::disconnect();
                     '</tr>';
           });
           html += '</tbody></table>';
+          console.log(html);
           return html;
         }
 
@@ -598,6 +600,7 @@ Database::disconnect();
             row.child.hide();
             tr.removeClass('shown');
           }else{
+            console.log(data);
             row.child(formatPosiciones(data)).show();
             tr.addClass('shown');
           }

@@ -545,7 +545,7 @@ Database::disconnect();?>
                           if (!empty($_GET['error_numero'])) {
                             echo "<font color='red'><b>El número de Posición ya existe con otro material o medidas en el proyecto</b></font>";
                           }?>
-                                                            </div>
+                        </div>
                         <div class="form-group col-2">
                           <label>Cantidad(*)</label>
                           <input name="cantidad_posicion" type="number" step="0.01" min="0.01" maxlength="99" class="form-control cantidad_posicion" required="required" value="">
@@ -638,7 +638,7 @@ Database::disconnect();?>
                         <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear y volver a Conjuntos</button>
                         <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?><?= $prodParam ?>' class="btn btn-danger">Guardar y volver a Conjuntos</a>
+                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?><?= $prodParam ?>' id="guardarVolver" class="btn btn-danger">Guardar y volver a Conjuntos</a>
                       </div>
                     </div>
                   </form>
@@ -808,9 +808,11 @@ Database::disconnect();?>
           }}
         });
 
-        $('#tablaPosicionesProyecto').DataTable({
+        //$('#tablaPosicionesProyecto').DataTable({
+        var tablaPosicionesProyecto = $('#tablaPosicionesProyecto').DataTable({
           stateSave: false,
           responsive: true,
+          autoWidth: false,
           columnDefs: [
             { width: '70px', targets: [0,1,3,4,6,7,8,9] },
             { width: '100px', targets: [2,10] },
@@ -835,6 +837,10 @@ Database::disconnect();?>
               "next": "Siguiente",
               "previous": "Anterior"
           }}
+        });
+
+        $('#modalPosicionesProyecto').on('shown.bs.modal', function () {
+          tablaPosicionesProyecto.columns.adjust();
         });
  
         //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
@@ -900,6 +906,7 @@ Database::disconnect();?>
                 $(".addPosicion").toggleClass("d-none")
                 $("#editPosicion").toggleClass("d-none")
                 $("#cancelEditPosicion").toggleClass("d-none")
+                $("#guardarVolver").toggleClass("d-none")
               }
             })
             //$("#link_eliminar_posicion").attr("href","eliminarPosicionListaCorte.php?id="+id_posicion);
@@ -938,6 +945,7 @@ Database::disconnect();?>
           $("#editPosicion").toggleClass("d-none")
           $("#editPosicion").val("")
           $("#cancelEditPosicion").toggleClass("d-none")
+          $("#guardarVolver").toggleClass("d-none")
         })
 
         $("form.theme-form").on("submit", function(e){
