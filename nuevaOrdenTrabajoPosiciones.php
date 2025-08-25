@@ -481,6 +481,7 @@ Database::disconnect();
                                 <th>Conjunto</th>
                                 <th>Cant. conj.</th>
                                 <th>Saldo conj.</th>
+                                <th>Posiciones</th>
                                 <th>Cant. conj. a bajar</th>
                               </tr>
                             </thead>
@@ -602,7 +603,7 @@ Database::disconnect();
         });
 
         dtOT = tablaOT.DataTable({
-          columnDefs:[{targets:0,visible:false}],
+          columnDefs:[{targets:0,visible:false},{targets:4,orderable:false}],
           order:[[1,'asc']]
         });
 
@@ -636,9 +637,9 @@ Database::disconnect();
             var posiciones=tr.data('posiciones');
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
-            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input]).draw(false).node();
+            var posHtml=formatPosicionesOT(posiciones,saldo);
+            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,posHtml,input]).draw(false).node();
             $(rowNode).data('posiciones',posiciones).data('lcrow',tr);
-            dtOT.row(rowNode).child(formatPosicionesOT(posiciones,saldo)).show();
             tr.addClass('d-none').removeClass('selected');
           });
         });
@@ -669,7 +670,8 @@ Database::disconnect();
           if(val>max){val=max;$(this).val(max);}
           var tr=$(this).closest('tr');
           var posiciones=tr.data('posiciones');
-          dtOT.row(tr).child(formatPosicionesOT(posiciones,val)).show();
+          var posHtml=formatPosicionesOT(posiciones,val);
+          dtOT.cell(tr,4).data(posHtml).draw(false);
         });
 
       });
