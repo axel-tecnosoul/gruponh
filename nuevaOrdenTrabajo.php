@@ -617,6 +617,7 @@ Database::disconnect();
         });
 
         function formatPosicionesOT(posiciones,cant){
+          console.log(posiciones,cant);
           var html='<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Material</th><th>Procesos</th><th>Cant. a bajar</th></tr></thead><tbody>';
           posiciones.forEach(function(p){
             var cantidad=p.cant_pos*cant;
@@ -641,7 +642,9 @@ Database::disconnect();
             var nombre=tr.data('nombre');
             var cantConj=parseInt(tr.data('cantconj'),10);
             var saldo=parseInt(tr.data('saldo'),10);
-            var posiciones=JSON.parse(tr.data('posiciones'));
+            //var posiciones=JSON.parse(tr.data('posiciones'));
+            var posiciones=tr.data('posiciones');
+            console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
             var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input]).draw(false).node();
             $(rowNode).data('posiciones',posiciones);
