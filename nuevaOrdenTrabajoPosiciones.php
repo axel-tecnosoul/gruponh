@@ -481,8 +481,8 @@ Database::disconnect();
                                 <th>Conjunto</th>
                                 <th>Cant. conj.</th>
                                 <th>Saldo conj.</th>
-                                <th>Posiciones</th>
                                 <th>Cant. conj. a bajar</th>
+                                <th>Posiciones</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -603,27 +603,36 @@ Database::disconnect();
         });
 
         dtOT = tablaOT.DataTable({
-          columnDefs:[{targets:0,visible:false},{targets:4,orderable:false}],
+          columnDefs:[{targets:0,visible:false},{targets:[4,5],orderable:false}],
           order:[[1,'asc']]
         });
 
-        function formatPosicionesOT(posiciones,cant){
+        function formatPosicionesOT(posiciones,cant,origTable){
           console.log(posiciones,cant);
-          var html='<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th></tr></thead><tbody>';
+          var table;
+          if(origTable){
+            table = origTable.clone();
+          } else {
+            table = $('<table class="table table-sm mb-0 w-100"><thead><tr>\n' +
+                    '<th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th>' +
+                    '</tr></thead><tbody></tbody></table>');
+          }
+          table.addClass('w-100');
+          var tbody = table.find('tbody');
+          tbody.empty();
           posiciones.forEach(function(p){
             var cantidad=p.cant_pos*cant;
-            html+='<tr>'+
-              `<td class="d-none"><input type="hidden" name="id_posicion[]" value="${p.id}"></td>`+
-              `<td>${p.posicion}</td>`+
-              `<td class="text-end">${p.cant_pos}</td>`+
-              `<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`+
-              `<td>${p.concepto}</td>`+
-              `<td>${p.procesos}</td>`+
-              `<td class="text-end">${p.saldo}</td>`+
-              '</tr>';
+            var row = $('<tr></tr>');
+            row.append(`<td class="d-none"><input type="hidden" name="id_posicion[]" value="${p.id}"></td>`);
+            row.append(`<td>${p.posicion}</td>`);
+            row.append(`<td class="text-end">${p.cant_pos}</td>`);
+            row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
+            row.append(`<td>${p.concepto}</td>`);
+            row.append(`<td>${p.procesos}</td>`);
+            row.append(`<td class="text-end">${p.saldo}</td>`);
+            tbody.append(row);
           });
-          html+='</tbody></table>';
-          return html;
+          return table.prop('outerHTML');
         }
 
         $('#link_agregar_posiciones').on('click',function(){
@@ -637,9 +646,10 @@ Database::disconnect();
             var posiciones=tr.data('posiciones');
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
-            var posHtml=formatPosicionesOT(posiciones,saldo);
-            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,posHtml,input]).draw(false).node();
-            $(rowNode).data('posiciones',posiciones).data('lcrow',tr);
+            var origTable=tr.find('td:eq(3) table').clone();
+            var posHtml=formatPosicionesOT(posiciones,saldo,origTable);
+            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input,posHtml]).draw(false).node();
+            $(rowNode).data('posiciones',posiciones).data('lcrow',tr).data('origTable',origTable);
             tr.addClass('d-none').removeClass('selected');
           });
         });
@@ -670,8 +680,9 @@ Database::disconnect();
           if(val>max){val=max;$(this).val(max);}
           var tr=$(this).closest('tr');
           var posiciones=tr.data('posiciones');
-          var posHtml=formatPosicionesOT(posiciones,val);
-          dtOT.cell(tr,4).data(posHtml).draw(false);
+          var origTable=tr.data('origTable');
+          var posHtml=formatPosicionesOT(posiciones,val,origTable);
+          dtOT.cell(tr,5).data(posHtml).draw(false);
         });
 
       });
