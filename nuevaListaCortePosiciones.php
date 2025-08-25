@@ -638,7 +638,7 @@ Database::disconnect();?>
                         <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear y volver a Conjuntos</button>
                         <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?><?= $prodParam ?>' class="btn btn-danger">Guardar y volver a Conjuntos</a>
+                        <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?><?= $prodParam ?>' class="btn btn-danger volverConjuntos">Guardar y volver a Conjuntos</a>
                       </div>
                     </div>
                   </form>
@@ -940,6 +940,30 @@ Database::disconnect();?>
           $("#cancelEditPosicion").toggleClass("d-none")
         })
 
+        $("button[name='btn2']").on("click", function(e){
+          e.preventDefault();
+          const form = $(this).closest('form');
+          if(!conjuntoTieneMarcas()){
+            if(confirm('El conjunto no tiene marcas. ¿Desea agregar?')){
+              return;
+            }
+          }
+          form.find("input[name='btn2']").remove();
+          form.append('<input type="hidden" name="btn2" value="2">');
+          form.submit();
+        });
+
+        $(".volverConjuntos").on('click', function(e){
+          e.preventDefault();
+          const url = $(this).attr('href');
+          if(!conjuntoTieneMarcas()){
+            if(confirm('El conjunto no tiene marcas. ¿Desea agregar?')){
+              return;
+            }
+          }
+          window.location.href = url;
+        });
+
         $("form.theme-form").on("submit", function(e){
           const procesos = $("input[name='proceso[]']:checked").length;
           //const terminacion = $("select[name='id_terminacion']").val();
@@ -968,6 +992,18 @@ Database::disconnect();?>
           }
         });
       });
+
+      function conjuntoTieneMarcas() {
+        let tiene = false;
+        $('#dataTables-example667 tbody tr').each(function(){
+          const marca = $(this).find('td').eq(7).text().trim();
+          if(marca !== ''){
+            tiene = true;
+            return false;
+          }
+        });
+        return tiene;
+      }
 
       function calcularPesoMaterial() {
         const tipoMaterial = $("select[name='id_material'] option:selected").text().trim(); // "Chapa", "Perfil", "Caño", etc.
