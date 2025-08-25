@@ -608,16 +608,17 @@ Database::disconnect();
 
         function formatPosicionesOT(posiciones,cant){
           console.log(posiciones,cant);
-          var html='<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Material</th><th>Procesos</th><th>Cant. a bajar</th></tr></thead><tbody>';
+          var html='<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th></tr></thead><tbody>';
           posiciones.forEach(function(p){
             var cantidad=p.cant_pos*cant;
             html+='<tr>'+
               `<td class="d-none"><input type="hidden" name="id_posicion[]" value="${p.id}"></td>`+
               `<td>${p.posicion}</td>`+
               `<td class="text-end">${p.cant_pos}</td>`+
+              `<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`+
               `<td>${p.concepto}</td>`+
               `<td>${p.procesos}</td>`+
-              `<td class="text-end cantidad-pos">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`+
+              `<td class="text-end">${p.saldo}</td>`+
               '</tr>';
           });
           html+='</tbody></table>';
@@ -632,19 +633,23 @@ Database::disconnect();
             var nombre=tr.data('nombre');
             var cantConj=parseInt(tr.data('cantconj'),10);
             var saldo=parseInt(tr.data('saldo'),10);
-            //var posiciones=JSON.parse(tr.data('posiciones'));
             var posiciones=tr.data('posiciones');
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
             var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input]).draw(false).node();
-            $(rowNode).data('posiciones',posiciones);
+            $(rowNode).data('posiciones',posiciones).data('lcrow',tr);
             dtOT.row(rowNode).child(formatPosicionesOT(posiciones,saldo)).show();
+            tr.addClass('d-none').removeClass('selected');
           });
         });
 
         $('#link_eliminar_posiciones').on('click',function(){
           var selected=dtOT.rows('.selected');
           if(selected.count()===0){alert('Por favor seleccione un conjunto para eliminar');return;}
+          selected.nodes().each(function(node){
+            var lcrow=$(node).data('lcrow');
+            if(lcrow){ lcrow.removeClass('d-none'); }
+          });
           selected.remove().draw();
         });
 
