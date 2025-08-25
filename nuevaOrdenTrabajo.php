@@ -592,6 +592,14 @@ Database::disconnect();
           order:[[1,'asc']]
         });
 
+        // Mostrar todas las posiciones desplegadas por defecto
+        tablaLCDT.rows().every(function(){
+          var tr = $(this.node());
+          var data = tr.data('posiciones');
+          this.child(formatPosiciones(data)).show();
+          tr.addClass('shown');
+        });
+
         $('#tablaLC tbody').on('click','td.details-control',function(){
           var tr=$(this).closest('tr');
           var row=tablaLCDT.row(tr);
@@ -647,14 +655,37 @@ Database::disconnect();
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
             var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input]).draw(false).node();
-            $(rowNode).data('posiciones',posiciones);
+            $(rowNode).data('posiciones',posiciones)
+                     .data('nombre',nombre)
+                     .data('cantconj',cantConj)
+                     .data('saldo',saldo);
             dtOT.row(rowNode).child(formatPosicionesOT(posiciones,saldo)).show();
+            // Ocultar conjunto de la lista de la LC
+            tablaLCDT.row(tr).remove();
           });
+          tablaLCDT.draw(false);
         });
 
         $('#link_eliminar_posiciones').on('click',function(){
           var selected=dtOT.rows('.selected');
           if(selected.count()===0){alert('Por favor seleccione un conjunto para eliminar');return;}
+          selected.nodes().each(function(node){
+            var tr=$(node);
+            var nombre=tr.data('nombre');
+            var cantConj=tr.data('cantconj');
+            var saldo=tr.data('saldo');
+            var posiciones=tr.data('posiciones');
+            // Volver a agregar el conjunto a la lista de la LC
+            var rowNode=tablaLCDT.row.add(['',nombre,cantConj,saldo]).draw(false).node();
+            $(rowNode).data('posiciones',posiciones)
+                     .data('nombre',nombre)
+                     .data('cantconj',cantConj)
+                     .data('saldo',saldo);
+            $(rowNode).find('td:eq(0)').addClass('details-control');
+            $(rowNode).find('td:eq(2),td:eq(3)').addClass('text-end');
+            tablaLCDT.row(rowNode).child(formatPosiciones(posiciones)).show();
+            $(rowNode).addClass('shown');
+          });
           selected.remove().draw();
         });
 
