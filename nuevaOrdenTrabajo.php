@@ -100,7 +100,9 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
       $cant_total=$conj['cantidad']*$pos['cant_pos'];
       $saldo=$cant_total-$pos['cant_bajada_total'];
       $pos['cant_total']=$cant_total;
+      $pos['cant_bajada']=$pos['cant_bajada_total'];
       $pos['saldo']=$saldo;
+      unset($pos['cant_bajada_total']);
       $posiciones[]=$pos;
       $sets_disp=$pos['cant_pos']>0 ? floor($saldo/$pos['cant_pos']) : 0;
       if($sets_disp<$saldo_conj){
@@ -108,6 +110,7 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
       }
     }
     $conj['posiciones']=$posiciones;
+    $conj['cant_bajada']=$conj['cantidad']-$saldo_conj;
     $conj['saldo']=$saldo_conj;
     $conjuntos[]=$conj;
   }
@@ -417,6 +420,7 @@ Database::disconnect();
                             <tr>
                               <th>Conjunto</th>
                               <th>Cant. conj.</th>
+                              <th>Cant. bajada</th>
                               <th>Saldo</th>
                               <th>Posiciones</th>
                             </tr>
@@ -424,9 +428,10 @@ Database::disconnect();
                           <tbody>
                             <?php foreach($conjuntosLC as $conj){
                               $json = htmlspecialchars(json_encode($conj['posiciones']), ENT_QUOTES, 'UTF-8'); ?>
-                              <tr data-posiciones='<?=$json?>' data-nombre='<?=htmlspecialchars($conj['nombre'],ENT_QUOTES)?>' data-cantconj='<?=$conj['cantidad']?>' data-saldo='<?=$conj['saldo']?>'>
+                              <tr data-posiciones='<?=$json?>' data-nombre='<?=htmlspecialchars($conj['nombre'],ENT_QUOTES)?>' data-cantconj='<?=$conj['cantidad']?>' data-cantbajada='<?=$conj['cant_bajada']?>' data-saldo='<?=$conj['saldo']?>'>
                                 <td><?=htmlspecialchars($conj['nombre'])?></td>
                                 <td class="text-end"><?=$conj['cantidad']?></td>
+                                <td class="text-end"><?=$conj['cant_bajada']?></td>
                                 <td class="text-end"><?=$conj['saldo']?></td>
                                 <td>
                                   <table class="table table-sm mb-0">
@@ -434,10 +439,11 @@ Database::disconnect();
                                       <tr>
                                         <th class="d-none">ID</th>
                                         <th>Posición</th>
-                                        <th>Cant. pos.</th>
-                                        <th>Cant. total</th>
                                         <th>Material</th>
                                         <th>Procesos</th>
+                                        <th>Cant. pos.</th>
+                                        <th>Cant. total</th>
+                                        <th>Cant. bajada</th>
                                         <th>Saldo</th>
                                       </tr>
                                     </thead>
@@ -446,10 +452,11 @@ Database::disconnect();
                                         <tr>
                                           <td class="d-none"><?=$p['id']?></td>
                                           <td><?=$p['posicion']?></td>
-                                          <td class="text-end"><?=$p['cant_pos']?></td>
-                                          <td class="text-end"><?=$p['cant_total']?></td>
                                           <td><?=$p['concepto']?></td>
                                           <td><?=$p['procesos']?></td>
+                                          <td class="text-end"><?=$p['cant_pos']?></td>
+                                          <td class="text-end"><?=$p['cant_total']?></td>
+                                          <td class="text-end"><?=$p['cant_bajada']?></td>
                                           <td class="text-end"><?=$p['saldo']?></td>
                                         </tr>
                                       <?php } ?>
@@ -480,6 +487,7 @@ Database::disconnect();
                                 <th class="d-none">ID</th>
                                 <th>Conjunto</th>
                                 <th>Cant. conj.</th>
+                                <th>Cant. bajada</th>
                                 <th>Saldo conj.</th>
                                 <th>Cant. conj. a bajar</th>
                                 <th>Posiciones</th>
@@ -607,10 +615,10 @@ Database::disconnect();
           autoWidth: false,
           columnDefs: [
             { visible:false, targets:0},
-            { orderable:false, targets:[4,5]},
-            { width: '70px', targets: [0,2,3] },
-            { width: '100px', targets: [1,4] },
-            //{ width: '300px', targets: [5] }
+            { orderable:false, targets:[5,6]},
+            { width: '70px', targets: [0,2,3,4] },
+            { width: '100px', targets: [1,5] },
+            //{ width: '300px', targets: [6] }
           ],
         });
 
@@ -621,7 +629,7 @@ Database::disconnect();
             table = origTable.clone();
           } else {
             table = $('<table class="table table-sm mb-0 w-100"><thead><tr>\n' +
-                    '<th class="d-none">ID</th><th>Posición</th><th>Cant. pos.</th><th>Cant. total</th><th>Material</th><th>Procesos</th><th>Saldo</th>' +
+                    '<th class="d-none">ID</th><th>Posición</th><th>Material</th><th>Procesos</th><th>Cant. pos.</th><th>Cant. total</th><th>Cant. bajada</th><th>Saldo</th>' +
                     '</tr></thead><tbody></tbody></table>');
           }
           table.addClass('w-100');
@@ -632,10 +640,11 @@ Database::disconnect();
             var row = $('<tr></tr>');
             row.append(`<td class="d-none"><input type="hidden" name="id_posicion[]" value="${p.id}"></td>`);
             row.append(`<td>${p.posicion}</td>`);
-            row.append(`<td class="text-end">${p.cant_pos}</td>`);
-            row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
             row.append(`<td>${p.concepto}</td>`);
             row.append(`<td>${p.procesos}</td>`);
+            row.append(`<td class="text-end">${p.cant_pos}</td>`);
+            row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
+            row.append(`<td class="text-end">${p.cant_bajada}</td>`);
             row.append(`<td class="text-end">${p.saldo}</td>`);
             tbody.append(row);
           });
@@ -649,13 +658,14 @@ Database::disconnect();
             var tr=$(node);
             var nombre=tr.data('nombre');
             var cantConj=parseInt(tr.data('cantconj'),10);
+            var cantBajada=parseInt(tr.data('cantbajada'),10);
             var saldo=parseInt(tr.data('saldo'),10);
             var posiciones=tr.data('posiciones');
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
-            var origTable=tr.find('td:eq(3) table').clone();
+            var origTable=tr.find('td:eq(4) table').clone();
             var posHtml=formatPosicionesOT(posiciones,saldo,origTable);
-            var rowNode=dtOT.row.add([0,nombre,cantConj,saldo,input,posHtml]).draw(false).node();
+            var rowNode=dtOT.row.add([0,nombre,cantConj,cantBajada,saldo,input,posHtml]).draw(false).node();
             $(rowNode).data('posiciones',posiciones).data('lcrow',tr).data('origTable',origTable);
             tr.addClass('d-none').removeClass('selected');
           });
@@ -689,7 +699,7 @@ Database::disconnect();
           var posiciones=tr.data('posiciones');
           var origTable=tr.data('origTable');
           var posHtml=formatPosicionesOT(posiciones,val,origTable);
-          dtOT.cell(tr,5).data(posHtml).draw(false);
+          dtOT.cell(tr,6).data(posHtml).draw(false);
         });
 
       });
