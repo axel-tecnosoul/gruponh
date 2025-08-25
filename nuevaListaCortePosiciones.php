@@ -963,6 +963,21 @@ Database::disconnect();?>
 
         $(".volverConjuntos").on('click', function(e){
           e.preventDefault();
+          const nombre = $("input[name='nombre_posicion']").val();
+          const cantidad = $("input[name='cantidad_posicion']").val();
+          const material = $("select[name='id_material']").val();
+          const ancho = $("input[name='ancho']").val();
+          const largo = $("input[name='largo']").val();
+          const diametro = $("input[name='diametro']").val();
+          const marca = $("input[name='marca']").val();
+          const peso = $("input[name='peso']").val();
+          const procesos = $("input[name='proceso[]']:checked").length;
+          const terminacion = $("select[name='id_terminacion']").val();
+          const tieneDatos = nombre !== "" || cantidad !== "" || material !== "" || ancho !== "" || largo !== "" || diametro !== "" || marca !== "" || peso !== "" || procesos > 0 || terminacion !== "";
+          if(tieneDatos){
+            alert("No se puede guardar y volver si hay datos sin guardar.");
+            return;
+          }
           const url = $(this).attr('href');
           if(!conjuntoTieneMarcas()){
             if(confirm('El conjunto no tiene marcas. ¿Desea agregar?')){

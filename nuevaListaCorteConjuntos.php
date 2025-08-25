@@ -437,6 +437,15 @@ Database::disconnect();?>
         $("#volverListaCorte").toggleClass("d-none")
       })
 
+      $("#volverListaCorte").on("click", function(e){
+        let nombre = $("input[name='nombre']").val();
+        let cantidad = $("input[name='cantidad']").val();
+        if(nombre !== "" || cantidad !== ""){
+          alert("No se puede guardar y volver si hay datos sin guardar.");
+          e.preventDefault();
+        }
+      });
+
       function selectRow(t){
         t.addClass('selected');
       }
