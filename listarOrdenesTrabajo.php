@@ -210,9 +210,9 @@ include 'database.php';
                       <table class="display truncate" id="tablaDetalleOT">
                         <thead>
                           <tr>
-                            <th class="d-none">ID</th>
+                            <th class="d-none">ID Posición</th>
                             <th>Conjunto</th>
-                            <th class="d-none">Cant. Conjuntos</th>
+                            <th>Cant. Conjuntos</th>
                             <th>Posicion</th>
                             <th>Cant. Pedida</th>
                             <th>Material</th>
@@ -223,15 +223,14 @@ include 'database.php';
                             <th>Rechazados</th>
                             <th>F.Revisión</th>
                             <th>Usuario</th>
-                            <th class="d-none">ID Posición</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th class="d-none">ID</th>
+                            <th class="d-none">ID Posición</th>
                             <th>Conjunto</th>
-                            <th class="d-none">Cant. Conjuntos</th>
+                            <th>Cant. Conjuntos</th>
                             <th>Posicion</th>
                             <th>Cant. Pedida</th>
                             <th>Material</th>
@@ -242,7 +241,6 @@ include 'database.php';
                             <th>Rechazados</th>
                             <th>F.Revisión</th>
                             <th>Usuario</th>
-                            <th class="d-none">ID Posición</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -495,8 +493,9 @@ include 'database.php';
         })
 
         $("#btnAbrirModalModificarCantidades").on("click",function(){
-          let id_conjunto=$(this).data("id")
-          if(id_conjunto!="" && id_conjunto>0){
+          let id_posicion=$(this).data("id")
+          console.log(id_posicion);
+          if(id_posicion!="" && id_posicion>0){
             let modal=$("#modificarCantidades")
             modal.modal("show")
           }else{
@@ -557,9 +556,9 @@ include 'database.php';
             $('#tablaDetalleOT').DataTable({
               stateSave: false,
               responsive: false,
-              order: [[13, 'asc']],
+              order: [[0, 'asc']],
               columns: [
-                { data: 0 },
+                { data: 14 },
                 { data: 1 },
                 { data: 2 },
                 { data: 3 },
@@ -572,12 +571,11 @@ include 'database.php';
                 { data: 10 },
                 { data: 11 },
                 { data: 12 },
-                { data: 14 }
               ],
               columnDefs: [
-                { targets: [0], className: 'd-none', visible: false },
+                { targets: [0], className: 'd-none'},
                 { targets: [2], visible: false },
-                { targets: [13], className: 'd-none', visible: false }
+                //{ targets: [13], className: 'd-none', visible: false }
               ],
               data: data,
               language: {
