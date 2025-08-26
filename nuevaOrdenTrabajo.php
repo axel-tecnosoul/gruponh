@@ -735,16 +735,11 @@ Database::disconnect();
           ],
         });
 
-        function formatPosicionesOT(posiciones,cant,origTable){
+        function formatPosicionesOT(posiciones,cant){
           console.log(posiciones,cant);
-          var table;
-          if(origTable){
-            table = origTable.clone();
-          } else {
-            table = $('<table class="table table-sm mb-0 w-100"><thead><tr>\n' +
-                    '<th class="d-none">ID</th><th>Posición</th><th>Material</th><th>Procesos</th><th>Cant. pos.</th><th>Cant. total</th><th>Cant. bajada</th><th>Saldo</th>' +
+          var table = $('<table class="table table-sm mb-0 w-100"><thead><tr>\n' +
+                    '<th class="d-none">ID</th><th>Posición</th><th>Material</th><th>Procesos</th><th>Cant. pos.</th><th>Cant. total</th><th>Cant. a bajar</th><th>Cant. bajada</th><th>Saldo</th>' +
                     '</tr></thead><tbody></tbody></table>');
-          }
           table.addClass('w-100');
           var tbody = table.find('tbody');
           tbody.empty();
@@ -756,6 +751,7 @@ Database::disconnect();
             row.append(`<td>${p.concepto}</td>`);
             row.append(`<td>${p.procesos}</td>`);
             row.append(`<td class="text-end">${p.cant_pos}</td>`);
+            row.append(`<td class="text-end">${p.cant_total}</td>`);
             row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
             row.append(`<td class="text-end">${p.cant_bajada}</td>`);
             row.append(`<td class="text-end">${p.saldo}</td>`);
@@ -776,10 +772,9 @@ Database::disconnect();
             var posiciones=tr.data('posiciones');
             console.log(posiciones);
             var input=`<input type="number" class="form-control cant-conj" value="${saldo}" data-max="${saldo}" min="0">`;
-            var origTable=tr.find('td:eq(4) table').clone();
-            var posHtml=formatPosicionesOT(posiciones,saldo,origTable);
+            var posHtml=formatPosicionesOT(posiciones,saldo);
             var rowNode=dtOT.row.add([0,nombre,cantConj,cantBajada,saldo,input,posHtml]).draw(false).node();
-            $(rowNode).data('posiciones',posiciones).data('lcrow',tr).data('origTable',origTable);
+            $(rowNode).data('posiciones',posiciones).data('lcrow',tr);
             tr.addClass('d-none').removeClass('selected');
           });
         });
@@ -810,8 +805,7 @@ Database::disconnect();
           if(val>max){val=max;$(this).val(max);}
           var tr=$(this).closest('tr');
           var posiciones=tr.data('posiciones');
-          var origTable=tr.data('origTable');
-          var posHtml=formatPosicionesOT(posiciones,val,origTable);
+          var posHtml=formatPosicionesOT(posiciones,val);
           dtOT.cell(tr,6).data(posHtml).draw(false);
         });
 
