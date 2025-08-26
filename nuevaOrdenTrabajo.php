@@ -738,7 +738,7 @@ Database::disconnect();
         function formatPosicionesOT(posiciones,cant){
           console.log(posiciones,cant);
           var table = $('<table class="table table-sm mb-0 w-100"><thead><tr>\n' +
-                    '<th class="d-none">ID</th><th>Posición</th><th>Material</th><th>Procesos</th><th>Cant. pos.</th><th>Cant. total</th><th>Cant. a bajar</th><th>Cant. bajada</th><th>Saldo</th>' +
+                    '<th class="d-none">ID</th><th>Posición</th><th>Material</th><th>Procesos</th><th>Cant. pos.</th><th>Cant. total</th><th>Cant. bajada</th><th>Saldo</th><th>Cant. a bajar</th>' +
                     '</tr></thead><tbody></tbody></table>');
           table.addClass('w-100');
           var tbody = table.find('tbody');
@@ -752,9 +752,9 @@ Database::disconnect();
             row.append(`<td>${p.procesos}</td>`);
             row.append(`<td class="text-end">${p.cant_pos}</td>`);
             row.append(`<td class="text-end">${p.cant_total}</td>`);
-            row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
             row.append(`<td class="text-end">${p.cant_bajada}</td>`);
             row.append(`<td class="text-end">${p.saldo}</td>`);
+            row.append(`<td class="text-end">${cantidad}<input type="hidden" name="cantidad_bajar[]" value="${cantidad}"></td>`);
             tbody.append(row);
           });
           return table.prop('outerHTML');
