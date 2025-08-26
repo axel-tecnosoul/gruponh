@@ -413,6 +413,20 @@ Database::disconnect();
                       </h5>
                     </div>
                     <div class="card-body">
+                      <div class="form-group row mb-3">
+                        <div class="col-sm-3 mb-2 mb-sm-0">
+                          <select id="filtro_conjunto" class="form-control" style="width:100%" multiple></select>
+                        </div>
+                        <div class="col-sm-3 mb-2 mb-sm-0">
+                          <select id="filtro_proceso" class="form-control" style="width:100%" multiple></select>
+                        </div>
+                        <div class="col-sm-3 mb-2 mb-sm-0">
+                          <select id="filtro_material" class="form-control" style="width:100%" multiple></select>
+                        </div>
+                        <div class="col-sm-3">
+                          <button type="button" id="toggle_seleccion" class="btn btn-primary w-100">Seleccionar visibles</button>
+                        </div>
+                      </div>
                       <!--Listado de conjuntos-->
                       <div class="dt-ext table-responsive">
                         <table class="display" id="tablaLC">
@@ -601,13 +615,104 @@ Database::disconnect();
         var tablaLC = $('#tablaLC');
         var tablaOT = $('#tablaOT');
         var tablaLCDT, dtOT;
+        var selectedProcesos = [];
+        var selectedMateriales = [];
 
         tablaLCDT = tablaLC.DataTable({
           order:[[0,'asc']]
         });
 
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex){
+          if(settings.nTable !== tablaLC[0]) return true;
+          var tr = tablaLCDT.row(dataIndex).node();
+          var posiciones = $(tr).data('posiciones') || [];
+          if(selectedProcesos.length){
+            var matchProc = posiciones.some(function(p){
+              return selectedProcesos.some(function(sel){
+                return p.procesos.split(',').map(function(x){return x.trim();}).includes(sel);
+              });
+            });
+            if(!matchProc) return false;
+          }
+          if(selectedMateriales.length){
+            var matchMat = posiciones.some(function(p){
+              return selectedMateriales.includes(p.concepto.trim());
+            });
+            if(!matchMat) return false;
+          }
+          return true;
+        });
+
+        function updateToggleButton(){
+          var rows = tablaLCDT.rows({search:'applied'}).nodes();
+          var allSelected = rows.length>0 && $(rows).filter('.selected').length === rows.length;
+          var btn = $('#toggle_seleccion');
+          if(allSelected){
+            btn.text('Deseleccionar todo').removeClass('btn-primary').addClass('btn-secondary');
+          }else{
+            btn.text('Seleccionar visibles').removeClass('btn-secondary').addClass('btn-primary');
+          }
+        }
+
         $('#tablaLC tbody').on('click','tr',function(){
           $(this).toggleClass('selected');
+          updateToggleButton();
+        });
+
+        $('#toggle_seleccion').on('click', function(){
+          var rows = tablaLCDT.rows({search:'applied'}).nodes();
+          var allSelected = rows.length>0 && $(rows).filter('.selected').length === rows.length;
+          if(allSelected){
+            $(rows).removeClass('selected');
+          } else {
+            $(rows).addClass('selected');
+          }
+          updateToggleButton();
+        });
+
+        tablaLCDT.on('draw', updateToggleButton);
+
+        var conjuntos = tablaLCDT.column(0).data().unique().sort();
+        conjuntos.each(function(d){
+          $('#filtro_conjunto').append('<option value="'+d+'">'+d+'</option>');
+        });
+
+        var materialesSet = new Set();
+        var procesosSet = new Set();
+        tablaLCDT.rows().every(function(){
+          var posiciones = $(this.node()).data('posiciones') || [];
+          posiciones.forEach(function(p){
+            if(p.concepto && p.concepto.trim() !== '') materialesSet.add(p.concepto.trim());
+            p.procesos.split(',').forEach(function(pr){
+              if(pr.trim() !== '') procesosSet.add(pr.trim());
+            });
+          });
+        });
+        Array.from(materialesSet).sort().forEach(function(m){
+          $('#filtro_material').append('<option value="'+m+'">'+m+'</option>');
+        });
+        Array.from(procesosSet).sort().forEach(function(p){
+          $('#filtro_proceso').append('<option value="'+p+'">'+p+'</option>');
+        });
+
+        $('#filtro_conjunto').select2({placeholder:'Conjunto',allowClear:true});
+        $('#filtro_proceso').select2({placeholder:'Proceso',allowClear:true});
+        $('#filtro_material').select2({placeholder:'Material',allowClear:true});
+
+        $('#filtro_conjunto').on('change', function(){
+          var selected = $(this).val();
+          var search = selected && selected.length ? selected.map(val => '^'+$.fn.dataTable.util.escapeRegex(val)+'$').join('|') : '';
+          tablaLCDT.column(0).search(search,true,false).draw();
+        });
+
+        $('#filtro_proceso').on('change', function(){
+          selectedProcesos = $(this).val() || [];
+          tablaLCDT.draw();
+        });
+
+        $('#filtro_material').on('change', function(){
+          selectedMateriales = $(this).val() || [];
+          tablaLCDT.draw();
         });
 
         dtOT = tablaOT.DataTable({
@@ -701,6 +806,8 @@ Database::disconnect();
           var posHtml=formatPosicionesOT(posiciones,val,origTable);
           dtOT.cell(tr,6).data(posHtml).draw(false);
         });
+
+        updateToggleButton();
 
       });
     </script>
