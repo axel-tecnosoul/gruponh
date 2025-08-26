@@ -474,7 +474,7 @@ include 'database.php';
         $("#link_cancelar_ot").on("click",function(){
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
-            alert("Por favor seleccione una orden de trabajo para eliminarla")
+            alert("Por favor seleccione una orden de trabajo en estado 'Elaborando' o 'Para Aprobar' para eliminarla")
           }
         })
 

@@ -87,7 +87,9 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
               JOIN tipos_procesos tp ON lcpr.id_tipo_proceso = tp.id
               LEFT JOIN (
                 SELECT id_posicion, SUM(cantidad) AS cant_bajada_total
-                FROM ordenes_trabajo_detalle
+                FROM ordenes_trabajo_detalle otd
+                JOIN ordenes_trabajo ot ON ot.id = otd.id_orden_trabajo
+                WHERE ot.id_estado_orden_trabajo IN (1,2,3)
                 GROUP BY id_posicion
               ) otd ON otd.id_posicion = lcp.id
               WHERE lcp.id_lista_corte_conjunto = ?
@@ -439,8 +441,8 @@ Database::disconnect();
                               <th>Posiciones</th>
                             </tr>
                           </thead>
-                          <tbody>
-                            <?php foreach($conjuntosLC as $conj){
+                          <tbody><?php
+                            foreach($conjuntosLC as $conj){
                               $json = htmlspecialchars(json_encode($conj['posiciones']), ENT_QUOTES, 'UTF-8'); ?>
                               <tr data-posiciones='<?=$json?>' data-nombre='<?=htmlspecialchars($conj['nombre'],ENT_QUOTES)?>' data-cantconj='<?=$conj['cantidad']?>' data-cantbajada='<?=$conj['cant_bajada']?>' data-saldo='<?=$conj['saldo']?>'>
                                 <td><?=htmlspecialchars($conj['nombre'])?></td>
@@ -456,13 +458,13 @@ Database::disconnect();
                                         <th>Material</th>
                                         <th>Procesos</th>
                                         <th>Cant. pos.</th>
-                                        <th>Cant. total</th>
-                                        <th>Cant. bajada</th>
+                                        <th>Total</th>
+                                        <th>Bajadas</th>
                                         <th>Saldo</th>
                                       </tr>
                                     </thead>
-                                    <tbody>
-                                      <?php foreach($conj['posiciones'] as $p){ ?>
+                                    <tbody><?php
+                                      foreach($conj['posiciones'] as $p){ ?>
                                         <tr>
                                           <td class="d-none"><?=$p['id']?></td>
                                           <td><?=$p['posicion']?></td>
@@ -472,13 +474,13 @@ Database::disconnect();
                                           <td class="text-end"><?=$p['cant_total']?></td>
                                           <td class="text-end"><?=$p['cant_bajada']?></td>
                                           <td class="text-end"><?=$p['saldo']?></td>
-                                        </tr>
-                                      <?php } ?>
+                                        </tr><?php
+                                      }?>
                                     </tbody>
                                   </table>
                                 </td>
-                              </tr>
-                            <?php } ?>
+                              </tr><?php
+                            }?>
                           </tbody>
                         </table>
                       </div>
@@ -619,7 +621,13 @@ Database::disconnect();
         var selectedMateriales = [];
 
         tablaLCDT = tablaLC.DataTable({
-          order:[[0,'asc']]
+          order:[[0,'asc']],
+          autoWidth: false,
+          columnDefs: [
+            { width: '50px', targets: [1,2,3] },
+            { width: '100px', targets: [0] },
+            //{ width: '300px', targets: [6] }
+          ],
         });
 
         $.fn.dataTable.ext.search.push(function(settings, data, dataIndex){
@@ -721,8 +729,8 @@ Database::disconnect();
           columnDefs: [
             { visible:false, targets:0},
             { orderable:false, targets:[5,6]},
-            { width: '70px', targets: [0,2,3,4] },
-            { width: '100px', targets: [1,5] },
+            { width: '50px', targets: [0,2,3,4] },
+            { width: '80px', targets: [1,5] },
             //{ width: '300px', targets: [6] }
           ],
         });
