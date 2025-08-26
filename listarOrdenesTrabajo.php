@@ -286,6 +286,9 @@ include 'database.php';
             <div class="modal-body">
               <div class="form-group row">
                 <input type="hidden" name="id_posicion_ot" id="id_posicion_ot">
+                <input type="hidden" id="liberadas_actual" value="0">
+                <input type="hidden" id="rechazadas_actual" value="0">
+                <input type="hidden" id="reproceso_actual" value="0">
                 <label class="col-sm-3 col-form-label">Reproceso</label>
                 <div class="col-sm-9"><input name="enProceso" type="number" class="form-control"></div>
               </div>
@@ -297,7 +300,11 @@ include 'database.php';
                 <label class="col-sm-3 col-form-label">Liberados</label>
                 <div class="col-sm-9"><input name="liberadas" type="number" class="form-control"></div>
               </div>
-			        <div class="form-group row">
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">Fecha</label>
+                <div class="col-sm-9"><input name="fecha" type="datetime-local" class="form-control"></div>
+              </div>
+              <div class="form-group row">
                 <label class="col-sm-3 col-form-label">Motivo</label>
                 <div class="col-sm-9"><input name="motivo" type="text" class="form-control"></div>
               </div>
@@ -502,29 +509,50 @@ include 'database.php';
             alert("Por favor seleccione una posicion para modificar las cantidades")
           }
         });
+
+        $("#modificarCantidades").on('shown.bs.modal',function(){
+          let now=new Date();
+          let local=new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+          $(this).find("input[name='fecha']").val(local);
+          $(this).find("input[name='enProceso'],input[name='rechazadas'],input[name='liberadas'],input[name='motivo']").val("");
+          $(this).find("input[name='motivo']").prop('required',false);
+        });
+
+        $("input[name='rechazadas']").on('input',function(){
+          let motivo=$("input[name='motivo']");
+          if(parseInt($(this).val())>0){
+            motivo.prop('required',true);
+          }else{
+            motivo.prop('required',false);
+          }
+        });
 		
-		    $("#btnDetalle").on("click",function(e){
+        $("#btnDetalle").on("click",function(e){
           let id_conjunto=$(this).data("id")
           if(id_conjunto!="" && id_conjunto>0){
-			      window.location.href="verHistorialOT.php?id="+id_conjunto
+                              window.location.href="verHistorialOT.php?id="+id_conjunto
           }else{
             alert("Por favor seleccione una posicion para ver el historial")
           }
         });
 		
 		
-		    $("#btnModificarCantidades").on("click",function(e){
+        $("#btnModificarCantidades").on("click",function(e){
           e.preventDefault();
           let form=$("#formModificarCantidades");
-          let enProceso=parseInt(form.find("input[name='enProceso']").val());
-          let rechazadas=parseInt(form.find("input[name='rechazadas']").val());
-          let liberadas=parseInt(form.find("input[name='liberadas']").val());
-          let cantMaxima=parseInt($("#cantMaxima").html());
+          let enProceso=parseInt(form.find("input[name='enProceso']").val())||0;
+          let rechazadas=parseInt(form.find("input[name='rechazadas']").val())||0;
+          let liberadas=parseInt(form.find("input[name='liberadas']").val())||0;
+          let cantMaxima=parseInt($("#cantMaxima").html())||0;
+          let libAct=parseInt($("#liberadas_actual").val())||0;
+          let rechAct=parseInt($("#rechazadas_actual").val())||0;
+          let motivo=form.find("input[name='motivo']").val();
 
-          if((enProceso+rechazadas+liberadas)>cantMaxima){
-            alert("La suma de los 3 campos no puede superar la cantida maxima ("+cantMaxima+")")
+          if(rechazadas>0 && motivo.trim()==""){
+            alert("Debe ingresar el motivo del rechazo");
+          }else if((liberadas+libAct+rechazadas+rechAct)>cantMaxima){
+            alert("La suma de liberadas y rechazadas no puede superar la cantidad pedida ("+cantMaxima+")");
           }else{
-            console.log("submit");
             form.submit();
           }
         });
@@ -627,21 +655,30 @@ include 'database.php';
 
               let id_pos_ot=t.find("td:first-child").html();
               let cantMaxima=t.find("td:nth-child(5)").html();
+              let cantLibAct=t.find("td:nth-child(9)").html();
+              let cantRepAct=t.find("td:nth-child(10)").html();
+              let cantRechAct=t.find("td:nth-child(11)").html();
               if(t.hasClass('selected')){
                 deselectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id","");
-				        $("#btnDetalle").data("id","");
-                $("#cantMaxima").html("")
-                $("#id_posicion_ot").val("")
+                $("#btnDetalle").data("id","");
+                $("#cantMaxima").html("");
+                $("#id_posicion_ot").val("");
+                $("#liberadas_actual").val(0);
+                $("#rechazadas_actual").val(0);
+                $("#reproceso_actual").val(0);
               }else{
                 table.rows().nodes().each( function (rowNode, index) {
                   $(rowNode).removeClass("selected");
                 });
                 selectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id",id_pos_ot);
-				        $("#btnDetalle").data("id",id_pos_ot);
-                $("#cantMaxima").html(cantMaxima)
-                $("#id_posicion_ot").val(id_pos_ot)
+                $("#btnDetalle").data("id",id_pos_ot);
+                $("#cantMaxima").html(cantMaxima);
+                $("#id_posicion_ot").val(id_pos_ot);
+                $("#liberadas_actual").val(cantLibAct);
+                $("#rechazadas_actual").val(cantRechAct);
+                $("#reproceso_actual").val(cantRepAct);
               }
             });
           }
