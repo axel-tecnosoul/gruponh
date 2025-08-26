@@ -11,6 +11,7 @@ $editing=false;
 $id_orden_trabajo=null;
 $id_lista_corte=null;
 $data_ot=[];
+$conjuntos_ot=[];
 
 if(isset($_GET['id'])){
   $editing=true;
@@ -27,6 +28,10 @@ if(isset($_GET['id'])){
     if($data_lc){
       $data_ot=array_merge($data_ot,$data_lc);
     }
+    $sql="SELECT lcc.id AS id_conjunto, MIN(otd.cantidad/lcp.cantidad) AS cant_ot\n          FROM ordenes_trabajo_detalle otd\n          JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id\n          JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto = lcc.id\n          WHERE otd.id_orden_trabajo = ?\n          GROUP BY lcc.id";
+    $q=$pdoTmp->prepare($sql);
+    $q->execute([$id_orden_trabajo]);
+    $conjuntos_ot=$q->fetchAll(PDO::FETCH_ASSOC);
   }
   Database::disconnect();
 }elseif(isset($_GET['id_lista_corte'])){
@@ -444,7 +449,7 @@ Database::disconnect();
                           <tbody><?php
                             foreach($conjuntosLC as $conj){
                               $json = htmlspecialchars(json_encode($conj['posiciones']), ENT_QUOTES, 'UTF-8'); ?>
-                              <tr data-posiciones='<?=$json?>' data-nombre='<?=htmlspecialchars($conj['nombre'],ENT_QUOTES)?>' data-cantconj='<?=$conj['cantidad']?>' data-cantbajada='<?=$conj['cant_bajada']?>' data-saldo='<?=$conj['saldo']?>'>
+                              <tr data-id='<?=$conj['id']?>' data-posiciones='<?=$json?>' data-nombre='<?=htmlspecialchars($conj['nombre'],ENT_QUOTES)?>' data-cantconj='<?=$conj['cantidad']?>' data-cantbajada='<?=$conj['cant_bajada']?>' data-saldo='<?=$conj['saldo']?>'>
                                 <td><?=htmlspecialchars($conj['nombre'])?></td>
                                 <td class="text-end"><?=$conj['cantidad']?></td>
                                 <td class="text-end"><?=$conj['cant_bajada']?></td>
@@ -619,6 +624,7 @@ Database::disconnect();
         var tablaLCDT, dtOT;
         var selectedProcesos = [];
         var selectedMateriales = [];
+        var conjuntosEdit = <?=json_encode($conjuntos_ot)?>;
 
         tablaLCDT = tablaLC.DataTable({
           order:[[0,'asc']],
@@ -734,6 +740,31 @@ Database::disconnect();
             //{ width: '300px', targets: [6] }
           ],
         });
+
+        if(Array.isArray(conjuntosEdit)){
+          conjuntosEdit.forEach(function(c){
+            var lcrow = $('#tablaLC tbody tr').filter(function(){ return $(this).data('id') == c.id_conjunto; });
+            if(lcrow.length){
+              var nombre = lcrow.data('nombre');
+              var cantConj = parseInt(lcrow.data('cantconj'),10);
+              var cantBajada = parseInt(lcrow.data('cantbajada'),10);
+              var saldo = parseInt(lcrow.data('saldo'),10);
+              var cantOT = parseInt(c.cant_ot,10);
+              var saldoDisp = saldo + cantOT;
+              var cantBajadaSin = cantBajada - cantOT;
+              lcrow.data('cantbajada', cantBajadaSin);
+              lcrow.find('td:eq(2)').text(cantBajadaSin);
+              lcrow.data('saldo', saldoDisp);
+              lcrow.find('td:eq(3)').text(saldoDisp);
+              var posiciones = lcrow.data('posiciones');
+              var input = `<input type="number" class="form-control cant-conj" value="${cantOT}" data-max="${saldoDisp}" min="0">`;
+              var posHtml = formatPosicionesOT(posiciones,cantOT);
+              var rowNode = dtOT.row.add([0,nombre,cantConj,cantBajadaSin,saldoDisp,input,posHtml]).draw(false).node();
+              $(rowNode).data('posiciones',posiciones).data('lcrow',lcrow);
+              lcrow.addClass('d-none');
+            }
+          });
+        }
 
         function formatPosicionesOT(posiciones,cant){
           console.log(posiciones,cant);
