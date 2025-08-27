@@ -289,20 +289,20 @@ include 'database.php';
                 <input type="hidden" id="liberadas_actual" value="0">
                 <input type="hidden" id="rechazadas_actual" value="0">
                 <input type="hidden" id="reproceso_actual" value="0">
-                <label class="col-sm-3 col-form-label">Reproceso</label>
-                <div class="col-sm-9"><input name="enProceso" type="number" class="form-control"></div>
-              </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Rechazados</label>
-                <div class="col-sm-9"><input name="rechazadas" type="number" class="form-control"></div>
+                <label class="col-sm-3 col-form-label">Fecha</label>
+                <div class="col-sm-9"><input name="fecha" type="datetime-local" class="form-control"></div>
               </div>
               <div class="form-group row">
                 <label class="col-sm-3 col-form-label">Liberados</label>
                 <div class="col-sm-9"><input name="liberadas" type="number" class="form-control"></div>
               </div>
               <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Fecha</label>
-                <div class="col-sm-9"><input name="fecha" type="datetime-local" class="form-control"></div>
+                <label class="col-sm-3 col-form-label">Reproceso</label>
+                <div class="col-sm-9"><input name="enProceso" type="number" class="form-control"></div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">Rechazados</label>
+                <div class="col-sm-9"><input name="rechazadas" type="number" class="form-control"></div>
               </div>
               <div class="form-group row">
                 <label class="col-sm-3 col-form-label">Motivo</label>
@@ -654,10 +654,10 @@ include 'database.php';
               //t.parent().find("tr").removeClass("selected");
 
               let id_pos_ot=t.find("td:first-child").html();
-              let cantMaxima=t.find("td:nth-child(5)").html();
-              let cantLibAct=t.find("td:nth-child(9)").html();
-              let cantRepAct=t.find("td:nth-child(10)").html();
-              let cantRechAct=t.find("td:nth-child(11)").html();
+              let cantMaxima=t.find("td:nth-child(4)").html();
+              let cantLibAct=t.find("td:nth-child(8)").html();
+              let cantRepAct=t.find("td:nth-child(9)").html();
+              let cantRechAct=t.find("td:nth-child(10)").html();
               if(t.hasClass('selected')){
                 deselectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id","");

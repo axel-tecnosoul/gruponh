@@ -10,18 +10,34 @@ require 'database.php';
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$modoDebug = 1;
+//start a pdf transaction
+$pdo->beginTransaction();
+
+if($modoDebug==1){
+  var_dump($_POST);
+}
+
 $idDetalle = $_POST["id_posicion_ot"];
 $fecha = isset($_POST['fecha']) ? date('Y-m-d H:i:s', strtotime($_POST['fecha'])) : date('Y-m-d H:i:s');
 
 // Obtener totales actuales de la posición
-$sql = "SELECT cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_orden_trabajo FROM ordenes_trabajo_detalle WHERE id = ?";
+$sql = "SELECT cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_orden_trabajo FROM ordenes_trabajo_detalle WHERE id_posicion = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$idDetalle]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 
-$n_liberadas  = $data['cant_liberadas'] + $_POST['liberadas'];
-$n_proceso    = $data['cant_proceso'] + $_POST['enProceso'];
-$n_rechazadas = $data['cant_rechazadas'] + $_POST['rechazadas'];
+if($modoDebug==1){
+  var_dump($data);
+}
+
+$n_liberadas  = $data['cant_liberadas'] || 0;
+$n_proceso    = $data['cant_proceso'] || 0;
+$n_rechazadas = $data['cant_rechazadas'] || 0;
+
+$n_liberadas += $_POST['liberadas'];
+$n_proceso += $_POST['enProceso'];
+$n_rechazadas += $_POST['rechazadas'];
 
 if(($n_liberadas + $n_rechazadas) > $data['cantidad']){
   Database::disconnect();
@@ -55,6 +71,13 @@ if (($data['lib'] + $data['rech']) >= $data['total']) {
   $q = $pdo->prepare($sql);
   $q->execute([$idOT]);
 }
+
+if($modoDebug==1){
+  $pdo->rollBack();
+  die();
+}
+
+$pdo->commit();
 
 Database::disconnect();
 header("Location: listarOrdenesTrabajo.php");
