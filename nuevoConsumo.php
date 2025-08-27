@@ -5,6 +5,7 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+require 'funciones.php';
 if (!empty($_POST)) {
     
   // insert data
@@ -204,7 +205,26 @@ if (!empty($_POST)) {
 
 }
 
-Database::disconnect();?>
+Database::disconnect();
+
+$id_ot = $_GET['id_orden_trabajo'] ?? null;
+$infoOT = '';
+if ($id_ot) {
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sqlInfo = "SELECT ot.nro_orden_trabajo, lc.numero AS numero_lc, lc.nro_revision, lc.id_proyecto
+              FROM ordenes_trabajo ot
+              JOIN listas_corte lc ON ot.id_lista_corte = lc.id
+              WHERE ot.id = ?";
+  $q = $pdo->prepare($sqlInfo);
+  $q->execute([$id_ot]);
+  $data_ot = $q->fetch(PDO::FETCH_ASSOC);
+  $descProyecto = getDescripcionProyecto($pdo, $data_ot['id_proyecto']);
+  $infoOT = 'OT N° '.$data_ot['nro_orden_trabajo'].' - LC N° '.$data_ot['numero_lc'].' - Rev '.$data_ot['nro_revision'].' '.htmlspecialchars($descProyecto);
+  Database::disconnect();
+}
+$ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
+?>
 
 <!DOCTYPE html>
 <html lang="en">
@@ -224,7 +244,6 @@ Database::disconnect();?>
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Nuevo Consumo";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -232,7 +251,7 @@ Database::disconnect();?>
               <div class="col-sm-12">
                 <div class="card mb-0">
                   <div class="card-header">
-                    <h5>Resumen Orden de Trabajo N° <?=$_GET['id_orden_trabajo']?></h5>
+                    <h5>Resumen <?=$infoOT?></h5>
                   </div>
                   <div class="card-body">
                     <div class="form-group row">

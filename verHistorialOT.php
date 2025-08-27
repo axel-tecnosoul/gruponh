@@ -1,19 +1,39 @@
 <?php
 require("config.php");
 require 'database.php';
+require 'funciones.php';
 
 $id = null;
 if (!empty($_GET['id_detalle_ot'])) {
   $id = $_REQUEST['id_detalle_ot'];
 }
 
-if (null==$id) {
+if ($id === null) {
   header("Location: listarOrdenesTrabajo.php");
 }
 
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sqlInfo = "SELECT otd.cantidad, otd.cant_liberadas, otd.cant_reproceso, otd.cant_rechazadas,
+                  lcp.posicion, m.concepto, ot.nro_orden_trabajo, lc.numero AS numero_lc,
+                  lc.nro_revision, lc.id_proyecto
+            FROM ordenes_trabajo_detalle otd
+            JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id
+            JOIN materiales m ON lcp.id_material = m.id
+            JOIN ordenes_trabajo ot ON otd.id_orden_trabajo = ot.id
+            JOIN listas_corte lc ON ot.id_lista_corte = lc.id
+            WHERE otd.id = ?";
+$qInfo = $pdo->prepare($sqlInfo);
+$qInfo->execute([$id]);
+$dataPos = $qInfo->fetch(PDO::FETCH_ASSOC);
+$descProyecto = getDescripcionProyecto($pdo, $dataPos['id_proyecto']);
+$infoOT = 'OT N° ' . $dataPos['nro_orden_trabajo'] . ' - LC N° ' . $dataPos['numero_lc'] .
+          ' - Rev ' . $dataPos['nro_revision'] . ' ' . htmlspecialchars($descProyecto);
+
 if (!empty($_POST)) {
-  
-}?>
+
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -40,23 +60,33 @@ if (!empty($_POST)) {
 		    <?php include('menu.php');?>
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
-        <div class="page-body"><?php
-          $ubicacion="Ver Historial OT";
-          include_once("head_page.php")?>
+          <div class="page-body"><?php
+            $ubicacion="Ver Historial OT";
+            include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
+                    <h5><?=$ubicacion.' '.$infoOT?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" action="#">
+                                          <form class="form theme-form" role="form" method="post" action="#">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
                             <div class="col-sm-12">
+                              <div class="row mb-3">
+                                <div class="col-md-4"><strong>Posición:</strong> <?=$dataPos['posicion']?></div>
+                                <div class="col-md-4"><strong>Material:</strong> <?=$dataPos['concepto']?></div>
+                                <div class="col-md-4"><strong>Cantidad:</strong> <?=$dataPos['cantidad']?></div>
+                              </div>
+                              <div class="row mb-3">
+                                <div class="col-md-4"><strong>Liberadas:</strong> <?=$dataPos['cant_liberadas']?></div>
+                                <div class="col-md-4"><strong>A Reprocesar:</strong> <?=$dataPos['cant_reproceso']?></div>
+                                <div class="col-md-4"><strong>Rechazadas:</strong> <?=$dataPos['cant_rechazadas']?></div>
+                              </div>
                               <table class="display" id="dataTables-example668">
                                 <thead>
                                   <tr>
@@ -69,16 +99,21 @@ if (!empty($_POST)) {
                                   </tr>
                                 </thead>
                                 <tbody><?php
-                                  $pdo = Database::connect();
-                                  $sql = " SELECT d.cantidad_liberada, d.cantidad_reproceso, d.cantidad_rechazada, d.motivo, date_format(d.fecha,'%d/%m/%y'), u.usuario FROM ordenes_trabajo_detalle_log d inner join usuarios u on u.id = d.id_usuario WHERE d.id_ordenes_trabajo_detalle = ".$id." order by d.id desc ";
-                                  foreach ($pdo->query($sql) as $row) {
+                                  $sql = "SELECT d.cantidad_liberada, d.cantidad_reproceso, d.cantidad_rechazada, d.motivo,
+                                                  DATE_FORMAT(d.fecha,'%d/%m/%y') AS fecha, u.usuario
+                                          FROM ordenes_trabajo_detalle_log d
+                                          INNER JOIN usuarios u ON u.id = d.id_usuario
+                                          WHERE d.id_ordenes_trabajo_detalle = ? ORDER BY d.id DESC";
+                                  $q = $pdo->prepare($sql);
+                                  $q->execute([$id]);
+                                  foreach ($q as $row) {
                                     echo '<tr>';
-                                    echo '<td>'. $row[4] . '</td>';
-                                    echo '<td>'. $row[5] . '</td>';
-                                    echo '<td>'. $row[0] . '</td>';
-                                    echo '<td>'. $row[1] . '</td>';
-                                    echo '<td>'. $row[2] . '</td>';
-                                    echo '<td>'. $row[3] . '</td>';
+                                    echo '<td>'. $row['fecha'] . '</td>';
+                                    echo '<td>'. $row['usuario'] . '</td>';
+                                    echo '<td>'. $row['cantidad_liberada'] . '</td>';
+                                    echo '<td>'. $row['cantidad_reproceso'] . '</td>';
+                                    echo '<td>'. $row['cantidad_rechazada'] . '</td>';
+                                    echo '<td>'. $row['motivo'] . '</td>';
                                     echo '</tr>';
                                   }
                                   Database::disconnect();?>
