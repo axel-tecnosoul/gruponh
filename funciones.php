@@ -584,7 +584,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     $mensaje = $cuerpoEmail; // Usar el cuerpo del email pasado como parámetro
 
     $mail = new PHPMailer();
-    //$mail->SMTPDebug = 3;//Habilitamos solo para debugguear
+    $mail->SMTPDebug = 3;//Habilitamos solo para debugguear
     $mail->IsSMTP();
     $mail->Host       = $smtpHost;
     $mail->Username   = $smtpUsuario;

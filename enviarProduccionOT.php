@@ -39,7 +39,7 @@ if ($id) {
       $descripcionOT = 'OT '.$info['nro_orden_trabajo'].$descProyecto;
 
       // Enviar notificación y correo
-      $idTipoNotificacion = 8; // Producción
+      $idTipoNotificacion = 21; // Producción
       $detalleNotificacion = 'ID OT: #'.$id;
       $asuntoEmail = 'Módulo Producción - Envío a Producción '.$descripcionOT;
       $cuerpoEmail = 'La '.$descripcionOT.' ha sido enviada a producción.';

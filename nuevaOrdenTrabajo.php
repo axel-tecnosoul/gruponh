@@ -5,7 +5,7 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
-$modoDebug=0;
+$modoDebug=1;
 
 $editing=false;
 $id_orden_trabajo=null;
