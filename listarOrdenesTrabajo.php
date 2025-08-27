@@ -286,6 +286,7 @@ include 'database.php';
             <div class="modal-body">
               <div class="form-group row">
                 <input type="hidden" name="id_posicion_ot" id="id_posicion_ot">
+                <input type="hidden" name="id_orden_trabajo" id="id_orden_trabajo">
                 <input type="hidden" id="liberadas_actual" value="0">
                 <input type="hidden" id="rechazadas_actual" value="0">
                 <input type="hidden" id="reproceso_actual" value="0">
@@ -425,6 +426,7 @@ include 'database.php';
             $("#link_nuevo_consumo").attr("href","#");
             $("#link_cancelar_ot").attr("data-target","#");
             $("#btnEliminarOT").attr("href","#");
+            $("#id_orden_trabajo").val('');
           }else{
             //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
@@ -432,6 +434,7 @@ include 'database.php';
             });
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
+            $("#id_orden_trabajo").val(id_ot);
             if ((estado == "Elaborando") || (estado == "Para Aprobar")) {
               $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
             } else {
