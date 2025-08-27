@@ -5,7 +5,7 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
-$modoDebug=1;
+$modoDebug=0;
 
 $editing=false;
 $id_orden_trabajo=null;
@@ -28,7 +28,12 @@ if(isset($_GET['id'])){
     if($data_lc){
       $data_ot=array_merge($data_ot,$data_lc);
     }
-    $sql="SELECT lcc.id AS id_conjunto, MIN(otd.cantidad/lcp.cantidad) AS cant_ot\n          FROM ordenes_trabajo_detalle otd\n          JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id\n          JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto = lcc.id\n          WHERE otd.id_orden_trabajo = ?\n          GROUP BY lcc.id";
+    $sql="SELECT lcc.id AS id_conjunto, MIN(otd.cantidad/lcp.cantidad) AS cant_ot
+              FROM ordenes_trabajo_detalle otd
+              JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id
+              JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto = lcc.id
+              WHERE otd.id_orden_trabajo = ?
+              GROUP BY lcc.id";
     $q=$pdoTmp->prepare($sql);
     $q->execute([$id_orden_trabajo]);
     $conjuntos_ot=$q->fetchAll(PDO::FETCH_ASSOC);

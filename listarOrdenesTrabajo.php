@@ -564,7 +564,7 @@ include 'database.php';
         $("#btnDetalle").on("click",function(e){
           let id_conjunto=$(this).data("id")
           if(id_conjunto!="" && id_conjunto>0){
-                              window.location.href="verHistorialOT.php?id="+id_conjunto
+            window.location.href="verHistorialOT.php?id="+id_conjunto
           }else{
             alert("Por favor seleccione una posicion para ver el historial")
           }

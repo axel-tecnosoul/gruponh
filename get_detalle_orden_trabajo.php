@@ -7,11 +7,11 @@ $id_ot = $_POST['id_ot'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT otd.id,lcc.nombre,lcc.cantidad AS cant_conj,lcp.posicion,lcp.cantidad AS cant_pos,otd.cantidad AS cant_pedida,m.concepto,GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos,eotp.estado,eotp.id AS id_estado,cant_liberadas,cant_reproceso,cant_rechazadas,date_format(fecha,'%d/%m/%y') fecha, u.usuario, lcp.id AS id_posicion FROM ordenes_trabajo_detalle otd left join usuarios u on u.id = otd.id_usuario INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion=lcp.id INNER JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN estados_orden_trabajo_posicion eotp ON otd.id_estado_orden_trabajo_posicion=eotp.id WHERE otd.id_orden_trabajo = $id_ot GROUP BY lcp.id ORDER BY lcp.id";
+$sql = "SELECT otd.id AS id_detalle_ot, lcc.nombre, lcc.cantidad AS cant_conj, lcp.posicion, lcp.cantidad AS cant_pos, otd.cantidad AS cant_pedida, m.concepto, GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, eotp.estado, eotp.id AS id_estado, cant_liberadas, cant_reproceso, cant_rechazadas, date_format(fecha,'%d/%m/%y') fecha, u.usuario, lcp.id AS id_posicion FROM ordenes_trabajo_detalle otd left join usuarios u on u.id = otd.id_usuario INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion=lcp.id INNER JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto=lcc.id INNER JOIN lista_corte_procesos lcpr ON lcpr.id_lista_corte_posicion=lcp.id INNER JOIN tipos_procesos tp ON lcpr.id_tipo_proceso=tp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN estados_orden_trabajo_posicion eotp ON otd.id_estado_orden_trabajo_posicion=eotp.id WHERE otd.id_orden_trabajo = $id_ot GROUP BY lcp.id ORDER BY lcp.id";
 $aConjuntos=[];
 foreach ($pdo->query($sql) as $row) {
   $aConjuntos[]=[
-    0=>$row["id"],
+    0=>$row["id_detalle_ot"],
     1=>$row["nombre"],
     2=>$row["cant_conj"],
     3=>$row["posicion"],

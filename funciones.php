@@ -21,12 +21,24 @@ function getSmtpConfig(PDO $pdo): array {
         $config['username'] ?? '',
         $config['password'] ?? '',
         $config['from'] ?? '',
-        $config['from_name'] ?? ''
+        $config['from_name'] ?? '',
+        $config['port'] ?? '',
+        $config['smtpSecure'] ?? ''
       ];
     }
   }
   $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
-  return $stmt->fetchAll(PDO::FETCH_COLUMN);
+  //return $stmt->fetchAll(PDO::FETCH_COLUMN);
+  $valores = $stmt->fetchAll(PDO::FETCH_COLUMN);
+  return [
+    $valores[0] ?? '',
+    $valores[1] ?? '',
+    $valores[2] ?? '',
+    $valores[3] ?? '',
+    $valores[4] ?? '',
+    $valores[5] = 25,
+    $valores[6] = false,
+  ];
 }
 
 function debugQuery(PDO $pdo, string $sql, array $params): string {
@@ -562,7 +574,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
   
   // --- Cargo configuración SMTP ---
   $smtp = getSmtpConfig($pdo); // [host, usuario, clave, from, from_name]
-  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName) = $smtp;
+  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName, $smtpPort, $smtpSecure) = $smtp;
 
   //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
   $whereDebug="";
@@ -584,7 +596,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     $mensaje = $cuerpoEmail; // Usar el cuerpo del email pasado como parámetro
 
     $mail = new PHPMailer();
-    $mail->SMTPDebug = 3;//Habilitamos solo para debugguear
+    //$mail->SMTPDebug = 3;//Habilitamos solo para debugguear
     $mail->IsSMTP();
     $mail->Host       = $smtpHost;
     $mail->Username   = $smtpUsuario;
@@ -593,17 +605,19 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     /*$mail->Port = 465;
     $mail->SMTPSecure = 'ssl';*/
 
+    $mail->SMTPAuth   = true;
     //EN LOCAL
-    /*$mail->SMTPAuth   = true;
-    $mail->Port = 587;
+    /*$mail->Port = 587;
     $mail->SMTPSecure = 'tls';*/
 
     //EN PRODUCCION
-    $mail->SMTPAuth = true;
-    $mail->Port = 25; 
+    /*$mail->Port = 25; 
     //$mail->SMTPSecure = 'ssl';
     //$mail->SMTPAutoTLS = false;
-    $mail->SMTPSecure = false;
+    $mail->SMTPSecure = false;*/
+
+    $mail->Port = $smtpPort;
+    $mail->SMTPSecure = $smtpSecure;
     
     $mail->From       = $smtpFrom;
     $mail->FromName   = $_SESSION['user']['usuario'];
