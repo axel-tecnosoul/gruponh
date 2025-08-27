@@ -18,6 +18,11 @@ if ($id) {
   $q->execute([$id]);
 
   if ($q->rowCount() > 0) {
+    // Actualizar estado de las posiciones
+    $sqlDet = "UPDATE ordenes_trabajo_detalle SET id_estado_orden_trabajo_posicion = 3 WHERE id_orden_trabajo = ?";
+    $qDet = $pdo->prepare($sqlDet);
+    $qDet->execute([$id]);
+
     // Registrar log
     $sqlLog = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(), ?, 'Envio a producción OT', 'Orden de Trabajo', 'verOrdenTrabajo.php?id=$id')";
     $qLog = $pdo->prepare($sqlLog);
