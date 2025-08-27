@@ -378,7 +378,7 @@ include 'database.php';
       $(document).ready(function() {
 
         let estadoOT = '';
-        $("#btnAbrirModalModificarCantidades").hide();
+        $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
 
         // Setup - add a text input to each footer cell
         $('#tablaOT tfoot th').each( function () {
@@ -448,7 +448,7 @@ include 'database.php';
             $("#btnEliminarOT").attr("href","#");
             $("#id_orden_trabajo").val('');
             estadoOT='';
-            $("#btnAbrirModalModificarCantidades").hide();
+            $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
           }else{
             //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
@@ -456,6 +456,7 @@ include 'database.php';
             });
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
+            $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
             $("#id_orden_trabajo").val(id_ot);
             estadoOT = estado;
             if (estado == "Elaboracion" || estado == "Para Aprobar") {
@@ -470,10 +471,8 @@ include 'database.php';
             }
             if (estado == "En Produccion") {
               $("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
-              $("#btnAbrirModalModificarCantidades").show();
             } else {
               $("#link_nuevo_consumo").attr("href","#");
-              $("#btnAbrirModalModificarCantidades").hide();
             }
 
             $("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
@@ -531,17 +530,18 @@ include 'database.php';
         })
 
         $("#btnAbrirModalModificarCantidades").on("click",function(){
-          let id_posicion=$(this).data("id")
-          if(estadoOT!="En Produccion"){
-            alert("Solo se pueden modificar cantidades con la OT en estado 'En Produccion'");
+          let id_posicion=$(this).data("id");
+          let estadoPos=$(this).data("estado");
+          if(id_posicion=="" || id_posicion<=0){
+            alert("Por favor seleccione una posicion para modificar las cantidades");
             return;
           }
-          if(id_posicion!="" && id_posicion>0){
-            let modal=$("#modificarCantidades")
-            modal.modal("show")
-          }else{
-            alert("Por favor seleccione una posicion para modificar las cantidades")
+          if(estadoPos!="En Produccion"){
+            alert("No se pueden modificar las cantidades si la posicion no está en estado 'En Produccion'");
+            return;
           }
+          let modal=$("#modificarCantidades");
+          modal.modal("show");
         });
 
         $("#modificarCantidades").on('shown.bs.modal',function(){
@@ -692,9 +692,10 @@ include 'database.php';
               let cantLibAct=t.find("td:nth-child(8)").html();
               let cantRepAct=t.find("td:nth-child(9)").html();
               let cantRechAct=t.find("td:nth-child(10)").html();
+              let estadoPos=t.find("td:nth-child(7)").html();
               if(t.hasClass('selected')){
                 deselectRow(t);
-                $("#btnAbrirModalModificarCantidades").data("id","");
+                $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
                 $("#btnDetalle").data("id","");
                 $("#cantMaxima").html("");
                 $("#id_posicion_ot").val("");
@@ -706,7 +707,7 @@ include 'database.php';
                   $(rowNode).removeClass("selected");
                 });
                 selectRow(t);
-                $("#btnAbrirModalModificarCantidades").data("id",id_pos_ot);
+                $("#btnAbrirModalModificarCantidades").data("id",id_pos_ot).data("estado",estadoPos);
                 $("#btnDetalle").data("id",id_pos_ot);
                 $("#cantMaxima").html(cantMaxima);
                 $("#id_posicion_ot").val(id_pos_ot);
