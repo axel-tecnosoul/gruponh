@@ -360,6 +360,9 @@ include 'database.php';
     <script>
       $(document).ready(function() {
 
+        let estadoOT = '';
+        $("#btnAbrirModalModificarCantidades").hide();
+
         // Setup - add a text input to each footer cell
         $('#tablaOT tfoot th').each( function () {
           var title = $(this).text();
@@ -415,7 +418,7 @@ include 'database.php';
           var t=$(this).parent();
 
           let id_ot=t.find("td:first-child").html();
-                      let estado = t.find("td:nth-child(10)").html();
+          let estado = t.find("td:nth-child(10)").html();
           if(t.hasClass('selected')){
             deselectRow(t);
             get_detalle_orden_trabajo(0)
@@ -427,6 +430,8 @@ include 'database.php';
             $("#link_cancelar_ot").attr("data-target","#");
             $("#btnEliminarOT").attr("href","#");
             $("#id_orden_trabajo").val('');
+            estadoOT='';
+            $("#btnAbrirModalModificarCantidades").hide();
           }else{
             //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
@@ -435,7 +440,8 @@ include 'database.php';
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
             $("#id_orden_trabajo").val(id_ot);
-            if ((estado == "Elaboracion") || (estado == "Para Aprobar")) {
+            estadoOT = estado;
+            if (estado == "Elaboracion" || estado == "Para Aprobar") {
               $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
             } else {
               $("#link_modificar_ot").attr("href","#");
@@ -447,8 +453,10 @@ include 'database.php';
             }
             if (estado == "En Produccion") {
               $("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
+              $("#btnAbrirModalModificarCantidades").show();
             } else {
               $("#link_nuevo_consumo").attr("href","#");
+              $("#btnAbrirModalModificarCantidades").hide();
             }
 
             $("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
@@ -504,7 +512,10 @@ include 'database.php';
 
         $("#btnAbrirModalModificarCantidades").on("click",function(){
           let id_posicion=$(this).data("id")
-          console.log(id_posicion);
+          if(estadoOT!="En Produccion"){
+            alert("Solo se pueden modificar cantidades con la OT en estado 'En Produccion'");
+            return;
+          }
           if(id_posicion!="" && id_posicion>0){
             let modal=$("#modificarCantidades")
             modal.modal("show")

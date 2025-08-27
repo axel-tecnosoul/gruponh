@@ -25,6 +25,17 @@ $liberadas = $_POST['liberadas'] ?: 0;
 $reproceso = $_POST['reproceso'] ?: 0;
 $rechazadas = $_POST['rechazadas'] ?: 0;
 
+$sql = "SELECT id_estado_orden_trabajo FROM ordenes_trabajo WHERE id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$id_orden_trabajo]);
+$estadoOT = $q->fetchColumn();
+if($estadoOT != 3){
+  $pdo->rollBack();
+  Database::disconnect();
+  header("Location: listarOrdenesTrabajo.php");
+  exit;
+}
+
 // Obtener totales actuales de la posición
 $sql = "SELECT id, cantidad, cant_liberadas, cant_reproceso, cant_rechazadas FROM ordenes_trabajo_detalle WHERE id_posicion = ? AND id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
