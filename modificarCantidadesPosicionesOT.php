@@ -125,6 +125,66 @@ if ($data['total'] > 0 && $data['total'] == $data['terminadas']) {
   }
 }
 
+// Obtener conjunto y lista de corte asociados a la posición
+$sql = "SELECT lcp.id_lista_corte_conjunto, lcc.id_lista_corte FROM lista_corte_posiciones lcp INNER JOIN listas_corte_conjuntos lcc ON lcc.id = lcp.id_lista_corte_conjunto WHERE lcp.id = ?";
+$q = $pdo->prepare($sql);
+$params = [$id_posicion];
+$q->execute($params);
+$info = $q->fetch(PDO::FETCH_ASSOC);
+
+if($modoDebug==1){
+  echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+}
+
+$id_conjunto = $info['id_lista_corte_conjunto'];
+$id_lista_corte = $info['id_lista_corte'];
+
+// Verificar si el conjunto está completo (liberadas + rechazadas == cantidad pedida)
+$sql = "SELECT SUM(otd.cantidad) total_pedida, SUM(otd.cant_liberadas + otd.cant_rechazadas) total_procesada FROM ordenes_trabajo_detalle otd INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id WHERE lcp.id_lista_corte_conjunto = ?";
+$q = $pdo->prepare($sql);
+$params = [$id_conjunto];
+$q->execute($params);
+$totales = $q->fetch(PDO::FETCH_ASSOC);
+
+if($modoDebug==1){
+  echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  var_dump($totales);
+}
+
+if ($totales['total_pedida'] > 0 && $totales['total_pedida'] == $totales['total_procesada']) {
+  $sql = "UPDATE listas_corte_conjuntos SET id_estado_lista_corte_conjuntos = 2 WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $params = [$id_conjunto];
+  $q->execute($params);
+
+  if($modoDebug==1){
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  }
+
+  // Verificar si todos los conjuntos de la LC están completos para actualizar su estado
+  $sql = "SELECT COUNT(*) total, SUM(CASE WHEN id_estado_lista_corte_conjuntos = 2 THEN 1 ELSE 0 END) completos FROM listas_corte_conjuntos WHERE id_lista_corte = ?";
+  $q = $pdo->prepare($sql);
+  $params = [$id_lista_corte];
+  $q->execute($params);
+  $conjuntos = $q->fetch(PDO::FETCH_ASSOC);
+
+  if($modoDebug==1){
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    var_dump($conjuntos);
+  }
+
+  if ($conjuntos['total'] > 0 && $conjuntos['total'] == $conjuntos['completos']) {
+    $sql = "UPDATE listas_corte SET id_estado_lista_corte = 5 WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $params = [$id_lista_corte];
+    $q->execute($params);
+
+    if($modoDebug==1){
+      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    }
+  }
+}
+
 if($modoDebug==1){
   echo "DEBUG - ROLLBACK";
   $pdo->rollBack();
