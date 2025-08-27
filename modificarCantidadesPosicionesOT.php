@@ -11,12 +11,13 @@ $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $idDetalle = $_POST["id_posicion_ot"];
+$idOT = $_POST["id_orden_trabajo"];
 $fecha = isset($_POST['fecha']) ? date('Y-m-d H:i:s', strtotime($_POST['fecha'])) : date('Y-m-d H:i:s');
 
 // Obtener totales actuales de la posición
-$sql = "SELECT cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_orden_trabajo FROM ordenes_trabajo_detalle WHERE id = ?";
+$sql = "SELECT cantidad, cant_liberadas, cant_proceso, cant_rechazadas FROM ordenes_trabajo_detalle WHERE id = ? AND id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$idDetalle]);
+$q->execute([$idDetalle, $idOT]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 
 $n_liberadas  = $data['cant_liberadas'] + $_POST['liberadas'];
@@ -43,8 +44,6 @@ $q->execute([$idDetalle, $_POST["liberadas"], $_POST["enProceso"], $_POST["recha
 $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Cantidades en Orden de Trabajo','Orden de Trabajo')";
 $q = $pdo->prepare($sql);
 $q->execute([$_SESSION['user']['id']]);
-
-$idOT = $data['id_orden_trabajo'];
 
 $sql = "SELECT sum(d.cantidad) total, sum(d.cant_liberadas) lib, sum(d.cant_rechazadas) rech FROM ordenes_trabajo_detalle d where d.id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
