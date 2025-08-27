@@ -259,7 +259,7 @@ include 'database.php';
       </div>
     </div>
 
-    <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
@@ -273,9 +273,24 @@ include 'database.php';
           </div>
         </div>
       </div>
-    </div>
+      </div>
+      <div class="modal fade" id="enviarProduccionModal" tabindex="-1" role="dialog" aria-labelledby="modalEnviarProduccionLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalEnviarProduccionLabel">Confirmación</h5>
+              <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            </div>
+            <div class="modal-body">¿Está seguro que desea enviar la Orden de Trabajo a producción?</div>
+            <div class="modal-footer">
+              <a href="#" class="btn btn-primary" id="btnEnviarProduccionOT">Enviar</a>
+              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
-    <div class="modal fade" id="modificarCantidades" tabindex="-1" role="dialog" aria-labelledby="exampleModalModificarCantidades" aria-hidden="true">
+      <div class="modal fade" id="modificarCantidades" tabindex="-1" role="dialog" aria-labelledby="exampleModalModificarCantidades" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <form id="formModificarCantidades" action="modificarCantidadesPosicionesOT.php" method="post">
@@ -496,11 +511,14 @@ include 'database.php';
           }
         })
 
-        $("#link_enviar_produccion_ot").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una orden de trabajo en estado 'Para Aprobar' para enviarla a producción")
+        $("#link_enviar_produccion_ot").on("click",function(e){
+          e.preventDefault();
+          if(estadoOT != "Para Aprobar"){
+            alert("Por favor seleccione una orden de trabajo en estado 'Para Aprobar' para enviarla a producción");
+            return;
           }
+          $("#btnEnviarProduccionOT").attr("href", this.href);
+          $("#enviarProduccionModal").modal("show");
         })
 
         $("#link_nuevo_consumo").on("click",function(){
