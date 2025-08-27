@@ -3,8 +3,8 @@ require("config.php");
 require 'database.php';
 
 $id = null;
-if (!empty($_GET['id'])) {
-  $id = $_REQUEST['id'];
+if (!empty($_GET['id_detalle_ot'])) {
+  $id = $_REQUEST['id_detalle_ot'];
 }
 
 if (null==$id) {
@@ -70,7 +70,7 @@ if (!empty($_POST)) {
                                 </thead>
                                 <tbody><?php
                                   $pdo = Database::connect();
-                                  $sql = " SELECT d.cantidad_liberada, d.cantidad_reproceso, d.cantidad_rechazada, d.motivo, date_format(d.fecha,'%d/%m/%y'), u.usuario FROM ordenes_trabajo_detalle_log d inner join usuarios u on u.id = d.id_usuario WHERE d.id_ordenes_trabajo_detalle = ".$_GET['id']." order by d.id desc ";
+                                  $sql = " SELECT d.cantidad_liberada, d.cantidad_reproceso, d.cantidad_rechazada, d.motivo, date_format(d.fecha,'%d/%m/%y'), u.usuario FROM ordenes_trabajo_detalle_log d inner join usuarios u on u.id = d.id_usuario WHERE d.id_ordenes_trabajo_detalle = ".$id." order by d.id desc ";
                                   foreach ($pdo->query($sql) as $row) {
                                     echo '<tr>';
                                     echo '<td>'. $row[4] . '</td>';

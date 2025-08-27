@@ -204,7 +204,7 @@ include 'database.php';
                     <h5>Detalle de Orden de Trabajo
                       &nbsp;&nbsp;
                       <span id="btnAbrirModalModificarCantidades" title="Modificar Cantidades" style="cursor: pointer;"><i class='faClass fa fa-lg fa-cogs'></i></span>&nbsp;&nbsp;
-					            <span id="btnDetalle" title="Ver Historial" style="cursor: pointer;"><i class='faClass fa fa-lg fa-eye'></i></span>&nbsp;&nbsp;
+                                                    <a id="btnDetalle" title="Ver Historial" style="cursor: pointer;" href="#"><i class='faClass fa fa-lg fa-eye'></i></a>&nbsp;&nbsp;
                     </h5>
                   </div>
                   <div class="card-body">
@@ -449,6 +449,7 @@ include 'database.php';
             $("#id_orden_trabajo").val('');
             estadoOT='';
             $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
+            $("#btnDetalle").attr("href","#");
           }else{
             //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
@@ -457,6 +458,7 @@ include 'database.php';
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
             $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
+            $("#btnDetalle").attr("href","#");
             $("#id_orden_trabajo").val(id_ot);
             estadoOT = estado;
             if (estado == "Elaboracion" || estado == "Para Aprobar") {
@@ -562,11 +564,10 @@ include 'database.php';
         });
 		
         $("#btnDetalle").on("click",function(e){
-          let id_conjunto=$(this).data("id")
-          if(id_conjunto!="" && id_conjunto>0){
-            window.location.href="verHistorialOT.php?id="+id_conjunto
-          }else{
-            alert("Por favor seleccione una posicion para ver el historial")
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            e.preventDefault();
+            alert("Por favor seleccione una posicion para ver el historial");
           }
         });
 		
@@ -687,16 +688,18 @@ include 'database.php';
               var t=$(this).parent();
               //t.parent().find("tr").removeClass("selected");
 
-              let id_pos_ot=t.find("td:first-child").html();
-              let cantMaxima=t.find("td:nth-child(4)").html();
-              let cantLibAct=t.find("td:nth-child(8)").html();
-              let cantRepAct=t.find("td:nth-child(9)").html();
-              let cantRechAct=t.find("td:nth-child(10)").html();
-              let estadoPos=t.find("td:nth-child(7)").html();
+              let rowData = table.row(t).data();
+              let id_detalle_ot = rowData[0];
+              let id_pos_ot = rowData[14];
+              let cantMaxima = rowData[4];
+              let cantLibAct = rowData[8];
+              let cantRepAct = rowData[9];
+              let cantRechAct = rowData[10];
+              let estadoPos = rowData[7];
               if(t.hasClass('selected')){
                 deselectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
-                $("#btnDetalle").data("id","");
+                $("#btnDetalle").attr("href","#");
                 $("#cantMaxima").html("");
                 $("#id_posicion_ot").val("");
                 $("#liberadas_actual").val(0);
@@ -708,7 +711,7 @@ include 'database.php';
                 });
                 selectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id",id_pos_ot).data("estado",estadoPos);
-                $("#btnDetalle").data("id",id_pos_ot);
+                $("#btnDetalle").attr("href","verHistorialOT.php?id_detalle_ot="+id_detalle_ot);
                 $("#cantMaxima").html(cantMaxima);
                 $("#id_posicion_ot").val(id_pos_ot);
                 $("#liberadas_actual").val(cantLibAct);
