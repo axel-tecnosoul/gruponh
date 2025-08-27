@@ -297,10 +297,22 @@ include 'database.php';
         <div class="modal-content">
           <form id="formModificarCantidades" action="modificarCantidadesPosicionesOT.php" method="post">
             <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalModificarCantidades">Ingrese las cantidad (Max. <span id="cantMaxima"></span>)</h5>
+              <h5 class="modal-title" id="exampleModalModificarCantidades">Ingrese las cantidades para <span id="info_pos_titulo"></span> (Max. <span id="cantMaxima"></span>)</h5>
               <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
             </div>
             <div class="modal-body">
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">Posición</label>
+                <div class="col-sm-9"><p class="form-control-plaintext" id="info_posicion"></p></div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">Cant. Pedida</label>
+                <div class="col-sm-9"><p class="form-control-plaintext" id="info_cant_pedida"></p></div>
+              </div>
+              <div class="form-group row">
+                <label class="col-sm-3 col-form-label">Cantidades actuales</label>
+                <div class="col-sm-9"><p class="form-control-plaintext" id="info_cant_actuales"></p></div>
+              </div>
               <div class="form-group row">
                 <input type="hidden" name="id_posicion_ot" id="id_posicion_ot">
                 <input type="hidden" name="id_orden_trabajo" id="id_orden_trabajo">
@@ -552,6 +564,8 @@ include 'database.php';
           $(this).find("input[name='fecha']").val(local);
           $(this).find("input[name='reproceso'],input[name='rechazadas'],input[name='liberadas'],input[name='motivo']").val("");
           $(this).find("input[name='motivo']").prop('required',false);
+          let max=parseInt($("#cantMaxima").html())||0;
+          $(this).find("input[name='liberadas'],input[name='rechazadas']").attr('max',max);
         });
 
         $("input[name='rechazadas']").on('input',function(){
@@ -579,14 +593,12 @@ include 'database.php';
           let rechazadas=parseInt(form.find("input[name='rechazadas']").val())||0;
           let liberadas=parseInt(form.find("input[name='liberadas']").val())||0;
           let cantMaxima=parseInt($("#cantMaxima").html())||0;
-          let libAct=parseInt($("#liberadas_actual").val())||0;
-          let rechAct=parseInt($("#rechazadas_actual").val())||0;
           let motivo=form.find("input[name='motivo']").val();
 
           if(rechazadas>0 && motivo.trim()==""){
             alert("Debe ingresar el motivo del rechazo");
-          }else if((liberadas+libAct+rechazadas+rechAct)>cantMaxima){
-            alert("La suma de liberadas y rechazadas no puede superar la cantidad pedida ("+cantMaxima+")");
+          }else if((liberadas+rechazadas)>cantMaxima){
+            alert("La suma de liberadas y rechazadas no puede superar la cantidad disponible ("+cantMaxima+")");
           }else{
             form.submit();
           }
@@ -691,11 +703,14 @@ include 'database.php';
               let rowData = table.row(t).data();
               let id_detalle_ot = rowData[0];
               let id_pos_ot = rowData[14];
-              let cantMaxima = rowData[4];
+              let cantPedida = rowData[4];
               let cantLibAct = rowData[8];
               let cantRepAct = rowData[9];
               let cantRechAct = rowData[10];
               let estadoPos = rowData[7];
+              let posicion = rowData[3];
+              let material = rowData[5];
+              let cantDisponible = cantPedida - cantLibAct - cantRechAct;
               if(t.hasClass('selected')){
                 deselectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
@@ -705,6 +720,10 @@ include 'database.php';
                 $("#liberadas_actual").val(0);
                 $("#rechazadas_actual").val(0);
                 $("#reproceso_actual").val(0);
+                $("#info_pos_titulo").html("");
+                $("#info_posicion").html("");
+                $("#info_cant_pedida").html("");
+                $("#info_cant_actuales").html("");
               }else{
                 table.rows().nodes().each( function (rowNode, index) {
                   $(rowNode).removeClass("selected");
@@ -712,11 +731,16 @@ include 'database.php';
                 selectRow(t);
                 $("#btnAbrirModalModificarCantidades").data("id",id_pos_ot).data("estado",estadoPos);
                 $("#btnDetalle").attr("href","verHistorialOT.php?id_detalle_ot="+id_detalle_ot);
-                $("#cantMaxima").html(cantMaxima);
+                $("#cantMaxima").html(cantDisponible);
                 $("#id_posicion_ot").val(id_pos_ot);
                 $("#liberadas_actual").val(cantLibAct);
                 $("#rechazadas_actual").val(cantRechAct);
                 $("#reproceso_actual").val(cantRepAct);
+                let infoPos = posicion + ' - ' + material;
+                $("#info_pos_titulo").text(infoPos);
+                $("#info_posicion").text(infoPos);
+                $("#info_cant_pedida").text(cantPedida);
+                $("#info_cant_actuales").text('Liberadas: '+cantLibAct+' | Reproceso: '+cantRepAct+' | Rechazadas: '+cantRechAct+' | Disponibles: '+cantDisponible);
               }
             });
           }
