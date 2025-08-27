@@ -140,7 +140,7 @@ $id_conjunto = $info['id_lista_corte_conjunto'];
 $id_lista_corte = $info['id_lista_corte'];
 
 // Verificar si el conjunto está completo (liberadas + rechazadas == cantidad pedida)
-$sql = "SELECT SUM(otd.cantidad) total_pedida, SUM(otd.cant_liberadas + otd.cant_rechazadas) total_procesada FROM ordenes_trabajo_detalle otd INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id WHERE lcp.id_lista_corte_conjunto = ?";
+$sql = "SELECT SUM(otd.cantidad) total_pedida, SUM(otd.cant_liberadas + otd.cant_rechazadas) total_procesada FROM ordenes_trabajo_detalle otd INNER JOIN ordenes_trabajo ot ON otd.id_orden_trabajo=ot.id INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id WHERE lcp.id_lista_corte_conjunto = ? AND ot.id_estado_orden_trabajo!=5";
 $q = $pdo->prepare($sql);
 $params = [$id_conjunto];
 $q->execute($params);
@@ -152,7 +152,10 @@ if($modoDebug==1){
 }
 
 if ($totales['total_pedida'] > 0 && $totales['total_pedida'] == $totales['total_procesada']) {
-  $sql = "UPDATE listas_corte_conjuntos SET id_estado_lista_corte_conjuntos = 2 WHERE id = ?";
+
+  $id_estado_lista_corte_conjuntos = 2;
+
+  $sql = "UPDATE listas_corte_conjuntos SET id_estado_lista_corte_conjuntos = $id_estado_lista_corte_conjuntos WHERE id = ?";
   $q = $pdo->prepare($sql);
   $params = [$id_conjunto];
   $q->execute($params);
@@ -162,7 +165,7 @@ if ($totales['total_pedida'] > 0 && $totales['total_pedida'] == $totales['total_
   }
 
   // Verificar si todos los conjuntos de la LC están completos para actualizar su estado
-  $sql = "SELECT COUNT(*) total, SUM(CASE WHEN id_estado_lista_corte_conjuntos = 2 THEN 1 ELSE 0 END) completos FROM listas_corte_conjuntos WHERE id_lista_corte = ?";
+  $sql = "SELECT COUNT(*) total, SUM(CASE WHEN id_estado_lista_corte_conjuntos = $id_estado_lista_corte_conjuntos THEN 1 ELSE 0 END) completos FROM listas_corte_conjuntos WHERE id_lista_corte = ?";
   $q = $pdo->prepare($sql);
   $params = [$id_lista_corte];
   $q->execute($params);

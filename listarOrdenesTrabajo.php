@@ -52,7 +52,7 @@ include 'database.php';
                   <div class="card-body">
                     <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarOrdenesTrabajo.php">
                       <div class="form-group mb-0">
-                        N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
+                        N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" autofocus name="nro">
                       </div>
                       <div class="form-group mb-0">
                         Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
@@ -97,8 +97,9 @@ include 'database.php';
                         <a href="#" id="link_modificar_ot"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>
                         &nbsp;&nbsp;<?php
                       }?>
-                      <a href="#" id="link_ver_ot"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
-                      &nbsp;&nbsp;<?php
+                      <!-- <a href="#" id="link_ver_ot"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
+                      &nbsp;&nbsp; -->
+                      <?php
                       if (!empty(tienePermiso(318))) {?>
                         <a href="#" id="link_enviar_produccion_ot"><img src="img/estrella.png" width="24" height="25" border="0" alt="Enviar a Producción" title="Enviar a Producción"></a>
                         &nbsp;&nbsp;<?php
