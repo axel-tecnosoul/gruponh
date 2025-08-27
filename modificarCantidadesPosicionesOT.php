@@ -18,18 +18,21 @@ if($modoDebug==1){
   var_dump($_POST);
 }
 
-$idDetalle = $_POST["id_posicion_ot"];
+$id_posicion = $_POST["id_posicion_ot"];
+$id_orden_trabajo = $_POST["id_orden_trabajo"];
 $fecha = isset($_POST['fecha']) ? date('Y-m-d H:i:s', strtotime($_POST['fecha'])) : date('Y-m-d H:i:s');
 
 // Obtener totales actuales de la posición
-$sql = "SELECT cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_orden_trabajo FROM ordenes_trabajo_detalle WHERE id_posicion = ?";
+$sql = "SELECT id, cantidad, cant_liberadas, cant_proceso, cant_rechazadas FROM ordenes_trabajo_detalle WHERE id_posicion = ? AND id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$idDetalle]);
+$q->execute([$id_posicion, $id_orden_trabajo]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 
 if($modoDebug==1){
   var_dump($data);
 }
+
+$idDetalle = $data['id'];
 
 $n_liberadas  = $data['cant_liberadas'] || 0;
 $n_proceso    = $data['cant_proceso'] || 0;
@@ -60,16 +63,14 @@ $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (
 $q = $pdo->prepare($sql);
 $q->execute([$_SESSION['user']['id']]);
 
-$idOT = $data['id_orden_trabajo'];
-
 $sql = "SELECT sum(d.cantidad) total, sum(d.cant_liberadas) lib, sum(d.cant_rechazadas) rech FROM ordenes_trabajo_detalle d where d.id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$idOT]);
+$q->execute([$id_orden_trabajo]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 if (($data['lib'] + $data['rech']) >= $data['total']) {
   $sql = "update ordenes_trabajo set id_estado_orden_trabajo = 4 where id = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$idOT]);
+  $q->execute([$id_orden_trabajo]);
 }
 
 if($modoDebug==1){
