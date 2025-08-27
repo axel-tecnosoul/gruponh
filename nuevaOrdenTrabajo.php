@@ -384,7 +384,8 @@ Database::disconnect();
                 if(isset($_GET['error']) && $_GET['error']==1){?>
                   <div class="alert alert-danger">La cantidad a bajar debe ser un número positivo y no superar el saldo disponible.</div><?php
                 }?>
-                <form class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
+                <form id="form_ot" class="form theme-form" role="form" method="post" action="nuevaOrdenTrabajo.php">
+                  <input type="hidden" name="enviar_aprobacion" id="enviar_aprobacion" value="">
                   <div class="card mb-0">
                     <div class="card-header">
                       <h5><?=$ubicacion.' LC N° '.$data_ot['numero_lc'].' - Rev '.$data_ot['nro_revision'].' '.htmlspecialchars($descProyecto)?></h5>
@@ -530,7 +531,7 @@ Database::disconnect();
                       <div class="col-12">
                         <button type="submit" class="btn btn-success"><?=$editing ? 'Modificar' : 'Crear'?></button>
                         <?php if($editing){?>
-                          <button type="submit" name="enviar_aprobacion" value="1" class="btn btn-primary">Enviar a aprobación</button>
+                          <button type="button" id="btn_enviar_aprobacion" class="btn btn-primary">Enviar a aprobación</button>
                         <?php }?>
                         <a href='listarOrdenesTrabajo.php' class="btn btn-light">Volver</a>
                       </div>
@@ -572,6 +573,23 @@ Database::disconnect();
               <div class="modal-body">¿Está seguro que desea eliminar la posicion?</div>
               <div class="modal-footer">
                 <a href="#" class="btn btn-primary">Eliminar</a>
+                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal para enviar a aprobación -->
+        <div class="modal fade" id="enviarAprobacionModal" tabindex="-1" role="dialog" aria-labelledby="modalEnviarAprobacionLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="modalEnviarAprobacionLabel">Confirmación</h5>
+                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+              </div>
+              <div class="modal-body">¿Está seguro que desea enviar la Orden de Trabajo a aprobación?</div>
+              <div class="modal-footer">
+                <button class="btn btn-primary" id="confirm_enviar_aprobacion">Enviar</button>
                 <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
               </div>
             </div>
@@ -843,6 +861,16 @@ Database::disconnect();
           var posiciones=tr.data('posiciones');
           var posHtml=formatPosicionesOT(posiciones,val);
           dtOT.cell(tr,6).data(posHtml).draw(false);
+        });
+
+        $('#btn_enviar_aprobacion').on('click',function(){
+          $('#enviar_aprobacion').val('');
+          $('#enviarAprobacionModal').modal('show');
+        });
+
+        $('#confirm_enviar_aprobacion').on('click',function(){
+          $('#enviar_aprobacion').val('1');
+          $('#form_ot').submit();
         });
 
         updateToggleButton();
