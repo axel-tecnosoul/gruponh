@@ -38,25 +38,25 @@ if (!empty($_POST)) {
         $id_posicion=$_POST['id_posicion'][$key];
         
         $cant_liberadas=0;
-        $cant_proceso=0;
+        $cant_reproceso=0;
         $cant_rechazadas=0;
         $id_estado_orden_trabajo_posicion=1;//Elaboración, Pendiente, Proceso, Terminada, Liberada, Reproceso, Rechazada, Cancelada
 
-        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_proceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ?";
+        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_reproceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ?";
         $q = $pdo->prepare($sql);
         $q->execute([$id_posicion]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
         
         if($data){
           $cant_liberadas=$data["cant_liberadas"];
-          $cant_proceso=$data["cant_proceso"];
+          $cant_reproceso=$data["cant_reproceso"];
           $cant_rechazadas=$data["cant_rechazadas"];
           $id_estado_orden_trabajo_posicion=$data["id_estado_orden_trabajo_posicion"];
         }
 
-        $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
+        $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_reproceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
         $q = $pdo->prepare($sql);
-        $q->execute([$_GET["id"],$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
+        $q->execute([$_GET["id"],$id_posicion,$cantidad,$cant_liberadas,$cant_reproceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
 
         if ($modoDebug==1) {
           $q->debugDumpParams();
@@ -115,25 +115,25 @@ if (!empty($_POST)) {
         $id_posicion=$_POST['id_posicion'][$key];
         
         $cant_liberadas=0;
-        $cant_proceso=0;
+        $cant_reproceso=0;
         $cant_rechazadas=0;
         $id_estado_orden_trabajo_posicion=1;//Elaboración, Pendiente, Proceso, Terminada, Liberada, Reproceso, Rechazada, Cancelada
 
-        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_proceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ?";
+        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_reproceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ?";
         $q = $pdo->prepare($sql);
         $q->execute([$id_posicion]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
         
         if($data){
           $cant_liberadas=$data["cant_liberadas"];
-          $cant_proceso=$data["cant_proceso"];
+          $cant_reproceso=$data["cant_reproceso"];
           $cant_rechazadas=$data["cant_rechazadas"];
           $id_estado_orden_trabajo_posicion=$data["id_estado_orden_trabajo_posicion"];
         }
 
-        $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
+        $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_reproceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
         $q = $pdo->prepare($sql);
-        $q->execute([$id_orden_trabajo_revision,$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
+        $q->execute([$id_orden_trabajo_revision,$id_posicion,$cantidad,$cant_liberadas,$cant_reproceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
 
         if ($modoDebug==1) {
           $q->debugDumpParams();

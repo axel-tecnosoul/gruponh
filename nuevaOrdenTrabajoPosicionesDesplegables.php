@@ -142,28 +142,28 @@ if (!empty($_POST)) {
         $posicionesProcesadas[] = $id_posicion;
 
         $cant_liberadas=0;
-        $cant_proceso=0;
+        $cant_reproceso=0;
         $cant_rechazadas=0;
         $id_estado_orden_trabajo_posicion=1;
 
-        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_proceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ? AND otd.id_orden_trabajo = ?";
+        $sql = "SELECT otd.id_orden_trabajo,otd.id_posicion,otd.cantidad,otd.cant_liberadas,otd.cant_reproceso,otd.cant_rechazadas,otd.id_estado_orden_trabajo_posicion FROM ordenes_trabajo_detalle otd WHERE otd.id_posicion = ? AND otd.id_orden_trabajo = ?";
         $q = $pdo->prepare($sql);
         $q->execute([$id_posicion,$id_orden_trabajo]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
 
         if($data){
           $cant_liberadas=$data["cant_liberadas"];
-          $cant_proceso=$data["cant_proceso"];
+          $cant_reproceso=$data["cant_reproceso"];
           $cant_rechazadas=$data["cant_rechazadas"];
           $id_estado_orden_trabajo_posicion=$data["id_estado_orden_trabajo_posicion"];
 
-          $sql = "UPDATE ordenes_trabajo_detalle SET cantidad = ?, cant_liberadas = ?, cant_proceso = ?, cant_rechazadas = ?, id_estado_orden_trabajo_posicion = ? WHERE id_orden_trabajo = ? AND id_posicion = ?";
+          $sql = "UPDATE ordenes_trabajo_detalle SET cantidad = ?, cant_liberadas = ?, cant_reproceso = ?, cant_rechazadas = ?, id_estado_orden_trabajo_posicion = ? WHERE id_orden_trabajo = ? AND id_posicion = ?";
           $q = $pdo->prepare($sql);
-          $q->execute([$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion,$id_orden_trabajo,$id_posicion]);
+          $q->execute([$cantidad,$cant_liberadas,$cant_reproceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion,$id_orden_trabajo,$id_posicion]);
         }else{
-          $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_proceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
+          $sql = "INSERT INTO ordenes_trabajo_detalle (id_orden_trabajo, id_posicion, cantidad, cant_liberadas, cant_reproceso, cant_rechazadas, id_estado_orden_trabajo_posicion) VALUES (?,?,?,?,?,?,?)";
           $q = $pdo->prepare($sql);
-          $q->execute([$id_orden_trabajo,$id_posicion,$cantidad,$cant_liberadas,$cant_proceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
+          $q->execute([$id_orden_trabajo,$id_posicion,$cantidad,$cant_liberadas,$cant_reproceso,$cant_rechazadas,$id_estado_orden_trabajo_posicion]);
         }
       }
     }

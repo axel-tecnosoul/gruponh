@@ -21,9 +21,12 @@ if($modoDebug==1){
 $id_posicion = $_POST["id_posicion_ot"];
 $id_orden_trabajo = $_POST["id_orden_trabajo"];
 $fecha = isset($_POST['fecha']) ? date('Y-m-d H:i:s', strtotime($_POST['fecha'])) : date('Y-m-d H:i:s');
+$liberadas = $_POST['liberadas'] ?: 0;
+$reproceso = $_POST['reproceso'] ?: 0;
+$rechazadas = $_POST['rechazadas'] ?: 0;
 
 // Obtener totales actuales de la posición
-$sql = "SELECT id, cantidad, cant_liberadas, cant_proceso, cant_rechazadas FROM ordenes_trabajo_detalle WHERE id_posicion = ? AND id_orden_trabajo = ?";
+$sql = "SELECT id, cantidad, cant_liberadas, cant_reproceso, cant_rechazadas FROM ordenes_trabajo_detalle WHERE id_posicion = ? AND id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id_posicion, $id_orden_trabajo]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -34,13 +37,18 @@ if($modoDebug==1){
 
 $idDetalle = $data['id'];
 
-$n_liberadas  = $data['cant_liberadas'] || 0;
-$n_proceso    = $data['cant_proceso'] || 0;
-$n_rechazadas = $data['cant_rechazadas'] || 0;
+$n_liberadas  = $data['cant_liberadas'] ?: 0;
+$n_proceso    = $data['cant_reproceso'] ?: 0;
+$n_rechazadas = $data['cant_rechazadas'] ?: 0;
 
-$n_liberadas += $_POST['liberadas'];
-$n_proceso += $_POST['enProceso'];
-$n_rechazadas += $_POST['rechazadas'];
+if($modoDebug==1){
+  var_dump($n_liberadas, $n_proceso, $n_rechazadas);
+  var_dump($liberadas, $reproceso, $rechazadas);
+}
+
+$n_liberadas += $liberadas;
+$n_proceso += $reproceso;
+$n_rechazadas += $rechazadas;
 
 if(($n_liberadas + $n_rechazadas) > $data['cantidad']){
   Database::disconnect();
@@ -49,31 +57,55 @@ if(($n_liberadas + $n_rechazadas) > $data['cantidad']){
 }
 
 // Actualizar totales
-$sql = "UPDATE ordenes_trabajo_detalle SET cant_liberadas = ?, cant_proceso = ?, cant_rechazadas = ?, fecha = ?, id_usuario = ? WHERE id = ?";
+$sql = "UPDATE ordenes_trabajo_detalle SET cant_liberadas = ?, cant_reproceso = ?, cant_rechazadas = ?, fecha = ?, id_usuario = ? WHERE id = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$n_liberadas, $n_proceso, $n_rechazadas, $fecha, $_SESSION['user']['id'], $idDetalle]);
+$params = [$n_liberadas, $n_proceso, $n_rechazadas, $fecha, $_SESSION['user']['id'], $idDetalle];
+$q->execute($params);
+
+if($modoDebug==1){
+  echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+}
 
 // Registrar movimiento en el log
-$sql = "INSERT INTO ordenes_trabajo_detalle_log(id_ordenes_trabajo_detalle, cantidad_liberada, cantidad_reproceso, cantidad_rechazada, motivo, fecha, id_usuario) VALUES (?,?,?,?,?,?,?)";
+$sql = "INSERT INTO ordenes_trabajo_detalle_log (id_ordenes_trabajo_detalle, cantidad_liberada, cantidad_reproceso, cantidad_rechazada, motivo, fecha, id_usuario) VALUES (?,?,?,?,?,?,?)";
 $q = $pdo->prepare($sql);
-$q->execute([$idDetalle, $_POST["liberadas"], $_POST["enProceso"], $_POST["rechazadas"], $_POST["motivo"], $fecha, $_SESSION['user']['id']]);
+$params = [$idDetalle, $liberadas, $reproceso, $rechazadas, $_POST["motivo"], $fecha, $_SESSION['user']['id']];
+$q->execute($params);
+if($modoDebug==1){
+  echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+}
 
 // Auditoría general
-$sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Cantidades en Orden de Trabajo','Orden de Trabajo')";
+$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Cantidades en Orden de Trabajo','Orden de Trabajo')";
 $q = $pdo->prepare($sql);
-$q->execute([$_SESSION['user']['id']]);
+$params = [$_SESSION['user']['id']];
+$q->execute($params);
+if($modoDebug==1){
+  echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+}
 
-$sql = "SELECT sum(d.cantidad) total, sum(d.cant_liberadas) lib, sum(d.cant_rechazadas) rech FROM ordenes_trabajo_detalle d where d.id_orden_trabajo = ?";
+$sql = "SELECT SUM(d.cantidad) total, SUM(d.cant_liberadas) lib, SUM(d.cant_rechazadas) rech FROM ordenes_trabajo_detalle d where d.id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$id_orden_trabajo]);
+$params = [$id_orden_trabajo];
+$q->execute($params);
 $data = $q->fetch(PDO::FETCH_ASSOC);
+if($modoDebug==1){
+  echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  var_dump($data);
+}
 if (($data['lib'] + $data['rech']) >= $data['total']) {
-  $sql = "update ordenes_trabajo set id_estado_orden_trabajo = 4 where id = ?";
+  $sql = "UPDATE ordenes_trabajo set id_estado_orden_trabajo = 4 where id = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$id_orden_trabajo]);
+  $params = [$id_orden_trabajo];
+  $q->execute($params);
+
+  if($modoDebug==1){
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+  }
 }
 
 if($modoDebug==1){
+  echo "DEBUG - ROLLBACK";
   $pdo->rollBack();
   die();
 }

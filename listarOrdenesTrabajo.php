@@ -299,7 +299,7 @@ include 'database.php';
               </div>
               <div class="form-group row">
                 <label class="col-sm-3 col-form-label">Reproceso</label>
-                <div class="col-sm-9"><input name="enProceso" type="number" class="form-control"></div>
+                <div class="col-sm-9"><input name="reproceso" type="number" class="form-control"></div>
               </div>
               <div class="form-group row">
                 <label class="col-sm-3 col-form-label">Rechazados</label>
@@ -435,7 +435,7 @@ include 'database.php';
             selectRow(t);
             get_detalle_orden_trabajo(id_ot)
             $("#id_orden_trabajo").val(id_ot);
-            if ((estado == "Elaborando") || (estado == "Para Aprobar")) {
+            if ((estado == "Elaboracion") || (estado == "Para Aprobar")) {
               $("#link_modificar_ot").attr("href","nuevaOrdenTrabajo.php?id="+id_ot);
             } else {
               $("#link_modificar_ot").attr("href","#");
@@ -445,14 +445,14 @@ include 'database.php';
             } else {
               $("#link_enviar_produccion_ot").attr("href","#");
             }
-            if (estado == "En Producción") {
+            if (estado == "En Produccion") {
               $("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
             } else {
               $("#link_nuevo_consumo").attr("href","#");
             }
 
             $("#link_ver_ot").attr("href","verOrdenTrabajo.php?id="+id_ot);
-            if ((estado == "Elaborando") || (estado == "Para Aprobar")) {
+            if ((estado == "Elaboracion") || (estado == "Para Aprobar")) {
               $("#link_cancelar_ot").attr("data-toggle","modal");
               $("#link_cancelar_ot").attr("data-target","#eliminarModal");
               $("#btnEliminarOT").attr("href","eliminarOrdenTrabajo.php?id="+id_ot);
@@ -484,7 +484,7 @@ include 'database.php';
         $("#link_cancelar_ot").on("click",function(){
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
-            alert("Por favor seleccione una orden de trabajo en estado 'Elaborando' o 'Para Aprobar' para eliminarla")
+            alert("Por favor seleccione una orden de trabajo en estado 'Elaboracion' o 'Para Aprobar' para eliminarla")
           }
         })
 
@@ -517,7 +517,7 @@ include 'database.php';
           let now=new Date();
           let local=new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
           $(this).find("input[name='fecha']").val(local);
-          $(this).find("input[name='enProceso'],input[name='rechazadas'],input[name='liberadas'],input[name='motivo']").val("");
+          $(this).find("input[name='reproceso'],input[name='rechazadas'],input[name='liberadas'],input[name='motivo']").val("");
           $(this).find("input[name='motivo']").prop('required',false);
         });
 
@@ -543,7 +543,7 @@ include 'database.php';
         $("#btnModificarCantidades").on("click",function(e){
           e.preventDefault();
           let form=$("#formModificarCantidades");
-          let enProceso=parseInt(form.find("input[name='enProceso']").val())||0;
+          let reproceso=parseInt(form.find("input[name='reproceso']").val())||0;
           let rechazadas=parseInt(form.find("input[name='rechazadas']").val())||0;
           let liberadas=parseInt(form.find("input[name='liberadas']").val())||0;
           let cantMaxima=parseInt($("#cantMaxima").html())||0;

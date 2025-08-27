@@ -30,7 +30,7 @@ $sql = " SELECT
       SELECT otd.id_posicion,
              SUM(otd.cant_liberadas) AS cant_liberadas,
              SUM(otd.cant_rechazadas) AS cant_rechazadas,
-             SUM(otd.cant_proceso) AS cant_reproceso,
+             SUM(otd.cant_reproceso) AS cant_reproceso,
              SUM(CASE WHEN ot.id_estado_orden_trabajo = 3 THEN otd.cantidad ELSE 0 END) AS cant_ot
       FROM ordenes_trabajo_detalle otd
       INNER JOIN ordenes_trabajo ot ON ot.id = otd.id_orden_trabajo
