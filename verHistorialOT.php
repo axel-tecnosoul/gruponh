@@ -1,7 +1,6 @@
 <?php
 require("config.php");
 require 'database.php';
-require 'funciones.php';
 
 $id = null;
 if (!empty($_GET['id_detalle_ot'])) {
@@ -61,7 +60,7 @@ if (!empty($_POST)) {
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
           <div class="page-body"><?php
-            $ubicacion="Ver Historial OT";
+            $ubicacion="Ver Historial";
             include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -71,7 +70,7 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion.' '.$infoOT?></h5>
                   </div>
-                                          <form class="form theme-form" role="form" method="post" action="#">
+                  <form class="form theme-form" role="form" method="post" action="#">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
