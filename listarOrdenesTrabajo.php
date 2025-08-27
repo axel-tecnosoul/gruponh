@@ -297,7 +297,7 @@ include 'database.php';
         <div class="modal-content">
           <form id="formModificarCantidades" action="modificarCantidadesPosicionesOT.php" method="post">
             <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalModificarCantidades"><span id="info_pos_titulo"></span></h5>
+              <h5 class="modal-title" id="exampleModalModificarCantidades">Ingrese las nuevas cantidades</h5>
               <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
             </div>
             <div class="modal-body">
@@ -308,6 +308,11 @@ include 'database.php';
               <input type="hidden" id="reproceso_actual" value="0">
               <span id="cantMaxima" hidden></span>
               <div class="row mb-3">
+                <div class="col-12">
+                  <span id="info_pos_titulo"></span>
+                </div>
+              </div>
+              <div class="row mb-3">
                 <div class="col-12">Cant. Pedida: <span id="info_cant_pedida"></span></div>
                 <div class="col-12">Liberadas: <span id="info_cant_liberadas"></span></div>
                 <div class="col-12">Rechazadas: <span id="info_cant_rechazadas"></span></div>
@@ -317,7 +322,7 @@ include 'database.php';
               <div class="form-row">
                 <div class="form-group col-sm-4">
                   <label>Fecha</label>
-                  <input name="fecha" type="datetime-local" class="form-control">
+                  <input name="fecha" type="date" value="<?=date('Y-m-d')?>" class="form-control">
                 </div>
                 <div class="form-group col-sm-4">
                   <label>Liberados</label>
@@ -557,9 +562,9 @@ include 'database.php';
         });
 
         $("#modificarCantidades").on('shown.bs.modal',function(){
-          let now=new Date();
+          /*let now=new Date();
           let local=new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
-          $(this).find("input[name='fecha']").val(local);
+          $(this).find("input[name='fecha']").val(local);*/
           $(this).find("input[name='reproceso'],input[name='rechazadas'],input[name='liberadas'],input[name='motivo']").val("");
           $(this).find("input[name='motivo']").prop('required',false);
           let max=parseInt($("#cantMaxima").html())||0;
@@ -737,13 +742,13 @@ include 'database.php';
                 $("#rechazadas_actual").val(cantRechAct);
                 $("#reproceso_actual").val(cantRepAct);
                 let conjunto = rowData[1];
-                let infoPos = '['+conjunto+'] Posicion '+posicion+' - '+material;
-                $("#info_pos_titulo").text(infoPos);
+                let infoPos = "Material: "+material+'<br>Conjunto: '+conjunto+'<br>Posicion: '+posicion;
+                $("#info_pos_titulo").html(infoPos);
                 $("#info_cant_pedida").text(cantPedida);
                 $("#info_cant_liberadas").text(cantLibAct);
                 $("#info_cant_rechazadas").text(cantRechAct);
                 $("#info_cant_reproceso").text(cantRepAct);
-                let cantEnProd = cantPedida - cantLibAct - cantRechAct - cantRepAct;
+                let cantEnProd = cantPedida - cantLibAct - cantRechAct;
                 $("#info_cant_en_produccion").text(cantEnProd);
               }
             });

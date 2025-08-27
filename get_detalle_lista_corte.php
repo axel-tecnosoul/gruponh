@@ -31,7 +31,7 @@ $sql = " SELECT
              SUM(otd.cant_liberadas) AS cant_liberadas,
              SUM(otd.cant_rechazadas) AS cant_rechazadas,
              SUM(otd.cant_reproceso) AS cant_reproceso,
-             SUM(CASE WHEN ot.id_estado_orden_trabajo = 3 THEN otd.cantidad ELSE 0 END) AS cant_ot
+             SUM(CASE WHEN ot.id_estado_orden_trabajo IN (3,4) THEN otd.cantidad ELSE 0 END) AS cant_ot
       FROM ordenes_trabajo_detalle otd
       INNER JOIN ordenes_trabajo ot ON ot.id = otd.id_orden_trabajo
       GROUP BY otd.id_posicion

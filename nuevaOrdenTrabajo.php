@@ -99,7 +99,7 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
                 SELECT id_posicion, SUM(cantidad) AS cant_bajada_total
                 FROM ordenes_trabajo_detalle otd
                 JOIN ordenes_trabajo ot ON ot.id = otd.id_orden_trabajo
-                WHERE ot.id_estado_orden_trabajo IN (1,2,3)
+                WHERE ot.id_estado_orden_trabajo IN (1,2,3,4)
                 GROUP BY id_posicion
               ) otd ON otd.id_posicion = lcp.id
               WHERE lcp.id_lista_corte_conjunto = ?
@@ -109,6 +109,8 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
     $posiciones=[];
     $saldo_conj=$conj['cantidad'];
     while($pos=$qPos->fetch(PDO::FETCH_ASSOC)){
+      //var_dump($pos);
+      
       $cant_total=$conj['cantidad']*$pos['cant_pos'];
       $saldo=$cant_total-$pos['cant_bajada_total'];
       $pos['cant_total']=$cant_total;
@@ -125,6 +127,7 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
     $conj['cant_bajada']=$conj['cantidad']-$saldo_conj;
     $conj['saldo']=$saldo_conj;
     $conjuntos[]=$conj;
+    //die();
   }
   return $conjuntos;
 }
@@ -253,7 +256,7 @@ if (!empty($_POST)) {
   $numero="";
   $descripcion="Emision original";
 
-  $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+  $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ? AND id_estado_orden_trabajo != 5";
   $q = $pdo->prepare($sql);
   $q->execute([$id_lista_corte]);
   $cant_ot_previas = (int)$q->fetchColumn();
@@ -265,19 +268,7 @@ if (!empty($_POST)) {
   $nro_orden_trabajo = $data['nro_orden_trabajo']+1;
 
   $sql = "INSERT INTO ordenes_trabajo (nro_orden_trabajo,id_lista_corte, fecha, id_usuario, id_estado_orden_trabajo, nro_revision, anulado, titulo, numero, descripcion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?)";
-  $params = [
-    $nro_orden_trabajo,
-    $id_lista_corte,
-    $_POST['fecha'],
-    $_SESSION["user"]["id"],
-    $id_estado_orden_trabajo,
-    $nro_revision,
-    $anulado,
-    $_POST['titulo'],
-    $numero,
-    $descripcion,
-    $_POST['notas']
-  ];
+  $params = [$nro_orden_trabajo,$id_lista_corte,$_POST['fecha'],$_SESSION["user"]["id"],$id_estado_orden_trabajo,$nro_revision,$anulado,$_POST['titulo'],$numero,$descripcion,$_POST['notas']];
   $q = $pdo->prepare($sql);
   $q->execute($params);
   if ($modoDebug==1) {
@@ -285,27 +276,58 @@ if (!empty($_POST)) {
   }
   $id_orden_trabajo = $pdo->lastInsertId();
 
-  $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ?";
+  $sql = "SELECT COUNT(*) FROM ordenes_trabajo WHERE id_lista_corte = ? AND id_estado_orden_trabajo != 5";
   $q = $pdo->prepare($sql);
-  $q->execute([$id_lista_corte]);
+  $params = [$id_lista_corte];
+  $q->execute($params);
   $cant_ot_actuales = (int)$q->fetchColumn();
+
+  if ($modoDebug==1) {
+    echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    echo "cant_ot_previas: ".$cant_ot_previas."<br>";
+    echo "cant_ot_actuales: ".$cant_ot_actuales."<br><br>";
+  }
 
   //if ($cant_ot_previas == 0 && $estadoLC['id_estado_lista_corte'] == 3) {
   if ($cant_ot_previas == 0 && LCPermiteOR($pdo, $id_lista_corte)) {
     $sql = "UPDATE listas_corte SET id_estado_lista_corte = 4 WHERE id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$id_lista_corte]);
+    $params = [$id_lista_corte];
+    $q->execute($params);
+
+    if ($modoDebug==1) {
+      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    }
 
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo) VALUES (now(), ?, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte')";
     $params = [$_SESSION['user']['id']];
     $q = $pdo->prepare($sql);
     $q->execute($params);
+
+    if ($modoDebug==1) {
+      echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+    }
   }
 
   foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
     if($cantidad!=""){
       $id_posicion = intval($_POST['id_posicion'][$key]);
-      $saldo = obtenerSaldoPosicion($pdo,$id_posicion);
+      //$saldo = obtenerSaldoPosicion($pdo,$id_posicion);
+
+      $id_posicion = intval($id_posicion);
+      $sql = "SELECT lcp.cantidad AS cant_pos, lcc.cantidad AS cant_conj, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp INNER JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto=lcc.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id AND EXISTS (SELECT 1 FROM ordenes_trabajo ot WHERE ot.id = otd.id_orden_trabajo AND ot.id_estado_orden_trabajo != 5) WHERE lcp.id = ? GROUP BY lcp.id,lcc.cantidad";
+      $q = $pdo->prepare($sql);
+      $params = [$id_posicion];
+      $q->execute($params);
+      $data = $q->fetch(PDO::FETCH_ASSOC);
+      //return $data ? ($data['cant_pos']*$data['cant_conj']) - $data['cant_bajada'] : 0;
+      $saldo = $data ? ($data['cant_pos']*$data['cant_conj']) - $data['cant_bajada'] : 0;
+
+      if ($modoDebug==1) {
+        echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
+        var_dump($data, $saldo);
+      }
+
       if(!is_numeric($cantidad) || $cantidad <= 0 || $cantidad > $saldo){
         $pdo->rollBack();
         Database::disconnect();

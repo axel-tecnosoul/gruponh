@@ -95,11 +95,12 @@ if (!empty($_POST)) {
                                     <th>A Reprocesar</th>
                                     <th>Rechazadas</th>
                                     <th>Motivo</th>
+                                    <th>Fecha y hora de alta</th>
                                   </tr>
                                 </thead>
                                 <tbody><?php
                                   $sql = "SELECT d.cantidad_liberada, d.cantidad_reproceso, d.cantidad_rechazada, d.motivo,
-                                                  DATE_FORMAT(d.fecha,'%d/%m/%y') AS fecha, u.usuario
+                                                  DATE_FORMAT(d.fecha,'%d/%m/%y') AS fecha, u.usuario, DATE_FORMAT(d.fecha_hora_alta,'%d/%m/%y %H:%i') AS fecha_hora_alta
                                           FROM ordenes_trabajo_detalle_log d
                                           INNER JOIN usuarios u ON u.id = d.id_usuario
                                           WHERE d.id_ordenes_trabajo_detalle = ? ORDER BY d.id DESC";
@@ -113,6 +114,7 @@ if (!empty($_POST)) {
                                     echo '<td>'. $row['cantidad_reproceso'] . '</td>';
                                     echo '<td>'. $row['cantidad_rechazada'] . '</td>';
                                     echo '<td>'. $row['motivo'] . '</td>';
+                                    echo '<td>'. $row['fecha_hora_alta'] . '</td>';
                                     echo '</tr>';
                                   }
                                   Database::disconnect();?>
