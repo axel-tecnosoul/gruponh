@@ -12,7 +12,7 @@ if ($id) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  // Cambia estado a En Producción solo si está Pendiente
+  // Cambia estado a En Producción solo si está "Para Aprobar"
   $sql = "UPDATE ordenes_trabajo SET id_estado_orden_trabajo = 3 WHERE id = ? AND id_estado_orden_trabajo = 2";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
