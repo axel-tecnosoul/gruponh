@@ -297,46 +297,44 @@ include 'database.php';
         <div class="modal-content">
           <form id="formModificarCantidades" action="modificarCantidadesPosicionesOT.php" method="post">
             <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalModificarCantidades">Ingrese las cantidades para <span id="info_pos_titulo"></span> (Max. <span id="cantMaxima"></span>)</h5>
+              <h5 class="modal-title" id="exampleModalModificarCantidades"><span id="info_pos_titulo"></span></h5>
               <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
             </div>
             <div class="modal-body">
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Posición</label>
-                <div class="col-sm-9"><p class="form-control-plaintext" id="info_posicion"></p></div>
+              <input type="hidden" name="id_posicion_ot" id="id_posicion_ot">
+              <input type="hidden" name="id_orden_trabajo" id="id_orden_trabajo">
+              <input type="hidden" id="liberadas_actual" value="0">
+              <input type="hidden" id="rechazadas_actual" value="0">
+              <input type="hidden" id="reproceso_actual" value="0">
+              <span id="cantMaxima" hidden></span>
+              <div class="row mb-3">
+                <div class="col-12">Cant. Pedida: <span id="info_cant_pedida"></span></div>
+                <div class="col-12">Liberadas: <span id="info_cant_liberadas"></span></div>
+                <div class="col-12">Rechazadas: <span id="info_cant_rechazadas"></span></div>
+                <div class="col-12">Reproceso: <span id="info_cant_reproceso"></span></div>
+                <div class="col-12">En producción: <span id="info_cant_en_produccion"></span></div>
               </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Cant. Pedida</label>
-                <div class="col-sm-9"><p class="form-control-plaintext" id="info_cant_pedida"></p></div>
-              </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Cantidades actuales</label>
-                <div class="col-sm-9"><p class="form-control-plaintext" id="info_cant_actuales"></p></div>
-              </div>
-              <div class="form-group row">
-                <input type="hidden" name="id_posicion_ot" id="id_posicion_ot">
-                <input type="hidden" name="id_orden_trabajo" id="id_orden_trabajo">
-                <input type="hidden" id="liberadas_actual" value="0">
-                <input type="hidden" id="rechazadas_actual" value="0">
-                <input type="hidden" id="reproceso_actual" value="0">
-                <label class="col-sm-3 col-form-label">Fecha</label>
-                <div class="col-sm-9"><input name="fecha" type="datetime-local" class="form-control"></div>
-              </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Liberados</label>
-                <div class="col-sm-9"><input name="liberadas" type="number" class="form-control"></div>
-              </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Reproceso</label>
-                <div class="col-sm-9"><input name="reproceso" type="number" class="form-control"></div>
-              </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Rechazados</label>
-                <div class="col-sm-9"><input name="rechazadas" type="number" class="form-control"></div>
-              </div>
-              <div class="form-group row">
-                <label class="col-sm-3 col-form-label">Motivo</label>
-                <div class="col-sm-9"><input name="motivo" type="text" class="form-control"></div>
+              <div class="form-row">
+                <div class="form-group col-sm-4">
+                  <label>Fecha</label>
+                  <input name="fecha" type="datetime-local" class="form-control">
+                </div>
+                <div class="form-group col-sm-4">
+                  <label>Liberados</label>
+                  <input name="liberadas" type="number" class="form-control">
+                </div>
+                <div class="form-group col-sm-4">
+                  <label>Reproceso</label>
+                  <input name="reproceso" type="number" class="form-control">
+                </div>
+                <div class="form-group col-sm-4">
+                  <label>Rechazados</label>
+                  <input name="rechazadas" type="number" class="form-control">
+                </div>
+                <div class="form-group col-sm-8">
+                  <label>Motivo</label>
+                  <input name="motivo" type="text" class="form-control">
+                </div>
               </div>
             </div>
             <div class="modal-footer">
@@ -721,9 +719,11 @@ include 'database.php';
                 $("#rechazadas_actual").val(0);
                 $("#reproceso_actual").val(0);
                 $("#info_pos_titulo").html("");
-                $("#info_posicion").html("");
                 $("#info_cant_pedida").html("");
-                $("#info_cant_actuales").html("");
+                $("#info_cant_liberadas").html("");
+                $("#info_cant_rechazadas").html("");
+                $("#info_cant_reproceso").html("");
+                $("#info_cant_en_produccion").html("");
               }else{
                 table.rows().nodes().each( function (rowNode, index) {
                   $(rowNode).removeClass("selected");
@@ -736,11 +736,15 @@ include 'database.php';
                 $("#liberadas_actual").val(cantLibAct);
                 $("#rechazadas_actual").val(cantRechAct);
                 $("#reproceso_actual").val(cantRepAct);
-                let infoPos = posicion + ' - ' + material;
+                let conjunto = rowData[1];
+                let infoPos = '['+conjunto+'] Posicion '+posicion+' - '+material;
                 $("#info_pos_titulo").text(infoPos);
-                $("#info_posicion").text(infoPos);
                 $("#info_cant_pedida").text(cantPedida);
-                $("#info_cant_actuales").text('Liberadas: '+cantLibAct+' | Reproceso: '+cantRepAct+' | Rechazadas: '+cantRechAct+' | Disponibles: '+cantDisponible);
+                $("#info_cant_liberadas").text(cantLibAct);
+                $("#info_cant_rechazadas").text(cantRechAct);
+                $("#info_cant_reproceso").text(cantRepAct);
+                let cantEnProd = cantPedida - cantLibAct - cantRechAct - cantRepAct;
+                $("#info_cant_en_produccion").text(cantEnProd);
               }
             });
           }
