@@ -66,6 +66,13 @@ if($modoDebug==1){
   echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
 }
 
+// Si la suma de liberadas y rechazadas completa la cantidad, marcar la posición como Terminada
+if(($n_liberadas + $n_rechazadas) == $data['cantidad']){
+  $sql = "UPDATE ordenes_trabajo_detalle SET id_estado_orden_trabajo_posicion = 4 WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$idDetalle]);
+}
+
 // Registrar movimiento en el log
 $sql = "INSERT INTO ordenes_trabajo_detalle_log (id_ordenes_trabajo_detalle, cantidad_liberada, cantidad_reproceso, cantidad_rechazada, motivo, fecha, id_usuario) VALUES (?,?,?,?,?,?,?)";
 $q = $pdo->prepare($sql);
@@ -84,17 +91,20 @@ if($modoDebug==1){
   echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
 }
 
-$sql = "SELECT SUM(d.cantidad) total, SUM(d.cant_liberadas) lib, SUM(d.cant_rechazadas) rech FROM ordenes_trabajo_detalle d where d.id_orden_trabajo = ?";
+// Si todas las posiciones de la OT están terminadas, actualizar estado de la OT
+$sql = "SELECT COUNT(*) total, SUM(CASE WHEN id_estado_orden_trabajo_posicion = 4 THEN 1 ELSE 0 END) terminadas FROM ordenes_trabajo_detalle WHERE id_orden_trabajo = ?";
 $q = $pdo->prepare($sql);
 $params = [$id_orden_trabajo];
 $q->execute($params);
 $data = $q->fetch(PDO::FETCH_ASSOC);
+
 if($modoDebug==1){
   echo debugQuery($pdo, $sql, $params) . "<br><br>Afe: " . $q->rowCount() . "<br><br>";
   var_dump($data);
 }
-if (($data['lib'] + $data['rech']) >= $data['total']) {
-  $sql = "UPDATE ordenes_trabajo set id_estado_orden_trabajo = 4 where id = ?";
+
+if ($data['total'] > 0 && $data['total'] == $data['terminadas']) {
+  $sql = "UPDATE ordenes_trabajo SET id_estado_orden_trabajo = 4 WHERE id = ?";
   $q = $pdo->prepare($sql);
   $params = [$id_orden_trabajo];
   $q->execute($params);

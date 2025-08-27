@@ -187,6 +187,11 @@ if (!empty($_POST)) {
       $q = $pdo->prepare($sql);
       $q->execute([$id_orden_trabajo]);
 
+      // Actualizar estado de todas las posiciones
+      $sql = "UPDATE ordenes_trabajo_detalle SET id_estado_orden_trabajo_posicion = 2 WHERE id_orden_trabajo = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_orden_trabajo]);
+
       $sql = "SELECT l.numero AS numero_lc, l.id_proyecto, ot.nro_orden_trabajo FROM ordenes_trabajo ot JOIN listas_corte l ON l.id = ot.id_lista_corte WHERE ot.id = ?";
       $q = $pdo->prepare($sql);
       $q->execute([$id_orden_trabajo]);
