@@ -487,7 +487,7 @@ include 'database.php';
             } else {
               $("#link_enviar_produccion_ot").attr("href","#");
             }
-            if (estado == "En Produccion") {
+            if (estado == "En Produccion" || estado == "Terminada") {
               $("#link_nuevo_consumo").attr("href","nuevoConsumo.php?id_orden_trabajo="+id_ot);
             } else {
               $("#link_nuevo_consumo").attr("href","#");
@@ -543,7 +543,7 @@ include 'database.php';
         $("#link_nuevo_consumo").on("click",function(){
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
-            alert("Por favor seleccione una orden de trabajo para agregar consumos")
+            alert("Por favor seleccione una orden de trabajo en estado 'En produccion' o 'Terminada' para agregar consumos")
           }
         })
 

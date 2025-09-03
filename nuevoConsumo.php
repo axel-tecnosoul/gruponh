@@ -7,7 +7,7 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $modoDebug=0;
+  $modoDebug=1;
 
   if($modoDebug==1){
     $pdo->beginTransaction();
@@ -21,9 +21,10 @@ if (!empty($_POST)) {
   $nro_revision=0;
   $descripcion="Emision original";
 
-  $sql = "INSERT INTO consumos (fecha,id_orden_trabajo_revision,nro_revision,descripcion,id_usuario,anulado) VALUES (NOW(),?,?,?,?,0)";
+  // Se alinea el uso del id de OT (ya no usamos id_orden_trabajo_revision)
+  $sql = "INSERT INTO consumos (fecha,id_orden_trabajo,nro_revision,descripcion,id_usuario,anulado) VALUES (NOW(),?,?,?,?,0)";
   $q = $pdo->prepare($sql);
-  $q->execute([$_POST["id_orden_trabajo_revision"],$nro_revision,$descripcion,$_SESSION["user"]["id"]]);
+  $q->execute([$_POST["id_orden_trabajo"],$nro_revision,$descripcion,$_SESSION["user"]["id"]]);
   $id_consumo = $pdo->lastInsertId();
 
   if ($modoDebug==1) {
@@ -72,7 +73,8 @@ if (!empty($_POST)) {
 
     $sql = "SELECT p.id_sitio FROM ordenes_trabajo otr INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id INNER JOIN proyectos p ON lcr.id_proyecto=p.id WHERE otr.id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST["id_orden_trabajo_revision"]]);
+    // Alineado al uso de id_orden_trabajo
+    $q->execute([$_POST["id_orden_trabajo"]]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
 
     $id_sitio=$data["id_sitio"];
@@ -119,7 +121,7 @@ if (!empty($_POST)) {
 			
 			$sql = "INSERT INTO egresos_detalle (id_egreso, id_detalle_ingreso, id_material, id_unidad_medida, cantidad, precio, subtotal) VALUES (?,?,?,?,?,?,?)";
 			$q = $pdo->prepare($sql);
-			$q->execute([$idEgreso,$value["id_material"],$data2['id'],$value["id_unidad_medida"],$value["cantidad"],$precio,$subtotal]);
+			$q->execute([$idEgreso,$data2['id'],$value["id_material"],$value["id_unidad_medida"],$value["cantidad"],$precio,$subtotal]);
 
       if ($modoDebug==1) {
         $q->debugDumpParams();
@@ -273,15 +275,22 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                           <tbody><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            
-                            $sql = "SELECT m.concepto,SUM(lcp.largo) AS largo FROM ordenes_trabajo_detalle otd INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id WHERE id_orden_trabajo = ".$_GET['id_orden_trabajo']." GROUP BY lcp.id_material ";
-                            foreach ($pdo->query($sql) as $row) {
+                            // Parametrizamos el id de OT para evitar inyección
+                            $sql = "SELECT m.concepto, SUM(lcp.largo) AS largo
+                                    FROM ordenes_trabajo_detalle otd
+                                    INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id
+                                    INNER JOIN materiales m ON lcp.id_material = m.id
+                                    WHERE otd.id_orden_trabajo = ?
+                                    GROUP BY lcp.id_material";
+                            $q = $pdo->prepare($sql);
+                            $q->execute([$id_ot]);
+                            while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
                               echo '<tr>';
-                              echo '<td>'.$row["concepto"].'</td>';
-                              echo '<td>'.$row["largo"].'</td>';
-                              echo '<td>0'.'</td>';
-                              echo '<td>0'.'</td>';
-                              echo '<td>0'.'</td>';
+                              echo '<td>' . htmlspecialchars($row["concepto"]) . '</td>';
+                              echo '<td>' . htmlspecialchars($row["largo"]) . '</td>';
+                              echo '<td>0</td>';
+                              echo '<td>0</td>';
+                              echo '<td>0</td>';
                               echo '</tr>';
                             }
                             Database::disconnect();?>
@@ -307,9 +316,16 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT lcp.id_material,m.concepto,lcp.id_colada,c.nro_colada,otd.cantidad,um.unidad_medida FROM ordenes_trabajo_detalle otd INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion=lcp.id INNER JOIN materiales m ON lcp.id_material=m.id INNER JOIN coladas c ON lcp.id_colada=c.id INNER JOIN unidades_medida um ON m.id_unidad_medida=um.id WHERE id_orden_trabajo = ".$_GET['id_orden_trabajo'];
+                                // Parametrizamos el id de OT para evitar inyección
+                                $sqlZon = "SELECT lcp.id_material, m.concepto, lcp.id_colada, c.nro_colada, otd.cantidad, um.unidad_medida
+                                           FROM ordenes_trabajo_detalle otd
+                                           INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id
+                                           INNER JOIN materiales m ON lcp.id_material = m.id
+                                           LEFT JOIN coladas c ON lcp.id_colada = c.id
+                                           INNER JOIN unidades_medida um ON m.id_unidad_medida = um.id
+                                           WHERE otd.id_orden_trabajo = ?";
                                 $q = $pdo->prepare($sqlZon);
-                                $q->execute();
+                                $q->execute([$id_ot]);
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
                                   <option value='<?=$fila['id_material']?>' data-concepto='<?=$fila['concepto']?>' data-id-colada='<?=$fila['id_colada']?>' data-nro-colada='<?=$fila['nro_colada']?>'><?=$fila['concepto']." | ".$fila['nro_colada']." | ".$fila['cantidad']." | ".$fila['unidad_medida']?></option><?php
                                 }
@@ -375,7 +391,8 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                     </h5>
                   </div>
                   <form action="nuevoConsumo.php" method="post">
-                    <input type="hidden" name="id_orden_trabajo_revision" id="id_orden_trabajo_revision" value="<?=$_GET['id_orden_trabajo']?>">
+                    <!-- Alineado: ahora enviamos id_orden_trabajo (no *_revision) -->
+                    <input type="hidden" name="id_orden_trabajo" id="id_orden_trabajo" value="<?=$id_ot?>">
                     <div class="card-body">
                       <div class="form-group row">
                         <div class="dt-ext table-responsive">

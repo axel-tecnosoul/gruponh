@@ -7,6 +7,10 @@ if (empty($_SESSION['user'])) {
 include 'config.php';
 include 'database.php';
 $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
+$estadosProd = '';
+if($prodQuery){
+  $estadosProd = '3,4'; //Aprobada y Gestionando
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,17 +82,25 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                           <option value="">Todos</option><?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sqlZon = "SELECT `id`, `estado` FROM `estados_lista_corte` WHERE 1 order by estado ";
+                          $sqlZon = "SELECT id, estado FROM estados_lista_corte WHERE 1 order by estado ";
                           $q = $pdo->prepare($sqlZon);
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                            echo "<option value='".$fila['id']."'";
-                            if (isset($_POST['id_estado'])) {
-                              if (in_array($fila['id'],$_POST['id_estado'])) {
-                                echo " selected ";
-                              }
+                            $id_estado = (int)$fila['id'];
+                            $inProd = !empty($estadosProd);
+                            $permitidos = $inProd ? array_map('intval', explode(',', $estadosProd)) : null;
+                            // Mostrar opción si no es producción o si el estado está permitido en producción
+                            if (!$inProd || ($permitidos && in_array($id_estado, $permitidos, true))) {
+                              $selected = '';
+                              if (isset($_POST['id_estado'])) {
+                                // Forzar a int por seguridad
+                                $postEstados = array_map('intval', (array)$_POST['id_estado']);
+                                if (in_array($id_estado, $postEstados, true)) {
+                                  $selected = " selected ";
+                                }
+                              }?>
+                              <option value='<?=$id_estado?>'<?=$selected?>><?=$fila['estado']?></option><?php
                             }
-                            echo ">".$fila['estado']."</option>";
                           }
                           Database::disconnect();?>
                         </select>
@@ -172,10 +184,21 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                           if (!empty($_POST['fechah'])) {
                             $sql .= " AND lc.fecha <= '".$_POST['fechah']."' ";
                           }
+                          // Filtro por estado: en modo producción forzar 3 y 4 por defecto
+                          $selectedEstados = [];
                           if (!empty($_POST['id_estado'][0])) {
-                            $sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
-                          }else{
-                            $sql .= " AND e.id in (1,2,3,4) ";
+                            // Sanitizar a enteros
+                            $selectedEstados = array_map('intval', (array)$_POST['id_estado']);
+                            if (!empty($estadosProd)) {
+                              // En producción, limitar a 3 y 4 aunque envíen otros valores
+                              $permitidos = array_map('intval', explode(',', $estadosProd));
+                              $selectedEstados = array_values(array_intersect($selectedEstados, $permitidos));
+                            }
+                          }
+                          if (!empty($selectedEstados)) {
+                            $sql .= " AND e.id in (".implode(',', $selectedEstados).") ";
+                          } else {
+                            $sql .= " AND e.id in (" . (!empty($estadosProd) ? $estadosProd : '1,2,3,4') . ") ";
                           }
                           //echo $sql;
                           foreach ($pdo->query($sql) as $row) {?>
