@@ -326,8 +326,17 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                                            WHERE otd.id_orden_trabajo = ?";
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute([$id_ot]);
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
-                                  <option value='<?=$fila['id_material']?>' data-concepto='<?=$fila['concepto']?>' data-id-colada='<?=$fila['id_colada']?>' data-nro-colada='<?=$fila['nro_colada']?>'><?=$fila['concepto']." | ".$fila['nro_colada']." | ".$fila['cantidad']." | ".$fila['unidad_medida']?></option><?php
+                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                  $concepto = htmlspecialchars($fila['concepto']);
+                                  $nro_colada = htmlspecialchars($fila['nro_colada']);
+                                  if(empty($nro_colada)){
+                                    $nro_colada="(Sin Colada)";
+                                  }
+                                  $cantidad = htmlspecialchars($fila['cantidad']);
+                                  $unidad_medida = htmlspecialchars($fila['unidad_medida']);
+                                  $textoMostrar = $concepto." | ".$nro_colada." | ".$cantidad." | ".$unidad_medida;
+                                  ?>
+                                  <option value='<?=$fila['id_material']?>' data-concepto='<?=$fila['concepto']?>' data-id-colada='<?=$fila['id_colada']?>' data-nro-colada='<?=$fila['nro_colada']?>'><?=$textoMostrar?></option><?php
                                 }
                                 Database::disconnect();?>
                               </select>
