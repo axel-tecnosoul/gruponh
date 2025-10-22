@@ -133,94 +133,105 @@ include 'database.php';
                     <div class="dt-ext table-responsive">
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
-                          <tr>
-							  <th>Nro. Pedido</th>
-							  <th>Sitio / Sub / Proy</th>
-							  <th>Fecha Pedido</th>
-							  <th>Lugar Entrega</th>
-							  <th>Estado</th>
-							  <th>Aprobado</th>
-							  <th style="display: none;">Tipo</th>
-							  <th style="display: none;">Proy</th>
-                          </tr>
+                            <tr>
+                                <th>Nro.</th>
+                                <th>Obra</th>
+                                <th>Fecha de Carga</th>
+                                <th>Fecha Entrega Pedida</th>
+                                <th>Fecha Pactada Prov.</th>
+                                <th>Estado</th>
+                                <th>Solicitante</th>
+                                <th>Aprobado</th>
+                                <th style="display: none;">Tipo</th>
+                                <th style="display: none;">Proy</th>
+                            </tr>
                         </thead>
                         <tbody>
                           <?php
                             if (!empty($_POST)) {
-                            $pdo = Database::connect();
-                            $sql = " SELECT pe.`id`, s.nro_sitio, p.nro, t.`estructura`, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado`,date_format(pe.`fecha`,'%y%m%d'),p.id, s.nro_subsitio, ep.estado FROM pedidos pe inner join `computos` c on c.id = pe.id_computo inner join cuentas cu on cu.id = pe.id_cuenta_recibe inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto left join sitios s on s.id = p.id_sitio inner join estados_pedidos ep on ep.id = pe.id_estado WHERE 1 ";
-                            
-							if (!empty($_POST['nro'])) {
-								$sql .= " and (p.nro = ".$_POST['nro']." or s.nro_sitio = ".$_POST['nro'].") ";
-							}
-							if (!empty($_POST['fecha'])) {
-								$sql .= " AND pe.fecha >= '".$_POST['fecha']."' ";
-							}
-							if (!empty($_POST['fechah'])) {
-								$sql .= " AND pe.fecha <= '".$_POST['fechah']."' ";
-							}
-							if (!empty($_POST['aprobado']) && ($_POST['aprobado'])==1) {
-								$sql .= " AND pe.aprobado = 1 ";
-							} else if (!empty($_POST['aprobado']) && ($_POST['aprobado'])==2) {
-								$sql .= " AND pe.aprobado = 0 ";
-							}
-							if (!empty($_POST['id_estado'][0])) {
-								$sql .= " AND ep.id in (".implode(', ',$_POST['id_estado']).") ";
-							}
-                            foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
-                                echo '<td>'. $row[0] . ' </td>';
-                                echo '<td>'. $row[1] .' / '.$row[10].' / '.$row[2]. '</td>';
-								echo '<td><span style="display: none;">'. $row[8] . '</span>'. $row[4] . '</td>';
-                                echo '<td>'. $row[6] . '</td>';
-								echo '<td>'. $row[11] . '</td>';
-								if ($row[7] == 1) {
-                                    echo '<td>Si</td>';
-                                } else {
-                                    echo '<td>No</td>';
+                                $pdo = Database::connect();
+                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+                                $sql1 = "SELECT 
+                                            pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha,
+                                            p.fecha_entrega,
+                                            (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov,
+                                            ep.estado, p.solicitante, pe.aprobado, p.id AS id_proyecto
+                                        FROM pedidos pe 
+                                        INNER JOIN computos c ON c.id = pe.id_computo 
+                                        INNER JOIN tareas t ON t.id = c.id_tarea 
+                                        INNER JOIN proyectos p ON p.id = t.id_proyecto 
+                                        LEFT JOIN sitios s ON s.id = p.id_sitio 
+                                        INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                                        WHERE 1 ";
+
+                                if (!empty($_POST['nro'])) { $sql1 .= " AND (p.nro = '".intval($_POST['nro'])."' OR s.nro_sitio = '".intval($_POST['nro'])."') "; }
+                                if (!empty($_POST['fecha'])) { $sql1 .= " AND pe.fecha >= '".$_POST['fecha']."' "; }
+                                if (!empty($_POST['fechah'])) { $sql1 .= " AND pe.fecha <= '".$_POST['fechah']."' "; }
+                                if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) { $sql1 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0); }
+                                if (!empty($_POST['id_estado']) && !empty($_POST['id_estado'][0])) { $sql1 .= " AND ep.id IN (".implode(', ', array_map('intval', $_POST['id_estado'])).") "; }
+
+                                foreach ($pdo->query($sql1) as $row) {
+                                    echo '<tr>';
+                                    echo '<td>' . htmlspecialchars($row['id']) . '</td>';
+                                    echo '<td>' . htmlspecialchars($row['nro_sitio']) . ' / ' . htmlspecialchars($row['nro_subsitio']) . ' / ' . htmlspecialchars($row['nro']) . '</td>';
+                                    
+                                    echo '<td><span style="display: none;">' . date('Ymd', strtotime($row['fecha'])) . '</span>' . date('d/m/Y', strtotime($row['fecha'])) . '</td>';
+                                    
+                                    $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
+                                    echo '<td><span style="display: none;">' . ($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) . '</span>' . ($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') . '</td>';
+
+                                    $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
+                                    echo '<td><span style="display: none;">' . ($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) . '</span>' . ($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') . '</td>';
+
+                                    echo '<td>' . htmlspecialchars($row['estado']) . '</td>';
+                                    echo '<td>' . htmlspecialchars($row['solicitante']) . '</td>';
+                                    echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
+                                    echo '<td style="display: none;">C</td>';
+                                    echo '<td style="display: none;">' . htmlspecialchars($row['id_proyecto']) . '</td>';
+                                    echo '</tr>';
                                 }
-								echo '<td style="display: none;">C</td>';
-								echo '<td style="display: none;">'.$row[9].'</td>';
-                                echo '</tr>';
-                            }
-							$sql = " SELECT pe.`id`, s.nro_sitio, p.nro, p.descripcion, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado`,date_format(pe.`fecha`,'%y%m%d'),pe.id_proyecto, s.nro_subsitio, ep.estado FROM pedidos pe inner join `proyectos` p on p.id = pe.id_proyecto inner join cuentas cu on cu.id = pe.id_cuenta_recibe left join sitios s on s.id = p.id_sitio inner join estados_pedidos ep on ep.id = pe.id_estado WHERE 1 ";
-                            
-							if (!empty($_POST['nro'])) {
-								$sql .= " and (p.nro = ".$_POST['nro']." or s.nro_sitio = ".$_POST['nro'].") ";
-							}
-							if (!empty($_POST['fecha'])) {
-								$sql .= " AND pe.fecha >= '".$_POST['fecha']."' ";
-							}
-							if (!empty($_POST['fechah'])) {
-								$sql .= " AND pe.fecha <= '".$_POST['fechah']."' ";
-							}
-							if (!empty($_POST['aprobado']) && ($_POST['aprobado'])==1) {
-								$sql .= " AND pe.aprobado = 1 ";
-							} else if (!empty($_POST['aprobado']) && ($_POST['aprobado'])==2) {
-								$sql .= " AND pe.aprobado = 0 ";
-							}
-							if (!empty($_POST['id_estado'][0])) {
-								$sql .= " AND ep.id in (".implode(', ',$_POST['id_estado']).") ";
-							}
-                            
-                            foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
-                                echo '<td>'. $row[0] . ' </td>';
-                                echo '<td>'. $row[1] .' / '.$row[10].' / '.$row[2]. '</td>';
-								echo '<td><span style="display: none;">'. $row[8] . '</span>'. $row[4] . '</td>';
-                                echo '<td>'. $row[6] . '</td>';
-								echo '<td>'. $row[11] . '</td>';
-								if ($row[7] == 1) {
-                                    echo '<td>Si</td>';
-                                } else {
-                                    echo '<td>No</td>';
+
+                                $sql2 = "SELECT 
+                                            pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha,
+                                            p.fecha_entrega,
+                                            (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov,
+                                            ep.estado, p.solicitante, pe.aprobado, pe.id_proyecto
+                                        FROM pedidos pe 
+                                        INNER JOIN proyectos p ON p.id = pe.id_proyecto 
+                                        LEFT JOIN sitios s ON s.id = p.id_sitio 
+                                        INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                                        WHERE pe.id_computo IS NULL ";
+                                
+                                if (!empty($_POST['nro'])) { $sql2 .= " AND (p.nro = '".intval($_POST['nro'])."' OR s.nro_sitio = '".intval($_POST['nro'])."') "; }
+                                if (!empty($_POST['fecha'])) { $sql2 .= " AND pe.fecha >= '".$_POST['fecha']."' "; }
+                                if (!empty($_POST['fechah'])) { $sql2 .= " AND pe.fecha <= '".$_POST['fechah']."' "; }
+                                if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) { $sql2 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0); }
+                                if (!empty($_POST['id_estado']) && !empty($_POST['id_estado'][0])) { $sql2 .= " AND ep.id IN (".implode(', ', array_map('intval', $_POST['id_estado'])).") "; }
+
+                                foreach ($pdo->query($sql2) as $row) {
+                                    echo '<tr>';
+                                    echo '<td>' . htmlspecialchars($row['id']) . '</td>';
+                                    echo '<td>' . htmlspecialchars($row['nro_sitio']) . ' / ' . htmlspecialchars($row['nro_subsitio']) . ' / ' . htmlspecialchars($row['nro']) . '</td>';
+
+                                    echo '<td><span style="display: none;">' . date('Ymd', strtotime($row['fecha'])) . '</span>' . date('d/m/Y', strtotime($row['fecha'])) . '</td>';
+                                    
+                                    $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
+                                    echo '<td><span style="display: none;">' . ($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) . '</span>' . ($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') . '</td>';
+
+                                    $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
+                                    echo '<td><span style="display: none;">' . ($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) . '</span>' . ($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') . '</td>';
+                                    
+                                    echo '<td>' . htmlspecialchars($row['estado']) . '</td>';
+                                    echo '<td>' . htmlspecialchars($row['solicitante']) . '</td>';
+                                    echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
+                                    echo '<td style="display: none;">D</td>';
+                                    echo '<td style="display: none;">' . htmlspecialchars($row['id_proyecto']) . '</td>';
+                                    echo '</tr>';
                                 }
-								echo '<td style="display: none;">D</td>';
-								echo '<td style="display: none;">'.$row[9].'</td>';
-                                echo '</tr>';
+
+                                Database::disconnect();
                             }
-							Database::disconnect();
-							}
                           ?>
                         </tbody>
                       </table>
@@ -407,193 +418,151 @@ include 'database.php';
     <script src="assets/js/script.js"></script>
   <script>
     $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example666 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example666').DataTable({
-        stateSave: false,
-		searching: false,
-		
-        responsive: false,
-		dom: 'Bfrtp<"bottom"l>',
-        buttons: [
-            'excel'
-        ],
-		lengthMenu: [
-        [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-        [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
-		],
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }},
-		"fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-                $('td:eq(4)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[4]).attr("title","Doble click para editar");
-              },
-              initComplete: function(){
-                $('[title]').tooltip();
-              }
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example666').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
+        // Setup - add a text input to each footer cell
+        $('#dataTables-example666 tfoot th').each( function () {
+            var title = $(this).text();
+            $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
         } );
-		} );
-	
-	$("#link_ver_pedido").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione un pedido aprobado para gestionar")
-        }
-      })
-	  $("#link_modificar_pedido").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione un pedido directo para modificar")
-        }
-      })
-	  $("#link_aprobar_pedido").on("click",function(){
-        /*let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){*/
-        let target=this.dataset.target;
-        if(target==undefined || target=="#"){
-          alert("Por favor seleccione un pedido para aprobar")
-        }
-      })
-	   $("#link_rechazar_pedido").on("click",function(){
-        /*let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){*/
-        let target=this.dataset.target;
-        if(target==undefined || target=="#"){
-          alert("Por favor seleccione un pedido para rechazar")
-        }
-      })
-	  
-	  $("#link_nuevo_suceso").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione un pedido para añadir un nuevo suceso")
-        }
-      })
-	  
-	  
-	//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
-    $(document).on("click","#dataTables-example666 tbody tr td", function(){
-        var t=$(this).parent();
-        //t.parent().find("tr").removeClass("selected");
 
-        let id_pedido=t.find("td:first-child").html();
-		let id_proyecto=t.find("td:nth-child(8)").html();
-		let estado = t.find("td:nth-child(6)").html();
-		let tarea = t.find("td:nth-child(7)").html();
-		if(t.hasClass('selected')){
-          deselectRow(t);
-		  get_conceptos(id_pedido)
-          $("#link_ver_pedido").attr("href","#");
-		  $("#link_modificar_pedido").attr("href","#");
-		  $("#link_nuevo_suceso").attr("href","#");
-          $("#link_aprobar_pedido").attr("data-target","#");
-		  $("#link_rechazar_pedido").attr("data-target","#");
-        }else{
-          table.rows().nodes().each( function (rowNode, index) {
-            $(rowNode).removeClass("selected");
-          });
-          selectRow(t);
-		  get_conceptos(id_pedido)
-		  
-		  if (tarea == 'D') {
-            $("#link_modificar_pedido").attr("href","itemsPedidoDirecto.php?id="+id_pedido);
-			if (estado == 'Si') {
-				$("#link_ver_pedido").attr("href","verPedidoDirecto.php?id="+id_pedido);
-			}
-			
-          } else {
-            $("#link_modificar_pedido").attr("href","#");
-			if (estado == 'Si') {
-				$("#link_ver_pedido").attr("href","verPedido.php?id="+id_pedido);
-			}
-			
-          }
-          if (estado == 'No') {
-            $("#link_aprobar_pedido").attr("data-toggle","modal");
-            $("#link_aprobar_pedido").attr("data-target","#aprobarModal_"+id_pedido);
-            $("#link_rechazar_pedido").attr("data-toggle","modal");
-            $("#link_rechazar_pedido").attr("data-target","#rechazarModal_"+id_pedido);
-          } else {
-            $("#link_aprobar_pedido").attr("href","#");
-			$("#link_rechazar_pedido").attr("href","#");
-          }
-		  $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?desdePedidos=1&id="+id_proyecto);
-        }
-      });
+        $('#dataTables-example666').DataTable({
+            stateSave: false,
+            searching: false,
+            responsive: false,
+            dom: 'Bfrtp<"bottom"l>',
+            buttons: [
+                'excel'
+            ],
+            lengthMenu: [
+                [10, 25, 50, 100, 500, 1000],
+                [10, 25, 50, 100, 500, 1000]
+            ],
+            language: {
+                "decimal": "",
+                "emptyTable": "No hay información",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+                "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ Registros",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No hay resultados",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Ultimo",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                }
+            },
+            initComplete: function(){
+                $('[title]').tooltip();
+            }
+        });
     
-	} );
-	$("body").on('dblclick',".editable", function(event) {
-          var t=$(this);
-          
-          let old_padding=t.css("padding");
-          t.css({padding: '0'});
-          t.find('input[type="hidden"]');
-          
-		  var idPosicion=t.data("idPosicion");
-		  console.log(idPosicion);
-		  var idEstado=t.data("idEstado");
-
-          dataString="idPosicion="+idPosicion;
-
-          let nuevo_select_estado=$("#select_estado_base").clone()
-          nuevo_select_estado.id="id_estado_nuevo"
-
-          t.html(nuevo_select_estado);
-          nuevo_select_estado.val(idEstado)
-
-          nuevo_select_estado.on('blur', function(event) {
-            nuevaEstado=nuevo_select_estado.val();
-            // Obtener el texto correspondiente al valor seleccionado
-            var textoSeleccionado = nuevo_select_estado.find('option[value="'+nuevaEstado+'"]').text();
-			
-            $.ajax({
-              type: "POST",
-              url: "modificarEstadoPedido.php",
-              data: "idPosicion="+idPosicion+"&idEstado="+nuevaEstado,
-              success: function(data) {
-                console.log(data)
-                if(data==1){
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
+        // DataTable
+        var table = $('#dataTables-example666').DataTable();
+    
+        // Apply the search
+        table.columns().every( function () {
+            var that = this;
+    
+            $( 'input', this.footer() ).on( 'keyup change', function () {
+                if ( that.search() !== this.value ) {
+                    that
+                        .search( this.value )
+                        .draw();
+                }
+            } );
+        });
+        
+        $("#link_ver_pedido").on("click",function(){
+            let l=document.location.href;
+            if(this.href==l || this.href==l+"#"){
+              alert("Por favor seleccione un pedido aprobado para gestionar")
+            }
+        });
+        $("#link_modificar_pedido").on("click",function(){
+            let l=document.location.href;
+            if(this.href==l || this.href==l+"#"){
+              alert("Por favor seleccione un pedido directo para modificar")
+            }
+        });
+        $("#link_aprobar_pedido").on("click",function(){
+            let target=this.dataset.target;
+            if(target==undefined || target=="#"){
+              alert("Por favor seleccione un pedido para aprobar")
+            }
+        });
+        $("#link_rechazar_pedido").on("click",function(){
+            let target=this.dataset.target;
+            if(target==undefined || target=="#"){
+              alert("Por favor seleccione un pedido para rechazar")
+            }
+        });
+        $("#link_nuevo_suceso").on("click",function(){
+            let l=document.location.href;
+            if(this.href==l || this.href==l+"#"){
+              alert("Por favor seleccione un pedido para añadir un nuevo suceso")
+            }
+        });
+        
+        
+        $(document).on("click","#dataTables-example666 tbody tr td", function(){
+            var t=$(this).parent();
+    
+            let id_pedido = t.find("td:nth-child(1)").html().trim();
+            let estado = t.find("td:nth-child(8)").html().trim();
+            let tarea = t.find("td:nth-child(9)").html().trim();
+            let id_proyecto = t.find("td:nth-child(10)").html().trim();
+    
+            if(t.hasClass('selected')){
+              deselectRow(t);
+              get_conceptos(id_pedido);
+              $("#link_ver_pedido").attr("href","#");
+              $("#link_modificar_pedido").attr("href","#");
+              $("#link_nuevo_suceso").attr("href","#");
+              $("#link_aprobar_pedido").attr("data-target","#").removeAttr("data-toggle");
+              $("#link_rechazar_pedido").attr("data-target","#").removeAttr("data-toggle");
+            }else{
+              table.rows().nodes().each( function (rowNode, index) {
+                $(rowNode).removeClass("selected");
+              });
+              selectRow(t);
+              get_conceptos(id_pedido);
+              
+              if (tarea == 'D') {
+                $("#link_modificar_pedido").attr("href","itemsPedidoDirecto.php?id="+id_pedido);
+                if (estado == 'Si') {
+                    $("#link_ver_pedido").attr("href","verPedidoDirecto.php?id="+id_pedido);
+                } else {
+                    $("#link_ver_pedido").attr("href","#");
+                }
+              } else {
+                $("#link_modificar_pedido").attr("href","#");
+                if (estado == 'Si') {
+                    $("#link_ver_pedido").attr("href","verPedido.php?id="+id_pedido);
+                } else {
+                    $("#link_ver_pedido").attr("href","#");
                 }
               }
-            });
-          });
-	} );
+    
+              if (estado == 'No') {
+                $("#link_aprobar_pedido").attr("data-toggle","modal");
+                $("#link_aprobar_pedido").attr("data-target","#aprobarModal_"+id_pedido);
+                $("#link_rechazar_pedido").attr("data-toggle","modal");
+                $("#link_rechazar_pedido").attr("data-target","#rechazarModal_"+id_pedido);
+              } else {
+                $("#link_aprobar_pedido").attr("href","#").removeAttr("data-toggle");
+                $("#link_rechazar_pedido").attr("href","#").removeAttr("data-toggle");
+              }
+              $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?desdePedidos=1&id="+id_proyecto);
+            }
+        });
+        
+    });
+  </script>
 	
 	</script>
 	
