@@ -5,20 +5,34 @@ if (empty($_SESSION['user'])) {
     die("Redirecting to index.php");
 }
 include 'database.php';
+$nro="";
+if (isset($_POST['nro'])){
+  $nro=$_POST['nro'];
+}
+$fecha="";
+if (isset($_POST['fecha'])){
+  $fecha=$_POST['fecha'];
+}
+$fechah="";
+if (isset($_POST['fechah'])){
+  $fechah=$_POST['fechah'];
+}
+$id_estado=array();
+if (isset($_POST['id_estado'])) {
+  $id_estado=$_POST['id_estado'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
-  <?php include('head_tables.php');?>
- <style>
-	.truncate {
-	  max-width:50px;
-	  white-space: nowrap;
-	  overflow: hidden;
-	  text-overflow: ellipsis;
-	}
-  </style>
-  <style>
+    <?php include('head_tables.php');?>
+    <style>
+      .truncate {
+        max-width:50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .faClass{
         width: 24px;
         height: 20px;
@@ -29,14 +43,13 @@ include 'database.php';
         cursor: default;
       }
     </style>
-  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <!-- Page Header Start-->
       <?php include('header.php');?>
-     
       <!-- Page Header Ends                              -->
       <!-- Page Body Start-->
       <div class="page-body-wrapper">
@@ -50,190 +63,215 @@ include 'database.php';
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
-		    <div class="row">
-			<div class="col-md-12">
-				<div class="card">
-				  <div class="card-body">
-					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarPedidos.php">
-					  <div class="form-group mb-0">
-						N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
-					  </div>
-					  <div class="form-group mb-0">
-						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
-					  </div>
-					  <div class="form-group mb-0">
-						Estado:&nbsp;
-						<select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-							<option value="">Todos</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `estado` FROM `estados_pedidos` WHERE 1 order by estado ";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (isset($_POST['id_estado'])) {
-									if (in_array($fila['id'],$_POST['id_estado'])) {
-										echo " selected ";
-									}
-								}
-								echo ">".$fila['estado']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-					  </div>
-					  <div class="form-group mb-0">
-						Aprobado:&nbsp;
-						<select name="aprobado" id="aprobado" class="form-control">
-							<option value="">Seleccione...</option>
-							<option value="1" <?php if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } } ?> >Si</option>
-							<option value="2" <?php if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } } ?> >No</option>
-							</select>
-					  </div>
-					  <div class="form-group mb-0">
-						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarPedidos.php'">Buscar</button>
-					  </div>
-					</form>
-				</div>
-			  </div>
-			</div>
-			</div>
+            <div class="row">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarPedidos.php">
+                      <div class="form-group mb-0">
+						            N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?=$nro?>" name="nro">
+					            </div>
+					            <div class="form-group mb-0">
+						            Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=$fecha?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=$fechah?>" name="fechah">
+					            </div>
+                      <div class="form-group mb-0">
+                        Estado:&nbsp;
+                        <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
+                          <option value="">Todos</option><?php
+                          $pdo = Database::connect();
+                          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                          $sqlZon = "SELECT id, estado FROM estados_pedidos WHERE 1 order by estado ";
+                          $q = $pdo->prepare($sqlZon);
+                          $q->execute();
+                          while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                            $selected="";
+                            if (in_array($fila['id'],$id_estado)) {
+                              $selected=" selected ";
+                            }?>
+                            <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['estado']?></option><?php
+                          }
+                          Database::disconnect();?>
+                        </select>
+                      </div>
+                      <!-- <div class="form-group mb-0">
+                        Aprobado:&nbsp;
+                        <select name="aprobado" id="aprobado" class="form-control">
+                          <option value="">Seleccione...</option>
+                          <option value="1" <?php if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } } ?> >Si</option>
+                          <option value="2" <?php if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } } ?> >No</option>
+                        </select>
+					            </div> -->
+                      <div class="form-group mb-0">
+                        <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarPedidos.php'">Buscar</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(295))) { ?><a href="nuevoPedidoDirecto.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Pedido Directo" title="Nuevo Pedido Directo"></a><?php } ?>
-					&nbsp;
-					<?php 
-					if (!empty(tienePermiso(295))) {
-						echo '<a href="#" id="link_modificar_pedido"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
-						echo '&nbsp;&nbsp;';
-					}
-					echo '<a href="#" id="link_ver_pedido"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver/Gestionar Pedido" title="Ver/Gestionar Pedido"></a>';
-					echo '&nbsp;&nbsp;';
-					echo '<a href="exportPedidos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>';
-					echo '&nbsp;&nbsp;';
-					if (!empty(tienePermiso(303))) {
-						echo '<a href="#" id="link_aprobar_pedido"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Aprobar" title="Aprobar"></a>';
-						echo '&nbsp;&nbsp;';
-						echo '<a href="#" id="link_rechazar_pedido"><img src="img/neg.png" width="24" height="25" border="0" alt="Rechazar/Eliminar" title="Rechazar/Eliminar"></a>';
-						echo '&nbsp;&nbsp;';
-					}
-					if (!empty(tienePermiso(284))) {
-						echo '<a href="#" id="link_nuevo_suceso"><img src="img/venc.jpg" width="24" height="25" border="0" alt="Agregar Suceso" title="Agregar Suceso"></a>';
-						echo '&nbsp;&nbsp;';
-					}
-					?>
-					</h5>
+                    <h5><?php echo $ubicacion;
+                      if (!empty(tienePermiso(295))) { ?>
+                        <a href="nuevoPedidoDirecto.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Pedido Directo" title="Nuevo Pedido Directo"></a>&nbsp;<?php
+                      }
+                      if (!empty(tienePermiso(295))) {?>
+                        <a href="#" id="link_modificar_pedido"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>&nbsp;&nbsp;<?php
+                      }?>
+                      <a href="#" id="link_ver_pedido"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver/Gestionar Pedido" title="Ver/Gestionar Pedido"></a>&nbsp;&nbsp;
+                      <a href="exportPedidos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;<?php
+                      if (!empty(tienePermiso(303))) {?>
+                        <a href="#" id="link_aprobar_pedido"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Aprobar" title="Aprobar"></a>&nbsp;&nbsp;
+                        <a href="#" id="link_rechazar_pedido"><img src="img/neg.png" width="24" height="25" border="0" alt="Rechazar/Eliminar" title="Rechazar/Eliminar"></a>&nbsp;&nbsp;<?php
+                      }
+                      if (!empty(tienePermiso(284))) {?>
+                        <a href="#" id="link_nuevo_suceso"><img src="img/venc.jpg" width="24" height="25" border="0" alt="Agregar Suceso" title="Agregar Suceso"></a>&nbsp;&nbsp;<?php
+                      }?>
+					          </h5>
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
-                            <tr>
-                                <th>Nro.</th>
-                                <th>Obra</th>
-                                <th>Fecha de Carga</th>
-                                <th>Fecha Entrega Pedida</th>
-                                <th>Fecha Pactada Prov.</th>
-                                <th>Estado</th>
-                                <th>Solicitante</th>
-                                <th>Aprobado</th>
-                                <th style="display: none;">Tipo</th>
-                                <th style="display: none;">Proy</th>
-                            </tr>
+                          <tr>
+                            <th>Nro.</th>
+                            <th>Obra</th>
+                            <th>Fecha de Carga</th>
+                            <th>Fecha Entrega Pedida</th>
+                            <th>Fecha Pactada Prov.</th>
+                            <th>Estado</th>
+                            <th>Solicitante</th>
+                            <!-- <th>Aprobado</th> -->
+                            <th>Tipo</th>
+                            <th style="display: none;">Proy</th>
+                          </tr>
                         </thead>
-                        <tbody>
-                          <?php
-                            if (!empty($_POST)) {
-                                $pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                        <tbody><?php
+                          if (!empty($_POST)) {
 
-                                $sql1 = "SELECT 
-                                            pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha,
-                                            p.fecha_entrega,
-                                            (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov,
-                                            ep.estado, p.solicitante, pe.aprobado, p.id AS id_proyecto
-                                        FROM pedidos pe 
-                                        INNER JOIN computos c ON c.id = pe.id_computo 
-                                        INNER JOIN tareas t ON t.id = c.id_tarea 
-                                        INNER JOIN proyectos p ON p.id = t.id_proyecto 
-                                        LEFT JOIN sitios s ON s.id = p.id_sitio 
-                                        INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
-                                        WHERE 1 ";
-
-                                if (!empty($_POST['nro'])) { $sql1 .= " AND (p.nro = '".intval($_POST['nro'])."' OR s.nro_sitio = '".intval($_POST['nro'])."') "; }
-                                if (!empty($_POST['fecha'])) { $sql1 .= " AND pe.fecha >= '".$_POST['fecha']."' "; }
-                                if (!empty($_POST['fechah'])) { $sql1 .= " AND pe.fecha <= '".$_POST['fechah']."' "; }
-                                if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) { $sql1 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0); }
-                                if (!empty($_POST['id_estado']) && !empty($_POST['id_estado'][0])) { $sql1 .= " AND ep.id IN (".implode(', ', array_map('intval', $_POST['id_estado'])).") "; }
-
-                                foreach ($pdo->query($sql1) as $row) {
-                                    echo '<tr>';
-                                    echo '<td>' . htmlspecialchars($row['id']) . '</td>';
-                                    echo '<td>' . htmlspecialchars($row['nro_sitio']) . ' / ' . htmlspecialchars($row['nro_subsitio']) . ' / ' . htmlspecialchars($row['nro']) . '</td>';
-                                    
-                                    echo '<td><span style="display: none;">' . date('Ymd', strtotime($row['fecha'])) . '</span>' . date('d/m/Y', strtotime($row['fecha'])) . '</td>';
-                                    
-                                    $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
-                                    echo '<td><span style="display: none;">' . ($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) . '</span>' . ($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') . '</td>';
-
-                                    $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
-                                    echo '<td><span style="display: none;">' . ($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) . '</span>' . ($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') . '</td>';
-
-                                    echo '<td>' . htmlspecialchars($row['estado']) . '</td>';
-                                    echo '<td>' . htmlspecialchars($row['solicitante']) . '</td>';
-                                    echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
-                                    echo '<td style="display: none;">C</td>';
-                                    echo '<td style="display: none;">' . htmlspecialchars($row['id_proyecto']) . '</td>';
-                                    echo '</tr>';
-                                }
-
-                                $sql2 = "SELECT 
-                                            pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha,
-                                            p.fecha_entrega,
-                                            (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov,
-                                            ep.estado, p.solicitante, pe.aprobado, pe.id_proyecto
-                                        FROM pedidos pe 
-                                        INNER JOIN proyectos p ON p.id = pe.id_proyecto 
-                                        LEFT JOIN sitios s ON s.id = p.id_sitio 
-                                        INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
-                                        WHERE pe.id_computo IS NULL ";
-                                
-                                if (!empty($_POST['nro'])) { $sql2 .= " AND (p.nro = '".intval($_POST['nro'])."' OR s.nro_sitio = '".intval($_POST['nro'])."') "; }
-                                if (!empty($_POST['fecha'])) { $sql2 .= " AND pe.fecha >= '".$_POST['fecha']."' "; }
-                                if (!empty($_POST['fechah'])) { $sql2 .= " AND pe.fecha <= '".$_POST['fechah']."' "; }
-                                if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) { $sql2 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0); }
-                                if (!empty($_POST['id_estado']) && !empty($_POST['id_estado'][0])) { $sql2 .= " AND ep.id IN (".implode(', ', array_map('intval', $_POST['id_estado'])).") "; }
-
-                                foreach ($pdo->query($sql2) as $row) {
-                                    echo '<tr>';
-                                    echo '<td>' . htmlspecialchars($row['id']) . '</td>';
-                                    echo '<td>' . htmlspecialchars($row['nro_sitio']) . ' / ' . htmlspecialchars($row['nro_subsitio']) . ' / ' . htmlspecialchars($row['nro']) . '</td>';
-
-                                    echo '<td><span style="display: none;">' . date('Ymd', strtotime($row['fecha'])) . '</span>' . date('d/m/Y', strtotime($row['fecha'])) . '</td>';
-                                    
-                                    $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
-                                    echo '<td><span style="display: none;">' . ($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) . '</span>' . ($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') . '</td>';
-
-                                    $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
-                                    echo '<td><span style="display: none;">' . ($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) . '</span>' . ($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') . '</td>';
-                                    
-                                    echo '<td>' . htmlspecialchars($row['estado']) . '</td>';
-                                    echo '<td>' . htmlspecialchars($row['solicitante']) . '</td>';
-                                    echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
-                                    echo '<td style="display: none;">D</td>';
-                                    echo '<td style="display: none;">' . htmlspecialchars($row['id_proyecto']) . '</td>';
-                                    echo '</tr>';
-                                }
-
-                                Database::disconnect();
+                            $filtroNro="";
+                            if ($nro!="") {
+                              $ex=explode("/", $nro);
+                              if(count($ex)>1){
+                                $sitio = $ex[0];
+                                $proyecto = $ex[1];
+                                $filtroNro = " AND (p.nro = ".intval($proyecto)." AND s.nro_sitio = ".intval($sitio).") ";
+                              }else{
+                                $filtroNro = " AND (p.nro = ".intval($nro)." OR s.nro_sitio = ".intval($nro).") ";
+                              }
                             }
-                          ?>
+                            $filtroFecha="";
+                            if ($fecha!="") {
+                              $filtroFecha .= " AND pe.fecha >= '".$fecha."' ";
+                            }
+                            $filtroFechah="";
+                            if ($fechah!="") {
+                              $filtroFechah .= " AND pe.fecha <= '".$fechah."' ";
+                            }
+                            /*if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) {
+                              $sql1 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0);
+                            }*/
+                            $filtroEstado="";
+                            if (!empty($id_estado) && !empty($id_estado[0])) {
+                              $filtroEstado .= " AND ep.id IN (".implode(', ', array_map('intval', $id_estado)).") ";
+                            }
+
+                            $pdo = Database::connect();
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, p.solicitante, pe.aprobado, p.id AS id_proyecto
+                            FROM pedidos pe 
+                              INNER JOIN computos c ON c.id = pe.id_computo 
+                              INNER JOIN tareas t ON t.id = c.id_tarea 
+                              INNER JOIN proyectos p ON p.id = t.id_proyecto 
+                              LEFT JOIN sitios s ON s.id = p.id_sitio 
+                              INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                            WHERE 1 ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
+
+                            foreach ($pdo->query($sql1) as $row) {
+                              $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
+                              $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
+                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');?>
+                              <tr>
+                                <td><?=htmlspecialchars($row['id'])?></td>
+                                <td><?=$obra?></td>
+                                <td>
+                                  <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
+                                  <?=date('d/m/Y', strtotime($row['fecha']))?></td>
+                                <td>
+                                  <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0)?></span>
+                                  <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?></td>
+                                <td>
+                                  <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0)?></span>
+                                  <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?></td>
+                                <td><?=htmlspecialchars($row['estado']) ?></td>
+                                <td><?=htmlspecialchars($row['solicitante']) ?></td>
+                                <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
+                                <td>Computo</td>
+                                <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
+                              </tr><?php
+                            }
+
+                            $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, p.solicitante, pe.aprobado, pe.id_proyecto
+                            FROM pedidos pe 
+                              INNER JOIN proyectos p ON p.id = pe.id_proyecto 
+                              LEFT JOIN sitios s ON s.id = p.id_sitio 
+                              INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                            WHERE pe.id_computo IS NULL ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
+                              
+                            /*if (!empty($_POST['nro'])) { $sql2 .= " AND (p.nro = '".intval($_POST['nro'])."' OR s.nro_sitio = '".intval($_POST['nro'])."') "; }
+                            if (!empty($_POST['fecha'])) { $sql2 .= " AND pe.fecha >= '".$_POST['fecha']."' "; }
+                            if (!empty($_POST['fechah'])) { $sql2 .= " AND pe.fecha <= '".$_POST['fechah']."' "; }
+                            if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) { $sql2 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0); }
+                            if (!empty($_POST['id_estado']) && !empty($_POST['id_estado'][0])) { $sql2 .= " AND ep.id IN (".implode(', ', array_map('intval', $_POST['id_estado'])).") "; }*/
+
+                            foreach ($pdo->query($sql2) as $row) {
+                              $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
+                              $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
+                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');?>
+
+                              <tr>
+                              <td><?=htmlspecialchars($row['id'])?></td>
+                              <td><?=$obra?></td>
+                              <td>
+                                <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
+                                <?=date('d/m/Y', strtotime($row['fecha'])) ?>
+                              </td>
+                              <td>
+                                <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) ?></span>
+                                <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?>
+                              </td>
+                              <td>
+                                <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) ?></span>
+                                <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
+                              </td>
+                              <td><?=htmlspecialchars($row['estado']) ?></td>
+                              <td><?=htmlspecialchars($row['solicitante']) ?></td>
+                              <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
+                              <td>Directo</td>
+                              <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
+                              </tr><?php
+                            }
+                            Database::disconnect();
+                          }?>
                         </tbody>
+                        <tfoot>
+                          <tr>
+                            <th>Nro.</th>
+                            <th>Obra</th>
+                            <th>Fecha de Carga</th>
+                            <th>Fecha Entrega Pedida</th>
+                            <th>Fecha Pactada Prov.</th>
+                            <th>Estado</th>
+                            <th>Solicitante</th>
+                            <!-- <th>Aprobado</th> -->
+                            <th>Tipo</th>
+                            <th style="display: none;">Proy</th>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   </div>
@@ -242,7 +280,7 @@ include 'database.php';
               <!-- Zero Configuration  Ends-->
               <!-- Feature Unable /Disable Order Starts-->
             </div>
-			<div class="row">
+			      <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">
                 <div class="card">
@@ -254,28 +292,27 @@ include 'database.php';
                       <table class="display truncate" id="dataTables-example667">
                         <thead>
                           <tr>
-							  <th>Concepto</th>
-							  <th>Requerido</th>
-							  <th>Stock</th>
-							  <th>Reservado</th>
-							  <th>Comprado</th>
-							  <th>Fecha Necesidad</th>
-							  <th>Fecha Última Compra</th>
-							  <th>Costo Último Precio</th>
+                            <th>Concepto</th>
+                            <th>Requerido</th>
+                            <th>Stock</th>
+                            <th>Reservado</th>
+                            <th>Comprado</th>
+                            <th>Fecha Necesidad</th>
+                            <th>Fecha Última Compra</th>
+                            <th>Costo Último Precio</th>
                           </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
-						<tfoot>
+                        <tbody></tbody>
+						            <tfoot>
                           <tr>
-							  <th>Concepto</th>
-							  <th>Requerido</th>
-							  <th>Stock</th>
-							  <th>Reservado</th>
-							  <th>Comprado</th>
-							  <th>Fecha Necesidad</th>
-							  <th>Fecha Última Compra</th>
-							  <th>Costo Último Precio</th>
+                            <th>Concepto</th>
+                            <th>Requerido</th>
+                            <th>Stock</th>
+                            <th>Reservado</th>
+                            <th>Comprado</th>
+                            <th>Fecha Necesidad</th>
+                            <th>Fecha Última Compra</th>
+                            <th>Costo Último Precio</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -294,7 +331,7 @@ include 'database.php';
       </div>
     </div>
 	
-	<div style="width: 0;height: 0;display: none;">
+	  <!-- <div style="width: 0;height: 0;display: none;">
       <select id="select_estado_base"><?php
         $pdo = Database::connect();
         $sql = "SELECT id,estado FROM estados_pedidos";
@@ -303,7 +340,7 @@ include 'database.php';
         }
         Database::disconnect();?>
       </select>
-    </div>
+    </div> -->
   <?php
     $pdo = Database::connect();
     $sql = " SELECT pe.`id`, s.nombre, p.descripcion, t.`estructura`, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado` FROM pedidos pe inner join `computos` c on c.id = pe.id_computo inner join cuentas cu on cu.id = pe.id_cuenta_recibe inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto left join sitios s on s.id = p.id_sitio WHERE 1 ";

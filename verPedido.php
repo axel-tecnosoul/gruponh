@@ -25,7 +25,7 @@
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     $sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
-    $q = $pdo->prepare($sql);           
+    $q = $pdo->prepare($sql);
     $q->execute([$id,$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
     
     $idCompra = $pdo->lastInsertId();
@@ -398,34 +398,31 @@
                     <h5>Información del Pedido</h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
-                    <div class="card-body">
-                      <?php if (isset($error)): ?>
-                        <div class="alert alert-danger"><?php echo $error; ?></div>
-                      <?php endif; ?>
+                    <div class="card-body"><?php
+                      if (isset($error)){?>
+                        <div class="alert alert-danger"><?=$error;?></div><?php
+                      }?>
                       <div class="row">
                         <div class="col-md-6">
                           <h6 class="mb-3">Datos del Pedido</h6>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Pedido</label>
-                            <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha'];?>" class="form-control" disabled></div>
+                            <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$data['fecha'];?>" class="form-control" disabled></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Proyecto</label>
                             <div class="col-sm-8">
                               <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled="disabled">
-                                <option value="">Seleccione...</option>
-                                <?php
+                                <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "select p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from computos c inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio where c.id = ".$data['id_computo'];
+                                $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from computos c inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio where c.id = ".$data['id_computo'];
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  echo " selected>".$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']."</option>";
+                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
+                                  <option value='<?=$fila['id']?>' selected><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']?></option><?php
                                 }
-                                Database::disconnect();
-                                ?>
+                                Database::disconnect();?>
                               </select>
                             </div>
                           </div>
@@ -433,8 +430,7 @@
                             <label class="col-sm-4 col-form-label">Solicitante</label>
                             <div class="col-sm-8">
                               <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single col-sm-12" disabled>
-                                <option value="">Seleccione...</option>
-                                <?php
+                                <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                 $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
@@ -447,21 +443,19 @@
                                     }	
                                   echo ">".$fila['nombre']."</option>";
                                 }
-                                Database::disconnect();
-                                ?>
+                                Database::disconnect();?>
                               </select>
                             </div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Lugar de Entrega</label>
-                            <div class="col-sm-8"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" value="<?php echo $data['lugar_entrega'];?>" disabled></div>
+                            <div class="col-sm-8"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" value="<?=$data['lugar_entrega'];?>" disabled></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Recibe</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12" disabled>
-                                <option value="">Seleccione...</option>
-                                <?php
+                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12">
+                                <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                 $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
@@ -474,8 +468,7 @@
                                     }
                                   echo ">".$fila['nombre']."</option>";
                                 }
-                                Database::disconnect();
-                                ?>
+                                Database::disconnect();?>
                               </select>
                             </div>
                           </div>
@@ -506,7 +499,7 @@
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-8"><input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control" required="required"></div>
+                            <div class="col-sm-8"><input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?=date('Y-m-d');?>" class="form-control" required="required"></div>
                           </div>
                           <?php
                             $pdo = Database::connect();
@@ -520,12 +513,12 @@
                           ?>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Entrega</label>
-                            <div class="col-sm-8"><input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?php echo $fechaSolicitada; ?>" class="form-control"></div>
+                            <div class="col-sm-8"><input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$fechaSolicitada; ?>" class="form-control"></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Moneda</label>
+                            <label class="col-sm-4 col-form-label">Moneda(*)</label>
                             <div class="col-sm-8">
-                              <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12">
+                              <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" require>
                                 <option value="">Seleccione...</option>
                                 <?php
                                   $pdo = Database::connect();
@@ -551,9 +544,9 @@
                             <div class="col-sm-8"><input name="descuento" type="number" step="0.01" class="form-control"></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Forma de Pago</label>
+                            <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
                             <div class="col-sm-8">
-                              <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12">
+                              <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12" required>
                                 <option value="">Seleccione...</option>
                                 <?php
                                   $pdo = Database::connect();
@@ -670,7 +663,7 @@
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-12 text-center">
-                        <a class="btn btn-primary" target="_blank" href="imprimirPedido.php?id=<?php echo $data['id']; ?>">Imprimir Pedido</a>
+                        <a class="btn btn-primary" target="_blank" href="imprimirPedido.php?id=<?=$data['id']; ?>">Imprimir Pedido</a>
                         <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
                         <button class="btn btn-success" type="submit">Crear Orden de Compra</button>
                         <?php endif; ?>
