@@ -97,8 +97,8 @@ if (isset($_POST['id_estado'])) {
                         Aprobado:&nbsp;
                         <select name="aprobado" id="aprobado" class="form-control">
                           <option value="">Seleccione...</option>
-                          <option value="1" <?php if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } } ?> >Si</option>
-                          <option value="2" <?php if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } } ?> >No</option>
+                          <option value="1" <?php/*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } }  */?> >Si</option>
+                          <option value="2" <?php/*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } }  */?> >No</option>
                         </select>
 					            </div> -->
                       <div class="form-group mb-0">
@@ -546,55 +546,53 @@ if (isset($_POST['id_estado'])) {
         });
         
         
-        $(document).on("click","#dataTables-example666 tbody tr td", function(){
-            var t=$(this).parent();
-    
-            let id_pedido = t.find("td:nth-child(1)").html().trim();
-            let estado = t.find("td:nth-child(8)").html().trim();
-            let tarea = t.find("td:nth-child(9)").html().trim();
-            let id_proyecto = t.find("td:nth-child(10)").html().trim();
-    
-            if(t.hasClass('selected')){
-              deselectRow(t);
-              get_conceptos(id_pedido);
-              $("#link_ver_pedido").attr("href","#");
-              $("#link_modificar_pedido").attr("href","#");
-              $("#link_nuevo_suceso").attr("href","#");
-              $("#link_aprobar_pedido").attr("data-target","#").removeAttr("data-toggle");
-              $("#link_rechazar_pedido").attr("data-target","#").removeAttr("data-toggle");
-            }else{
-              table.rows().nodes().each( function (rowNode, index) {
-                $(rowNode).removeClass("selected");
-              });
-              selectRow(t);
-              get_conceptos(id_pedido);
-              
-              if (tarea == 'D') {
-                $("#link_modificar_pedido").attr("href","itemsPedidoDirecto.php?id="+id_pedido);
-                if (estado == 'Si') {
-                    $("#link_ver_pedido").attr("href","verPedidoDirecto.php?id="+id_pedido);
+        $(document).on("click", "#dataTables-example666 tbody tr", function() {
+            var t = $(this);
+            var table = $('#dataTables-example666').DataTable();
+
+            let id_pedido = t.find("td:nth-child(1)").html()?.trim() || '';
+            let estado = t.find("td:nth-child(6)").html()?.trim() || '';
+            let tipo = t.find("td:nth-child(8)").html()?.trim() || '';
+            let id_proyecto = t.find("td:nth-child(9)").html()?.trim() || '';
+
+            if (t.hasClass('selected')) {
+                t.removeClass('selected');
+                $('#dataTables-example667').DataTable().clear().draw();
+                $("#link_ver_pedido").attr("href", "#");
+                $("#link_modificar_pedido").attr("href", "#");
+                $("#link_nuevo_suceso").attr("href", "#");
+                $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+                $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+            } else {
+                table.$('tr.selected').removeClass('selected');
+                t.addClass('selected');
+                get_conceptos(id_pedido);
+                
+                if (tipo === 'Directo') {
+                    $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
+                    if (estado === 'Aprobado') {
+                        $("#link_ver_pedido").attr("href", "verPedidoDirecto.php?id=" + id_pedido);
+                    } else {
+                        $("#link_ver_pedido").attr("href", "#");
+                    }
                 } else {
-                    $("#link_ver_pedido").attr("href","#");
+                    $("#link_modificar_pedido").attr("href", "#");
+                    if (estado === 'Aprobado') {
+                        $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
+                    } else {
+                        $("#link_ver_pedido").attr("href", "#");
+                    }
                 }
-              } else {
-                $("#link_modificar_pedido").attr("href","#");
-                if (estado == 'Si') {
-                    $("#link_ver_pedido").attr("href","verPedido.php?id="+id_pedido);
+
+                if (estado === 'Pendiente' || estado === 'Generado' || estado === 'A Evaluar') {
+                    $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal_" + id_pedido);
+                    $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal_" + id_pedido);
                 } else {
-                    $("#link_ver_pedido").attr("href","#");
+                    $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+                    $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
                 }
-              }
-    
-              if (estado == 'No') {
-                $("#link_aprobar_pedido").attr("data-toggle","modal");
-                $("#link_aprobar_pedido").attr("data-target","#aprobarModal_"+id_pedido);
-                $("#link_rechazar_pedido").attr("data-toggle","modal");
-                $("#link_rechazar_pedido").attr("data-target","#rechazarModal_"+id_pedido);
-              } else {
-                $("#link_aprobar_pedido").attr("href","#").removeAttr("data-toggle");
-                $("#link_rechazar_pedido").attr("href","#").removeAttr("data-toggle");
-              }
-              $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?desdePedidos=1&id="+id_proyecto);
+
+                $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?desdePedidos=1&id=" + id_proyecto);
             }
         });
         
@@ -669,9 +667,7 @@ if (isset($_POST['id_estado'])) {
         contentType: false,
         processData: false,
         success: function(data){
-          console.log(data);
           data = JSON.parse(data);
-          console.log(data);
 
           $('#dataTables-example667').DataTable().destroy();
           $('#dataTables-example667').DataTable({
@@ -712,9 +708,7 @@ if (isset($_POST['id_estado'])) {
                   .draw();
               }
             });
-          });
-
-          
+          });          
         }
       });
     }

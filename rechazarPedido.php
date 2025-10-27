@@ -21,11 +21,14 @@
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
+    /*
     $sql = "delete from  `pedidos_detalle` WHERE id_pedido = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
+    */
 	
-	$sql = "delete from `pedidos` WHERE id = ?";
+	//$sql = "delete from `pedidos` WHERE id = ?";
+    $sql = "UPDATE `pedidos` SET id_estado = 4 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
 
@@ -73,7 +76,8 @@
 		$address = $row[1];
 		
 		$titulo = "ERP Notificaciones - Módulo Compras - Rechazo de Pedido";
-		$mensaje="El pedido #".$id." ha sido rechazado y eliminado del sistema";
+        
+		$mensaje="El pedido #".$id." ha sido rechazado."; // -> Nueva línea
 		
 		$mail = new PHPMailer();
 		$mail->IsSMTP();
@@ -101,3 +105,4 @@
     Database::disconnect();
         
     header("Location: listarPedidos.php");
+?>
