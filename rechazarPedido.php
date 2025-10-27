@@ -28,7 +28,7 @@
     */
 	
 	//$sql = "delete from `pedidos` WHERE id = ?";
-    $sql = "UPDATE `pedidos` SET id_estado = 4 WHERE id = ?";
+    $sql = "UPDATE `pedidos` SET id_estado = 7 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
 
