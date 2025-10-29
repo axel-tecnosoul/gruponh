@@ -322,12 +322,13 @@ include 'database.php';
 							  <th>Concepto</th>
 							  <th>Cantidad</th>
 							  <th>Unidad</th>
-							  <th>Peso Total kg</th>
-							  <th>P/Unitario</th>
-							  <th>P/Total</th>
-							  <th>Entregado</th>
-							  <th>Remitos</th>
-							  <th>Facturas</th>
+                                                          <th>Peso Total kg</th>
+                                                          <th>P/Kg</th>
+                                                          <th>P/Unitario</th>
+                                                          <th>P/Total</th>
+                                                          <th>Entregado</th>
+                                                          <th>Remitos</th>
+                                                          <th>Facturas</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -337,12 +338,13 @@ include 'database.php';
 							  <th>Concepto</th>
 							  <th>Cantidad</th>
 							  <th>Unidad</th>
-							  <th>Peso Total Kg</th>
-							  <th>P/Unitario</th>
-							  <th>P/Total</th>
-							  <th>Entregado</th>
-							  <th>Remitos</th>
-							  <th>Facturas</th>
+                                                          <th>Peso Total Kg</th>
+                                                          <th>P/Kg</th>
+                                                          <th>P/Unitario</th>
+                                                          <th>P/Total</th>
+                                                          <th>Entregado</th>
+                                                          <th>Remitos</th>
+                                                          <th>Facturas</th>
                           </tr>
                         </tfoot>
                       </table>
