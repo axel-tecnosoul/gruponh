@@ -387,7 +387,7 @@
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Gestión de Pedido y Nueva Orden de Compra";
+          $ubicacion="Gestión de Pedido de Cómputo y Nueva Orden de Compra";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -397,7 +397,7 @@
                   <div class="card-header">
                     <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
                       <div>
-                        <h5 class="mb-1">Información del Pedido</h5>
+                        <h5 class="mb-1">Información del Pedido de Cómputo</h5>
                         <span class="badge badge-secondary">Estado: <?=htmlspecialchars($data['estado_pedido']);?></span>
                       </div>
                       <?php if ($data['id_estado'] == 1 && tienePermiso(298)): ?>
@@ -413,7 +413,7 @@
                       }?>
                       <div class="row">
                         <div class="col-md-6">
-                          <h6 class="mb-3">Datos del Pedido</h6>
+                          <h6 class="mb-3">Datos del Pedido de Cómputo</h6>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Pedido</label>
                             <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$data['fecha'];?>" class="form-control" disabled></div>

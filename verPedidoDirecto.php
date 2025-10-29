@@ -48,7 +48,7 @@
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Gestión de Pedido";
+          $ubicacion="Gestión de Pedido Directo";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -71,6 +71,7 @@
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
+                          <h6 class="mb-3">Datos del Pedido Directo</h6>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
 							<div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha'];?>" class="form-control" required="required"></div>
