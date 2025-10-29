@@ -1,7 +1,5 @@
 <?php
   require("config.php");
-  require_once("PHPMailer/class.phpmailer.php");
-  require_once("PHPMailer/class.smtp.php");
 
   if (empty($_SESSION['user'])) {
     header("Location: index.php");
@@ -19,156 +17,14 @@
     header("Location: listarPedidos.php");
   }
   
-  if (!empty($_POST)) {
-    // insert data
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id,$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
-    
-    $idCompra = $pdo->lastInsertId();
-    
-    $nroOC = $id .'/'. $idCompra;
-    $sql = "update `compras` set `nro_oc` = ? where id = ?";
-    $q = $pdo->prepare($sql);           
-    $q->execute([$nroOC,$idCompra]);
-    
-    $sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.`cantidad`, d.`id_unidad_medida`,m.peso_metro FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id]);
-    
-    $total = 0;
-    $hasValidItem = false;
-    
-    while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-      $cantidadPedir = $_POST['cantidad_'.$row['id']] ?? 0;
-      $precioUnitario = $_POST['precio_'.$row['id']] ?? 0;
-      $precioKg = $_POST['preciokg_'.$row['id']] ?? 0;
-      
-      if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
-        $hasValidItem = true;
-        
-        if ($precioKg != 0) {
-            $precioUnitario = $precioKg * $row['peso_metro'];
-        }
-        
-        $sql2 = "INSERT INTO `compras_detalle`(`id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `precio_kg`) VALUES (?,?,?,?,?,?)";
-        $q2 = $pdo->prepare($sql2);           
-        $q2->execute([$idCompra,$row['id_material'],$cantidadPedir,$row['id_unidad_medida'],$precioUnitario,$precioKg]);
-        $subtotal = $cantidadPedir*$precioUnitario;
-        $total += $subtotal;
-        
-        $sql3 = "UPDATE `pedidos_detalle` SET `comprado`= ? WHERE `id_pedido`=? AND `id_material`=?";
-        $q3 = $pdo->prepare($sql3);
-        $q3->execute([$cantidadPedir,$id,$row['id_material']]);
-        
-        $sql4 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
-        $q4 = $pdo->prepare($sql4);
-        $q4->execute([$id,$row['id_material']]);
-        $data4 = $q4->fetch(PDO::FETCH_ASSOC);
-        
-        if ($data4) {
-          $sql5 = "UPDATE `computos_detalle` set `comprado` = ? WHERE id = ?";
-          $q5 = $pdo->prepare($sql5);
-          $q5->execute([$cantidadPedir,$data4['id']]);
-        }
-      }
-    }
-    
-    if ($hasValidItem) {
-      $iva = $total*0.21;
-      
-      $sql = "update `compras` set total = ?, iva = ? where id = ?";
-      $q = $pdo->prepare($sql);           
-      $q->execute([$total,$iva,$idCompra]);
-      
-      $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
-      $q = $pdo->prepare($sql);
-      $q->execute(array($_SESSION['user']['id']));
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sql = "SELECT pe.`id`, pe.`id_computo`, c.id_tarea, c.id_cuenta_solicitante, pe.`fecha`, pe.`lugar_entrega`, pe.`id_cuenta_recibe`, pe.`aprobado`, pe.`id_estado`, ep.`estado` AS estado_pedido FROM `pedidos` pe INNER JOIN computos c ON c.id = pe.`id_computo` INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ? ";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
 
-      // Enviar notificaciones por email
-      $sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpHost = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpUsuario = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpClave = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpFrom = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpFromName = $data['valor'];  
-      
-      $sql = " select t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
-      foreach ($pdo->query($sql) as $row) {
-        
-        $sql2 = "INSERT INTO `notificaciones`(`id_tipo_notificacion`, `id_usuario`, `fecha_hora`, `leida`,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
-        $q2 = $pdo->prepare($sql2);
-        $q2->execute([$row[0],'ID Orden de Compra: #'.$idCompra,$idCompra]);
-        
-        $address = $row[1];
-        
-        $titulo = "ERP Notificaciones - Módulo Compras - Nueva Compra";
-        $mensaje="Nueva compra dada de alta en el sistema: #".$idCompra;
-        
-        $mail = new PHPMailer();
-        $mail->IsSMTP();
-        $mail->SMTPAuth = true;
-        $mail->Port = 25; 
-        $mail->SMTPSecure = 'ssl';
-        $mail->SMTPAutoTLS = false;
-        $mail->SMTPSecure = false;
-        $mail->IsHTML(true); 
-        $mail->CharSet = "utf-8";
-        $mail->From = $smtpFrom;
-        $mail->FromName = $_SESSION['user']['usuario'];
-        $mail->Host = $smtpHost; 
-        $mail->Username = $smtpUsuario; 
-        $mail->Password = $smtpClave;
-        $mail->AddAddress($address);
-        $mail->Subject = $titulo; 
-        $mensajeHtml = nl2br($mensaje);
-        $mail->Body = "{$mensajeHtml} <br /><br />"; 
-        $mail->AltBody = "{$mensaje} \n\n"; 
-        $mail->Send();
-      }
-      
-      Database::disconnect();
-      header("Location: listarCompras.php");
-    } else {
-      Database::disconnect();
-      $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";
-    }
-  } else {
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT pe.`id`, pe.`id_computo`, c.id_tarea, c.id_cuenta_solicitante, pe.`fecha`, pe.`lugar_entrega`, pe.`id_cuenta_recibe`, pe.`aprobado`, pe.`id_estado`, ep.`estado` AS estado_pedido FROM `pedidos` pe INNER JOIN computos c ON c.id = pe.`id_computo` INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ? ";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id]);
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    
-    Database::disconnect();
-  }
+  Database::disconnect();
     
 ?>
 <!DOCTYPE html>
@@ -284,33 +140,12 @@
     
     #dataTables-example667 th:nth-child(9),
     #dataTables-example667 td:nth-child(9) {
-      width: 75px !important;
-      min-width: 75px !important;
-      max-width: 75px !important;
+      width: 80px !important;
+      min-width: 80px !important;
+      max-width: 80px !important;
       text-align: center;
     }
-    
-    #dataTables-example667 th:nth-child(10),
-    #dataTables-example667 td:nth-child(10) {
-      width: 95px !important;
-      min-width: 95px !important;
-      max-width: 95px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(11),
-    #dataTables-example667 td:nth-child(11) {
-      width: 80px !important;
-      min-width: 80px !important;
-      max-width: 80px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(12),
-    #dataTables-example667 td:nth-child(12) {
-      width: 80px !important;
-      min-width: 80px !important;
-      max-width: 80px !important;
-    }
-    
+
     /* Resto de celdas sin wrap */
     #dataTables-example667 tbody td {
       white-space: nowrap;
@@ -319,16 +154,6 @@
     /* Excepto Concepto */
     #dataTables-example667 tbody td:nth-child(1) {
       white-space: normal;
-    }
-    
-    /* Inputs compactos */
-    #dataTables-example667 input.form-control {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.35rem;
-      height: 28px;
-      width: 100% !important;
-      max-width: 100% !important;
-      box-sizing: border-box !important;
     }
     
     /* Importante: Eliminar scrolls de DataTables */
@@ -400,23 +225,21 @@
                         <h5 class="mb-1">Información del Pedido de Cómputo</h5>
                         <span class="badge badge-secondary">Estado: <?=htmlspecialchars($data['estado_pedido']);?></span>
                       </div>
-                      <?php if ($data['id_estado'] == 1 && tienePermiso(298)): ?>
-                        <button type="button" class="btn btn-primary mt-2 mt-sm-0" id="btnEnviarAprobacion">Enviar a aprobación</button>
-                      <?php endif; ?>
                     </div>
                     <div id="estado-error" class="alert alert-danger mt-3 d-none"></div>
                   </div>
-                  <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
-                    <div class="card-body"><?php
-                      if (isset($error)){?>
-                        <div class="alert alert-danger"><?=$error;?></div><?php
-                      }?>
+                  <div class="form theme-form" role="presentation" id="form-unificado">
+                    <div class="card-body">
                       <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-lg-6 col-md-8 col-sm-12">
                           <h6 class="mb-3">Datos del Pedido de Cómputo</h6>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Pedido</label>
                             <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$data['fecha'];?>" class="form-control" disabled></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Estado</label>
+                            <div class="col-sm-8"><input type="text" class="form-control" value="<?=htmlspecialchars($data['estado_pedido']);?>" disabled></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Proyecto</label>
@@ -463,7 +286,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Recibe</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single w-100">
+                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single w-100" disabled>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -483,105 +306,10 @@
                           </div>
                         </div>
                         
-                        <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                        <div class="col-md-6">
-                          <h6 class="mb-3">Datos de la Orden de Compra</h6>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Proveedor(*)</label>
-                            <div class="col-sm-8">
-                              <select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required="required">
-                                <option value="">Seleccione...</option>
-                                <?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
-                                  $q = $pdo->prepare($sqlZon);
-                                  $q->execute();
-                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                    echo "<option value='".$fila['id']."'";
-                                    echo ">".$fila['nombre']."</option>";
-                                  }
-                                  Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-8"><input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?=date('Y-m-d');?>" class="form-control" required="required"></div>
-                          </div>
-                          <?php
-                            $pdo = Database::connect();
-                            $fechaSolicitada = "";
-                            $sql = "SELECT fecha FROM `pedidos` WHERE id = ".$_GET['id'];
-                            $q = $pdo->prepare($sql);
-                            $q->execute();
-                            $dataFecha = $q->fetch(PDO::FETCH_ASSOC);
-                            $fechaSolicitada = $dataFecha['fecha'];
-                            Database::disconnect();
-                          ?>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Fecha Entrega</label>
-                            <div class="col-sm-8"><input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$fechaSolicitada; ?>" class="form-control"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Moneda(*)</label>
-                            <div class="col-sm-8">
-                              <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" require>
-                                <option value="">Seleccione...</option>
-                                <?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `moneda` FROM `monedas` WHERE 1";
-                                  $q = $pdo->prepare($sqlZon);
-                                  $q->execute();
-                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                    echo "<option value='".$fila['id']."'";
-                                    echo ">".$fila['moneda']."</option>";
-                                  }
-                                  Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Tipo de Cambio</label>
-                            <div class="col-sm-8"><input name="tipo_cambio_dia" type="number" step="0.01" class="form-control"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Descuento</label>
-                            <div class="col-sm-8"><input name="descuento" type="number" step="0.01" class="form-control"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
-                            <div class="col-sm-8">
-                              <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12" required>
-                                <option value="">Seleccione...</option>
-                                <?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `forma_pago` FROM `formas_pago` WHERE 1";
-                                  $q = $pdo->prepare($sqlZon);
-                                  $q->execute();
-                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                    echo "<option value='".$fila['id']."'";
-                                    echo ">".$fila['forma_pago']."</option>";
-                                  }
-                                  Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Comentarios</label>
-                            <div class="col-sm-8"><textarea name="comentarios" class="form-control" rows="2"></textarea></div>
-                          </div>
-                        </div>
-                        <?php endif; ?>
                       </div>
-                      
+
                       <hr class="mt-4 mb-4">
-                      
+
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3">Detalle de Conceptos</h6>
@@ -597,12 +325,7 @@
                                 <th>Stock</th>
                                 <th>Reserv.</th>
                                 <th>Comprado</th>
-                                <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                                <th>Cant. Solic.</th>
-                                <th>Cant. Pedir</th>
-                                <th>P. Unit.</th>
-                                <th>P. x Kg</th>
-                                <?php endif; ?>
+                                <th>Pendiente</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -646,13 +369,7 @@
                                 
                                 echo '<td>'. $row[6] . '</td>';
                                 echo '<td>'. $row[7] . '</td>';
-                                
-                                if ($data['aprobado']==1 && tienePermiso(298)) {
-                                  echo '<td>'. $cantidadDisponible . '</td>';
-                                  echo '<td><input name="cantidad_'.$row[0].'" type="number" step="0.01" min="0" max="'.$cantidadDisponible.'" class="form-control cantidad-input" value="'.$cantidadDisponible.'" data-id="'.$row[0].'"></td>';
-                                  echo '<td><input name="precio_'.$row[0].'" type="number" step="0.01" class="form-control precio-input" value="0" data-id="'.$row[0].'"></td>';
-                                  echo '<td><input name="preciokg_'.$row[0].'" type="number" step="0.01" class="form-control preciokg-input" value="0" data-id="'.$row[0].'"></td>';
-                                }
+                                echo '<td>'. $cantidadDisponible . '</td>';
                                 
                                 echo '</tr>';
                               }
@@ -661,25 +378,19 @@
                             </tbody>
                           </table>
                           </div>
-                          <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                          <div class="mt-3">
-                            <i><strong>NOTA:</strong> Si ingresa Precio x KG <> 0, el precio se sobreescribirá multiplicando el Precio x KG * Peso del Concepto.</i><br/>
-                            <i>Para guardar una compra, debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Unitario o x Kg).</i>
-                          </div>
-                          <?php endif; ?>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-12 text-center">
                         <a class="btn btn-primary" target="_blank" href="imprimirPedido.php?id=<?=$data['id']; ?>">Imprimir Pedido</a>
-                        <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                        <button class="btn btn-success" type="submit">Crear Orden de Compra</button>
+                        <?php if ($data['id_estado'] == 1 && tienePermiso(298)): ?>
+                        <button type="button" class="btn btn-primary" id="btnEnviarAprobacion">Enviar a aprobación</button>
                         <?php endif; ?>
                         <a href="#" onclick="document.location.href='listarPedidos.php'" class="btn btn-light">Volver</a>
                       </div>
                     </div>
-                  </form>
+                  </div>
                 </div>
               </div>
             </div>
@@ -778,10 +489,7 @@
           { width: "60px", targets: 5, orderable: true, className: "text-center" },
           { width: "65px", targets: 6, orderable: true, className: "text-center" },
           { width: "80px", targets: 7, orderable: true, className: "text-center" },
-          { width: "75px", targets: 8, orderable: true, className: "text-center" },
-          { width: "95px", targets: 9, orderable: false },
-          { width: "80px", targets: 10, orderable: false },
-          { width: "80px", targets: 11, orderable: false }
+          { width: "80px", targets: 8, orderable: true, className: "text-center" }
         ],
         language: {
           "decimal": "",
@@ -848,28 +556,6 @@
       }
     });
 
-    function validarFormularioCompra() {
-      var hayConceptoValido = false;
-      
-      $('.cantidad-input').each(function() {
-        var id = $(this).data('id');
-        var cantidad = parseFloat($(this).val()) || 0;
-        var precioUnitario = parseFloat($('input[name="precio_' + id + '"]').val()) || 0;
-        var precioKg = parseFloat($('input[name="preciokg_' + id + '"]').val()) || 0;
-        
-        if (cantidad > 0 && (precioUnitario > 0 || precioKg > 0)) {
-          hayConceptoValido = true;
-          return false;
-        }
-      });
-      
-      if (!hayConceptoValido) {
-        alert('Debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Precio Unitario o Precio x Kg)');
-        return false;
-      }
-      
-      return true;
-    }
   </script>
 		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
