@@ -412,7 +412,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Proyecto</label>
                             <div class="col-sm-8">
-                              <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single w-100" disabled="disabled">
+                              <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled="disabled">
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -429,7 +429,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Solicitante</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single w-100" disabled>
+                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single col-sm-12" disabled>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -454,7 +454,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Recibe</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single w-100">
+                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12">
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

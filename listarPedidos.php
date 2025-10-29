@@ -97,8 +97,8 @@ if (isset($_POST['id_estado'])) {
                         Aprobado:&nbsp;
                         <select name="aprobado" id="aprobado" class="form-control">
                           <option value="">Seleccione...</option>
-                          <option value="1" <?php/*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } }  */?> >Si</option>
-                          <option value="2" <?php/*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } }  */?> >No</option>
+                          <option value="1" <?php /*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } }  */?> >Si</option>
+                          <option value="2" <?php /*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } }  */?> >No</option>
                         </select>
 					            </div> -->
                       <div class="form-group mb-0">
@@ -121,7 +121,10 @@ if (isset($_POST['id_estado'])) {
                       if (!empty(tienePermiso(295))) {?>
                         <a href="#" id="link_modificar_pedido"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>&nbsp;&nbsp;<?php
                       }?>
-                      <a href="#" id="link_ver_pedido"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver/Gestionar Pedido" title="Ver/Gestionar Pedido"></a>&nbsp;&nbsp;
+                      <a href="#" id="link_ver_pedido"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Pedido" title="Ver Pedido"></a>
+                      &nbsp;&nbsp;
+                      <a href="#" id="link_gestionar_pedido"><img src="img/medalla-dorada.png" width="24" height="15" border="0" alt="Gestionar Pedido" title="Gestionar Pedido"></a>
+                      &nbsp;&nbsp;
                       <a href="exportPedidos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(303))) {?>
                         <a href="#" id="link_aprobar_pedido"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Aprobar" title="Aprobar"></a>&nbsp;&nbsp;
@@ -453,203 +456,204 @@ if (isset($_POST['id_estado'])) {
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-  <script>
+    <script>
     $(document).ready(function() {
-        // Setup - add a text input to each footer cell
-        $('#dataTables-example666 tfoot th').each( function () {
-            var title = $(this).text();
-            $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
+      get_conceptos(0);
 
-        $('#dataTables-example666').DataTable({
-            stateSave: false,
-            searching: false,
-            responsive: false,
-            dom: 'Bfrtp<"bottom"l>',
-            buttons: [
-                'excel'
-            ],
-            lengthMenu: [
-                [10, 25, 50, 100, 500, 1000],
-                [10, 25, 50, 100, 500, 1000]
-            ],
-            language: {
-                "decimal": "",
-                "emptyTable": "No hay información",
-                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-                "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                "infoPostFix": "",
-                "thousands": ",",
-                "lengthMenu": "Mostrar _MENU_ Registros",
-                "loadingRecords": "Cargando...",
-                "processing": "Procesando...",
-                "search": "Buscar:",
-                "zeroRecords": "No hay resultados",
-                "paginate": {
-                    "first": "Primero",
-                    "last": "Ultimo",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                }
-            },
-            initComplete: function(){
-                $('[title]').tooltip();
-            }
-        });
-    
-        // DataTable
-        var table = $('#dataTables-example666').DataTable();
-    
-        // Apply the search
-        table.columns().every( function () {
-            var that = this;
-    
-            $( 'input', this.footer() ).on( 'keyup change', function () {
-                if ( that.search() !== this.value ) {
-                    that
-                        .search( this.value )
-                        .draw();
-                }
-            } );
-        });
-        
-        $("#link_ver_pedido").on("click",function(){
-            let l=document.location.href;
-            if(this.href==l || this.href==l+"#"){
-              alert("Por favor seleccione un pedido aprobado para gestionar")
-            }
-        });
-        $("#link_modificar_pedido").on("click",function(){
-            let l=document.location.href;
-            if(this.href==l || this.href==l+"#"){
-              alert("Por favor seleccione un pedido directo para modificar")
-            }
-        });
-        $("#link_aprobar_pedido").on("click",function(){
-            let target=this.dataset.target;
-            if(target==undefined || target=="#"){
-              alert("Por favor seleccione un pedido para aprobar")
-            }
-        });
-        $("#link_rechazar_pedido").on("click",function(){
-            let target=this.dataset.target;
-            if(target==undefined || target=="#"){
-              alert("Por favor seleccione un pedido para rechazar")
-            }
-        });
-        $("#link_nuevo_suceso").on("click",function(){
-            let l=document.location.href;
-            if(this.href==l || this.href==l+"#"){
-              alert("Por favor seleccione un pedido para añadir un nuevo suceso")
-            }
-        });
-        
-        
-        $(document).on("click", "#dataTables-example666 tbody tr", function() {
-            var t = $(this);
-            var table = $('#dataTables-example666').DataTable();
-
-            let id_pedido = t.find("td:nth-child(1)").html()?.trim() || '';
-            let estado = t.find("td:nth-child(6)").html()?.trim() || '';
-            let tipo = t.find("td:nth-child(8)").html()?.trim() || '';
-            let id_proyecto = t.find("td:nth-child(9)").html()?.trim() || '';
-
-            if (t.hasClass('selected')) {
-                t.removeClass('selected');
-                $('#dataTables-example667').DataTable().clear().draw();
-                $("#link_ver_pedido").attr("href", "#");
-                $("#link_modificar_pedido").attr("href", "#");
-                $("#link_nuevo_suceso").attr("href", "#");
-                $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-                $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-            } else {
-                table.$('tr.selected').removeClass('selected');
-                t.addClass('selected');
-                get_conceptos(id_pedido);
-                
-                if (tipo === 'Directo') {
-                    $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
-                    if (estado === 'Aprobado') {
-                        $("#link_ver_pedido").attr("href", "verPedidoDirecto.php?id=" + id_pedido);
-                    } else {
-                        $("#link_ver_pedido").attr("href", "#");
-                    }
-                } else {
-                    $("#link_modificar_pedido").attr("href", "#");
-                    if (estado === 'Aprobado') {
-                        $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
-                    } else {
-                        $("#link_ver_pedido").attr("href", "#");
-                    }
-                }
-
-                if (estado === 'Pendiente' || estado === 'Generado' || estado === 'A Evaluar') {
-                    $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal_" + id_pedido);
-                    $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal_" + id_pedido);
-                } else {
-                    $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-                    $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-                }
-
-                $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?desdePedidos=1&id=" + id_proyecto);
-            }
-        });
-        
-    });
-  </script>
-	
-	</script>
-	
-	<script>
-    $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example667 tfoot th').each( function () {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example666 tfoot th').each( function () {
         var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example667').DataTable({
+        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+      } );
+
+      $('#dataTables-example666').DataTable({
         stateSave: false,
+        searching: false,
         responsive: false,
+        dom: 'Bfrtp<"bottom"l>',
+        buttons: [
+          'excel'
+        ],
+        lengthMenu: [
+          [10, 25, 50, 100, 500, 1000],
+          [10, 25, 50, 100, 500, 1000]
+        ],
         language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
             "first": "Primero",
             "last": "Ultimo",
             "next": "Siguiente",
             "previous": "Anterior"
-        }}
+          }
+        },
+        initComplete: function(){
+          $('[title]').tooltip();
+        }
+      });
+  
+      // DataTable
+      var table = $('#dataTables-example666').DataTable();
+  
+      // Apply the search
+      table.columns().every( function () {
+        var that = this;
+        $( 'input', this.footer() ).on( 'keyup change', function () {
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+      });
+        
+      $("#link_ver_pedido").on("click",function(){
+        let l=document.location.href;
+        if(this.href==l || this.href==l+"#"){
+          alert("Por favor seleccione un pedido para verlo")
+        }
+      });
+      $("#link_gestionar_pedido").on("click",function(){
+        let l=document.location.href;
+        if(this.href==l || this.href==l+"#"){
+          alert("Por favor seleccione un pedido para gestionarlo")
+        }
+      });
+      $("#link_modificar_pedido").on("click",function(){
+        let l=document.location.href;
+        if(this.href==l || this.href==l+"#"){
+          alert("Por favor seleccione un pedido directo para modificar")
+        }
+      });
+      $("#link_aprobar_pedido").on("click",function(){
+        let target=this.dataset.target;
+        if(target==undefined || target=="#"){
+          alert("Por favor seleccione un pedido para aprobar")
+        }
+      });
+      $("#link_rechazar_pedido").on("click",function(){
+        let target=this.dataset.target;
+        if(target==undefined || target=="#"){
+          alert("Por favor seleccione un pedido para rechazar")
+        }
+      });
+      $("#link_nuevo_suceso").on("click",function(){
+        let l=document.location.href;
+        if(this.href==l || this.href==l+"#"){
+          alert("Por favor seleccione un pedido para añadir un nuevo suceso")
+        }
+      });
+      
+      $(document).on("click", "#dataTables-example666 tbody tr", function() {
+        var t = $(this);
+        var table = $('#dataTables-example666').DataTable();
+
+        let id_pedido = t.find("td:nth-child(1)").html()?.trim() || '';
+        let estado = t.find("td:nth-child(6)").html()?.trim() || '';
+        let tipo = t.find("td:nth-child(8)").html()?.trim() || '';
+        let id_proyecto = t.find("td:nth-child(9)").html()?.trim() || '';
+
+        if (t.hasClass('selected')) {
+          t.removeClass('selected');
+          $('#dataTables-example667').DataTable().clear().draw();
+          $("#link_ver_pedido").attr("href", "#");
+          $("#link_gestionar_pedido").attr("href", "#");
+          $("#link_modificar_pedido").attr("href", "#");
+          $("#link_nuevo_suceso").attr("href", "#");
+          $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+          $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+        } else {
+          table.$('tr.selected').removeClass('selected');
+          t.addClass('selected');
+          get_conceptos(id_pedido);
+          
+          if (tipo === 'Directo') {
+            $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
+            //if (estado === 'Aprobado') {
+              $("#link_ver_pedido").attr("href", "verPedidoDirecto.php?id=" + id_pedido);
+            /*} else {
+              $("#link_ver_pedido").attr("href", "#");
+            }*/
+          } else {
+            $("#link_modificar_pedido").attr("href", "#");
+            //if (estado === 'Aprobado') {
+              $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
+            /*} else {
+              $("#link_ver_pedido").attr("href", "#");
+            }*/
+          }
+
+          if (estado === 'Pendiente' || estado === 'Generado' || estado === 'A Evaluar') {
+            $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal_" + id_pedido);
+            $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal_" + id_pedido);
+          } else {
+            $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+            $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+          }
+
+          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?desdePedidos=1&id=" + id_proyecto);
+        }
+      });
+        
+    });
+  
+    /*$(document).ready(function() {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example667 tfoot th').each( function () {
+        var title = $(this).text();
+        $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
+      } );
+	    
+      $('#dataTables-example667').DataTable({
+        stateSave: false,
+        responsive: false,
+        language: {
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
+            "first": "Primero",
+            "last": "Ultimo",
+            "next": "Siguiente",
+            "previous": "Anterior"
+          }
+        }
       });
  
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
+      // DataTable
+      var table = $('#dataTables-example667').DataTable();
+  
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
- 
         $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+		  });
+	  
+    } );*/
 	
-	function selectRow(t){
+	  function selectRow(t){
       t.addClass('selected');
     }
     function deselectRow(t){
@@ -688,10 +692,10 @@ if (isset($_POST['id_estado'])) {
               "search": "Buscar:",
               "zeroRecords": "No hay resultados",
               "paginate": {
-                  "first": "Primero",
-                  "last": "Ultimo",
-                  "next": "Siguiente",
-                  "previous": "Anterior"
+                "first": "Primero",
+                "last": "Ultimo",
+                "next": "Siguiente",
+                "previous": "Anterior"
               }
             }
           });
@@ -703,21 +707,19 @@ if (isset($_POST['id_estado'])) {
             var that = this;
             $( 'input', this.footer() ).on( 'keyup change', function () {
               if ( that.search() !== this.value ) {
-                that
-                  .search( this.value )
-                  .draw();
+                that.search( this.value ).draw();
               }
             });
-          });          
+          });
+
         }
       });
     }
     
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-	<script src="assets/js/select2/select2.full.min.js"></script>
-	<script src="assets/js/select2/select2-custom.js"></script>
-
+    <script src="assets/js/select2/select2.full.min.js"></script>
+    <script src="assets/js/select2/select2-custom.js"></script>
     <!-- Plugin used-->
   </body>
 </html>
