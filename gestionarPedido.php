@@ -18,12 +18,26 @@
   if (null==$id) {
     header("Location: listarPedidos.php");
   }
-  
+
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sqlEstadoPedido = "SELECT id_estado FROM pedidos WHERE id = ?";
+  $qEstadoPedido = $pdo->prepare($sqlEstadoPedido);
+  $qEstadoPedido->execute([$id]);
+  $estadoPedido = $qEstadoPedido->fetch(PDO::FETCH_ASSOC);
+  $estadoPedidoId = $estadoPedido ? (int)$estadoPedido['id_estado'] : null;
+  Database::disconnect();
+
+  if (!in_array($estadoPedidoId, [3, 4], true)) {
+    header("Location: listarPedidos.php");
+    exit;
+  }
+
   if (!empty($_POST)) {
     // insert data
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
+
     $sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
     $q = $pdo->prepare($sql);
     $q->execute([$id,$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
