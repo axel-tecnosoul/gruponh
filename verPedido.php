@@ -38,6 +38,61 @@ $sectionTitle = $isComputo ? 'Datos del Pedido de Cómputo' : 'Datos del Pedido 
 $printUrl = $isComputo ? 'imprimirPedido.php' : 'imprimirPedidoDirecto.php';
 $printLabel = $isComputo ? 'Imprimir Pedido' : 'Imprimir';
 
+$pedidoNumero = $data['id'] ?? null;
+$obraLabel = '';
+
+if ($pedidoNumero !== null) {
+    $pedidoNumero = (int)$pedidoNumero;
+}
+
+if ($isComputo && !empty($data['id_computo'])) {
+    $pdoObra = Database::connect();
+    $pdoObra->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sqlObra = 'SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ? LIMIT 1';
+    $stmtObra = $pdoObra->prepare($sqlObra);
+    $stmtObra->execute([$data['id_computo']]);
+    $obraData = $stmtObra->fetch(PDO::FETCH_ASSOC) ?: [];
+    Database::disconnect();
+
+    if (!empty($obraData)) {
+        $obraPartes = array_filter([
+            $obraData['nro_sitio'] ?? '',
+            $obraData['nro_subsitio'] ?? '',
+            $obraData['nro'] ?? '',
+        ], 'strlen');
+        $obraIdentificador = implode('-', $obraPartes);
+        $obraLabel = trim($obraIdentificador . ' ' . ($obraData['nombre'] ?? ''));
+    }
+} elseif (!$isComputo && !empty($data['id_proyecto'])) {
+    $pdoObra = Database::connect();
+    $pdoObra->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sqlObra = 'SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM proyectos p INNER JOIN sitios s ON s.id = p.id_sitio WHERE p.id = ? LIMIT 1';
+    $stmtObra = $pdoObra->prepare($sqlObra);
+    $stmtObra->execute([$data['id_proyecto']]);
+    $obraData = $stmtObra->fetch(PDO::FETCH_ASSOC) ?: [];
+    Database::disconnect();
+
+    if (!empty($obraData)) {
+        $obraPartes = array_filter([
+            $obraData['nro_sitio'] ?? '',
+            $obraData['nro_subsitio'] ?? '',
+            $obraData['nro'] ?? '',
+        ], 'strlen');
+        $obraIdentificador = implode('-', $obraPartes);
+        $obraLabel = trim($obraIdentificador . ' ' . ($obraData['nombre'] ?? ''));
+    }
+}
+
+$headerInfoParts = [];
+
+if ($pedidoNumero !== null) {
+    $headerInfoParts[] = 'Pedido #' . $pedidoNumero;
+}
+
+if ($obraLabel !== '') {
+    $headerInfoParts[] = 'Obra: ' . $obraLabel;
+}
+
 $detalleColumns = [
     ['label' => 'Concepto'],
     ['label' => 'Fec. Necesidad'],
@@ -174,7 +229,9 @@ if ($isComputo) {
                     <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
                       <div>
                         <h5 class="mb-1"><?php echo htmlspecialchars($pageTitle); ?></h5>
-                        <span class="badge badge-secondary">Estado: <?php echo htmlspecialchars($data['estado_pedido']); ?></span>
+                        <?php if (!empty($headerInfoParts)): ?>
+                        <p class="mb-0 text-muted small"><?php echo htmlspecialchars(implode(' | ', $headerInfoParts)); ?></p>
+                        <?php endif; ?>
                       </div>
                     </div>
                     <div id="estado-error" class="alert alert-danger mt-3 d-none"></div>
