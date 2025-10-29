@@ -39,6 +39,8 @@ $printUrl = $isComputo ? 'imprimirPedido.php' : 'imprimirPedidoDirecto.php';
 $printLabel = $isComputo ? 'Imprimir Pedido' : 'Imprimir';
 
 $pedidoNumero = $data['id'] ?? null;
+$pedidoRevision = '';
+$obraCodigo = '';
 $obraLabel = '';
 $proyectoLabel = '';
 $solicitanteNombre = '';
@@ -56,7 +58,7 @@ if ($pedidoNumero !== null) {
 if ($isComputo && !empty($data['id_computo'])) {
     $pdoObra = Database::connect();
     $pdoObra->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sqlObra = 'SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ? LIMIT 1';
+    $sqlObra = 'SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre, c.nro_revision FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ? LIMIT 1';
     $stmtObra = $pdoObra->prepare($sqlObra);
     $stmtObra->execute([$data['id_computo']]);
     $obraData = $stmtObra->fetch(PDO::FETCH_ASSOC) ?: [];
@@ -68,9 +70,13 @@ if ($isComputo && !empty($data['id_computo'])) {
             $obraData['nro_subsitio'] ?? '',
             $obraData['nro'] ?? '',
         ], 'strlen');
-        $obraIdentificador = implode('-', $obraPartes);
+        $obraCodigo = implode('-', $obraPartes);
+        $obraIdentificador = $obraCodigo;
         $obraLabel = trim($obraIdentificador . ' ' . ($obraData['nombre'] ?? ''));
         $proyectoLabel = $obraLabel;
+        if (isset($obraData['nro_revision'])) {
+            $pedidoRevision = (string)$obraData['nro_revision'];
+        }
     }
 } elseif (!$isComputo && !empty($data['id_proyecto'])) {
     $pdoObra = Database::connect();
@@ -87,20 +93,11 @@ if ($isComputo && !empty($data['id_computo'])) {
             $obraData['nro_subsitio'] ?? '',
             $obraData['nro'] ?? '',
         ], 'strlen');
-        $obraIdentificador = implode('-', $obraPartes);
+        $obraCodigo = implode('-', $obraPartes);
+        $obraIdentificador = $obraCodigo;
         $obraLabel = trim($obraIdentificador . ' ' . ($obraData['nombre'] ?? ''));
         $proyectoLabel = $obraLabel;
     }
-}
-
-$headerInfoParts = [];
-
-if ($pedidoNumero !== null) {
-    $headerInfoParts[] = 'Pedido #' . $pedidoNumero;
-}
-
-if ($obraLabel !== '') {
-    $headerInfoParts[] = 'Obra: ' . $obraLabel;
 }
 
 if ($proyectoLabel === '' && !$isComputo && !empty($data['id_proyecto'])) {
@@ -131,6 +128,43 @@ if (!empty($data['id_cuenta_recibe'])) {
     $stmtRecibe->execute([$data['id_cuenta_recibe']]);
     $recibeNombre = (string)($stmtRecibe->fetchColumn() ?: '');
     Database::disconnect();
+}
+
+$pedidoTipoLabel = $isComputo ? 'Pedido de Cómputo' : 'Pedido Directo';
+$headerCompositeParts = [$pedidoTipoLabel];
+
+if ($pedidoNumero !== null) {
+    $headerCompositeParts[] = 'Nº ' . $pedidoNumero;
+}
+
+if ($obraCodigo !== '') {
+    $headerCompositeParts[] = 'Cód. Obra ' . $obraCodigo;
+}
+
+if ($pedidoRevision !== '' || $isComputo) {
+    $headerCompositeParts[] = 'Rev. ' . ($pedidoRevision !== '' ? $pedidoRevision : '-');
+}
+
+$headerCompositeParts = array_filter($headerCompositeParts, static function ($value) {
+    return $value !== '' && $value !== null;
+});
+
+$headerCompositeText = '';
+if (!empty($headerCompositeParts)) {
+    $headerCompositeText = implode(' · ', $headerCompositeParts);
+    if (function_exists('mb_strtoupper')) {
+        $headerCompositeText = mb_strtoupper($headerCompositeText, 'UTF-8');
+    } else {
+        $headerCompositeText = strtoupper($headerCompositeText);
+    }
+}
+
+if ($headerCompositeText === '' && $pageTitle !== '') {
+    if (function_exists('mb_strtoupper')) {
+        $headerCompositeText = mb_strtoupper($pageTitle, 'UTF-8');
+    } else {
+        $headerCompositeText = strtoupper($pageTitle);
+    }
 }
 
 $detalleColumns = [
@@ -177,6 +211,29 @@ if ($isComputo) {
 
       .card-body {
         padding: 1.5rem;
+      }
+
+      .pedido-card-header {
+        background-color: #f1f3f5;
+        border-bottom: 1px solid #dee2e6;
+        padding: 1.25rem 1.5rem;
+      }
+
+      .pedido-card-header-content {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .pedido-card-header-text {
+        font-size: 0.95rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        color: #343a40;
+      }
+
+      #estado-error {
+        margin: 0 1.5rem;
       }
 
       .pedido-info-grid .info-item {
@@ -283,17 +340,12 @@ if ($isComputo) {
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header">
-                    <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
-                      <div>
-                        <h5 class="mb-1"><?php echo htmlspecialchars($pageTitle); ?></h5>
-                        <?php if (!empty($headerInfoParts)): ?>
-                        <p class="mb-0 text-muted small"><?php echo htmlspecialchars(implode(' | ', $headerInfoParts)); ?></p>
-                        <?php endif; ?>
-                      </div>
+                  <div class="card-header pedido-card-header">
+                    <div class="pedido-card-header-content w-100">
+                      <span class="pedido-card-header-text"><?php echo htmlspecialchars($headerCompositeText); ?></span>
                     </div>
-                    <div id="estado-error" class="alert alert-danger mt-3 d-none"></div>
                   </div>
+                  <div id="estado-error" class="alert alert-danger mt-3 d-none"></div>
                   <div class="form theme-form" role="presentation" id="form-unificado">
                     <div class="card-body">
                       <h6 class="mb-4"><?php echo htmlspecialchars($sectionTitle); ?></h6>
