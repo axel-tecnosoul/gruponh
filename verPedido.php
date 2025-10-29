@@ -137,11 +137,9 @@ if ($pedidoNumero !== null) {
     $headerCompositeParts[] = 'Nº ' . $pedidoNumero;
 }
 
-if ($obraCodigo !== '') {
-    $headerCompositeParts[] = 'Cód. Obra ' . $obraCodigo;
-}
+$headerCompositeParts[] = 'Cód. Obra ' . ($obraCodigo !== '' ? $obraCodigo : '-');
 
-if ($pedidoRevision !== '' || $isComputo) {
+if ($isComputo) {
     $headerCompositeParts[] = 'Rev. ' . ($pedidoRevision !== '' ? $pedidoRevision : '-');
 }
 
