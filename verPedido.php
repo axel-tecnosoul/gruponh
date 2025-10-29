@@ -179,24 +179,52 @@ if ($isComputo) {
         padding: 1.5rem;
       }
 
-      .pedido-info-grid .info-item {
-        margin-bottom: 1.25rem;
+      .pedido-info-grid {
+        row-gap: 1.5rem;
       }
 
-      .pedido-info-grid .info-label {
-        display: block;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        color: #6c757d;
-        font-weight: 600;
-        margin-bottom: 0.35rem;
-        letter-spacing: 0.02em;
+      .pedido-info-grid > [class*='col-'] {
+        display: flex;
       }
 
-      .pedido-info-grid .info-value {
+      .pedido-info-column {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
+        background-color: #fff;
+        height: 100%;
+      }
+
+      .pedido-info-item {
+        margin: 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #f1f3f5;
         font-size: 0.95rem;
         color: #212529;
-        margin-bottom: 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+        line-height: 1.5;
+      }
+
+      .pedido-info-item:last-of-type {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .pedido-info-label {
+        font-weight: 600;
+        color: #212529;
+      }
+
+      @media (max-width: 575.98px) {
+        .pedido-info-column {
+          padding: 0.75rem 1rem;
+        }
       }
 
       #dataTables-example667 {
@@ -299,37 +327,27 @@ if ($isComputo) {
                       <h6 class="mb-4"><?php echo htmlspecialchars($sectionTitle); ?></h6>
                       <div class="row pedido-info-grid">
                         <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                          <div class="info-item">
-                            <span class="info-label">Fecha Pedido</span>
-                            <p class="info-value"><?php echo htmlspecialchars($fechaPedido !== '' ? $fechaPedido : '-'); ?></p>
-                          </div>
-                          <div class="info-item mb-0">
-                            <span class="info-label">Estado</span>
-                            <p class="info-value"><?php echo htmlspecialchars($data['estado_pedido'] ?? '-'); ?></p>
+                          <div class="pedido-info-column">
+                            <p class="pedido-info-item"><span class="pedido-info-label">Fecha Pedido:</span> <?php echo htmlspecialchars($fechaPedido !== '' ? $fechaPedido : '-'); ?></p>
+                            <p class="pedido-info-item"><span class="pedido-info-label">Estado:</span> <?php echo htmlspecialchars($data['estado_pedido'] ?? '-'); ?></p>
                           </div>
                         </div>
                         <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                          <div class="info-item mb-0">
-                            <span class="info-label">Proyecto</span>
-                            <p class="info-value"><?php echo htmlspecialchars($proyectoLabel !== '' ? $proyectoLabel : '-'); ?></p>
+                          <div class="pedido-info-column">
+                            <p class="pedido-info-item"><span class="pedido-info-label">Proyecto:</span> <?php echo htmlspecialchars($proyectoLabel !== '' ? $proyectoLabel : '-'); ?></p>
                           </div>
                         </div>
                         <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                          <?php if ($isComputo): ?>
-                          <div class="info-item">
-                            <span class="info-label">Solicitante</span>
-                            <p class="info-value"><?php echo htmlspecialchars($solicitanteNombre !== '' ? $solicitanteNombre : '-'); ?></p>
-                          </div>
-                          <?php endif; ?>
-                          <div class="info-item mb-0">
-                            <span class="info-label">Lugar de Entrega</span>
-                            <p class="info-value"><?php echo htmlspecialchars(!empty($data['lugar_entrega']) ? $data['lugar_entrega'] : '-'); ?></p>
+                          <div class="pedido-info-column">
+                            <?php if ($isComputo): ?>
+                            <p class="pedido-info-item"><span class="pedido-info-label">Solicitante:</span> <?php echo htmlspecialchars($solicitanteNombre !== '' ? $solicitanteNombre : '-'); ?></p>
+                            <?php endif; ?>
+                            <p class="pedido-info-item"><span class="pedido-info-label">Lugar de Entrega:</span> <?php echo htmlspecialchars(!empty($data['lugar_entrega']) ? $data['lugar_entrega'] : '-'); ?></p>
                           </div>
                         </div>
                         <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
-                          <div class="info-item mb-0">
-                            <span class="info-label">Recibe</span>
-                            <p class="info-value"><?php echo htmlspecialchars($recibeNombre !== '' ? $recibeNombre : '-'); ?></p>
+                          <div class="pedido-info-column">
+                            <p class="pedido-info-item"><span class="pedido-info-label">Recibe:</span> <?php echo htmlspecialchars($recibeNombre !== '' ? $recibeNombre : '-'); ?></p>
                           </div>
                         </div>
                       </div>
