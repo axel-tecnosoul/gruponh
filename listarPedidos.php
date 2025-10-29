@@ -595,18 +595,10 @@ if (isset($_POST['id_estado'])) {
 
           if (tipo === 'Directo') {
             $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
-            //if (estado === 'Aprobado') {
-              $("#link_ver_pedido").attr("href", "verPedidoDirecto.php?id=" + id_pedido);
-            /*} else {
-              $("#link_ver_pedido").attr("href", "#");
-            }*/
+            $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
           } else {
             $("#link_modificar_pedido").attr("href", "#");
-            //if (estado === 'Aprobado') {
-              $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
-            /*} else {
-              $("#link_ver_pedido").attr("href", "#");
-            }*/
+            $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
           }
 
           if (estado === 'Pendiente' || estado === 'Generado' || estado === 'A Evaluar') {
