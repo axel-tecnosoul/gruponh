@@ -150,6 +150,7 @@ if (isset($_POST['id_estado'])) {
                             <!-- <th>Aprobado</th> -->
                             <th>Tipo</th>
                             <th style="display: none;">Proy</th>
+                            <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
@@ -185,7 +186,7 @@ if (isset($_POST['id_estado'])) {
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, p.solicitante, pe.aprobado, p.id AS id_proyecto
+                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, p.solicitante, pe.aprobado, p.id AS id_proyecto
                             FROM pedidos pe 
                               INNER JOIN computos c ON c.id = pe.id_computo 
                               INNER JOIN tareas t ON t.id = c.id_tarea 
@@ -215,10 +216,11 @@ if (isset($_POST['id_estado'])) {
                                 <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
                                 <td>Computo</td>
                                 <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
+                                <td style="display: none;"><?=htmlspecialchars($row['id_estado']) ?></td>
                               </tr><?php
                             }
 
-                            $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, p.solicitante, pe.aprobado, pe.id_proyecto
+                            $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, p.solicitante, pe.aprobado, pe.id_proyecto
                             FROM pedidos pe 
                               INNER JOIN proyectos p ON p.id = pe.id_proyecto 
                               LEFT JOIN sitios s ON s.id = p.id_sitio 
@@ -256,6 +258,7 @@ if (isset($_POST['id_estado'])) {
                               <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
                               <td>Directo</td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
+                              <td style="display: none;"><?=htmlspecialchars($row['id_estado']) ?></td>
                               </tr><?php
                             }
                             Database::disconnect();
@@ -273,6 +276,7 @@ if (isset($_POST['id_estado'])) {
                             <!-- <th>Aprobado</th> -->
                             <th>Tipo</th>
                             <th style="display: none;">Proy</th>
+                            <th style="display: none;">Estado ID</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -522,10 +526,20 @@ if (isset($_POST['id_estado'])) {
           alert("Por favor seleccione un pedido para verlo")
         }
       });
-      $("#link_gestionar_pedido").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione un pedido para gestionarlo")
+      let selectedPedidoInfo = null;
+
+      $("#link_gestionar_pedido").on("click",function(e){
+        if(!selectedPedidoInfo){
+          e.preventDefault();
+          alert("Por favor seleccione un pedido para gestionarlo");
+          return false;
+        }
+
+        const estadoId = $(this).data("estadoId");
+        if(!['3','4'].includes(String(estadoId || ''))){
+          e.preventDefault();
+          alert("El pedido debe estar aprobado para gestionarlo");
+          return false;
         }
       });
       $("#link_modificar_pedido").on("click",function(){
@@ -561,6 +575,7 @@ if (isset($_POST['id_estado'])) {
         let estado = t.find("td:nth-child(6)").html()?.trim() || '';
         let tipo = t.find("td:nth-child(8)").html()?.trim() || '';
         let id_proyecto = t.find("td:nth-child(9)").html()?.trim() || '';
+        let estadoId = t.find("td:nth-child(10)").html()?.trim() || '';
 
         if (t.hasClass('selected')) {
           t.removeClass('selected');
@@ -571,11 +586,13 @@ if (isset($_POST['id_estado'])) {
           $("#link_nuevo_suceso").attr("href", "#");
           $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
           $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+          selectedPedidoInfo = null;
+          $("#link_gestionar_pedido").removeData("estadoId").removeData("tipo").removeData("pedidoId");
         } else {
           table.$('tr.selected').removeClass('selected');
           t.addClass('selected');
           get_conceptos(id_pedido);
-          
+
           if (tipo === 'Directo') {
             $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
             //if (estado === 'Aprobado') {
@@ -598,6 +615,28 @@ if (isset($_POST['id_estado'])) {
           } else {
             $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
             $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+          }
+
+          selectedPedidoInfo = {
+            id: id_pedido,
+            estado: estado,
+            estadoId: estadoId,
+            tipo: tipo
+          };
+
+          $("#link_gestionar_pedido")
+            .data("estadoId", estadoId)
+            .data("tipo", tipo)
+            .data("pedidoId", id_pedido);
+
+          if (estado === 'Aprobado' || estado === 'Gestionando' || ['3','4'].includes(estadoId)) {
+            if (tipo === 'Directo') {
+              $("#link_gestionar_pedido").attr("href", "gestionarPedidoDirecto.php?id=" + id_pedido);
+            } else {
+              $("#link_gestionar_pedido").attr("href", "gestionarPedido.php?id=" + id_pedido);
+            }
+          } else {
+            $("#link_gestionar_pedido").attr("href", "#");
           }
 
           $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?desdePedidos=1&id=" + id_proyecto);
