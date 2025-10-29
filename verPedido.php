@@ -179,6 +179,26 @@ if ($isComputo) {
         padding: 1.5rem;
       }
 
+      .pedido-info-grid .info-item {
+        margin-bottom: 1.25rem;
+      }
+
+      .pedido-info-grid .info-label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #6c757d;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+        letter-spacing: 0.02em;
+      }
+
+      .pedido-info-grid .info-value {
+        font-size: 0.95rem;
+        color: #212529;
+        margin-bottom: 0;
+      }
+
       #dataTables-example667 {
         width: 100% !important;
         font-size: 0.75rem;
@@ -276,34 +296,40 @@ if ($isComputo) {
                   </div>
                   <div class="form theme-form" role="presentation" id="form-unificado">
                     <div class="card-body">
-                      <div class="row">
-                        <div class="col-lg-6 col-md-8 col-sm-12">
-                          <h6 class="mb-3"><?php echo htmlspecialchars($sectionTitle); ?></h6>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Fecha Pedido</label>
-                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($fechaPedido !== '' ? $fechaPedido : '-'); ?></p></div>
+                      <h6 class="mb-4"><?php echo htmlspecialchars($sectionTitle); ?></h6>
+                      <div class="row pedido-info-grid">
+                        <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+                          <div class="info-item">
+                            <span class="info-label">Fecha Pedido</span>
+                            <p class="info-value"><?php echo htmlspecialchars($fechaPedido !== '' ? $fechaPedido : '-'); ?></p>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Estado</label>
-                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($data['estado_pedido'] ?? '-'); ?></p></div>
+                          <div class="info-item mb-0">
+                            <span class="info-label">Estado</span>
+                            <p class="info-value"><?php echo htmlspecialchars($data['estado_pedido'] ?? '-'); ?></p>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Proyecto</label>
-                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($proyectoLabel !== '' ? $proyectoLabel : '-'); ?></p></div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+                          <div class="info-item mb-0">
+                            <span class="info-label">Proyecto</span>
+                            <p class="info-value"><?php echo htmlspecialchars($proyectoLabel !== '' ? $proyectoLabel : '-'); ?></p>
                           </div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
                           <?php if ($isComputo): ?>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Solicitante</label>
-                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($solicitanteNombre !== '' ? $solicitanteNombre : '-'); ?></p></div>
+                          <div class="info-item">
+                            <span class="info-label">Solicitante</span>
+                            <p class="info-value"><?php echo htmlspecialchars($solicitanteNombre !== '' ? $solicitanteNombre : '-'); ?></p>
                           </div>
                           <?php endif; ?>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Lugar de Entrega</label>
-                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars(!empty($data['lugar_entrega']) ? $data['lugar_entrega'] : '-'); ?></p></div>
+                          <div class="info-item mb-0">
+                            <span class="info-label">Lugar de Entrega</span>
+                            <p class="info-value"><?php echo htmlspecialchars(!empty($data['lugar_entrega']) ? $data['lugar_entrega'] : '-'); ?></p>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Recibe</label>
-                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($recibeNombre !== '' ? $recibeNombre : '-'); ?></p></div>
+                        </div>
+                        <div class="col-12 col-sm-6 col-lg-3 mb-3 mb-lg-0">
+                          <div class="info-item mb-0">
+                            <span class="info-label">Recibe</span>
+                            <p class="info-value"><?php echo htmlspecialchars($recibeNombre !== '' ? $recibeNombre : '-'); ?></p>
                           </div>
                         </div>
                       </div>
