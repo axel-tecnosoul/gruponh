@@ -56,15 +56,7 @@
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
-                      <div>
-                        <h5 class="mb-1"><?=$ubicacion?></h5>
-                        <span class="badge badge-secondary">Estado: <?=htmlspecialchars($data['estado_pedido']);?></span>
-                      </div>
-                      <?php if ($data['id_estado'] == 1 && tienePermiso(298)): ?>
-                        <button type="button" class="btn btn-primary mt-2 mt-sm-0" id="btnEnviarAprobacion">Enviar a aprobación</button>
-                      <?php endif; ?>
-                    </div>
+                    <h5 class="mb-1"><?=$ubicacion?></h5>
                     <div id="estado-error" class="alert alert-danger mt-3 d-none"></div>
                   </div>
 					<form class="form theme-form" role="form" method="post" action="#">
@@ -73,14 +65,14 @@
                         <div class="col">
                           <h6 class="mb-3">Datos del Pedido Directo</h6>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
-							<div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha'];?>" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Proyecto(*)</label>
-							<div class="col-sm-9">
-							<select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled="disabled">
-							<option value="">Seleccione...</option>
+                                                        <label class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
+                                                        <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha'];?>" class="form-control" required="required" disabled></div>
+                                                        </div>
+                                                        <div class="form-group row">
+                                                        <label class="col-sm-3 col-form-label">Proyecto(*)</label>
+                                                        <div class="col-sm-9">
+                                                        <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled>
+                                                        <option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -100,14 +92,14 @@
 							</div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Lugar de Entrega(*)</label>
-							<div class="col-sm-9"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" required="required" value="<?php echo $data['lugar_entrega'];?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Recibe(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
+                                                        <label class="col-sm-3 col-form-label">Lugar de Entrega(*)</label>
+                                                        <div class="col-sm-9"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" required="required" value="<?php echo $data['lugar_entrega'];?>" disabled></div>
+                                                        </div>
+                                                        <div class="form-group row">
+                                                        <label class="col-sm-3 col-form-label">Recibe(*)</label>
+                                                        <div class="col-sm-9">
+                                                        <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12" required="required" disabled>
+                                                        <option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -124,18 +116,21 @@
 							Database::disconnect();
 							?>
 							</select>
-							</div>
-							</div>
+                                                        </div>
+                                                        </div>
+                                                        <div class="form-group row">
+                                                        <label class="col-sm-3 col-form-label">Estado</label>
+                                                        <div class="col-sm-9"><input type="text" class="form-control" value="<?=htmlspecialchars($data['estado_pedido']);?>" disabled></div>
+                                                        </div>
 							<div class="form-group row">
 							<div class="col-sm-12">
 							<table class="display" id="dataTables-example667">
 								<thead>
-								  <tr>
-									  <th><input type="checkbox" data-orderable="false" class="no-sort toggle-checkboxes" /></th>
-									  <th>Concepto</th>
-									  <th>Fecha Necesidad</th>
-									  <th>Fecha Última Compra</th>
-									  <th>Costo Última Precio</th>
+                                                                  <tr>
+                                                                          <th>Concepto</th>
+                                                                          <th>Fecha Necesidad</th>
+                                                                          <th>Fecha Última Compra</th>
+                                                                          <th>Costo Última Precio</th>
 									  <th>Requerido</th>
 									  <th>Stock</th>
 									  <th>Reservado</th>
@@ -153,14 +148,9 @@
 										$q2->execute();
 										$data2 = $q2->fetch(PDO::FETCH_ASSOC);
 										
-										echo '<tr>';
-										if ($row[2]-$row[6]-$row[7] > 0) {
-											echo '<td><input type="checkbox" class="no-sort customer-selector" value="'.$row[0].'" /> </td>';	
-										} else {
-											echo '<td>&nbsp;</td>';	
-										}
-										echo '<td>'. $row[1] . '</td>';
-										echo '<td>'. $row[3] . '</td>';
+                                                                                echo '<tr>';
+                                                                                echo '<td>'. $row[1] . '</td>';
+                                                                                echo '<td>'. $row[3] . '</td>';
 										if (!empty($data2['fecha_emision'])) {
 											echo '<td>'. $data2['fecha_emision'] . '</td>';	
 										} else {
@@ -190,9 +180,8 @@
 										}
 										
 										echo '<td>'. $row[6] . '</td>';
-										echo '<td>'. $row[7] . '</td>';
-										
-										echo '</tr>';
+                                                                                echo '<td>'. $row[7] . '</td>';
+                                                                                echo '</tr>';
 									}
 								   Database::disconnect();
 								  ?>
@@ -204,15 +193,11 @@
                       </div>
                     </div>
                     <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3">
-						<?php 
-						if ($data['aprobado']==1) {
-						?>
-						<?php if(tienePermiso(298)){?><a class="btn btn-warning" id="compra-masivo">Nueva Orden de Compra</a><?php }?>
-						<?php 
-						} 
-						?>
-						<a class="btn btn-primary" target="_blank" href="imprimirPedidoDirecto.php?id=<?php echo $data['id']; ?>">Imprimir</a>
+                      <div class="col-sm-9 offset-sm-3 d-flex flex-wrap align-items-center">
+                                                <?php if ($data['id_estado'] == 1 && tienePermiso(298)): ?>
+                                                <button type="button" class="btn btn-primary mr-2" id="btnEnviarAprobacion">Enviar a aprobación</button>
+                                                <?php endif; ?>
+                                                <a class="btn btn-primary mr-2" target="_blank" href="imprimirPedidoDirecto.php?id=<?php echo $data['id']; ?>">Imprimir</a>
                         <a href="#" onclick="document.location.href='listarPedidos.php'" class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -371,37 +356,6 @@
         } );
 
                 </script>
-		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-    <!-- Plugin used-->
-	
-	<!-- Page-Level Demo Scripts - Tables - Use for reference -->
-    <script>
-    
-    jQuery('.customer-selector').on('click', function () {
-        jQuery('.toggle-checkboxes').prop('checked', false);
-    });
-
-    jQuery('#compra-masivo').on('click', function (e) {
-        e.preventDefault();
-        if (jQuery('.customer-selector:checked').length < 1) {
-            alert("Debe seleccionar al menos un concepto");
-        } else {
-            var arr = [];
-            jQuery('.customer-selector:checked').each(function (i,o) { arr.push(jQuery(o).val()); });
-            window.location.href= window.location.href.replace("verPedidoDirecto.php?id=<?php echo $id;?>", "nuevaCompra.php?id=<?php echo $id;?>&conceptos=" + arr.join(",") );
-        }
-
-    });
-	
-	var toggle = true;
-    jQuery('.toggle-checkboxes').on('click', function (e) {
-        e.preventDefault();
-        jQuery('.customer-selector').prop('checked', toggle);
-        toggle = !toggle;
-
-    })
-    
-    </script>
-    <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
+                <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>
 </html>
