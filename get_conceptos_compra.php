@@ -12,11 +12,21 @@ $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {
 	
-	$precio = number_format($row[5],2);
-	$preciokg = number_format($row[7],2);
-	$subtotal = number_format($row[5]*$row[2],2);
-	
-	$peso = $row[8]*($row[9]/1000);
+        $precioUnitario = (float) $row[5];
+        $precio = number_format($precioUnitario,2);
+        $precioKgRaw = (float) $row[7];
+        $preciokg = number_format($precioKgRaw,2);
+
+        $pesoUnitario = (float) $row[8] * ((float) $row[9] / 1000);
+        $pesoTotalRaw = $pesoUnitario * (float) $row[2];
+        $peso = number_format($pesoTotalRaw,2);
+
+        if ($precioUnitario == 0) {
+                $subtotalValue = $precioKgRaw * $pesoTotalRaw;
+        } else {
+                $subtotalValue = $precioUnitario * (float) $row[2];
+        }
+        $subtotal = number_format($subtotalValue,2);
 	
 	$remitos = "";
 	$sql2 = " SELECT i.nro_remito FROM `ingresos_detalle` id inner join ingresos i on i.id = id.id_ingreso WHERE id.id_material = ".$row[4]." and id.id_compra = ".$id_compra;
@@ -34,12 +44,13 @@ foreach ($pdo->query($sql) as $row) {
     0 => $row[1],
     1 => $row[2],
 	2 => $row[3],
-	3 => $peso,
-	4 => $precio,
-	5 => $subtotal,
-	6 => $row[6],
-	7 => $remitos,
-	8 => $facturas
+        3 => $peso,
+        4 => $preciokg,
+        5 => $precio,
+        6 => $subtotal,
+        7 => $row[6],
+        8 => $remitos,
+        9 => $facturas
   ];
 }
 
