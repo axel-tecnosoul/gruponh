@@ -48,20 +48,22 @@
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Gestión de Pedido";
+          $ubicacion="Gestión de Pedido Directo";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
+                  <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">Información del Pedido Directo</h5>
+                    <span class="badge badge-secondary">Pedido Directo</span>
                   </div>
 					<form class="form theme-form" role="form" method="post" action="#">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
+                          <h6 class="mb-3">Datos del Pedido Directo</h6>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
 							<div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha'];?>" class="form-control" required="required"></div>

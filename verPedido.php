@@ -387,15 +387,18 @@
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Gestión de Pedido y Nueva Orden de Compra";
+          $ubicacion="Gestión de Pedido de Cómputo y Nueva Orden de Compra";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header">
-                    <h5>Información del Pedido</h5>
+                  <div class="card-header d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0">Información del Pedido de Cómputo</h5>
+                    <?php if (!empty($data['id_computo'])): ?>
+                      <span class="badge badge-info">Pedido de Cómputo</span>
+                    <?php endif; ?>
                   </div>
                   <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
                     <div class="card-body"><?php
@@ -404,7 +407,7 @@
                       }?>
                       <div class="row">
                         <div class="col-md-6">
-                          <h6 class="mb-3">Datos del Pedido</h6>
+                          <h6 class="mb-3">Datos del Pedido de Cómputo</h6>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Pedido</label>
                             <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$data['fecha'];?>" class="form-control" disabled></div>
