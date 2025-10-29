@@ -426,7 +426,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Proyecto</label>
                             <div class="col-sm-8">
-                              <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled="disabled">
+                              <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single w-100" disabled="disabled">
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -443,7 +443,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Solicitante</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single col-sm-12" disabled>
+                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single w-100" disabled>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -468,7 +468,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Recibe</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12">
+                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single w-100">
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -494,7 +494,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Proveedor(*)</label>
                             <div class="col-sm-8">
-                              <select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required="required">
+                              <select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single w-100" required="required">
                                 <option value="">Seleccione...</option>
                                 <?php
                                   $pdo = Database::connect();
@@ -532,7 +532,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Moneda(*)</label>
                             <div class="col-sm-8">
-                              <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" require>
+                              <select name="id_moneda" id="id_moneda" class="js-example-basic-single w-100" require>
                                 <option value="">Seleccione...</option>
                                 <?php
                                   $pdo = Database::connect();
@@ -560,7 +560,7 @@
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
                             <div class="col-sm-8">
-                              <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12" required>
+                              <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single w-100" required>
                                 <option value="">Seleccione...</option>
                                 <?php
                                   $pdo = Database::connect();
