@@ -40,6 +40,14 @@ $printLabel = $isComputo ? 'Imprimir Pedido' : 'Imprimir';
 
 $pedidoNumero = $data['id'] ?? null;
 $obraLabel = '';
+$proyectoLabel = '';
+$solicitanteNombre = '';
+$recibeNombre = '';
+
+$fechaPedido = '';
+if (!empty($data['fecha'])) {
+    $fechaPedido = date('d/m/Y', strtotime($data['fecha']));
+}
 
 if ($pedidoNumero !== null) {
     $pedidoNumero = (int)$pedidoNumero;
@@ -62,6 +70,7 @@ if ($isComputo && !empty($data['id_computo'])) {
         ], 'strlen');
         $obraIdentificador = implode('-', $obraPartes);
         $obraLabel = trim($obraIdentificador . ' ' . ($obraData['nombre'] ?? ''));
+        $proyectoLabel = $obraLabel;
     }
 } elseif (!$isComputo && !empty($data['id_proyecto'])) {
     $pdoObra = Database::connect();
@@ -80,6 +89,7 @@ if ($isComputo && !empty($data['id_computo'])) {
         ], 'strlen');
         $obraIdentificador = implode('-', $obraPartes);
         $obraLabel = trim($obraIdentificador . ' ' . ($obraData['nombre'] ?? ''));
+        $proyectoLabel = $obraLabel;
     }
 }
 
@@ -91,6 +101,36 @@ if ($pedidoNumero !== null) {
 
 if ($obraLabel !== '') {
     $headerInfoParts[] = 'Obra: ' . $obraLabel;
+}
+
+if ($proyectoLabel === '' && !$isComputo && !empty($data['id_proyecto'])) {
+    $pdoProyecto = Database::connect();
+    $pdoProyecto->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sqlProyecto = 'SELECT p.nombre FROM proyectos p WHERE p.id = ? LIMIT 1';
+    $stmtProyecto = $pdoProyecto->prepare($sqlProyecto);
+    $stmtProyecto->execute([$data['id_proyecto']]);
+    $proyectoLabel = (string)($stmtProyecto->fetchColumn() ?: '');
+    Database::disconnect();
+}
+
+if ($isComputo && !empty($data['id_cuenta_solicitante'])) {
+    $pdoSolicitante = Database::connect();
+    $pdoSolicitante->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sqlSolicitante = 'SELECT nombre FROM cuentas WHERE id = ? LIMIT 1';
+    $stmtSolicitante = $pdoSolicitante->prepare($sqlSolicitante);
+    $stmtSolicitante->execute([$data['id_cuenta_solicitante']]);
+    $solicitanteNombre = (string)($stmtSolicitante->fetchColumn() ?: '');
+    Database::disconnect();
+}
+
+if (!empty($data['id_cuenta_recibe'])) {
+    $pdoRecibe = Database::connect();
+    $pdoRecibe->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sqlRecibe = 'SELECT nombre FROM cuentas WHERE id = ? LIMIT 1';
+    $stmtRecibe = $pdoRecibe->prepare($sqlRecibe);
+    $stmtRecibe->execute([$data['id_cuenta_recibe']]);
+    $recibeNombre = (string)($stmtRecibe->fetchColumn() ?: '');
+    Database::disconnect();
 }
 
 $detalleColumns = [
@@ -124,13 +164,11 @@ if ($isComputo) {
 <html lang="en">
   <head>
     <?php include 'head_forms.php'; ?>
-    <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
     <style>
-      .form-control:disabled,
-      .form-control[readonly] {
-        background-color: #e9ecef;
-        opacity: 1;
+      .form-control-plaintext {
+        padding: 0.375rem 0;
+        color: #212529;
       }
 
       .form-group {
@@ -243,91 +281,29 @@ if ($isComputo) {
                           <h6 class="mb-3"><?php echo htmlspecialchars($sectionTitle); ?></h6>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Fecha Pedido</label>
-                            <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo htmlspecialchars($data['fecha']); ?>" class="form-control" disabled></div>
+                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($fechaPedido !== '' ? $fechaPedido : '-'); ?></p></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Estado</label>
-                            <div class="col-sm-8"><input type="text" class="form-control" value="<?php echo htmlspecialchars($data['estado_pedido']); ?>" disabled></div>
+                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($data['estado_pedido'] ?? '-'); ?></p></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Proyecto</label>
-                            <div class="col-sm-8">
-                              <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single w-100" disabled="disabled">
-                                <option value="">Seleccione...</option>
-                                <?php
-                                $pdoProyecto = Database::connect();
-                                $pdoProyecto->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                if ($isComputo) {
-                                    $sqlProyecto = 'SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio WHERE c.id = ?';
-                                    $stmtProyecto = $pdoProyecto->prepare($sqlProyecto);
-                                    $stmtProyecto->execute([$data['id_computo']]);
-                                } else {
-                                    $sqlProyecto = 'SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM proyectos p INNER JOIN sitios s ON s.id = p.id_sitio WHERE p.anulado = 0 AND p.id_estado_proyecto = 2';
-                                    $stmtProyecto = $pdoProyecto->prepare($sqlProyecto);
-                                    $stmtProyecto->execute();
-                                }
-                                $proyectoSeleccionado = false;
-                                while ($fila = $stmtProyecto->fetch(PDO::FETCH_ASSOC)) {
-                                    $selected = '';
-                                    if ($isComputo && !$proyectoSeleccionado) {
-                                        $selected = ' selected';
-                                        $proyectoSeleccionado = true;
-                                    } elseif (!$isComputo && (int)$fila['id'] === (int)$data['id_proyecto']) {
-                                        $selected = ' selected';
-                                    }
-                                    $optionLabel = $fila['nro_sitio'] . '-' . $fila['nro_subsitio'] . '-' . $fila['nro'] . ': ' . $fila['nombre'];
-                                    echo '<option value="' . htmlspecialchars($fila['id']) . '"' . $selected . '>' . htmlspecialchars($optionLabel) . '</option>';
-                                }
-                                Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
+                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($proyectoLabel !== '' ? $proyectoLabel : '-'); ?></p></div>
                           </div>
                           <?php if ($isComputo): ?>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Solicitante</label>
-                            <div class="col-sm-8">
-                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single w-100" disabled>
-                                <option value="">Seleccione...</option>
-                                <?php
-                                $pdoSolicitante = Database::connect();
-                                $pdoSolicitante->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlSolicitante = 'SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (4) AND activo = 1 AND anulado = 0';
-                                $stmtSolicitante = $pdoSolicitante->prepare($sqlSolicitante);
-                                $stmtSolicitante->execute();
-                                while ($fila = $stmtSolicitante->fetch(PDO::FETCH_ASSOC)) {
-                                    $selected = ((int)$fila['id'] === (int)$data['id_cuenta_solicitante']) ? ' selected' : '';
-                                    echo '<option value="' . htmlspecialchars($fila['id']) . '"' . $selected . '>' . htmlspecialchars($fila['nombre']) . '</option>';
-                                }
-                                Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
+                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($solicitanteNombre !== '' ? $solicitanteNombre : '-'); ?></p></div>
                           </div>
                           <?php endif; ?>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Lugar de Entrega</label>
-                            <div class="col-sm-8"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" value="<?php echo htmlspecialchars($data['lugar_entrega']); ?>" disabled></div>
+                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars(!empty($data['lugar_entrega']) ? $data['lugar_entrega'] : '-'); ?></p></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-4 col-form-label">Recibe</label>
-                            <div class="col-sm-8">
-                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single w-100" disabled>
-                                <option value="">Seleccione...</option>
-                                <?php
-                                $pdoRecibe = Database::connect();
-                                $pdoRecibe->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlRecibe = 'SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (4) AND activo = 1 AND anulado = 0';
-                                $stmtRecibe = $pdoRecibe->prepare($sqlRecibe);
-                                $stmtRecibe->execute();
-                                while ($fila = $stmtRecibe->fetch(PDO::FETCH_ASSOC)) {
-                                    $selected = ((int)$fila['id'] === (int)$data['id_cuenta_recibe']) ? ' selected' : '';
-                                    echo '<option value="' . htmlspecialchars($fila['id']) . '"' . $selected . '>' . htmlspecialchars($fila['nombre']) . '</option>';
-                                }
-                                Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
+                            <div class="col-sm-8"><p class="form-control-plaintext mb-0"><?php echo htmlspecialchars($recibeNombre !== '' ? $recibeNombre : '-'); ?></p></div>
                           </div>
                         </div>
                       </div>
@@ -461,8 +437,6 @@ if ($isComputo) {
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <!-- Plugin used-->
-    <script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
     <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
