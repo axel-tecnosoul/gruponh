@@ -665,7 +665,7 @@
                       <div class="col-sm-12 text-center">
                         <a class="btn btn-primary" target="_blank" href="imprimirPedido.php?id=<?=$data['id']; ?>">Imprimir Pedido</a>
                         <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                        <button class="btn btn-success" type="submit">Crear Orden de Compra</button>
+                        <button class="btn btn-success" id="submit-btn-compra" type="submit" data-original-text="Crear Orden de Compra">Crear Orden de Compra</button>
                         <?php endif; ?>
                         <a href="#" onclick="document.location.href='listarPedidos.php'" class="btn btn-light">Volver</a>
                       </div>
@@ -799,7 +799,43 @@
       return true;
     }
   </script>
-		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-    <!-- Plugin used-->
+  <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
+  <!-- Plugin used-->
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('form-unificado');
+        const submitButton = document.getElementById('submit-btn-compra');
+
+        if (form && submitButton) {
+            form.addEventListener('submit', function(event) {
+                
+                // Primero, ejecuta tu validación existente.
+                // Si la validación falla, detenemos todo aquí.
+                if (!validarFormularioCompra()) {
+                    event.preventDefault(); // Detiene el envío del formulario
+                    return; // No deshabilita el botón si la validación falla
+                }
+
+                // Si la validación es exitosa, deshabilita el botón
+                submitButton.disabled = true;
+                submitButton.innerHTML = 'Procesando... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+                // Hay un pequeño "truco" para re-habilitar el botón si el usuario
+                // usa el botón "Atrás" del navegador y la página se carga desde el caché.
+                window.addEventListener('pageshow', function(event) {
+                    if (event.persisted) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = submitButton.getAttribute('data-original-text');
+                    }
+                });
+
+                // En un escenario ideal, si el envío AJAX fallara, se re-habilitaría el botón.
+                // Como este es un envío de formulario tradicional, no necesitamos un bloque 'catch'
+                // ya que la página recargará o redirigirá.
+            });
+        }
+    });
+    </script>
   </body>
 </html>

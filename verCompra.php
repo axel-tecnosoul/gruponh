@@ -201,40 +201,43 @@
 							<div class="col-sm-12">
 							<table class="display" id="dataTables-example667">
 								<thead>
-								  <tr>
-									  <th>Concepto</th>
-									  <th>Cantidad</th>
-									  <th>Unidad</th>
-									  <th>Peso Total</th>
-									  <th>P/Unitario</th>
-									  <th>P/Total</th>
-									  <th>Entregado</th>
-								  </tr>
+									<tr>
+										<th>Concepto</th>
+										<th>Cantidad</th>
+										<th>Unidad</th>
+										<th>Peso Total</th>
+										<th>P/Unitario</th>
+										<th>P/Kilo</th>
+										<th>P/Total</th>
+										<th>Entregado</th>
+								  	</tr>
 								</thead>
-								<tbody>
-								  <?php
-									$pdo = Database::connect();
-									$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, u.`unidad_medida`,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo FROM `compras_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
-									foreach ($pdo->query($sql) as $row) {
-										
-										$precio = number_format($row[5],2);
-										$preciokg = number_format($row[7],2);
-										$subtotal = number_format($row[5]*$row[2],2);
-										
-										$peso = $row[8]*($row[9]/1000);
-										echo '<tr>';
-										echo '<td>'. $row[1] . '</td>';
-										echo '<td>'. $row[2] . '</td>';
-										echo '<td>'. $row[3] . '</td>';
-										echo '<td>'. number_format($peso,2) . '</td>';
-										echo '<td>'. $precio . '</td>';
-										echo '<td>'. $subtotal . '</td>';
-										echo '<td>'. $row[6] . '</td>';
-										echo '</tr>';
-									}
-								   Database::disconnect();
-								  ?>
-								</tbody>
+									<tbody>
+									<?php
+										$pdo = Database::connect();
+										$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, u.`unidad_medida`,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo FROM `compras_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
+										foreach ($pdo->query($sql) as $row) {
+											
+											$precio = number_format($row[5],2);
+											$preciokg = number_format($row[7],2);
+											$subtotal = number_format($row[5]*$row[2],2);
+											
+											$peso = $row[8]*($row[9]/1000);
+
+											echo '<tr>';
+											echo '<td>'. $row[1] . '</td>';
+											echo '<td>'. $row[2] . '</td>';
+											echo '<td>'. $row[3] . '</td>';
+											echo '<td>'. number_format($peso,2) . '</td>';
+											echo '<td>'. $precio . '</td>';
+											echo '<td>'. $preciokg . '</td>';
+											echo '<td>'. $subtotal . '</td>';
+											echo '<td>'. $row[6] . '</td>';
+											echo '</tr>';
+										}
+										Database::disconnect();
+									?>
+									</tbody>
 							  </table>
 							</div>
 							</div>
