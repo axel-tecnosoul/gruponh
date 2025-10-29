@@ -162,7 +162,7 @@
   } else {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT pe.`id`, pe.`id_computo`, c.id_tarea, c.id_cuenta_solicitante, pe.`fecha`, pe.`lugar_entrega`, pe.`id_cuenta_recibe`,pe.aprobado FROM `pedidos` pe inner join computos c on c.id = pe.`id_computo` WHERE pe.id = ? ";
+    $sql = "SELECT pe.`id`, pe.`id_computo`, c.id_tarea, c.id_cuenta_solicitante, pe.`fecha`, pe.`lugar_entrega`, pe.`id_cuenta_recibe`, pe.`aprobado`, pe.`id_estado`, ep.`estado` AS estado_pedido FROM `pedidos` pe INNER JOIN computos c ON c.id = pe.`id_computo` INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ? ";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -395,7 +395,16 @@
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Información del Pedido</h5>
+                    <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
+                      <div>
+                        <h5 class="mb-1">Información del Pedido</h5>
+                        <span class="badge badge-secondary">Estado: <?=htmlspecialchars($data['estado_pedido']);?></span>
+                      </div>
+                      <?php if ($data['id_estado'] == 1 && tienePermiso(298)): ?>
+                        <button type="button" class="btn btn-primary mt-2 mt-sm-0" id="btnEnviarAprobacion">Enviar a aprobación</button>
+                      <?php endif; ?>
+                    </div>
+                    <div id="estado-error" class="alert alert-danger mt-3 d-none"></div>
                   </div>
                   <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
                     <div class="card-body"><?php
@@ -681,6 +690,27 @@
     <?php include("footer.php"); ?>
       </div>
     </div>
+    <!-- Modal Enviar a aprobación -->
+    <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirmar envío a aprobación</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>¿Desea enviar este pedido a aprobación?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmEnviarAprobacion">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -774,6 +804,48 @@
           }
         }
       });
+
+      var pedidoId = <?=intval($data['id']);?>;
+
+      $('#btnEnviarAprobacion').on('click', function () {
+        $('#estado-error').addClass('d-none');
+        $('#modalEnviarAprobacion').modal('show');
+      });
+
+      $('#modalEnviarAprobacion').on('hidden.bs.modal', function () {
+        $('#confirmEnviarAprobacion').prop('disabled', false);
+      });
+
+      $('#confirmEnviarAprobacion').on('click', function () {
+        var $button = $(this);
+        $button.prop('disabled', true);
+        $.ajax({
+          type: 'POST',
+          url: 'modificarEstadoPedido.php',
+          data: { idEstado: 2, idPosicion: pedidoId },
+          success: function (response) {
+            var trimmed = $.trim(response || '');
+            var pattern = new RegExp('^2\\s*-\\s*' + pedidoId + '$');
+            if (pattern.test(trimmed)) {
+              window.location.href = 'listarPedidos.php';
+            } else {
+              mostrarErrorEstado('No se pudo actualizar el estado. Respuesta inesperada del servidor.');
+            }
+          },
+          error: function () {
+            mostrarErrorEstado('No se pudo actualizar el estado. Intente nuevamente.');
+          },
+          complete: function () {
+            $button.prop('disabled', false);
+          }
+        });
+      });
+
+      function mostrarErrorEstado(mensaje) {
+        $('#modalEnviarAprobacion').modal('hide');
+        var $error = $('#estado-error');
+        $error.text(mensaje).removeClass('d-none');
+      }
     });
 
     function validarFormularioCompra() {
