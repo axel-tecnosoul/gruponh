@@ -18,37 +18,55 @@
     
     if (!empty($_POST)) {
         
-        // insert data
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		
-		$sql = "select id_material,id_unidad_medida FROM `pedidos_detalle` where `id_pedido` = ? and `id_material` = ?";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id,$_POST['id_material']]);
-		$data = $q->fetch(PDO::FETCH_ASSOC);
-		if (empty($data)) {
-			$sql = "select id_unidad_medida FROM `materiales` where id = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_POST['id_material']]);
-			$data = $q->fetch(PDO::FETCH_ASSOC);
+      $pdo = Database::connect();
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-			$sql = "INSERT INTO `pedidos_detalle`(`id_pedido`, `id_material`, `cantidad`, `fecha_necesidad`, `id_unidad_medida`) VALUES (?,?,?,?,?)";
-			$q = $pdo->prepare($sql);
-			$q->execute([$id,$_POST['id_material'],$_POST['cantidad'],$_POST['fecha_necesidad'],$data['id_unidad_medida']]);
-			
-			$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha modificado un item de un pedido','Pedidos','verPedido.php?id=$id')";
-			$q = $pdo->prepare($sql);
-			$q->execute(array($_SESSION['user']['id']));
-			
-			Database::disconnect();
-			if (!empty($_POST['btn2'])) {
-				header("Location: listarPedidos.php");	
-			} else {
-				header("Location: itemsPedidoDirecto.php?id=".$id);	
-			}
-		} else {
-			header("Location: itemsPedidoDirecto.php?id=".$id."&error=1");	
-		}
+      if (isset($_POST['btn_modificar'])) {
+          $id_pedido_detalle = $_POST['id_pedido_detalle'];
+
+          $sql = "UPDATE `pedidos_detalle` SET `id_material` = ?, `cantidad` = ?, `fecha_necesidad` = ? WHERE `id` = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$_POST['id_material'], $_POST['cantidad'], $_POST['fecha_necesidad'], $id_pedido_detalle]);
+          
+          $sql_log = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha modificado un item (ID: $id_pedido_detalle) de un pedido','Pedidos','verPedido.php?id=$id')";
+          $q_log = $pdo->prepare($sql_log);
+          $q_log->execute(array($_SESSION['user']['id']));
+          
+          Database::disconnect();
+          header("Location: itemsPedidoDirecto.php?id=".$id);
+          exit();
+      }
+      
+      else {
+        $sql = "select id FROM `pedidos_detalle` where `id_pedido` = ? and `id_material` = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id, $_POST['id_material']]);
+        $data = $q->fetch(PDO::FETCH_ASSOC);
+
+        if (empty($data)) {
+            $sql_um = "select id_unidad_medida FROM `materiales` where id = ?";
+            $q_um = $pdo->prepare($sql_um);
+            $q_um->execute([$_POST['id_material']]);
+            $data_um = $q_um->fetch(PDO::FETCH_ASSOC);
+
+            $sql_insert = "INSERT INTO `pedidos_detalle`(`id_pedido`, `id_material`, `cantidad`, `fecha_necesidad`, `id_unidad_medida`) VALUES (?,?,?,?,?)";
+            $q_insert = $pdo->prepare($sql_insert);
+            $q_insert->execute([$id, $_POST['id_material'], $_POST['cantidad'], $_POST['fecha_necesidad'], $data_um['id_unidad_medida']]);
+            
+            $sql_log = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha agregado un nuevo item a un pedido','Pedidos','verPedido.php?id=$id')";
+            $q_log = $pdo->prepare($sql_log);
+            $q_log->execute(array($_SESSION['user']['id']));
+            
+            Database::disconnect();
+            if (!empty($_POST['btn2'])) {
+                header("Location: listarPedidos.php");	
+            } else {
+                header("Location: itemsPedidoDirecto.php?id=".$id);	
+            }
+        } else {
+            header("Location: itemsPedidoDirecto.php?id=".$id."&error=1");	
+        }
+      }
     }
     
 ?>
@@ -80,9 +98,17 @@
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
+                      <h5>
+                          <?=$ubicacion?>
+                          &nbsp;&nbsp;
+                          <?php if (!empty(tienePermiso(291))):?>
+                            <img src="img/icon_modificar.png" id="link_modificar_item" style="cursor: pointer;" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp;
+                            <a href="#" id="link_eliminar_item"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>
+                          <?php endif; ?>
+                      </h5>
                   </div>
-				  <form class="form theme-form" role="form" method="post" action="itemsPedidoDirecto.php?id=<?php echo $id?>">
+                  <form class="form theme-form" role="form" method="post" action="itemsPedidoDirecto.php?id=<?php echo $id?>">
+                    <input type="hidden" name="id_pedido_detalle" id="id_pedido_detalle" value="">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -97,27 +123,22 @@
 									  <th>Opciones</th>
 								  </tr>
 								</thead>
-								<tbody>
-								  <?php
-									$pdo = Database::connect();
-									$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, date_format(d.`fecha_necesidad`,'%d/%m/%y'),date_format(d.`fecha_necesidad`,'%y%m%d') FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material WHERE d.id_pedido = ".$_GET['id'];
-									
-									foreach ($pdo->query($sql) as $row) {
-										echo '<tr>';
-										echo '<td>'. $row[1] . '</td>';
-										echo '<td>'. $row[2] . '</td>';
-										echo '<td><span style="display: none;">'. $row[4] . '</span>'. $row[3] . '</td>';
-										echo '<td>';
-										if (!empty(tienePermiso(291))) {
-											echo '<a href="#" data-toggle="modal" data-target="#eliminarModal_'.$row[0].'"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Quitar" title="Quitar"></a>';
-											echo '&nbsp;&nbsp;';
-										}
-										echo '</td>';
-										echo '</tr>';
-									}
-								   Database::disconnect();
-								  ?>
-								</tbody>
+                <tbody>
+                  <?php
+                    $pdo = Database::connect();
+                    $sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y') AS fecha_formateada, d.fecha_necesidad AS fecha_necesidad_raw, d.id_material FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material WHERE d.id_pedido = ".$_GET['id'];
+                    
+                    foreach ($pdo->query($sql) as $row) {
+                        echo '<tr data-id="'.$row['id'].'" data-material-id="'.$row['id_material'].'" data-cantidad="'.$row['cantidad'].'" data-fecha="'.$row['fecha_necesidad_raw'].'">';
+                        echo '<td>'. $row['concepto'] . '</td>';
+                        echo '<td>'. $row['cantidad'] . '</td>';
+                        echo '<td><span style="display: none;">'. $row['fecha_necesidad_raw'] . '</span>'. $row['fecha_formateada'] . '</td>';
+                        echo '<td></td>';
+                        echo '</tr>';
+                    }
+                    Database::disconnect();
+                  ?>
+                </tbody>
 								<tfoot>
 								  <tr>
 									  <th>Concepto</th>
@@ -166,11 +187,14 @@
                       </div>
                     </div>
                     <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3">
-                        <button class="btn btn-success" type="submit" value="1" name="btn1">Crear y Agregar Otro</button>
-						<button class="btn btn-primary" type="submit" value="2" name="btn2">Crear y Volver al Listado</button>
-						<a onclick="document.location.href='listarPedidos.php'" class="btn btn-danger">Volver al Listado</a>
-                      </div>
+                        <div class="col-sm-9 offset-sm-3">
+                            <button class="btn btn-success" type="submit" value="1" name="btn1">Crear y Agregar Otro</button>
+                            <button class="btn btn-primary" type="submit" value="2" name="btn2">Crear y Volver al Listado</button>
+                            <button class="btn btn-success d-none" type="submit" name="btn_modificar">Modificar Item</button>
+                            <button class="btn btn-light d-none" type="button" id="btn_cancelar_modificacion">Cancelar</button>
+
+                            <a onclick="document.location.href='listarPedidos.php'" class="btn btn-danger">Volver al Listado</a>
+                        </div>
                     </div>
                   </form>
                 </div>
@@ -303,7 +327,62 @@
         } );
 		} );
 	} );
+    $(document).ready(function() {
     
+    var table = $('#dataTables-example667').DataTable();
+    
+    $('#dataTables-example667 tbody').on('click', 'tr', function () {
+        var fila = $(this);
+
+        if (fila.hasClass('selected')) {
+            fila.removeClass('selected');
+        } else {
+            table.$('tr.selected').removeClass('selected');
+            fila.addClass('selected');
+        }
+    });
+
+    $('#link_modificar_item').on('click', function() {
+      var filaSeleccionada = table.row('.selected').node();
+      if (!filaSeleccionada) {
+          alert("Por favor, seleccione un ítem para modificar.");
+          return;
+      }
+      var $fila = $(filaSeleccionada);
+      
+      $('#id_pedido_detalle').val($fila.data('id'));
+      $('#id_material').val($fila.data('material-id')).trigger('change');
+      $('input[name="cantidad"]').val($fila.data('cantidad'));
+      $('input[name="fecha_necesidad"]').val($fila.data('fecha'));
+
+      $('button[name="btn1"], button[name="btn2"]').addClass('d-none');
+      $('button[name="btn_modificar"], #btn_cancelar_modificacion').removeClass('d-none');
+      
+      document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+    });
+    
+    $('#btn_cancelar_modificacion').on('click', function() {
+      $('#id_pedido_detalle').val('');
+      $('#id_material').val('').trigger('change');
+      $('input[name="cantidad"]').val('');
+      $('input[name="fecha_necesidad"]').val('');
+      $('button[name="btn1"], button[name="btn2"]').removeClass('d-none');
+      $('button[name="btn_modificar"], #btn_cancelar_modificacion').addClass('d-none');
+    });
+
+    $('#link_eliminar_item').on('click', function(e) {
+      e.preventDefault();
+      var filaSeleccionada = table.row('.selected').node();
+      if (!filaSeleccionada) {
+          alert("Por favor, seleccione un ítem para eliminar.");
+          return;
+      }
+      var id_item = $(filaSeleccionada).data('id');
+      
+      $('#eliminarModal_' + id_item).modal('show');
+    });
+
+});
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>

@@ -397,7 +397,7 @@
                   <div class="card-header">
                     <h5>Información del Pedido</h5>
                   </div>
-                  <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
+                    <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
                     <div class="card-body"><?php
                       if (isset($error)){?>
                         <div class="alert alert-danger"><?=$error;?></div><?php
@@ -778,24 +778,41 @@
 
     function validarFormularioCompra() {
       var hayConceptoValido = false;
-      
+      var errorEncontrado = false;
+
       $('.cantidad-input').each(function() {
         var id = $(this).data('id');
         var cantidad = parseFloat($(this).val()) || 0;
         var precioUnitario = parseFloat($('input[name="precio_' + id + '"]').val()) || 0;
         var precioKg = parseFloat($('input[name="preciokg_' + id + '"]').val()) || 0;
         
-        if (cantidad > 0 && (precioUnitario > 0 || precioKg > 0)) {
+        if (cantidad > 0) {
+          
+          if (precioUnitario > 0 && precioKg > 0) {
+            alert('Error en el concepto "' + $(this).closest('tr').find('td:first').text().trim() + '": Por favor, ingrese solo el Precio Unitario o el Precio por Kg, no ambos.');
+            errorEncontrado = true;
+            return false;
+          }
+          
+          if (precioUnitario <= 0 && precioKg <= 0) {
+            alert('Error en el concepto "' + $(this).closest('tr').find('td:first').text().trim() + '": Debe ingresar un Precio Unitario o un Precio por Kg.');
+            errorEncontrado = true;
+            return false;
+          }
+          
           hayConceptoValido = true;
-          return false;
         }
       });
-      
-      if (!hayConceptoValido) {
-        alert('Debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Precio Unitario o Precio x Kg)');
+
+      if (errorEncontrado) {
         return false;
       }
-      
+
+      if (!hayConceptoValido) {
+        alert('Debe ingresar una cantidad mayor a 0 en al menos un concepto para crear la orden de compra.');
+        return false;
+      }
+
       return true;
     }
   </script>
@@ -810,19 +827,14 @@
         if (form && submitButton) {
             form.addEventListener('submit', function(event) {
                 
-                // Primero, ejecuta tu validación existente.
-                // Si la validación falla, detenemos todo aquí.
                 if (!validarFormularioCompra()) {
-                    event.preventDefault(); // Detiene el envío del formulario
-                    return; // No deshabilita el botón si la validación falla
+                    event.preventDefault();
+                    return;
                 }
 
-                // Si la validación es exitosa, deshabilita el botón
                 submitButton.disabled = true;
                 submitButton.innerHTML = 'Procesando... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
 
-                // Hay un pequeño "truco" para re-habilitar el botón si el usuario
-                // usa el botón "Atrás" del navegador y la página se carga desde el caché.
                 window.addEventListener('pageshow', function(event) {
                     if (event.persisted) {
                         submitButton.disabled = false;
@@ -830,9 +842,6 @@
                     }
                 });
 
-                // En un escenario ideal, si el envío AJAX fallara, se re-habilitaría el botón.
-                // Como este es un envío de formulario tradicional, no necesitamos un bloque 'catch'
-                // ya que la página recargará o redirigirá.
             });
         }
     });
