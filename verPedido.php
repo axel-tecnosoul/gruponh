@@ -19,6 +19,11 @@
     header("Location: listarPedidos.php");
   }
   
+  $headerText = '';
+  $proyectoDisplay = '';
+  $codigoObra = '';
+  $data = [];
+
   if (!empty($_POST)) {
     // insert data
     $pdo = Database::connect();
@@ -159,14 +164,79 @@
       Database::disconnect();
       $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";
     }
-  } else {
+  }
+
+  if (empty($data)) {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT pe.`id`, pe.`id_computo`, c.id_tarea, c.id_cuenta_solicitante, pe.`fecha`, pe.`lugar_entrega`, pe.`id_cuenta_recibe`,pe.aprobado FROM `pedidos` pe inner join computos c on c.id = pe.`id_computo` WHERE pe.id = ? ";
+    $sql = "SELECT
+              pe.id,
+              pe.id_computo,
+              pe.id_proyecto,
+              pe.fecha,
+              pe.lugar_entrega,
+              pe.id_cuenta_recibe,
+              pe.aprobado,
+              c.id_tarea,
+              c.id_cuenta_solicitante,
+              c.nro_revision AS computo_revision,
+              c.nro AS computo_numero,
+              COALESCE(pc.id, pd.id) AS proyecto_id,
+              COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre,
+              COALESCE(pc.nro, pd.nro) AS proyecto_nro,
+              COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio,
+              COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
+            FROM pedidos pe
+              LEFT JOIN computos c ON c.id = pe.id_computo
+              LEFT JOIN tareas t ON t.id = c.id_tarea
+              LEFT JOIN proyectos pc ON pc.id = t.id_proyecto
+              LEFT JOIN sitios sc ON sc.id = pc.id_sitio
+              LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto
+              LEFT JOIN sitios sd ON sd.id = pd.id_sitio
+            WHERE pe.id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
-    
+
+    if ($data) {
+      $codigoObraPartes = array_filter([
+        $data['nro_sitio'] ?? null,
+        $data['nro_subsitio'] ?? null,
+        $data['proyecto_nro'] ?? null
+      ], function ($valor) {
+        return $valor !== null && $valor !== '';
+      });
+      $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+      $esComputo = !empty($data['id_computo']);
+      $tipoPedido = $esComputo ? 'Pedido de Cómputo' : 'Pedido Directo';
+
+      $segmentosEncabezado = [$tipoPedido, 'N° ' . $data['id']];
+      if (!empty($codigoObra)) {
+        $segmentosEncabezado[] = 'Cód. Obra ' . $codigoObra;
+      }
+
+      if ($esComputo && $data['computo_revision'] !== null) {
+        $segmentosEncabezado[] = 'Rev. ' . $data['computo_revision'];
+      } elseif (!empty($data['proyecto_nombre'])) {
+        $segmentosEncabezado[] = 'Proyecto ' . $data['proyecto_nombre'];
+      }
+
+      $headerBase = implode(' · ', array_filter($segmentosEncabezado));
+      $headerText = function_exists('mb_strtoupper') ? mb_strtoupper($headerBase, 'UTF-8') : strtoupper($headerBase);
+      $proyectoDisplay = '';
+      if (!empty($data['proyecto_id'])) {
+        if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
+          $proyectoDisplay = $codigoObra . ': ' . $data['proyecto_nombre'];
+        } elseif (!empty($codigoObra)) {
+          $proyectoDisplay = $codigoObra;
+        } elseif (!empty($data['proyecto_nombre'])) {
+          $proyectoDisplay = $data['proyecto_nombre'];
+        }
+      }
+    } else {
+      $data = [];
+    }
+
     Database::disconnect();
   }
     
@@ -350,6 +420,21 @@
       width: 100% !important;
     }
     
+    /* Encabezado del pedido */
+    .pedido-summary {
+      background-color: #f3f4f6;
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .pedido-summary-text {
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #343a40;
+    }
+
     /* Controles de DataTable más compactos */
     .dataTables_length select,
     .dataTables_filter input {
@@ -394,8 +479,8 @@
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header">
-                    <h5>Información del Pedido</h5>
+                  <div class="card-header pedido-summary">
+                    <div class="pedido-summary-text"><?=!empty($headerText) ? $headerText : 'INFORMACIÓN DEL PEDIDO';?></div>
                   </div>
                     <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
                     <div class="card-body"><?php
@@ -413,16 +498,10 @@
                             <label class="col-sm-4 col-form-label">Proyecto</label>
                             <div class="col-sm-8">
                               <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled="disabled">
-                                <option value="">Seleccione...</option><?php
-                                $pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from computos c inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio where c.id = ".$data['id_computo'];
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
-                                  <option value='<?=$fila['id']?>' selected><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']?></option><?php
-                                }
-                                Database::disconnect();?>
+                                <option value="">Seleccione...</option>
+                                <?php if (!empty($data['proyecto_id']) && !empty($proyectoDisplay)): ?>
+                                  <option value="<?=$data['proyecto_id'];?>" selected><?=$proyectoDisplay;?></option>
+                                <?php endif; ?>
                               </select>
                             </div>
                           </div>
