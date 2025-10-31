@@ -169,31 +169,7 @@
   if (empty($data)) {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT
-              pe.id,
-              pe.id_computo,
-              pe.id_proyecto,
-              pe.fecha,
-              pe.lugar_entrega,
-              pe.id_cuenta_recibe,
-              pe.aprobado,
-              c.id_tarea,
-              c.id_cuenta_solicitante,
-              c.nro_revision AS computo_revision,
-              c.nro AS computo_numero,
-              COALESCE(pc.id, pd.id) AS proyecto_id,
-              COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre,
-              COALESCE(pc.nro, pd.nro) AS proyecto_nro,
-              COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio,
-              COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
-            FROM pedidos pe
-              LEFT JOIN computos c ON c.id = pe.id_computo
-              LEFT JOIN tareas t ON t.id = c.id_tarea
-              LEFT JOIN proyectos pc ON pc.id = t.id_proyecto
-              LEFT JOIN sitios sc ON sc.id = pc.id_sitio
-              LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto
-              LEFT JOIN sitios sd ON sd.id = pd.id_sitio
-            WHERE pe.id = ?";
+    $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe WHERE pe.id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -207,15 +183,18 @@
         return $valor !== null && $valor !== '';
       });
       $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
-      $esComputo = !empty($data['id_computo']);
-      $tipoPedido = $esComputo ? 'Pedido de Cómputo' : 'Pedido Directo';
+      $tieneComputo = !empty($data['id_computo']);
+      $tipoPedido = "Pedido Directo";
+      if($tieneComputo){
+        $tipoPedido = 'Pedido de Cómputo';
+      }
 
       $segmentosEncabezado = [$tipoPedido, 'N° ' . $data['id']];
       if (!empty($codigoObra)) {
         $segmentosEncabezado[] = 'Cód. Obra ' . $codigoObra;
       }
 
-      if ($esComputo && $data['computo_revision'] !== null) {
+      if ($tieneComputo && $data['computo_revision'] !== null) {
         $segmentosEncabezado[] = 'Rev. ' . $data['computo_revision'];
       } elseif (!empty($data['proyecto_nombre'])) {
         $segmentosEncabezado[] = 'Proyecto ' . $data['proyecto_nombre'];
@@ -245,220 +224,8 @@
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
-	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
-  <style>
-    .form-control:disabled, 
-    .form-control[readonly] {
-      background-color: #e9ecef;
-      opacity: 1;
-    }
-    
-    .form-group {
-      margin-bottom: 1rem;
-    }
-    
-    .card-body {
-      padding: 1.5rem;
-    }
-    
-    /* Forzar alineación entre thead y tbody */
-    #dataTables-example667 {
-      width: 100% !important;
-      font-size: 0.75rem;
-      table-layout: fixed !important;
-      border-collapse: collapse !important;
-    }
-    
-    #dataTables-example667 th,
-    #dataTables-example667 td {
-      padding: 5px 4px !important;
-      vertical-align: middle;
-      font-size: 0.75rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      box-sizing: border-box !important;
-    }
-    
-    /* Headers sin wrap */
-    #dataTables-example667 thead th {
-      white-space: nowrap !important;
-      padding: 6px 4px !important;
-      font-size: 0.7rem;
-      font-weight: 600;
-      line-height: 1.2;
-      background-color: #f8f9fa;
-    }
-    
-    /* Anchos EXACTOS para cada columna */
-    #dataTables-example667 th:nth-child(1),
-    #dataTables-example667 td:nth-child(1) {
-      width: 180px !important;
-      min-width: 180px !important;
-      max-width: 180px !important;
-      white-space: normal;
-      word-wrap: break-word;
-    }
-    
-    #dataTables-example667 th:nth-child(2),
-    #dataTables-example667 td:nth-child(2) {
-      width: 85px !important;
-      min-width: 85px !important;
-      max-width: 85px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(3),
-    #dataTables-example667 td:nth-child(3) {
-      width: 85px !important;
-      min-width: 85px !important;
-      max-width: 85px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(4),
-    #dataTables-example667 td:nth-child(4) {
-      width: 90px !important;
-      min-width: 90px !important;
-      max-width: 90px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(5),
-    #dataTables-example667 td:nth-child(5) {
-      width: 90px !important;
-      min-width: 90px !important;
-      max-width: 90px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(6),
-    #dataTables-example667 td:nth-child(6) {
-      width: 60px !important;
-      min-width: 60px !important;
-      max-width: 60px !important;
-      text-align: center;
-    }
-    
-    #dataTables-example667 th:nth-child(7),
-    #dataTables-example667 td:nth-child(7) {
-      width: 65px !important;
-      min-width: 65px !important;
-      max-width: 65px !important;
-      text-align: center;
-    }
-    
-    #dataTables-example667 th:nth-child(8),
-    #dataTables-example667 td:nth-child(8) {
-      width: 80px !important;
-      min-width: 80px !important;
-      max-width: 80px !important;
-      text-align: center;
-    }
-    
-    #dataTables-example667 th:nth-child(9),
-    #dataTables-example667 td:nth-child(9) {
-      width: 75px !important;
-      min-width: 75px !important;
-      max-width: 75px !important;
-      text-align: center;
-    }
-    
-    #dataTables-example667 th:nth-child(10),
-    #dataTables-example667 td:nth-child(10) {
-      width: 95px !important;
-      min-width: 95px !important;
-      max-width: 95px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(11),
-    #dataTables-example667 td:nth-child(11) {
-      width: 80px !important;
-      min-width: 80px !important;
-      max-width: 80px !important;
-    }
-    
-    #dataTables-example667 th:nth-child(12),
-    #dataTables-example667 td:nth-child(12) {
-      width: 80px !important;
-      min-width: 80px !important;
-      max-width: 80px !important;
-    }
-    
-    /* Resto de celdas sin wrap */
-    #dataTables-example667 tbody td {
-      white-space: nowrap;
-    }
-    
-    /* Excepto Concepto */
-    #dataTables-example667 tbody td:nth-child(1) {
-      white-space: normal;
-    }
-    
-    /* Inputs compactos */
-    #dataTables-example667 input.form-control {
-      font-size: 0.75rem;
-      padding: 0.25rem 0.35rem;
-      height: 28px;
-      width: 100% !important;
-      max-width: 100% !important;
-      box-sizing: border-box !important;
-    }
-    
-    /* Importante: Eliminar scrolls de DataTables */
-    .dataTables_wrapper .dataTables_scrollHead,
-    .dataTables_wrapper .dataTables_scrollBody {
-      overflow: visible !important;
-    }
-    
-    .dataTables_wrapper {
-      overflow-x: auto;
-    }
-    
-    .dataTables_scrollBody {
-      overflow: visible !important;
-    }
-    
-    .dataTables_scrollHead table,
-    .dataTables_scrollBody table {
-      width: 100% !important;
-    }
-    
-    /* Encabezado del pedido */
-    .pedido-summary {
-      background-color: #f3f4f6;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #dee2e6;
-    }
-
-    .pedido-summary-text {
-      font-weight: 600;
-      font-size: 1rem;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      color: #343a40;
-    }
-
-    /* Controles de DataTable más compactos */
-    .dataTables_length select,
-    .dataTables_filter input {
-      font-size: 0.8rem;
-      padding: 0.25rem 0.5rem;
-    }
-    
-    .dataTables_info,
-    .dataTables_length,
-    .dataTables_filter {
-      font-size: 0.8rem;
-    }
-    
-    h6 {
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
-    
-    /* Reducir espacio en paginación */
-    .dataTables_wrapper .dataTables_paginate .paginate_button {
-      padding: 0.25rem 0.5rem;
-      font-size: 0.8rem;
-    }
-  </style>
+    <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
   </head>
   <body>
     <!-- Loader ends-->
@@ -472,7 +239,7 @@
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Gestión de Pedido y Nueva Orden de Compra";
+          $ubicacion="Ver Pedido ".$tipoPedido;
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -480,7 +247,8 @@
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header pedido-summary">
-                    <div class="pedido-summary-text"><?=!empty($headerText) ? $headerText : 'INFORMACIÓN DEL PEDIDO';?></div>
+                    <!-- <div class="pedido-summary-text"><?=!empty($headerText) ? $headerText : 'INFORMACIÓN DEL PEDIDO';?></div> -->
+                    <h5><?=$ubicacion." N° ".$data["id"]?></h5>
                   </div>
                     <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
                     <div class="card-body"><?php
@@ -488,173 +256,32 @@
                         <div class="alert alert-danger"><?=$error;?></div><?php
                       }?>
                       <div class="row">
-                        <div class="col-md-6">
-                          <h6 class="mb-3">Datos del Pedido</h6>
+                        <div class="col-md-12">
+                          <h6 class="mb-3 font-weight-bold">Datos del Pedido</h6>
                           <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Fecha Pedido</label>
-                            <div class="col-sm-8"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$data['fecha'];?>" class="form-control" disabled></div>
+                            <label class="col-sm-2 col-form-label font-weight-bold">Fecha Pedido</label>
+                            <div class="col-sm-4"><?=$data['fecha'];?></div>
+                            <label class="col-sm-2 col-form-label font-weight-bold">Proyecto</label>
+                            <div class="col-sm-4"><?=$proyectoDisplay;?></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Proyecto</label>
-                            <div class="col-sm-8">
-                              <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" disabled="disabled">
-                                <option value="">Seleccione...</option>
-                                <?php if (!empty($data['proyecto_id']) && !empty($proyectoDisplay)): ?>
-                                  <option value="<?=$data['proyecto_id'];?>" selected><?=$proyectoDisplay;?></option>
-                                <?php endif; ?>
-                              </select>
-                            </div>
+                            <label class="col-sm-2 col-form-label font-weight-bold">Lugar de Entrega</label>
+                            <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
+                            <label class="col-sm-2 col-form-label font-weight-bold">Recibe</label>
+                            <div class="col-sm-4"><?=$data['cuenta_recibe']?></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Solicitante</label>
-                            <div class="col-sm-8">
-                              <select name="id_cuenta_solicitante" id="id_cuenta_solicitante" class="js-example-basic-single col-sm-12" disabled>
-                                <option value="">Seleccione...</option><?php
-                                $pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  if ($fila['id'] == $data['id_cuenta_solicitante']) {
-                                      echo " selected ";
-                                    }	
-                                  echo ">".$fila['nombre']."</option>";
-                                }
-                                Database::disconnect();?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Lugar de Entrega</label>
-                            <div class="col-sm-8"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" value="<?=$data['lugar_entrega'];?>" disabled></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Recibe</label>
-                            <div class="col-sm-8">
-                              <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12">
-                                <option value="">Seleccione...</option><?php
-                                $pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  if ($fila['id'] == $data['id_cuenta_recibe']) {
-                                      echo " selected ";
-                                    }
-                                  echo ">".$fila['nombre']."</option>";
-                                }
-                                Database::disconnect();?>
-                              </select>
-                            </div>
+                            <label class="col-sm-2 col-form-label font-weight-bold">Solicitante</label>
+                            <div class="col-sm-4"><?=$data['cuenta_solicitante']?></div>
                           </div>
                         </div>
-                        
-                        <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                        <div class="col-md-6">
-                          <h6 class="mb-3">Datos de la Orden de Compra</h6>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Proveedor(*)</label>
-                            <div class="col-sm-8">
-                              <select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required="required">
-                                <option value="">Seleccione...</option>
-                                <?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
-                                  $q = $pdo->prepare($sqlZon);
-                                  $q->execute();
-                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                    echo "<option value='".$fila['id']."'";
-                                    echo ">".$fila['nombre']."</option>";
-                                  }
-                                  Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-8"><input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?=date('Y-m-d');?>" class="form-control" required="required"></div>
-                          </div>
-                          <?php
-                            $pdo = Database::connect();
-                            $fechaSolicitada = "";
-                            $sql = "SELECT fecha FROM `pedidos` WHERE id = ".$_GET['id'];
-                            $q = $pdo->prepare($sql);
-                            $q->execute();
-                            $dataFecha = $q->fetch(PDO::FETCH_ASSOC);
-                            $fechaSolicitada = $dataFecha['fecha'];
-                            Database::disconnect();
-                          ?>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Fecha Entrega</label>
-                            <div class="col-sm-8"><input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$fechaSolicitada; ?>" class="form-control"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Moneda(*)</label>
-                            <div class="col-sm-8">
-                              <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" require>
-                                <option value="">Seleccione...</option>
-                                <?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `moneda` FROM `monedas` WHERE 1";
-                                  $q = $pdo->prepare($sqlZon);
-                                  $q->execute();
-                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                    echo "<option value='".$fila['id']."'";
-                                    echo ">".$fila['moneda']."</option>";
-                                  }
-                                  Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Tipo de Cambio</label>
-                            <div class="col-sm-8"><input name="tipo_cambio_dia" type="number" step="0.01" class="form-control"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Descuento</label>
-                            <div class="col-sm-8"><input name="descuento" type="number" step="0.01" class="form-control"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
-                            <div class="col-sm-8">
-                              <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12" required>
-                                <option value="">Seleccione...</option>
-                                <?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `forma_pago` FROM `formas_pago` WHERE 1";
-                                  $q = $pdo->prepare($sqlZon);
-                                  $q->execute();
-                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                    echo "<option value='".$fila['id']."'";
-                                    echo ">".$fila['forma_pago']."</option>";
-                                  }
-                                  Database::disconnect();
-                                ?>
-                              </select>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-4 col-form-label">Comentarios</label>
-                            <div class="col-sm-8"><textarea name="comentarios" class="form-control" rows="2"></textarea></div>
-                          </div>
-                        </div>
-                        <?php endif; ?>
                       </div>
                       
                       <hr class="mt-4 mb-4">
                       
                       <div class="row">
                         <div class="col-sm-12">
-                          <h6 class="mb-3">Detalle de Conceptos</h6>
+                          <h6 class="mb-3 font-weight-bold">Detalle de Conceptos</h6>
                           <div class="table-responsive">
                           <table class="display" id="dataTables-example667" style="width:100%">
                             <thead>
