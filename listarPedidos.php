@@ -616,17 +616,10 @@ if (isset($_POST['id_estado'])) {
             tipo: tipo
           };
 
-          $("#link_gestionar_pedido")
-            .data("estadoId", estadoId)
-            .data("tipo", tipo)
-            .data("pedidoId", id_pedido);
+          $("#link_gestionar_pedido").data("estadoId", estadoId).data("tipo", tipo).data("pedidoId", id_pedido);
 
           if (estado === 'Aprobado' || estado === 'Gestionando' || ['3','4'].includes(estadoId)) {
-            if (tipo === 'Directo') {
-              $("#link_gestionar_pedido").attr("href", "gestionarPedidoDirecto.php?id=" + id_pedido);
-            } else {
-              $("#link_gestionar_pedido").attr("href", "gestionarPedido.php?id=" + id_pedido);
-            }
+            $("#link_gestionar_pedido").attr("href", "gestionarPedido.php?id=" + id_pedido);
           } else {
             $("#link_gestionar_pedido").attr("href", "#");
           }

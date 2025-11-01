@@ -19,7 +19,6 @@
     header("Location: listarPedidos.php");
   }
   
-  $headerText = '';
   $proyectoDisplay = '';
   $codigoObra = '';
   $data = [];
@@ -169,7 +168,7 @@
   if (empty($data)) {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe WHERE pe.id = ?";
+    $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -183,25 +182,13 @@
         return $valor !== null && $valor !== '';
       });
       $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+
       $tieneComputo = !empty($data['id_computo']);
       $tipoPedido = "Pedido Directo";
       if($tieneComputo){
         $tipoPedido = 'Pedido de Cómputo';
       }
 
-      $segmentosEncabezado = [$tipoPedido, 'N° ' . $data['id']];
-      if (!empty($codigoObra)) {
-        $segmentosEncabezado[] = 'Cód. Obra ' . $codigoObra;
-      }
-
-      if ($tieneComputo && $data['computo_revision'] !== null) {
-        $segmentosEncabezado[] = 'Rev. ' . $data['computo_revision'];
-      } elseif (!empty($data['proyecto_nombre'])) {
-        $segmentosEncabezado[] = 'Proyecto ' . $data['proyecto_nombre'];
-      }
-
-      $headerBase = implode(' · ', array_filter($segmentosEncabezado));
-      $headerText = function_exists('mb_strtoupper') ? mb_strtoupper($headerBase, 'UTF-8') : strtoupper($headerBase);
       $proyectoDisplay = '';
       if (!empty($data['proyecto_id'])) {
         if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
@@ -248,9 +235,12 @@
                 <div class="card">
                   <div class="card-header pedido-summary">
                     <!-- <div class="pedido-summary-text"><?=!empty($headerText) ? $headerText : 'INFORMACIÓN DEL PEDIDO';?></div> -->
-                    <h5><?=$ubicacion." N° ".$data["id"]?></h5>
+                    <h5>
+                      <?=$ubicacion." N° ".$data["id"]?>
+                      <a href="imprimirPedido.php?id=<?=$data['id'];?>" target="_blank"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir Pedido" title="Imprimir Pedido"></a>
+                    </h5>
                   </div>
-                    <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
+                  <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
                     <div class="card-body"><?php
                       if (isset($error)){?>
                         <div class="alert alert-danger"><?=$error;?></div><?php
@@ -271,6 +261,8 @@
                             <div class="col-sm-4"><?=$data['cuenta_recibe']?></div>
                           </div>
                           <div class="form-group row">
+                            <label class="col-sm-2 col-form-label font-weight-bold">Estado</label>
+                            <div class="col-sm-4"><?=$data['estado_pedido'];?></div>
                             <label class="col-sm-2 col-form-label font-weight-bold">Solicitante</label>
                             <div class="col-sm-4"><?=$data['cuenta_solicitante']?></div>
                           </div>
@@ -294,86 +286,63 @@
                                 <th>Stock</th>
                                 <th>Reserv.</th>
                                 <th>Comprado</th>
-                                <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                                <th>Cant. Solic.</th>
-                                <th>Cant. Pedir</th>
-                                <th>P. Unit.</th>
-                                <th>P. x Kg</th>
-                                <?php endif; ?>
                               </tr>
                             </thead>
-                            <tbody>
-                              <?php
+                            <tbody><?php
                               $pdo = Database::connect();
-                              $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y'), u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$_GET['id'];
+                              $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$_GET['id'];
                               
                               foreach ($pdo->query($sql) as $row) {
-                                $sql2 = "SELECT d.precio,date_format(c.fecha_emision,'%d/%m/%y') fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
+                                $cantidadDisponible = $row["cantidad"] - $row["reservado"] - $row["comprado"];
+
+                                $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') AS fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
                                 $q2 = $pdo->prepare($sql2);
                                 $q2->execute();
                                 $data2 = $q2->fetch(PDO::FETCH_ASSOC);
-                                
-                                $cantidadDisponible = $row[2] - $row[6] - $row[7];
-                                
-                                echo '<tr>';
-                                echo '<td>'. $row[1] . '</td>';
-                                echo '<td>'. $row[3] . '</td>';
+
+                                $fecha_emision="";
                                 if (!empty($data2['fecha_emision'])) {
-                                  echo '<td>'. $data2['fecha_emision'] . '</td>';	
-                                } else {
-                                  echo '<td>&nbsp;</td>';	
+                                  $fecha_emision = $data2['fecha_emision'];
                                 }
+                                
+                                $precio = "";
                                 if (!empty($data2['precio'])) {
-                                  echo '<td>$'. number_format($data2['precio'],2) . '</td>';	
-                                } else {
-                                  echo '<td>&nbsp;</td>';	
+                                  $precio = "$".number_format($data2['precio'],2);
                                 }
-                                echo '<td>'. $row[2] .' '.$row[4]. '</td>';		
                                 
                                 $sql = "SELECT SUM(id.saldo) AS disponible FROM ingresos_detalle id WHERE id_material = ? ";
                                 $q = $pdo->prepare($sql);
                                 $q->execute([$row[5]]);
                                 $data3 = $q->fetch(PDO::FETCH_ASSOC);
                                 
+                                $disponible=0;
                                 if (empty($data3['disponible'])) {
-                                  echo '<td>0</td>';	
-                                } else {
-                                  echo '<td>'.$data3['disponible'].'</td>';	
-                                }
-                                
-                                echo '<td>'. $row[6] . '</td>';
-                                echo '<td>'. $row[7] . '</td>';
-                                
-                                if ($data['aprobado']==1 && tienePermiso(298)) {
-                                  echo '<td>'. $cantidadDisponible . '</td>';
-                                  echo '<td><input name="cantidad_'.$row[0].'" type="number" step="0.01" min="0" max="'.$cantidadDisponible.'" class="form-control cantidad-input" value="'.$cantidadDisponible.'" data-id="'.$row[0].'"></td>';
-                                  echo '<td><input name="precio_'.$row[0].'" type="number" step="0.01" class="form-control precio-input" value="0" data-id="'.$row[0].'"></td>';
-                                  echo '<td><input name="preciokg_'.$row[0].'" type="number" step="0.01" class="form-control preciokg-input" value="0" data-id="'.$row[0].'"></td>';
-                                }
-                                
-                                echo '</tr>';
+                                }?>
+
+                                <tr>
+                                  <td><?=$row["concepto"]?></td>
+                                  <td><?=$row["fecha_necesidad"]?></td>
+                                  <td><?=$fecha_emision?></td>
+                                  <td><?=$precio?></td>
+                                  <td><?=$row["cantidad"] .' '.$row["unidad_medida"]?></td>
+                                  <td><?=$disponible?></td>
+                                  <td><?=$row["reservado"]?></td>
+                                  <td><?=$row["comprado"]?></td>
+                                </tr><?php
                               }
-                              Database::disconnect();
-                              ?>
+                              Database::disconnect();?>
                             </tbody>
                           </table>
                           </div>
-                          <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                          <div class="mt-3">
-                            <i><strong>NOTA:</strong> Si ingresa Precio x KG <> 0, el precio se sobreescribirá multiplicando el Precio x KG * Peso del Concepto.</i><br/>
-                            <i>Para guardar una compra, debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Unitario o x Kg).</i>
-                          </div>
-                          <?php endif; ?>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
-                      <div class="col-sm-12 text-center">
-                        <a class="btn btn-primary" target="_blank" href="imprimirPedido.php?id=<?=$data['id']; ?>">Imprimir Pedido</a>
-                        <?php if ($data['aprobado']==1 && tienePermiso(298)): ?>
-                        <button class="btn btn-success" id="submit-btn-compra" type="submit" data-original-text="Crear Orden de Compra">Crear Orden de Compra</button>
-                        <?php endif; ?>
-                        <a href="#" onclick="document.location.href='listarPedidos.php'" class="btn btn-light">Volver</a>
+                      <div class="col-sm-12 text-center"><?php
+                        if ($data['id_estado'] == 1 && tienePermiso(298)){?>
+                          <button type="button" class="btn btn-primary mt-2 mt-sm-0" id="btnEnviarAprobacion">Enviar a aprobación</button><?php
+                        }?>
+                        <a href='listarPedidos.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -384,9 +353,31 @@
           <!-- Container-fluid Ends-->
         </div>
         <!-- footer start-->
-    <?php include("footer.php"); ?>
+        <?php include("footer.php"); ?>
       </div>
     </div>
+
+    <!-- Modal Enviar a aprobación -->
+    <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirmar envío a aprobación</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>¿Desea enviar este pedido a aprobación?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmEnviarAprobacion">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -399,13 +390,8 @@
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
     <!-- Plugins JS start-->
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
@@ -435,122 +421,94 @@
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
-  <script>
-    $(document).ready(function() {
-      $('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        scrollX: false,
-        scrollCollapse: false,
-        autoWidth: false,
-        paging: true,
-        pageLength: 10,
-        columnDefs: [
-          { width: "180px", targets: 0, orderable: true },
-          { width: "85px", targets: 1, orderable: true },
-          { width: "85px", targets: 2, orderable: true },
-          { width: "90px", targets: 3, orderable: true },
-          { width: "90px", targets: 4, orderable: true },
-          { width: "60px", targets: 5, orderable: true, className: "text-center" },
-          { width: "65px", targets: 6, orderable: true, className: "text-center" },
-          { width: "80px", targets: 7, orderable: true, className: "text-center" },
-          { width: "75px", targets: 8, orderable: true, className: "text-center" },
-          { width: "95px", targets: 9, orderable: false },
-          { width: "80px", targets: 10, orderable: false },
-          { width: "80px", targets: 11, orderable: false }
-        ],
-        language: {
-          "decimal": "",
-          "emptyTable": "No hay información",
-          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-          "infoFiltered": "(Filtrado de _MAX_ total registros)",
-          "infoPostFix": "",
-          "thousands": ",",
-          "lengthMenu": "Mostrar _MENU_ Registros",
-          "loadingRecords": "Cargando...",
-          "processing": "Procesando...",
-          "search": "Buscar:",
-          "zeroRecords": "No hay resultados",
-          "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-          }
-        }
-      });
-    });
-
-    function validarFormularioCompra() {
-      var hayConceptoValido = false;
-      var errorEncontrado = false;
-
-      $('.cantidad-input').each(function() {
-        var id = $(this).data('id');
-        var cantidad = parseFloat($(this).val()) || 0;
-        var precioUnitario = parseFloat($('input[name="precio_' + id + '"]').val()) || 0;
-        var precioKg = parseFloat($('input[name="preciokg_' + id + '"]').val()) || 0;
+    <script>
+      $(document).ready(function() {
         
-        if (cantidad > 0) {
-          
-          if (precioUnitario > 0 && precioKg > 0) {
-            alert('Error en el concepto "' + $(this).closest('tr').find('td:first').text().trim() + '": Por favor, ingrese solo el Precio Unitario o el Precio por Kg, no ambos.');
-            errorEncontrado = true;
-            return false;
+        $('#dataTables-example667').DataTable({
+          stateSave: false,
+          responsive: false,
+          scrollX: false,
+          scrollCollapse: false,
+          autoWidth: false,
+          paging: true,
+          pageLength: 10,
+          columnDefs: [
+            { width: "180px", targets: 0, orderable: true },
+            { width: "85px", targets: 1, orderable: true },
+            { width: "85px", targets: 2, orderable: true },
+            { width: "90px", targets: 3, orderable: true },
+            { width: "90px", targets: 4, orderable: true },
+            { width: "60px", targets: 5, orderable: true, className: "text-center" },
+            { width: "65px", targets: 6, orderable: true, className: "text-center" },
+            { width: "80px", targets: 7, orderable: true, className: "text-center" },
+          ],
+          language: {
+            "decimal": "",
+            "emptyTable": "No hay información",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+            "infoFiltered": "(Filtrado de _MAX_ total registros)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "Mostrar _MENU_ Registros",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar:",
+            "zeroRecords": "No hay resultados",
+            "paginate": {
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
+            }
           }
-          
-          if (precioUnitario <= 0 && precioKg <= 0) {
-            alert('Error en el concepto "' + $(this).closest('tr').find('td:first').text().trim() + '": Debe ingresar un Precio Unitario o un Precio por Kg.');
-            errorEncontrado = true;
-            return false;
-          }
-          
-          hayConceptoValido = true;
+        });
+
+        var pedidoId = <?=intval($data['id']);?>;
+
+        $('#btnEnviarAprobacion').on('click', function () {
+          $('#estado-error').addClass('d-none');
+          $('#modalEnviarAprobacion').modal('show');
+        });
+
+        $('#modalEnviarAprobacion').on('hidden.bs.modal', function () {
+          $('#confirmEnviarAprobacion').prop('disabled', false);
+        });
+
+        $('#confirmEnviarAprobacion').on('click', function () {
+          var $button = $(this);
+          $button.prop('disabled', true);
+          $.ajax({
+            type: 'POST',
+            url: 'modificarEstadoPedido.php',
+            data: { idEstado: 2, idPosicion: pedidoId },
+            success: function (response) {
+              var trimmed = $.trim(response || '');
+              var pattern = new RegExp('^2\\s*-\\s*' + pedidoId + '$');
+              if (pattern.test(trimmed)) {
+                window.location.href = 'listarPedidos.php';
+              } else {
+                mostrarErrorEstado('No se pudo actualizar el estado. Respuesta inesperada del servidor.');
+              }
+            },
+            error: function () {
+              mostrarErrorEstado('No se pudo actualizar el estado. Intente nuevamente.');
+            },
+            complete: function () {
+              $button.prop('disabled', false);
+            }
+          });
+        });
+
+        function mostrarErrorEstado(mensaje) {
+          $('#modalEnviarAprobacion').modal('hide');
+          var $error = $('#estado-error');
+          $error.text(mensaje).removeClass('d-none');
         }
       });
 
-      if (errorEncontrado) {
-        return false;
-      }
-
-      if (!hayConceptoValido) {
-        alert('Debe ingresar una cantidad mayor a 0 en al menos un concepto para crear la orden de compra.');
-        return false;
-      }
-
-      return true;
-    }
-  </script>
-  <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-  <!-- Plugin used-->
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('form-unificado');
-        const submitButton = document.getElementById('submit-btn-compra');
-
-        if (form && submitButton) {
-            form.addEventListener('submit', function(event) {
-                
-                if (!validarFormularioCompra()) {
-                    event.preventDefault();
-                    return;
-                }
-
-                submitButton.disabled = true;
-                submitButton.innerHTML = 'Procesando... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-
-                window.addEventListener('pageshow', function(event) {
-                    if (event.persisted) {
-                        submitButton.disabled = false;
-                        submitButton.innerHTML = submitButton.getAttribute('data-original-text');
-                    }
-                });
-
-            });
-        }
-    });
     </script>
+    <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
+    <!-- Plugin used-->
   </body>
 </html>
