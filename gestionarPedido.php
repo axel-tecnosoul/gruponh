@@ -38,18 +38,18 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
+  $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, comentarios, id_moneda, tipo_cambio_dia,comentarios_revision, descuento) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
   $q = $pdo->prepare($sql);
   $q->execute([$id,$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
   
   $idCompra = $pdo->lastInsertId();
   
   $nroOC = $id .'/'. $idCompra;
-  $sql = "update `compras` set `nro_oc` = ? where id = ?";
-  $q = $pdo->prepare($sql);           
+  $sql = "UPDATE compras SET nro_oc = ? where id = ?";
+  $q = $pdo->prepare($sql);
   $q->execute([$nroOC,$idCompra]);
   
-  $sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.`cantidad`, d.`id_unidad_medida`,m.peso_metro FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
+  $sql = "SELECT d.id, d.id_material, m.concepto, d.cantidad, d.id_unidad_medida,m.peso_metro FROM pedidos_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   
@@ -68,13 +68,13 @@ if (!empty($_POST)) {
           $precioUnitario = $precioKg * $row['peso_metro'];
       }
       
-      $sql2 = "INSERT INTO `compras_detalle`(`id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `precio_kg`) VALUES (?,?,?,?,?,?)";
-      $q2 = $pdo->prepare($sql2);           
+      $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg) VALUES (?,?,?,?,?,?)";
+      $q2 = $pdo->prepare($sql2);
       $q2->execute([$idCompra,$row['id_material'],$cantidadPedir,$row['id_unidad_medida'],$precioUnitario,$precioKg]);
       $subtotal = $cantidadPedir*$precioUnitario;
       $total += $subtotal;
-      
-      $sql3 = "UPDATE `pedidos_detalle` SET `comprado`= ? WHERE `id_pedido`=? AND `id_material`=?";
+
+      $sql3 = "UPDATE pedidos_detalle SET comprado= ? WHERE id_pedido=? AND id_material=?";
       $q3 = $pdo->prepare($sql3);
       $q3->execute([$cantidadPedir,$id,$row['id_material']]);
       
@@ -84,7 +84,7 @@ if (!empty($_POST)) {
       $data4 = $q4->fetch(PDO::FETCH_ASSOC);
       
       if ($data4) {
-        $sql5 = "UPDATE `computos_detalle` set `comprado` = ? WHERE id = ?";
+        $sql5 = "UPDATE computos_detalle set comprado = ? WHERE id = ?";
         $q5 = $pdo->prepare($sql5);
         $q5->execute([$cantidadPedir,$data4['id']]);
       }
@@ -93,12 +93,12 @@ if (!empty($_POST)) {
   
   if ($hasValidItem) {
     $iva = $total*0.21;
-    
-    $sql = "update `compras` set total = ?, iva = ? where id = ?";
-    $q = $pdo->prepare($sql);           
+
+    $sql = "UPDATE compras SET total = ?, iva = ? where id = ?";
+    $q = $pdo->prepare($sql);
     $q->execute([$total,$iva,$idCompra]);
     
-    $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
 
@@ -133,10 +133,10 @@ if (!empty($_POST)) {
     $data = $q->fetch(PDO::FETCH_ASSOC);
     $smtpFromName = $data['valor'];  
     
-    $sql = " select t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
+    $sql = "SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
     foreach ($pdo->query($sql) as $row) {
-      
-      $sql2 = "INSERT INTO `notificaciones`(`id_tipo_notificacion`, `id_usuario`, `fecha_hora`, `leida`,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
+
+      $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
       $q2 = $pdo->prepare($sql2);
       $q2->execute([$row[0],'ID Orden de Compra: #'.$idCompra,$idCompra]);
       
@@ -176,7 +176,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT pe.id, pe.id_computo, c.id_tarea, c.id_cuenta_solicitante, pe.fecha, pe.lugar_entrega, pe.id_cuenta_recibe,pe.aprobado FROM pedidos pe LEFT join computos c on c.id = pe.id_computo WHERE pe.id = ? ";
+  
   $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha_formatted, pe.fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
@@ -580,7 +580,7 @@ if (!empty($_POST)) {
                                   <option value="">Seleccione...</option><?php
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  $sqlZon = "SELECT `id`, `moneda` FROM `monedas` WHERE 1";
+                                  $sqlZon = "SELECT id, moneda FROM monedas WHERE 1";
                                   $q = $pdo->prepare($sqlZon);
                                   $q->execute();
                                   while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
@@ -628,9 +628,7 @@ if (!empty($_POST)) {
                           </div><?php
                         }?>
                       </div>
-                      
                       <hr class="mt-4 mb-4">
-                      
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3">Detalle de Conceptos</h6>
@@ -656,11 +654,11 @@ if (!empty($_POST)) {
                               </thead>
                               <tbody><?php
                                 $pdo = Database::connect();
-                                $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y'), u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$id;
+                                $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$id;
                                 foreach ($pdo->query($sql) as $row) {
                                   $id_material=(int)$row["id_material"];
 
-                                  $cantidadDisponible = $row["cantidad"] - $row["reservado"] - $row["comprado"];
+                                  $cantidadComparar = $row["cantidad"] - $row["reservado"] - $row["comprado"];
 
                                   $sql2 = "SELECT d.precio,date_format(c.fecha_emision,'%d/%m/%y') fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = $id_material ORDER BY c.id DESC LIMIT 0,1 ";
                                   $q2 = $pdo->prepare($sql2);
@@ -699,15 +697,21 @@ if (!empty($_POST)) {
                                     <td><?=$row["reservado"]?></td>
                                     <td><?=$row["comprado"]?></td><?php
                                     if ($data['aprobado']==1 && tienePermiso(298)) {?>
-                                      <td><?=$cantidadDisponible?></td>
-                                      <td>
-                                        <input name="cantidad_<?=$row["id"]?>" type="number" step="0.01" min="0" max="<?=$cantidadDisponible?>" class="form-control cantidad-input" value="<?=$cantidadDisponible?>">
+                                      <td><?=$cantidadComparar?></td>
+                                      <td><?php
+                                        if ($cantidadComparar > 0) {?>
+                                          <input name="cantidad_<?=$row["id"]?>" type="number" step="0.01" min="0" max="<?=$cantidadComparar?>" class="form-control cantidad-input" value="<?=$cantidadComparar?>"><?php
+                                        }?>
                                       </td>
-                                      <td>
-                                        <input name="precio_<?=$row["id"]?>" type="number" step="0.01" class="form-control precio-input" value="0">
+                                      <td><?php
+                                        if ($cantidadComparar > 0) {?>
+                                          <input name="precio_<?=$row["id"]?>" type="number" step="0.01" class="form-control precio-input" value="0"><?php
+                                        }?>
                                       </td>
-                                      <td>
-                                        <input name="preciokg_<?=$row["id"]?>" type="number" step="0.01" class="form-control preciokg-input" value="0">
+                                      <td><?php
+                                        if ($cantidadComparar > 0) {?>
+                                          <input name="preciokg_<?=$row["id"]?>" type="number" step="0.01" class="form-control preciokg-input" value="0"><?php
+                                        }?>
                                       </td><?php
                                     }?>
                                   </tr><?php
@@ -725,6 +729,7 @@ if (!empty($_POST)) {
                         </div>
                       </div>
                     </div>
+
                     <div class="card-footer">
                       <div class="col-sm-12 text-center">
                         <!-- <a class="btn btn-primary" target="_blank" href="imprimirPedido.php?id=<?=$data['id']; ?>">Imprimir Pedido</a> --><?php
@@ -757,13 +762,8 @@ if (!empty($_POST)) {
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
     <!-- Plugins JS start-->
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
@@ -838,11 +838,24 @@ if (!empty($_POST)) {
             }
           }
         });
+
+        $("#id_moneda").on("change", function() {
+          if($(this).val()==1){
+            $('#tipo_cambio_dia').prop('required', true);
+          } else {
+            $('#tipo_cambio_dia').prop('required', false);
+          }
+        });
       });
 
       function validarFormularioCompra() {
         var hayConceptoValido = false;
-        
+
+        if($("#id_moneda").val()==1 && ($("#tipo_cambio_dia").val() == "" || parseFloat($("#tipo_cambio_dia").val()) <= 0)) {
+          alert('Debe ingresar un Tipo de Cambio válido para la moneda seleccionada.');
+          return false;
+        }
+
         $('.cantidad-input').each(function() {
           var id_concepto = $(this).closest("tr").data('id');
           var cantidad = parseFloat($(this).val()) || 0;

@@ -1,212 +1,70 @@
 <?php
-  require("config.php");
-  require_once("PHPMailer/class.phpmailer.php");
-  require_once("PHPMailer/class.smtp.php");
+require("config.php");
+require_once("PHPMailer/class.phpmailer.php");
+require_once("PHPMailer/class.smtp.php");
 
-  if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
-  }
+if (empty($_SESSION['user'])) {
+  header("Location: index.php");
+  die("Redirecting to index.php");
+}
+
+require 'database.php';
+
+$id = null;
+if (!empty($_GET['id'])) {
+  $id = $_REQUEST['id'];
+}
+
+if (null==$id) {
+  header("Location: listarPedidos.php");
+}
+
+$proyectoDisplay = '';
+$codigoObra = '';
+$data = [];
+
+if (!empty($_POST)) {
   
-  require 'database.php';
+}else {
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
 
-  $id = null;
-  if (!empty($_GET['id'])) {
-    $id = $_REQUEST['id'];
-  }
-  
-  if (null==$id) {
-    header("Location: listarPedidos.php");
-  }
-  
-  $proyectoDisplay = '';
-  $codigoObra = '';
-  $data = [];
+  if ($data) {
+    $codigoObraPartes = array_filter([
+      $data['nro_sitio'] ?? null,
+      $data['nro_subsitio'] ?? null,
+      $data['proyecto_nro'] ?? null
+    ], function ($valor) {
+      return $valor !== null && $valor !== '';
+    });
+    $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
 
-  if (!empty($_POST)) {
-    // insert data
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id,$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
-    
-    $idCompra = $pdo->lastInsertId();
-    
-    $nroOC = $id .'/'. $idCompra;
-    $sql = "update `compras` set `nro_oc` = ? where id = ?";
-    $q = $pdo->prepare($sql);           
-    $q->execute([$nroOC,$idCompra]);
-    
-    $sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.`cantidad`, d.`id_unidad_medida`,m.peso_metro FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id]);
-    
-    $total = 0;
-    $hasValidItem = false;
-    
-    while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-      $cantidadPedir = $_POST['cantidad_'.$row['id']] ?? 0;
-      $precioUnitario = $_POST['precio_'.$row['id']] ?? 0;
-      $precioKg = $_POST['preciokg_'.$row['id']] ?? 0;
-      
-      if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
-        $hasValidItem = true;
-        
-        if ($precioKg != 0) {
-            $precioUnitario = $precioKg * $row['peso_metro'];
-        }
-        
-        $sql2 = "INSERT INTO `compras_detalle`(`id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `precio_kg`) VALUES (?,?,?,?,?,?)";
-        $q2 = $pdo->prepare($sql2);           
-        $q2->execute([$idCompra,$row['id_material'],$cantidadPedir,$row['id_unidad_medida'],$precioUnitario,$precioKg]);
-        $subtotal = $cantidadPedir*$precioUnitario;
-        $total += $subtotal;
-        
-        $sql3 = "UPDATE `pedidos_detalle` SET `comprado`= ? WHERE `id_pedido`=? AND `id_material`=?";
-        $q3 = $pdo->prepare($sql3);
-        $q3->execute([$cantidadPedir,$id,$row['id_material']]);
-        
-        $sql4 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
-        $q4 = $pdo->prepare($sql4);
-        $q4->execute([$id,$row['id_material']]);
-        $data4 = $q4->fetch(PDO::FETCH_ASSOC);
-        
-        if ($data4) {
-          $sql5 = "UPDATE `computos_detalle` set `comprado` = ? WHERE id = ?";
-          $q5 = $pdo->prepare($sql5);
-          $q5->execute([$cantidadPedir,$data4['id']]);
-        }
-      }
-    }
-    
-    if ($hasValidItem) {
-      $iva = $total*0.21;
-      
-      $sql = "update `compras` set total = ?, iva = ? where id = ?";
-      $q = $pdo->prepare($sql);           
-      $q->execute([$total,$iva,$idCompra]);
-      
-      $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
-      $q = $pdo->prepare($sql);
-      $q->execute(array($_SESSION['user']['id']));
-
-      // Enviar notificaciones por email
-      $sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpHost = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpUsuario = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpClave = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpFrom = $data['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpFromName = $data['valor'];  
-      
-      $sql = " select t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
-      foreach ($pdo->query($sql) as $row) {
-        
-        $sql2 = "INSERT INTO `notificaciones`(`id_tipo_notificacion`, `id_usuario`, `fecha_hora`, `leida`,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
-        $q2 = $pdo->prepare($sql2);
-        $q2->execute([$row[0],'ID Orden de Compra: #'.$idCompra,$idCompra]);
-        
-        $address = $row[1];
-        
-        $titulo = "ERP Notificaciones - Módulo Compras - Nueva Compra";
-        $mensaje="Nueva compra dada de alta en el sistema: #".$idCompra;
-        
-        $mail = new PHPMailer();
-        $mail->IsSMTP();
-        $mail->SMTPAuth = true;
-        $mail->Port = 25; 
-        $mail->SMTPSecure = 'ssl';
-        $mail->SMTPAutoTLS = false;
-        $mail->SMTPSecure = false;
-        $mail->IsHTML(true); 
-        $mail->CharSet = "utf-8";
-        $mail->From = $smtpFrom;
-        $mail->FromName = $_SESSION['user']['usuario'];
-        $mail->Host = $smtpHost; 
-        $mail->Username = $smtpUsuario; 
-        $mail->Password = $smtpClave;
-        $mail->AddAddress($address);
-        $mail->Subject = $titulo; 
-        $mensajeHtml = nl2br($mensaje);
-        $mail->Body = "{$mensajeHtml} <br /><br />"; 
-        $mail->AltBody = "{$mensaje} \n\n"; 
-        $mail->Send();
-      }
-      
-      Database::disconnect();
-      header("Location: listarCompras.php");
-    } else {
-      Database::disconnect();
-      $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";
-    }
-  }
-
-  if (empty($data)) {
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id]);
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-
-    if ($data) {
-      $codigoObraPartes = array_filter([
-        $data['nro_sitio'] ?? null,
-        $data['nro_subsitio'] ?? null,
-        $data['proyecto_nro'] ?? null
-      ], function ($valor) {
-        return $valor !== null && $valor !== '';
-      });
-      $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
-
-      $tieneComputo = !empty($data['id_computo']);
-      $tipoPedido = "Pedido Directo";
-      if($tieneComputo){
-        $tipoPedido = 'Pedido de Cómputo';
-      }
-
-      $proyectoDisplay = '';
-      if (!empty($data['proyecto_id'])) {
-        if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
-          $proyectoDisplay = $codigoObra . ': ' . $data['proyecto_nombre'];
-        } elseif (!empty($codigoObra)) {
-          $proyectoDisplay = $codigoObra;
-        } elseif (!empty($data['proyecto_nombre'])) {
-          $proyectoDisplay = $data['proyecto_nombre'];
-        }
-      }
-    } else {
-      $data = [];
+    $tieneComputo = !empty($data['id_computo']);
+    $tipoPedido = "Pedido Directo";
+    if($tieneComputo){
+      $tipoPedido = 'Pedido de Cómputo';
     }
 
-    Database::disconnect();
+    $proyectoDisplay = '';
+    if (!empty($data['proyecto_id'])) {
+      if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
+        $proyectoDisplay = $codigoObra . ': ' . $data['proyecto_nombre'];
+      } elseif (!empty($codigoObra)) {
+        $proyectoDisplay = $codigoObra;
+      } elseif (!empty($data['proyecto_nombre'])) {
+        $proyectoDisplay = $data['proyecto_nombre'];
+      }
+    }
+  } else {
+    $data = [];
   }
-    
-?>
+
+  Database::disconnect();
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
