@@ -26,7 +26,7 @@ include 'database.php';
       <!-- Page Header Start-->
       <?php include('header.php');?>
      
-      <!-- Page Header Ends                              -->
+      <!-- Page Header Ends-->
       <!-- Page Body Start-->
       <div class="page-body-wrapper">
         <!-- Page Sidebar Start-->
@@ -37,11 +37,27 @@ include 'database.php';
         <div class="page-body"><?php
           $ubicacion="Compras ";
           include_once("head_page.php")?>
-          <!-- Container-fluid starts-->
           <div class="container-fluid">
-            <div class="row">
-			<div class="col-md-12">
-				<div class="card">
+          
+          <?php
+          if (isset($_SESSION['flash_message'])) {
+              $flash_message = $_SESSION['flash_message'];
+              $alert_class = ($flash_message['type'] == 'success') ? 'alert-success' : 'alert-danger';
+              
+              // Mostrar el cartel de alerta de Bootstrap
+              echo '<div class="alert ' . $alert_class . ' alert-dismissible fade show" role="alert">';
+              echo $flash_message['message'];
+              echo '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
+              echo '</div>';
+              
+              // Limpiar el mensaje de la sesión para que no se muestre de nuevo
+              unset($_SESSION['flash_message']);
+          }
+          ?>
+
+          <div class="row">
+          <div class="col-md-12">
+          <div class="card">
 				  <div class="card-body">
 					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCompras.php">
 					  <div class="form-group mb-0">

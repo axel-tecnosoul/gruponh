@@ -115,8 +115,10 @@
         Database::disconnect();
     }
     
+    $fecha_hora_actual = date('Y-m-d\TH:i');
 ?>
 <!DOCTYPE html>
+<html lang="en">
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
@@ -149,26 +151,28 @@
                       <div class="row">
                         <div class="col">
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Hora(*)</label>
-							<div class="col-sm-9"><input type="datetime-local" name="fecha_hora" onfocus="this.showPicker()" class="form-control" required="required" autofocus></div>
-							</div>	
+								<label class="col-sm-3 col-form-label">Fecha Hora(*)</label>
+								<div class="col-sm-9">
+									<input type="datetime-local" name="fecha_hora" value="<?php echo $fecha_hora_actual; ?>" onfocus="this.showPicker()" class="form-control" required="required" autofocus>
+								</div>
+							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Tipo Suceso(*)</label>
+								<label class="col-sm-3 col-form-label">Tipo Suceso(*)</label>
 							<div class="col-sm-9">
-							<select name="id_tipo_suceso" id="id_tipo_suceso" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `tipo` FROM `tipos_suceso` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['tipo']."</option>";
-							}
-							Database::disconnect();
-							?>
+								<select name="id_tipo_suceso" id="id_tipo_suceso" class="js-example-basic-single col-sm-12" required="required">
+								<option value="">Seleccione...</option>
+								<?php
+								$pdo = Database::connect();
+								$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+								$sqlZon = "SELECT `id`, `tipo` FROM `tipos_suceso` WHERE 1";
+								$q = $pdo->prepare($sqlZon);
+								$q->execute();
+								while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+									echo "<option value='".$fila['id']."'";
+									echo ">".$fila['tipo']."</option>";
+								}
+								Database::disconnect();
+								?>
 							</select>
 							</div>
 							</div>

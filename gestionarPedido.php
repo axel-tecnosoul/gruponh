@@ -168,7 +168,14 @@ if (!empty($_POST)) {
     }
     
     Database::disconnect();
+
+    $_SESSION['flash_message'] = [
+        'type' => 'success',
+        'message' => '¡Orden de Compra N° ' . $nroOC . ' creada exitosamente!'
+    ];
+    
     header("Location: listarCompras.php");
+    exit(); 
   } else {
     Database::disconnect();
     $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";

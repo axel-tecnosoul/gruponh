@@ -205,40 +205,51 @@
 										<th>Concepto</th>
 										<th>Cantidad</th>
 										<th>Unidad</th>
-										<th>Peso Total</th>
+										<th>Peso Total (Kg)</th>
 										<th>P/Unitario</th>
 										<th>P/Kilo</th>
 										<th>P/Total</th>
 										<th>Entregado</th>
 								  	</tr>
 								</thead>
-									<tbody>
+								<tbody>
 									<?php
 										$pdo = Database::connect();
 										$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, u.`unidad_medida`,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo FROM `compras_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
 										foreach ($pdo->query($sql) as $row) {
 											
-											$precio = number_format($row[5],2);
-											$preciokg = number_format($row[7],2);
-											$subtotal = number_format($row[5]*$row[2],2);
+											$precio_unitario_formateado = number_format($row[5], 2);
+											$precio_kg_formateado = number_format($row[7], 2);
 											
-											$peso = $row[8]*($row[9]/1000);
+											$peso_por_unidad = $row[8] * ($row[9] / 1000);
+											
+											$peso_total_linea = $peso_por_unidad * $row[2];
+											
+											$subtotal_calculado = 0;
+											if ($row[7] > 0) {
+												$subtotal_calculado = $peso_total_linea * $row[7];
+											} else {
+												$subtotal_calculado = $row[5] * $row[2];
+											}
+
+											$peso_total_formateado = number_format($peso_total_linea, 2);
+											$subtotal_formateado = number_format($subtotal_calculado, 2);
 
 											echo '<tr>';
 											echo '<td>'. $row[1] . '</td>';
 											echo '<td>'. $row[2] . '</td>';
 											echo '<td>'. $row[3] . '</td>';
-											echo '<td>'. number_format($peso,2) . '</td>';
-											echo '<td>'. $precio . '</td>';
-											echo '<td>'. $preciokg . '</td>';
-											echo '<td>'. $subtotal . '</td>';
+											echo '<td>'. $peso_total_formateado . '</td>';
+											echo '<td>'. $precio_unitario_formateado . '</td>';
+											echo '<td>'. $precio_kg_formateado . '</td>';
+											echo '<td>'. $subtotal_formateado . '</td>';
 											echo '<td>'. $row[6] . '</td>';
 											echo '</tr>';
 										}
 										Database::disconnect();
 									?>
-									</tbody>
-							  </table>
+								</tbody>
+								</table>
 							</div>
 							</div>
 							<div class="form-group row">
