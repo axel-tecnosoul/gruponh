@@ -25,9 +25,9 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		
-		$sql = "INSERT INTO `compras_sucesos`(`id_compra`, `fecha_hora`, `suceso`, `id_tipo_suceso`, `titulo`) VALUES (?,?,?,?,?)";
-        $q = $pdo->prepare($sql);
-        $q->execute([$_GET['id'],$_POST['fecha_hora'],$_POST['suceso'],$_POST['id_tipo_suceso'],$_POST['titulo']]);
+		$sql = "INSERT INTO `compras_sucesos`(`id_compra`, `fecha_hora`, `suceso`, `id_tipo_suceso`, `titulo`) VALUES (?, ?, ?, ?, ?)";
+		$q = $pdo->prepare($sql);
+		$q->execute([$_GET['id'], $_POST['fecha_hora'], $_POST['suceso'], $_POST['id_tipo_suceso'], $_POST['titulo']]);
 
 		$sql = "SELECT tipo FROM `tipos_suceso` WHERE id = ".$_POST['id_tipo_suceso'];
 		$q = $pdo->prepare($sql);

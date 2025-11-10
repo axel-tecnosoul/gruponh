@@ -194,6 +194,44 @@ if (!empty($_POST)) {
                           </div>
                         </div>
                       </div>
+
+                      <hr class="mt-4 mb-4">
+                      <div class="row">
+                        <div class="col-sm-12">
+                          <h6 class="mb-3 font-weight-bold">Sucesos del Proyecto Asociado</h6>
+                            <div class="timeline-small">
+                              <?php 
+                                if (!empty($data['proyecto_id'])) {
+                                    $pdo = Database::connect();
+                                    $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i'), s.suceso, s.titulo, t.tipo 
+                                                    FROM sucesos_proyecto s 
+                                                    INNER JOIN tipos_suceso t ON t.id = s.id_tipo_suceso 
+                                                    WHERE s.id_proyecto = ? 
+                                                    ORDER BY s.id DESC";
+                                    $q_sucesos = $pdo->prepare($sql_sucesos);
+                                    $q_sucesos->execute([$data['proyecto_id']]);
+                                    
+                                    if ($q_sucesos->rowCount() > 0) {
+                                        foreach ($q_sucesos as $row_suceso) {
+                                            echo '<div class="media">';
+                                            echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
+                                            echo '<div class="media-body">';
+                                            echo '<h6>'.htmlspecialchars($row_suceso['titulo']).' <span class="pull-right f-14">'.$row_suceso[1].'hs</span></h6>';
+                                            echo '<p>'.htmlspecialchars($row_suceso['tipo']).': '.htmlspecialchars($row_suceso['suceso']).'</p>';
+                                            echo '</div></div>';
+                                       }
+                                    } else {
+                                        echo '<p>No hay sucesos registrados para el proyecto asociado.</p>';
+                                    }
+                                   Database::disconnect();
+                                } else {
+                                    echo '<p>Este pedido no está asociado a un proyecto para mostrar sucesos.</p>';
+                                }
+                              ?>
+                            </div>
+                        </div>
+                      </div>
+
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-12 text-center"><?php
