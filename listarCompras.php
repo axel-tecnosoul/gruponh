@@ -292,32 +292,32 @@ include 'database.php';
                       <table class="display truncate" id="dataTables-example667">
                         <thead>
                           <tr>
-							  <th>Concepto</th>
-							  <th>Cantidad</th>
-							  <th>Unidad</th>
-                                                          <th>Peso Total kg</th>
-                                                          <th>P/Kg</th>
-                                                          <th>P/Unitario</th>
-                                                          <th>P/Total</th>
-                                                          <th>Entregado</th>
-                                                          <th>Remitos</th>
-                                                          <th>Facturas</th>
+                            <th>Concepto</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Peso Total kg</th>
+                            <th>$/Kg</th>
+                            <th>$/Unitario</th>
+                            <th>$/Total</th>
+                            <th>Entregado</th>
+                            <th>Remitos</th>
+                            <th>Facturas</th>
                           </tr>
                         </thead>
                         <tbody>
                         </tbody>
-						<tfoot>
+						            <tfoot>
                           <tr>
-							  <th>Concepto</th>
-							  <th>Cantidad</th>
-							  <th>Unidad</th>
-                                                          <th>Peso Total Kg</th>
-                                                          <th>P/Kg</th>
-                                                          <th>P/Unitario</th>
-                                                          <th>P/Total</th>
-                                                          <th>Entregado</th>
-                                                          <th>Remitos</th>
-                                                          <th>Facturas</th>
+                            <th>Concepto</th>
+                            <th>Cantidad</th>
+                            <th>Unidad</th>
+                            <th>Peso Total Kg</th>
+                            <th>$/Kg</th>
+                            <th>$/Unitario</th>
+                            <th>$/Total</th>
+                            <th>Entregado</th>
+                            <th>Remitos</th>
+                            <th>Facturas</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -374,90 +374,85 @@ include 'database.php';
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-  <script>
+    <script>
     $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example666 tfoot th').each( function () {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example666 tfoot th').each( function () {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example666').DataTable({
+      } );
+	    
+      $('#dataTables-example666').DataTable({
         stateSave: false,
-		searching: false,
-		
+		    searching: false,
         responsive: false,
-		dom: 'Bfrtp<"bottom"l>',
+		    dom: 'Bfrtp<"bottom"l>',
         buttons: [
-            'excel'
+          'excel'
         ],
-		lengthMenu: [
-        [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-        [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
-		],
+        lengthMenu: [
+          [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
+          [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
+        ],
         language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
+          }
+        }
       });
  
-    // DataTable
-    var table = $('#dataTables-example666').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
+      // DataTable
+      var table = $('#dataTables-example666').DataTable();
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
- 
         $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+		  });
 		
-	$("#link_ver_compra").on("click",function(){
+	    $("#link_ver_compra").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra para ver detalle")
         }
       })
-	  $("#link_modificar_compra").on("click",function(){
+	    $("#link_modificar_compra").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra para modificar/revisar")
         }
       })
-	  $("#link_ingresar_compra").on("click",function(){
+	    $("#link_ingresar_compra").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra aprobada para ingresar stock")
         }
       })
-	  $("#link_adjuntar_factura").on("click",function(){
+	    $("#link_adjuntar_factura").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra aprobada para adjuntar factura")
         }
       })
-	  
-	  
-	  $("#link_aprobar_compra").on("click",function(){
+	    $("#link_aprobar_compra").on("click",function(){
         /*let l=document.location.href;
         if(this.href==l || this.href==l+"#"){*/
         let target=this.dataset.target;
@@ -473,39 +468,38 @@ include 'database.php';
           alert("Por favor seleccione una orden de compra para rechazar")
         }
       })
-	  
-	 $("#link_nuevo_suceso").on("click",function(){
+	    $("#link_nuevo_suceso").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra para añadir un nuevo suceso")
         }
       })
 	  
-	  $("#link_nuevo_pago").on("click",function(){
+	    $("#link_nuevo_pago").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra aprobada para añadir pago")
         }
       })
-	//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
-    $(document).on("click","#dataTables-example666 tbody tr td", function(){
+      //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
+      $(document).on("click","#dataTables-example666 tbody tr td", function(){
         var t=$(this).parent();
 		
         let id_compra=t.find("td:first-child").html();
-		let estado = t.find("td:nth-child(8)").html();
-		let id_proyecto=t.find("td:nth-child(9)").html();
+        let estado = t.find("td:nth-child(8)").html();
+        let id_proyecto=t.find("td:nth-child(9)").html();
 		
         if(t.hasClass('selected')){
           deselectRow(t);
 		      get_conceptos(id_compra)
           $("#link_ver_compra").attr("href","#");
           $("#link_modificar_compra").attr("href","#");
-		  $("#link_ingresar_compra").attr("href","#");
+		      $("#link_ingresar_compra").attr("href","#");
           $("#link_adjuntar_factura").attr("href","#");
-		  $("#link_nuevo_suceso").attr("href","#");
+		      $("#link_nuevo_suceso").attr("href","#");
           $("#link_nuevo_pago").attr("href","#");
-		  $("#link_aprobar_compra").attr("data-target","#");
-		  $("#link_rechazar_compra").attr("data-target","#");
+          $("#link_aprobar_compra").attr("data-target","#");
+          $("#link_rechazar_compra").attr("data-target","#");
         }else{
           //t.parent().find("tr").removeClass("selected");
           table.rows().nodes().each( function (rowNode, index) {
@@ -515,82 +509,75 @@ include 'database.php';
 		      get_conceptos(id_compra)
           $("#link_ver_compra").attr("href","verCompra.php?id="+id_compra);
           $("#link_modificar_compra").attr("href","modificarCompra.php?id="+id_compra);
-		  if (estado == 'Si') {
-			$("#link_ingresar_compra").attr("href","ingresarCompra.php?id="+id_compra);
-			$("#link_adjuntar_factura").attr("href","adjuntarFactura.php?id="+id_compra);
-			$("#link_nuevo_pago").attr("href","nuevoPago.php?id="+id_compra);
-		  } else {
-			$("#link_ingresar_compra").attr("href","#");
-			$("#link_adjuntar_factura").attr("href","#");
-			$("#link_nuevo_pago").attr("href","#");
-		  }
-		  if (estado == 'No') {
+          if (estado == 'Si') {
+            $("#link_ingresar_compra").attr("href","ingresarCompra.php?id="+id_compra);
+            $("#link_adjuntar_factura").attr("href","adjuntarFactura.php?id="+id_compra);
+            $("#link_nuevo_pago").attr("href","nuevoPago.php?id="+id_compra);
+          } else {
+            $("#link_ingresar_compra").attr("href","#");
+            $("#link_adjuntar_factura").attr("href","#");
+            $("#link_nuevo_pago").attr("href","#");
+          }
+		      if (estado == 'No') {
             $("#link_aprobar_compra").attr("data-toggle","modal");
             $("#link_aprobar_compra").attr("data-target","#aprobarModal_"+id_compra);
             $("#link_rechazar_compra").attr("data-toggle","modal");
             $("#link_rechazar_compra").attr("data-target","#rechazarModal_"+id_compra);
           } else {
             $("#link_aprobar_compra").attr("href","#");
-			$("#link_rechazar_compra").attr("href","#");
+			      $("#link_rechazar_compra").attr("href","#");
           }
-		  $("#link_nuevo_suceso").attr("href","nuevoSucesoCompra.php?id="+id_compra);
+		      $("#link_nuevo_suceso").attr("href","nuevoSucesoCompra.php?id="+id_compra);
         }
       });
-    
-	} );
+	  } );
 	
-    
-    </script>
-	
-	<script>
     $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example667 tfoot th').each( function () {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example667 tfoot th').each( function () {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example667').DataTable({
+      } );
+
+      $('#dataTables-example667').DataTable({
         stateSave: false,
         responsive: false,
         language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
             "first": "Primero",
             "last": "Ultimo",
             "next": "Siguiente",
             "previous": "Anterior"
-        }}
+          }
+        }
       });
  
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
+      // DataTable
+      var table = $('#dataTables-example667').DataTable();
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
- 
         $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+      });
+    });
 	
-	function selectRow(t){
+	  function selectRow(t){
       t.addClass('selected');
     }
     function deselectRow(t){
@@ -631,10 +618,10 @@ include 'database.php';
               "search": "Buscar:",
               "zeroRecords": "No hay resultados",
               "paginate": {
-                  "first": "Primero",
-                  "last": "Ultimo",
-                  "next": "Siguiente",
-                  "previous": "Anterior"
+                "first": "Primero",
+                "last": "Ultimo",
+                "next": "Siguiente",
+                "previous": "Anterior"
               }
             }
           });
@@ -646,9 +633,7 @@ include 'database.php';
             var that = this;
             $( 'input', this.footer() ).on( 'keyup change', function () {
               if ( that.search() !== this.value ) {
-                that
-                  .search( this.value )
-                  .draw();
+                that.search( this.value ).draw();
               }
             });
           });
@@ -657,13 +642,10 @@ include 'database.php';
         }
       });
     }
-    
     </script>
-	
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-	<script src="assets/js/select2/select2.full.min.js"></script>
-	<script src="assets/js/select2/select2-custom.js"></script>
-
+    <script src="assets/js/select2/select2.full.min.js"></script>
+    <script src="assets/js/select2/select2-custom.js"></script>
     <!-- Plugin used-->
   </body>
 </html>
