@@ -25,8 +25,14 @@ if (!empty($_POST)) {
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   
+  if ($data && $data['id_estado'] == 1) {
+    header("Location: listarComputos.php");
+    die("Redirigiendo a la lista de cómputos.");
+  }
+  
   Database::disconnect();
-}?>
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head><?php

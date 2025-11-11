@@ -21,7 +21,7 @@
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    $sql = "UPDATE `pedidos` SET aprobado = 1 WHERE id = ?";
+	$sql = "UPDATE `pedidos` SET aprobado = 1, id_estado = 3 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
 
