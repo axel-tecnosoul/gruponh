@@ -1,9 +1,10 @@
 <?php
-session_start();
+/*session_start();
 if (empty($_SESSION['user'])) {
     header("Location: index.php");
     die("Redirecting to index.php");
-}
+}*/
+include 'config.php';
 include 'database.php';
 ?>
 <!DOCTYPE html>
@@ -161,17 +162,17 @@ include 'database.php';
                             if (!empty($_POST)) {
                               $pdo = Database::connect();
                               
-                              $sql = "SELECT c.`id`, cu.`nombre`, DATE_FORMAT(c.`fecha_emision`,'%d/%m/%y'), e.`estado`, c.`nro_oc`, c.`total`, pe.`lugar_entrega`, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.`fecha_entrega`,'%d/%m/%y'), c.aprobado, DATE_FORMAT(c.`fecha_emision`,'%y%m%d'), DATE_FORMAT(c.`fecha_entrega`,'%y%m%d'), t.id_proyecto, s.nro_subsitio 
-                                      FROM `compras` c 
-                                      LEFT JOIN cuentas cu ON cu.id = c.`id_cuenta_proveedor` 
-                                      LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
-                                      INNER JOIN pedidos pe ON pe.id = c.id_pedido 
-                                      INNER JOIN `computos` co ON co.id = pe.id_computo 
-                                      INNER JOIN tareas t ON t.id = co.id_tarea 
-                                      INNER JOIN proyectos p ON p.id = t.id_proyecto 
-                                      INNER JOIN sitios s ON s.id = p.id_sitio 
-                                      LEFT JOIN monedas mo ON mo.id = c.id_moneda 
-                                      WHERE 1 ";
+                              $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y'), e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y'), c.aprobado, DATE_FORMAT(c.fecha_emision,'%y%m%d'), DATE_FORMAT(c.fecha_entrega,'%y%m%d'), t.id_proyecto, s.nro_subsitio 
+                              FROM compras c 
+                                LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor 
+                                LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
+                                INNER JOIN pedidos pe ON pe.id = c.id_pedido 
+                                INNER JOIN computos co ON co.id = pe.id_computo 
+                                INNER JOIN tareas t ON t.id = co.id_tarea 
+                                INNER JOIN proyectos p ON p.id = t.id_proyecto 
+                                INNER JOIN sitios s ON s.id = p.id_sitio 
+                                LEFT JOIN monedas mo ON mo.id = c.id_moneda 
+                              WHERE 1 ";
 
                               // Array para los parámetros de la consulta preparada
                               $params = [];

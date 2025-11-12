@@ -84,7 +84,7 @@ if (!empty($_POST)) {
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Ver Pedido ".$tipoPedido;
+          $ubicacion="Ver ".$tipoPedido;
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">

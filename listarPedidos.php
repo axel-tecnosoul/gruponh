@@ -1,9 +1,10 @@
 <?php
-session_start();
+/*session_start();
 if (empty($_SESSION['user'])) {
     header("Location: index.php");
     die("Redirecting to index.php");
-}
+}*/
+include 'config.php';
 include 'database.php';
 $nro="";
 if (isset($_POST['nro'])){
