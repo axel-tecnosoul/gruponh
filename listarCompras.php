@@ -162,23 +162,43 @@ include 'database.php';
                             if (!empty($_POST)) {
                               $pdo = Database::connect();
                               
-                              $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y'), e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y'), c.aprobado, DATE_FORMAT(c.fecha_emision,'%y%m%d'), DATE_FORMAT(c.fecha_entrega,'%y%m%d'), t.id_proyecto, s.nro_subsitio 
-                              FROM compras c 
-                                LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor 
-                                LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
-                                INNER JOIN pedidos pe ON pe.id = c.id_pedido 
-                                INNER JOIN computos co ON co.id = pe.id_computo 
-                                INNER JOIN tareas t ON t.id = co.id_tarea 
-                                INNER JOIN proyectos p ON p.id = t.id_proyecto 
-                                INNER JOIN sitios s ON s.id = p.id_sitio 
-                                LEFT JOIN monedas mo ON mo.id = c.id_moneda 
+                              $sql = "SELECT c.id,
+                                                cu.nombre,
+                                                DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision,
+                                                e.estado,
+                                                c.nro_oc,
+                                                c.total,
+                                                pe.lugar_entrega,
+                                                COALESCE(s_comp.nro_sitio, s_dir.nro_sitio) AS nro_sitio,
+                                                COALESCE(s_comp.nro_subsitio, s_dir.nro_subsitio) AS nro_subsitio,
+                                                COALESCE(p_comp.nro, p_dir.nro) AS nro,
+                                                mo.moneda,
+                                                c.nro_revision,
+                                                DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega,
+                                                c.aprobado,
+                                                DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision_sort,
+                                                DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega_sort,
+                                                COALESCE(t.id_proyecto, p_dir.id) AS id_proyecto
+                              FROM compras c
+                                LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor
+                                LEFT JOIN estados_compra e ON e.id = c.id_estado_compra
+                                INNER JOIN pedidos pe ON pe.id = c.id_pedido
+                                LEFT JOIN computos co ON co.id = pe.id_computo
+                                LEFT JOIN tareas t ON t.id = co.id_tarea
+                                LEFT JOIN proyectos p_comp ON p_comp.id = t.id_proyecto
+                                LEFT JOIN sitios s_comp ON s_comp.id = p_comp.id_sitio
+                                LEFT JOIN proyectos p_dir ON p_dir.id = pe.id_proyecto
+                                LEFT JOIN sitios s_dir ON s_dir.id = p_dir.id_sitio
+                                LEFT JOIN monedas mo ON mo.id = c.id_moneda
                               WHERE 1 ";
 
                               // Array para los parámetros de la consulta preparada
                               $params = [];
 
                               if (!empty($_POST['nro'])) {
-                                $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
+                                $sql .= " AND (p_comp.nro = ? OR s_comp.nro_sitio = ? OR p_dir.nro = ? OR s_dir.nro_sitio = ?)";
+                                $params[] = $_POST['nro'];
+                                $params[] = $_POST['nro'];
                                 $params[] = $_POST['nro'];
                                 $params[] = $_POST['nro'];
                               }
@@ -230,8 +250,8 @@ include 'database.php';
                                   echo '<td>'. $row['nro_sitio'] .' / '.$row['nro_subsitio'].' / '.$row['nro'].'</td>';
                                   echo '<td>'. $row['nombre'] . '</td>';
                                   echo '<td>'. $row['estado'] . '</td>';
-                                  echo '<td><span style="display: none;">'. $row["DATE_FORMAT(c.`fecha_emision`,'%y%m%d')"] . '</span>'. $row["DATE_FORMAT(c.`fecha_emision`,'%d/%m/%y')"] . '</td>';
-                                  echo '<td><span style="display: none;">'. $row["DATE_FORMAT(c.`fecha_entrega`,'%y%m%d')"] . '</span>'. $row["DATE_FORMAT(c.`fecha_entrega`,'%d/%m/%y')"] . '</td>';
+                                  echo '<td><span style="display: none;">'. $row['fecha_emision_sort'] . '</span>'. $row['fecha_emision'] . '</td>';
+                                  echo '<td><span style="display: none;">'. $row['fecha_entrega_sort'] . '</span>'. $row['fecha_entrega'] . '</td>';
                                   echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
                                   echo '<td style="display: none;">'.$row['id_proyecto'].'</td>';
                                   echo '</tr>';
