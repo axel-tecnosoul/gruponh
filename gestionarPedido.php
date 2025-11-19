@@ -60,11 +60,12 @@ if (!empty($_POST)) {
       
       if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
         if ($precioKg > 0) {
-          $peso_total_unitario = (float)$row['peso_metro'];
+          $peso_total_unitario = ((float)$row['peso_metro']) / 1000;
           
           $largo = isset($row['largo']) ? (float)$row['largo'] : 0;
           if ($largo > 0) {
-            $peso_total_unitario = $peso_total_unitario * $largo;
+            $largo_metros = $largo / 1000;
+            $peso_total_unitario = $peso_total_unitario * $largo_metros;
           }
           
           $precioUnitario = $precioKg * $peso_total_unitario;
@@ -743,7 +744,7 @@ Database::disconnect();?>
                           </div><?php
                           if ($data['aprobado']==1 && tienePermiso(298)){?>
                             <div class="mt-3">
-                              <i><strong>NOTA:</strong> Si ingresa Precio x KG > 0, el precio se calculará como: Precio x KG * (Peso por Metro * Largo). Si el largo no está definido para el material, se usará solo el Peso por Metro.</i><br/>
+                              <i><strong>NOTA:</strong> Si ingresa Precio x KG > 0, el precio se calculará como: (Precio x KG / 1000 ) * (Peso por Metro * Largo). Si el largo no está definido para el material, se usará solo el Peso por Metro.</i><br/>
                               <i>Para guardar una compra, debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Unitario o x Kg).</i>
                             </div><?php
                           }?>
@@ -889,7 +890,7 @@ Database::disconnect();?>
           var cantidad = parseFloat($(this).val()) || 0;
           var precioUnitario = parseFloat($('input[name="precio_'+id_concepto+'"]').val()) || 0;
           var precioKg = parseFloat($('input[name="preciokg_'+id_concepto+'"]').val()) || 0;
-
+          precioKg = precioKg / 1000;
           if (cantidad > 0 && (precioUnitario > 0 || precioKg > 0)) {
             hayConceptoValido = true;
             return false;
