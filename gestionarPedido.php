@@ -34,193 +34,211 @@ if (!in_array($estadoPedidoId, [3, 4], true)) {
 }
 
 if (!empty($_POST)) {
-  // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, comentarios, id_moneda, tipo_cambio_dia,comentarios_revision, descuento) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id,$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
-  
-  $idCompra = $pdo->lastInsertId();
-  
-  $nroOC = $id .'/'. $idCompra;
-  $sql = "UPDATE compras SET nro_oc = ? where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$nroOC,$idCompra]);
-  
-  $sql = "SELECT d.id, d.id_material, m.concepto, d.cantidad, d.id_unidad_medida,m.peso_metro FROM pedidos_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-  
-  $total = 0;
-  $hasValidItem = false;
-  
-  while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-    $cantidadPedir = $_POST['cantidad_'.$row['id']] ?? 0;
-    $precioUnitario = $_POST['precio_'.$row['id']] ?? 0;
-    $precioKg = $_POST['preciokg_'.$row['id']] ?? 0;
-    
-    if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
-      $hasValidItem = true;
-      
-      if ($precioKg != 0) {
-          $precioUnitario = $precioKg * $row['peso_metro'];
-      }
-      
-      $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg) VALUES (?,?,?,?,?,?)";
-      $q2 = $pdo->prepare($sql2);
-      $q2->execute([$idCompra,$row['id_material'],$cantidadPedir,$row['id_unidad_medida'],$precioUnitario,$precioKg]);
-      $subtotal = $cantidadPedir*$precioUnitario;
-      $total += $subtotal;
-
-      $sql3 = "UPDATE pedidos_detalle SET comprado= ? WHERE id_pedido=? AND id_material=?";
-      $q3 = $pdo->prepare($sql3);
-      $q3->execute([$cantidadPedir,$id,$row['id_material']]);
-      
-      $sql4 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
-      $q4 = $pdo->prepare($sql4);
-      $q4->execute([$id,$row['id_material']]);
-      $data4 = $q4->fetch(PDO::FETCH_ASSOC);
-      
-      if ($data4) {
-        $sql5 = "UPDATE computos_detalle set comprado = ? WHERE id = ?";
-        $q5 = $pdo->prepare($sql5);
-        $q5->execute([$cantidadPedir,$data4['id']]);
-      }
+  $error_message = '';
+  if (isset($_POST['id_moneda']) && $_POST['id_moneda'] == 1) {
+    if (empty($_POST['tipo_cambio_dia']) || !is_numeric($_POST['tipo_cambio_dia']) || (float)$_POST['tipo_cambio_dia'] <= 0) {
+      $error_message = 'Para la moneda USD, es obligatorio ingresar un Tipo de Cambio válido y mayor a cero.';
     }
   }
-  
-  if ($hasValidItem) {
-    $iva = $total*0.21;
 
-    $sql = "UPDATE compras SET total = ?, iva = ? where id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$total,$iva,$idCompra]);
+  if (empty($error_message)) {
     
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
+    $sql_pedido_detalle = "SELECT d.id, d.id_material, m.concepto, d.cantidad, d.id_unidad_medida, m.peso_metro, m.largo FROM pedidos_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
+    $q_pedido_detalle = $pdo->prepare($sql_pedido_detalle);
+    $q_pedido_detalle->execute([$id]);
+    
+    $total = 0;
+    $items_para_comprar = [];
 
-    // Enviar notificaciones por email
-    $sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
-    $q = $pdo->prepare($sql);
-    $q->execute();
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $smtpHost = $data['valor'];  
-    
-    $sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
-    $q = $pdo->prepare($sql);
-    $q->execute();
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $smtpUsuario = $data['valor'];  
-    
-    $sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
-    $q = $pdo->prepare($sql);
-    $q->execute();
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $smtpClave = $data['valor'];  
-    
-    $sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
-    $q = $pdo->prepare($sql);
-    $q->execute();
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $smtpFrom = $data['valor'];  
-    
-    $sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
-    $q = $pdo->prepare($sql);
-    $q->execute();
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $smtpFromName = $data['valor'];  
-    
-    $sql = "SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
-    foreach ($pdo->query($sql) as $row) {
-
-      $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
-      $q2 = $pdo->prepare($sql2);
-      $q2->execute([$row[0],'ID Orden de Compra: #'.$idCompra,$idCompra]);
+    while ($row = $q_pedido_detalle->fetch(PDO::FETCH_ASSOC)) {
+      $cantidadPedir = $_POST['cantidad_'.$row['id']] ?? 0;
+      $precioUnitario = $_POST['precio_'.$row['id']] ?? 0;
+      $precioKg = $_POST['preciokg_'.$row['id']] ?? 0;
       
-      $address = $row[1];
-      
-      $titulo = "ERP Notificaciones - Módulo Compras - Nueva Compra";
-      $mensaje="Nueva compra dada de alta en el sistema: #".$idCompra;
-      
-      $mail = new PHPMailer();
-      $mail->IsSMTP();
-      $mail->SMTPAuth = true;
-      $mail->Port = 25; 
-      $mail->SMTPSecure = 'ssl';
-      $mail->SMTPAutoTLS = false;
-      $mail->SMTPSecure = false;
-      $mail->IsHTML(true); 
-      $mail->CharSet = "utf-8";
-      $mail->From = $smtpFrom;
-      $mail->FromName = $_SESSION['user']['usuario'];
-      $mail->Host = $smtpHost; 
-      $mail->Username = $smtpUsuario; 
-      $mail->Password = $smtpClave;
-      $mail->AddAddress($address);
-      $mail->Subject = $titulo; 
-      $mensajeHtml = nl2br($mensaje);
-      $mail->Body = "{$mensajeHtml} <br /><br />"; 
-      $mail->AltBody = "{$mensaje} \n\n"; 
-      $mail->Send();
+      if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
+        if ($precioKg > 0) {
+          $peso_total_unitario = ((float)$row['peso_metro']) / 1000;
+          
+          $largo = isset($row['largo']) ? (float)$row['largo'] : 0;
+          if ($largo > 0) {
+            $largo_metros = $largo / 1000;
+            $peso_total_unitario = $peso_total_unitario * $largo_metros;
+          }
+          
+          $precioUnitario = $precioKg * $peso_total_unitario;
+        }
+        $subtotal = $cantidadPedir * $precioUnitario;
+        $total += $subtotal;
+        
+        $items_para_comprar[] = [
+          'id_material' => $row['id_material'],
+          'cantidad' => $cantidadPedir,
+          'id_unidad_medida' => $row['id_unidad_medida'],
+          'precio' => $precioUnitario,
+          'precio_kg' => $precioKg,
+          'id_pedido_detalle' => $row['id']
+        ];
+      }
     }
-    
-    Database::disconnect();
 
-    $_SESSION['flash_message'] = [
-        'type' => 'success',
-        'message' => '¡Orden de Compra N° ' . $nroOC . ' creada exitosamente!'
-    ];
-    
-    header("Location: listarCompras.php");
-    exit(); 
+    if (!empty($items_para_comprar)) {
+      
+      $iva = $total * 0.21;
+      $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento) VALUES (?,?,?,?,?,1,?, ?, ?,?,?,?,'Revisión Original',?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento']]);
+      $idCompra = $pdo->lastInsertId();
+      
+      $nroOC = $id . '/' . $idCompra;
+      $sql = "UPDATE compras SET nro_oc = ? where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$nroOC, $idCompra]);
+
+      foreach ($items_para_comprar as $item) {
+        $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg) VALUES (?,?,?,?,?,?)";
+        $q2 = $pdo->prepare($sql2);
+        $q2->execute([$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg']]);
+
+        $sql3 = "UPDATE pedidos_detalle SET comprado = ? WHERE id_pedido=? AND id_material=?";
+        $q3 = $pdo->prepare($sql3);
+        $q3->execute([$item['cantidad'], $id, $item['id_material']]);
+        
+        $sql4 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
+        $q4 = $pdo->prepare($sql4);
+        $q4->execute([$id, $item['id_material']]);
+        $data4 = $q4->fetch(PDO::FETCH_ASSOC);
+        
+        if ($data4) {
+          $sql5 = "UPDATE computos_detalle set comprado = ? WHERE id = ?";
+          $q5 = $pdo->prepare($sql5);
+          $q5->execute([$item['cantidad'], $data4['id']]);
+        }
+      }
+
+      $sql_log = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
+      $q_log = $pdo->prepare($sql_log);
+      $q_log->execute([$_SESSION['user']['id']]);
+      
+      $sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
+      $q = $pdo->prepare($sql);
+      $q->execute();
+      $data_param = $q->fetch(PDO::FETCH_ASSOC);
+      $smtpHost = $data_param['valor'];  
+      
+      $sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
+      $q = $pdo->prepare($sql);
+      $q->execute();
+      $data_param = $q->fetch(PDO::FETCH_ASSOC);
+      $smtpUsuario = $data_param['valor'];  
+      
+      $sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
+      $q = $pdo->prepare($sql);
+      $q->execute();
+      $data_param = $q->fetch(PDO::FETCH_ASSOC);
+      $smtpClave = $data_param['valor'];  
+      
+      $sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
+      $q = $pdo->prepare($sql);
+      $q->execute();
+      $data_param = $q->fetch(PDO::FETCH_ASSOC);
+      $smtpFrom = $data_param['valor'];  
+      
+      $sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
+      $q = $pdo->prepare($sql);
+      $q->execute();
+      $data_param = $q->fetch(PDO::FETCH_ASSOC);
+      $smtpFromName = $data_param['valor'];  
+      
+      $sql_notif = "SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
+      foreach ($pdo->query($sql_notif) as $row_notif) {
+        $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
+        $q2 = $pdo->prepare($sql2);
+        $q2->execute([$row_notif[0],'ID Orden de Compra: #'.$idCompra,$idCompra]);
+        
+        $address = $row_notif[1];
+        
+        $titulo = "ERP Notificaciones - Módulo Compras - Nueva Compra";
+        $mensaje="Nueva compra dada de alta en el sistema: #".$idCompra;
+        
+        $mail = new PHPMailer();
+        $mail->IsSMTP();
+        $mail->SMTPAuth = true;
+        $mail->Port = 25; 
+        $mail->SMTPSecure = 'ssl';
+        $mail->SMTPAutoTLS = false;
+        $mail->SMTPSecure = false;
+        $mail->IsHTML(true); 
+        $mail->CharSet = "utf-8";
+        $mail->From = $smtpFrom;
+        $mail->FromName = $_SESSION['user']['usuario'];
+        $mail->Host = $smtpHost; 
+        $mail->Username = $smtpUsuario; 
+        $mail->Password = $smtpClave;
+        $mail->AddAddress($address);
+        $mail->Subject = $titulo; 
+        $mensajeHtml = nl2br($mensaje);
+        $mail->Body = "{$mensajeHtml} <br /><br />"; 
+        $mail->AltBody = "{$mensaje} \n\n"; 
+        $mail->Send();
+      }
+      
+      Database::disconnect();
+      $_SESSION['flash_message'] = ['type' => 'success', 'message' => '¡Orden de Compra N° ' . $nroOC . ' creada exitosamente!'];
+      header("Location: listarCompras.php");
+      exit();
+
+    } else {
+      $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";
+    }
+
   } else {
-    Database::disconnect();
-    $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";
+    $error = $error_message;
   }
-} else {
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  
-  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha_formatted, pe.fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha_formatted, pe.fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$id]);
+$data = $q->fetch(PDO::FETCH_ASSOC);
+
+$proyectoDisplay = '';
+$codigoObra = '';
+$tipoPedido = '';
+if ($data) {
+  $codigoObraPartes = array_filter([
+    $data['nro_sitio'] ?? null,
+    $data['nro_subsitio'] ?? null,
+    $data['proyecto_nro'] ?? null
+  ], function ($valor) {
+    return $valor !== null && $valor !== '';
+  });
+  $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+
+  $tieneComputo = !empty($data['id_computo']);
+  $tipoPedido = "Directo";
+  if($tieneComputo){
+    $tipoPedido = 'de Cómputo';
+  }
 
   $proyectoDisplay = '';
-  $codigoObra = '';
-  if ($data) {
-    $codigoObraPartes = array_filter([
-      $data['nro_sitio'] ?? null,
-      $data['nro_subsitio'] ?? null,
-      $data['proyecto_nro'] ?? null
-    ], function ($valor) {
-      return $valor !== null && $valor !== '';
-    });
-    $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
-
-    $tieneComputo = !empty($data['id_computo']);
-    $tipoPedido = "Directo";
-    if($tieneComputo){
-      $tipoPedido = 'de Cómputo';
-    }
-
-    $proyectoDisplay = '';
-    if (!empty($data['proyecto_id'])) {
-      if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
-        $proyectoDisplay = $codigoObra . ': ' . $data['proyecto_nombre'];
-      } elseif (!empty($codigoObra)) {
-        $proyectoDisplay = $codigoObra;
-      } elseif (!empty($data['proyecto_nombre'])) {
-        $proyectoDisplay = $data['proyecto_nombre'];
-      }
+  if (!empty($data['proyecto_id'])) {
+    if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
+      $proyectoDisplay = $codigoObra . ': ' . $data['proyecto_nombre'];
+    } elseif (!empty($codigoObra)) {
+      $proyectoDisplay = $codigoObra;
+    } elseif (!empty($data['proyecto_nombre'])) {
+      $proyectoDisplay = $data['proyecto_nombre'];
     }
   }
-  
-  Database::disconnect();
-}?>
+}
+
+Database::disconnect();?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -242,7 +260,6 @@ if (!empty($_POST)) {
         padding: 1.5rem;
       }
       
-      /* Forzar alineación entre thead y tbody */
       #dataTables-example667 {
         width: 100% !important;
         font-size: 0.75rem;
@@ -260,7 +277,6 @@ if (!empty($_POST)) {
         box-sizing: border-box !important;
       }
       
-      /* Headers sin wrap */
       #dataTables-example667 thead th {
         white-space: nowrap !important;
         padding: 6px 4px !important;
@@ -270,7 +286,6 @@ if (!empty($_POST)) {
         background-color: #f8f9fa;
       }
       
-      /* Anchos EXACTOS para cada columna */
       #dataTables-example667 th:nth-child(1),
       #dataTables-example667 td:nth-child(1) {
         width: 180px !important;
@@ -598,9 +613,9 @@ if (!empty($_POST)) {
                               </div>
                             </div>
                             <div class="form-group row">
-                              <label class="col-sm-4 col-form-label">Tipo de Cambio</label>
+                              <label class="col-sm-4 col-form-label">Tipo de Cambio <span id="tc_required_star" style="color:red; display: none;">(*)</span></label>
                               <div class="col-sm-8">
-                                <input name="tipo_cambio_dia" type="number" step="0.01" class="form-control">
+                                <input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number" step="0.01" class="form-control">
                               </div>
                             </div>
                             <div class="form-group row">
@@ -729,7 +744,7 @@ if (!empty($_POST)) {
                           </div><?php
                           if ($data['aprobado']==1 && tienePermiso(298)){?>
                             <div class="mt-3">
-                              <i><strong>NOTA:</strong> Si ingresa Precio x KG <> 0, el precio se sobreescribirá multiplicando el Precio x KG * Peso del Concepto.</i><br/>
+                              <i><strong>NOTA:</strong> Si ingresa Precio x KG > 0, el precio se calculará como: (Precio x KG / 1000 ) * (Peso por Metro * Largo). Si el largo no está definido para el material, se usará solo el Peso por Metro.</i><br/>
                               <i>Para guardar una compra, debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Unitario o x Kg).</i>
                             </div><?php
                           }?>
@@ -847,28 +862,35 @@ if (!empty($_POST)) {
         });
 
         $("#id_moneda").on("change", function() {
-          if($(this).val()==1){
+          var esUSD = $(this).val() == 1; 
+
+          if (esUSD) {
             $('#tipo_cambio_dia').prop('required', true);
+            $('#tc_required_star').show();
           } else {
             $('#tipo_cambio_dia').prop('required', false);
+            $('#tc_required_star').hide();
           }
-        });
+        }).trigger('change');
       });
 
       function validarFormularioCompra() {
-        var hayConceptoValido = false;
+        var idMoneda = $("#id_moneda").val();
+        var tipoCambio = $("#tipo_cambio_dia").val();
 
-        if($("#id_moneda").val()==1 && ($("#tipo_cambio_dia").val() == "" || parseFloat($("#tipo_cambio_dia").val()) <= 0)) {
-          alert('Debe ingresar un Tipo de Cambio válido para la moneda seleccionada.');
+        if (idMoneda == 1 && (tipoCambio == "" || parseFloat(tipoCambio) <= 0)) {
+          alert('Debe ingresar un Tipo de Cambio válido para la moneda USD.');
+          $("#tipo_cambio_dia").focus();
           return false;
         }
 
+        var hayConceptoValido = false;
         $('.cantidad-input').each(function() {
           var id_concepto = $(this).closest("tr").data('id');
           var cantidad = parseFloat($(this).val()) || 0;
           var precioUnitario = parseFloat($('input[name="precio_'+id_concepto+'"]').val()) || 0;
           var precioKg = parseFloat($('input[name="preciokg_'+id_concepto+'"]').val()) || 0;
-
+          precioKg = precioKg / 1000;
           if (cantidad > 0 && (precioUnitario > 0 || precioKg > 0)) {
             hayConceptoValido = true;
             return false;

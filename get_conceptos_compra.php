@@ -21,13 +21,19 @@ foreach ($pdo->query($sql) as $row) {
   $precio = number_format($precioUnitario,2);
   $preciokg = number_format($precioKgRaw,2);
 
-  $pesoUnitario = $pesoMetro * ($largo / 1000);
+  $pesoMetroKg = $pesoMetro / 1000;
+  $largoMetros = $largo / 1000;
+
+  if ($largoMetros > 0) {
+      $pesoUnitario = $pesoMetroKg * $largoMetros;
+  } else {
+      $pesoUnitario = $pesoMetroKg;
+  }
+
   $pesoTotalRaw = $pesoUnitario * (float) $cantidad;
   $peso = number_format($pesoTotalRaw,2);
   
   if ($precioUnitario == 0) {
-    /*echo "precioKgRaw: ".$precioKgRaw."<br>";
-    echo "pesoTotalRaw: ".$pesoTotalRaw."<br>";*/
     $subtotalValue = $precioKgRaw * $pesoTotalRaw;
   } else {
     $subtotalValue = $precioUnitario * (float) $cantidad;
