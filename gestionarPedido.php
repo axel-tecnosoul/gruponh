@@ -118,6 +118,10 @@ if (!empty($_POST)) {
         }
       }
 
+      $sqlEstadoPedido = "UPDATE pedidos SET id_estado = 4 WHERE id = ?";
+      $qEstadoPedido = $pdo->prepare($sqlEstadoPedido);
+      $qEstadoPedido->execute([$id]);
+
       $sql_log = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
       $q_log = $pdo->prepare($sql_log);
       $q_log->execute([$_SESSION['user']['id']]);
