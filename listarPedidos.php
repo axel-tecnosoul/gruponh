@@ -81,7 +81,7 @@ if (isset($_POST['id_estado'])) {
                           <option value="">Todos</option><?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sqlZon = "SELECT id, estado FROM estados_pedidos WHERE 1 order by estado ";
+                          $sqlZon = "SELECT id, estado FROM estados_pedidos WHERE 1 ORDER BY id ";
                           $q = $pdo->prepare($sqlZon);
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
@@ -155,7 +155,7 @@ if (isset($_POST['id_estado'])) {
                           </tr>
                         </thead>
                         <tbody><?php
-                          if (!empty($_POST)) {
+                          //if (!empty($_POST)) {
 
                             $filtroNro="";
                             if ($nro!="") {
@@ -179,9 +179,14 @@ if (isset($_POST['id_estado'])) {
                             /*if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) {
                               $sql1 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0);
                             }*/
+                            $filtroEstadoDefault= " AND pe.id_estado IN (1,2,4) "; //Por defecto mostrar los estados Elaboracion, Para Aprobar y Gestionando
                             $filtroEstado="";
                             if (!empty($id_estado) && !empty($id_estado[0])) {
                               $filtroEstado .= " AND ep.id IN (".implode(', ', array_map('intval', $id_estado)).") ";
+                            }
+
+                            if(empty($_POST["id_estado"])){
+                              $filtroEstado=$filtroEstadoDefault;
                             }
 
                             $pdo = Database::connect();
@@ -263,7 +268,7 @@ if (isset($_POST['id_estado'])) {
                               </tr><?php
                             }
                             Database::disconnect();
-                          }?>
+                          //}?>
                         </tbody>
                         <tfoot>
                           <tr>
