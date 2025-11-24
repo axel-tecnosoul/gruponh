@@ -21,23 +21,20 @@
     
     if (!empty($_POST)) {
         
-        // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		
-		$sql = "INSERT INTO `sucesos_proyecto`(`id_proyecto`, `fecha_hora`, `suceso`, `id_tipo_suceso`, `titulo`) VALUES (?,?,?,?,?)";
+		$sql = "INSERT INTO `sucesos` (`entidad_tipo`, `entidad_id`, `fecha_hora`, `suceso`, `id_tipo_suceso`, `titulo`, `id_usuario`) VALUES (?, ?, ?, ?, ?, ?, ?)";
         $q = $pdo->prepare($sql);
-        $q->execute([$_GET['id'],$_POST['fecha_hora'],$_POST['suceso'],$_POST['id_tipo_suceso'],$_POST['titulo']]);
-
-		$sql = "SELECT tipo FROM `tipos_suceso` WHERE id = ".$_POST['id_tipo_suceso'];
+        $q->execute(['proyectos', $id, $_POST['fecha_hora'], $_POST['suceso'], $_POST['id_tipo_suceso'], $_POST['titulo'], $_SESSION['user']['id']]);
+		$sql = "SELECT tipo FROM `tipos_suceso` WHERE id = ?";
 		$q = $pdo->prepare($sql);
-		$q->execute();
+		$q->execute([$_POST['id_tipo_suceso']]);
 		$data = $q->fetch(PDO::FETCH_ASSOC);
 		$tipoSuceso = $data['tipo'];  
 
 		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Suceso','Proyectos','verProyecto.php?id=$id')";
 		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
+		$q->execute([$_SESSION['user']['id']]);
 		
 		$sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
 		$q = $pdo->prepare($sql);
@@ -101,10 +98,8 @@
 			$mail->Body = "{$mensajeHtml} <br /><br />"; 
 			$mail->AltBody = "{$mensaje} \n\n"; 
 			$mail->Send();
-		
 		}
 		
-        
         Database::disconnect();
         
 		if ($_POST['desdePedidos'] == 1) {
@@ -185,7 +180,7 @@
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Título(*)</label>
-							<div class="col-sm-9"><input type="text" name="titulo" class="form-control" required="required"></textarea></div>
+							<div class="col-sm-9"><input type="text" name="titulo" class="form-control" required="required"></div>
 							</div>	
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Suceso(*)</label>

@@ -1,38 +1,43 @@
 <?php
     require("config.php");
-	require_once("PHPMailer/class.phpmailer.php");
-	require_once("PHPMailer/class.smtp.php");
+    require_once("PHPMailer/class.phpmailer.php");
+    require_once("PHPMailer/class.smtp.php");
+    
     if (empty($_SESSION['user'])) {
         header("Location: index.php");
         die("Redirecting to index.php");
     }
     
     require 'database.php';
-	
-	$pdo = Database::connect();
+    
+    $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	$sql = "SELECT valor FROM `parametros` WHERE id = 8 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$direccion = $data['valor'];  
+    $sql = "SELECT valor FROM `parametros` WHERE id = 8 ";
+    $q = $pdo->prepare($sql);
+    $q->execute();
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $direccion = $data['valor'];  
     
     if (!empty($_POST)) {
         
-        // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		
-        $sql = "INSERT INTO `pedidos`(`id_proyecto`, `fecha`, `lugar_entrega`, `id_cuenta_recibe`, `id_estado`) VALUES (?,?,?,?,1)";
-        $q = $pdo->prepare($sql);		   
-        $q->execute([$_POST['id_proyecto'],$_POST['fecha'],$_POST['lugar_entrega'],$_POST['id_cuenta_recibe']]);
+        
+        $sql = "INSERT INTO `pedidos`(`id_proyecto`, `fecha`, `lugar_entrega`, `id_cuenta_recibe`, `id_estado`, `id_usuario`) VALUES (?,?,?,?,1,?)";
+        $q = $pdo->prepare($sql);
+        
+        $q->execute([
+            $_POST['id_proyecto'],
+            $_POST['fecha'],
+            $_POST['lugar_entrega'],
+            $_POST['id_cuenta_recibe'], 
+            $_SESSION['user']['id']
+        ]);
             
         $id = $pdo->lastInsertId();
         
-        
-        
         Database::disconnect();
-		header("Location: itemsPedidoDirecto.php?id=".$id);
+        header("Location: itemsPedidoDirecto.php?id=".$id);
     }
     
 ?>
@@ -40,8 +45,8 @@
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
-  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-  <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
   </head>
   <body>
     <!-- Loader ends-->
@@ -65,70 +70,70 @@
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				<form class="form theme-form" role="form" method="post" action="nuevoPedidoDirecto.php">
+                  <form class="form theme-form" role="form" method="post" action="nuevoPedidoDirecto.php">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Proyecto(*)</label>
-							<div class="col-sm-9">
-							<select name="id_proyecto" id="id_proyecto" autofocus class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "select p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (!empty($_GET['id'])) {
-									if ($fila['id'] == $_GET['id']) {
-										echo " selected ";
-									}	
-								}								
-								echo ">".$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
-							<div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Lugar de Entrega(*)</label>
-							<div class="col-sm-9"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" required="required" value="<?php echo $direccion;?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Recibe(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
+                            <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Proyecto(*)</label>
+                            <div class="col-sm-9">
+                            <select name="id_proyecto" id="id_proyecto" autofocus class="js-example-basic-single col-sm-12" required="required">
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            $sqlZon = "select p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
+                            $q = $pdo->prepare($sqlZon);
+                            $q->execute();
+                            while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='".$fila['id']."'";
+                                if (!empty($_GET['id'])) {
+                                    if ($fila['id'] == $_GET['id']) {
+                                        echo " selected ";
+                                    }   
+                                }                               
+                                echo ">".$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                            </select>
+                            </div>
+                            </div>
+                            <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Fecha Pedido(*)</label>
+                            <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" value="<?php echo date('Y-m-d');?>" class="form-control" required="required"></div>
+                            </div>
+                            <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Lugar de Entrega(*)</label>
+                            <div class="col-sm-9"><input name="lugar_entrega" type="text" maxlength="199" class="form-control" required="required" value="<?php echo $direccion;?>"></div>
+                            </div>
+                            <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Recibe(*)</label>
+                            <div class="col-sm-9">
+                            <select name="id_cuenta_recibe" id="id_cuenta_recibe" class="js-example-basic-single col-sm-12" required="required">
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            $sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
+                            $q = $pdo->prepare($sqlZon);
+                            $q->execute();
+                            while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='".$fila['id']."'";
+                                echo ">".$fila['nombre']."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                            </select>
+                            </div>
+                            </div>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Crear</button>
-						<a href="listarPedidos.php" class="btn btn-light">Volver</a>
+                        <a href="listarPedidos.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -165,9 +170,9 @@
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <!-- Plugin used-->
-	<script src="assets/js/select2/select2.full.min.js"></script>
+    <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-	<script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+    <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
@@ -190,38 +195,33 @@
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
-	<script>
-		$(document).ready(function() {
-			$('#dataTables-example667').DataTable({
-				stateSave: false,
-				responsive: false,
-				language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-				}}
-			});
-		});
-		
-		</script>
-		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-    <!-- Plugin used-->
-	
-	<!-- Page-Level Demo Scripts - Tables - Use for reference -->
-   
+    <script>
+        $(document).ready(function() {
+            $('#dataTables-example667').DataTable({
+                stateSave: false,
+                responsive: false,
+                language: {
+                "decimal": "",
+                "emptyTable": "No hay información",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+                "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ Registros",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No hay resultados",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Ultimo",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                }}
+            });
+        });
+    </script>
+    <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>
 </html>

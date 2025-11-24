@@ -281,28 +281,40 @@
 							</div>
 							</div>
 							<hr>
-							<h5>Sucesos</h5>
+							<h5 class='mb-5'>Sucesos de la Compra</h5>
 							<div class="form-group row">
-								<div class="col-sm-9">
+								<div class="col-sm-12">
 								<div class="timeline-small">
 								  <?php 
-									$pdo = Database::connect();
-									$sql = " SELECT s.`id`, date_format(s.`fecha_hora`,'%d/%m/%y %H:%i'), s.`suceso`, s.`titulo`, t.tipo FROM `compras_sucesos` s inner join tipos_suceso t on t.id = s.id_tipo_suceso WHERE s.`id_compra` = ".$_GET['id'].' order by s.id desc';
+									$sql_sucesos = "
+										SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, u.usuario AS nombre_usuario
+										FROM sucesos s 
+										INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+										LEFT JOIN usuarios u ON u.id = s.id_usuario
+										WHERE s.entidad_tipo = 'compras' AND s.entidad_id = ?
+										ORDER BY s.fecha_hora DESC, s.id DESC";
 									
-									foreach ($pdo->query($sql) as $row) {
-										echo '<div class="media">';
-										echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
-										echo '<div class="media-body">';
-										echo '<h6>'.$row[3].' <span class="pull-right f-14">'.$row[1].'hs</span></h6>';
-										echo '<p>'.$row[4].': '.$row[2].'</p>';
-										echo '</div></div>';
-								   }
-								   Database::disconnect();
+									$q_sucesos = $pdo->prepare($sql_sucesos);
+									$q_sucesos->execute([$id]);
+
+														if ($q_sucesos->rowCount() > 0) {
+										foreach ($q_sucesos as $row_suceso) {
+											$usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';
+											echo '<div class="media">';
+											echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
+											echo '<div class="media-body">';
+											echo '<h6>'.htmlspecialchars($row_suceso['titulo']).' <span class="pull-right f-14">'.$row_suceso['fecha_formateada'].'hs</span></h6>';
+											echo '<p><strong>'.htmlspecialchars($row_suceso['tipo']).':</strong> '.htmlspecialchars($row_suceso['suceso']).' <small class="text-muted">'.$usuario_suceso.'</small></p>';
+											echo '</div></div>';
+										}
+									} else {
+										echo '<p>No hay sucesos registrados para esta compra.</p>';
+									}
 								  ?>
 								</div>
 								</div>
 							</div>
-							<hr>
+							<hr class='mt-5'>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Comprobante</label>
 							<div class="col-sm-9"><a target="_blank" href="<?php echo $data['adjunto_factura'];?>"><i>Descargar</i></a></div>

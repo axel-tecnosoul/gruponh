@@ -1,10 +1,21 @@
 <?php
-session_start();
-if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
-}
-include 'database.php';
+  session_start();
+  if (empty($_SESSION['user'])) {
+      header("Location: index.php");
+      die("Redirecting to index.php");
+  }
+  include 'database.php';
+  require_once 'manejarFiltros.php';
+
+  $filters = gestionarFiltros('listarCompras');
+
+  $nro_ocnp = $filters['nro_ocnp'] ?? "";
+  $nro = $filters['nro'] ?? "";
+  $proveedor = $filters['proveedor'] ?? "";
+  $fecha = $filters['fecha'] ?? "";
+  $fechah = $filters['fechah'] ?? "";
+  $id_estado = $filters['id_estado'] ?? [];
+  $aprobada = $filters['aprobada'] ?? "";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -57,59 +68,58 @@ include 'database.php';
           <div class="col-md-12">
           <div class="card">
 				  <div class="card-body">
-					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCompras.php">
-					  <div class="form-group mb-0">
-						N.OC/N.NP:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro_ocnp'])) echo $_POST['nro_ocnp'] ?>" name="nro_ocnp">
-					  </div>
-					  <div class="form-group mb-0">
-						N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
-					  </div>
-					  <div class="form-group mb-0">
-						Proveedor:&nbsp;<input class="form-control" size="15" type="text" value="<?php if (isset($_POST['proveedor'])) echo $_POST['proveedor'] ?>" name="proveedor">
-					  </div>
-					  <div class="form-group mb-0">
-						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
-					  </div>
-					  <div class="form-group mb-0">
-						Estado:&nbsp;
-						<select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple" multiple="multiple">
-							<option value="">Todos</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `estado` FROM `estados_compra` WHERE 1 order by estado ";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (isset($_POST['id_estado'])) {
-									if (in_array($fila['id'],$_POST['id_estado'])) {
-										echo " selected ";
-									}
-								}
-								echo ">".$fila['estado']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-					  </div>
-					  <div class="form-group mb-0">
-						Aprobada:&nbsp;
-						<select name="aprobada" id="aprobada" class="form-control">
-							<option value="">Seleccione...</option>
-							<option value="1" <?php if (isset($_POST['aprobada'])) { if ($_POST['aprobada']==1) { echo " selected "; } } ?> >Si</option>
-							<option value="2" <?php if (isset($_POST['aprobada'])) { if ($_POST['aprobada']==2) { echo " selected "; } } ?> >No</option>
-							</select>
-					  </div>
-					  <div class="form-group mb-0">
-						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarCompras.php'">Buscar</button>
-					  </div>
+					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCompras.php" >
+            <div class='form-group mb-12' style='width: 100%;'>
+              <div class="form-group mb-0">
+						  N.OC/N.NP:&nbsp;<input class="form-control" size="3" type="text" value="<?= htmlspecialchars($nro_ocnp) ?>" name="nro_ocnp">
+              </div>
+              <div class="form-group mb-0">
+						  N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?= htmlspecialchars($nro) ?>" name="nro">
+              </div>
+              <div class="form-group mb-0">
+						  Proveedor:&nbsp;<input class="form-control" size="15" type="text" value="<?= htmlspecialchars($proveedor) ?>" name="proveedor">
+              </div>
+              <div class="form-group mb-0">
+						  Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?= htmlspecialchars($fecha) ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?= htmlspecialchars($fechah) ?>" name="fechah">
+              </div>
+            </div>
+            <div class='form-group mb-12 my-3' >
+
+              <div class="form-group mb-0">
+              Estado:&nbsp;
+              <select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple" multiple="multiple">
+                <option value="">Todos</option>
+                <?php
+                $pdo = Database::connect();
+                $sqlZon = "SELECT `id`, `estado` FROM `estados_compra` WHERE 1 ORDER BY id ASC";
+                foreach ($pdo->query($sqlZon) as $fila) {
+                  $selected = in_array($fila['id'], $id_estado) ? " selected" : "";
+                  echo "<option value='{$fila['id']}'{$selected}>{$fila['estado']}</option>";
+                }
+                Database::disconnect();
+                ?>
+                </select>
+              </div>
+              <div class="form-group mb-0">
+              Aprobada:&nbsp;
+              <select name="aprobada" id="aprobada" class="form-control">
+                <option value="">Seleccione...</option>
+                <option value="1" <?= ($aprobada == 1) ? 'selected' : '' ?> >Si</option>
+                <option value="2" <?= ($aprobada == 2) ? 'selected' : '' ?> >No</option>
+                </select>
+              </div>
+              <div class="form-group mb-0">
+              <div class="form-group mb-0">
+                  <button type="submit" class="btn btn-primary">Buscar</button>
+                  <a href="listarCompras.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
+              </div>
+            </div>
 					</form>
 				</div>
 			  </div>
 			</div>
 			</div>
-			<div class="row">
+			<div class="row" style='min-width: 100%;'>
         <!-- Zero Configuration  Starts-->
         <div class="col-sm-12">
           <div class="card">
@@ -158,118 +168,114 @@ include 'database.php';
                       </thead>
                         <tbody>
                           <?php
-                            if (!empty($_POST)) {
-                              $pdo = Database::connect();
+                          $pdo = Database::connect();
+                          $sql = "SELECT c.`id`, cu.`nombre`, DATE_FORMAT(c.`fecha_emision`,'%d/%m/%y'), e.`estado`, c.`nro_oc`, c.`total`, pe.`lugar_entrega`, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.`fecha_entrega`,'%d/%m/%y'), c.aprobado, DATE_FORMAT(c.`fecha_emision`,'%y%m%d'), DATE_FORMAT(c.`fecha_entrega`,'%y%m%d'), t.id_proyecto, s.nro_subsitio 
+                                  FROM `compras` c 
+                                  LEFT JOIN cuentas cu ON cu.id = c.`id_cuenta_proveedor` 
+                                  LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
+                                  INNER JOIN pedidos pe ON pe.id = c.id_pedido 
+                                  INNER JOIN `computos` co ON co.id = pe.id_computo 
+                                  INNER JOIN tareas t ON t.id = co.id_tarea 
+                                  INNER JOIN proyectos p ON p.id = t.id_proyecto 
+                                  INNER JOIN sitios s ON s.id = p.id_sitio 
+                                  LEFT JOIN monedas mo ON mo.id = c.id_moneda 
+                                  WHERE 1 ";
+                          $params = [];
+
+                          if (!empty($nro)) {
+                              $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
+                              $params[] = $nro;
+                              $params[] = $nro;
+                          }
+
+                          if (!empty($nro_ocnp)) {
+                              $nro_ocnp_trimmed = trim($nro_ocnp);
+                              $sql .= " AND (c.`nro_oc` LIKE ? OR pe.id = ?)";
+                              $params[] = '%' . $nro_ocnp_trimmed . '%';
+                              $params[] = $nro_ocnp_trimmed;
+                          }
+
+                          if (!empty($fecha)) {
+                              $sql .= " AND c.`fecha_emision` >= ?";
+                              $params[] = $fecha;
+                          }
+                          if (!empty($fechah)) {
+                              $sql .= " AND c.`fecha_emision` <= ?";
+                              $params[] = $fechah;
+                          }
+                          if (!empty($aprobada)) {
+                              $sql .= " AND c.aprobado = ?";
+                              $params[] = ($aprobada == 1) ? 1 : 0;
+                          }
+                          if (!empty($id_estado) && !empty($id_estado[0])) {
+                              $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
+                              $sql .= " AND e.id IN (" . $placeholders . ")";
+                              $params = array_merge($params, $id_estado);
+                          }
+                          if (!empty($proveedor)) {
+                              $sql .= " AND cu.`nombre` LIKE ?";
+                              $params[] = '%' . $proveedor . '%';
+                          }
+
+                          $q = $pdo->prepare($sql);
+                          $q->execute($params);
+
+                          $results = $q->fetchAll(PDO::FETCH_ASSOC);
+                          $unique_ids = [];
+
+                          foreach ($results as $row) {
+                              if (in_array($row['id'], $unique_ids)) {
+                                  continue;
+                              }
+                              $unique_ids[] = $row['id'];
+
+                              echo '<tr>';
+                              echo '<td class="d-none">'. $row['id'] . '</td>';
+                              echo '<td>'. $row['nro_oc'] . ' / '. $row['nro_revision']. '</td>';
+                              echo '<td>'. $row['nro_sitio'] .' / '.$row['nro_subsitio'].' / '.$row['nro'].'</td>';
+                              echo '<td>'. $row['nombre'] . '</td>';
+                              echo '<td>'. $row['estado'] . '</td>';
+                              echo '<td><span style="display: none;">'. $row["DATE_FORMAT(c.`fecha_emision`,'%y%m%d')"] . '</span>'. $row["DATE_FORMAT(c.`fecha_emision`,'%d/%m/%y')"] . '</td>';
+                              echo '<td><span style="display: none;">'. $row["DATE_FORMAT(c.`fecha_entrega`,'%y%m%d')"] . '</span>'. $row["DATE_FORMAT(c.`fecha_entrega`,'%d/%m/%y')"] . '</td>';
+                              echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
+                              echo '<td style="display: none;">'.$row['id_proyecto'].'</td>';
+                              echo '</tr>';
                               
-                              $sql = "SELECT c.`id`, cu.`nombre`, DATE_FORMAT(c.`fecha_emision`,'%d/%m/%y'), e.`estado`, c.`nro_oc`, c.`total`, pe.`lugar_entrega`, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.`fecha_entrega`,'%d/%m/%y'), c.aprobado, DATE_FORMAT(c.`fecha_emision`,'%y%m%d'), DATE_FORMAT(c.`fecha_entrega`,'%y%m%d'), t.id_proyecto, s.nro_subsitio 
-                                      FROM `compras` c 
-                                      LEFT JOIN cuentas cu ON cu.id = c.`id_cuenta_proveedor` 
-                                      LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
-                                      INNER JOIN pedidos pe ON pe.id = c.id_pedido 
-                                      INNER JOIN `computos` co ON co.id = pe.id_computo 
-                                      INNER JOIN tareas t ON t.id = co.id_tarea 
-                                      INNER JOIN proyectos p ON p.id = t.id_proyecto 
-                                      INNER JOIN sitios s ON s.id = p.id_sitio 
-                                      LEFT JOIN monedas mo ON mo.id = c.id_moneda 
-                                      WHERE 1 ";
-
-                              // Array para los parámetros de la consulta preparada
-                              $params = [];
-
-                              if (!empty($_POST['nro'])) {
-                                $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
-                                $params[] = $_POST['nro'];
-                                $params[] = $_POST['nro'];
-                              }
-
-                              if (!empty($_POST['nro_ocnp'])) {
-                                $nro_ocnp = trim($_POST['nro_ocnp']);
-                                $sql .= " AND (c.`nro_oc` LIKE ? OR pe.id = ?)";
-                                $params[] = '%' . $nro_ocnp . '%';
-                                $params[] = $nro_ocnp;
-                              }
-
-                              if (!empty($_POST['fecha'])) {
-                                $sql .= " AND c.`fecha_emision` >= ?";
-                                $params[] = $_POST['fecha'];
-                              }
-                              if (!empty($_POST['fechah'])) {
-                                $sql .= " AND c.`fecha_emision` <= ?";
-                                $params[] = $_POST['fechah'];
-                              }
-                              if (!empty($_POST['aprobada'])) {
-                                $sql .= " AND c.aprobado = ?";
-                                $params[] = ($_POST['aprobada'] == 1) ? 1 : 0;
-                              }
-                              if (!empty($_POST['id_estado'][0])) {
-                                $placeholders = implode(',', array_fill(0, count($_POST['id_estado']), '?'));
-                                $sql .= " AND e.id IN (" . $placeholders . ")";
-                                $params = array_merge($params, $_POST['id_estado']);
-                              }
-                              if (!empty($_POST['proveedor'])) {
-                                $sql .= " AND cu.`nombre` LIKE ?";
-                                $params[] = '%' . $_POST['proveedor'] . '%';
-                              }
-
-                              $q = $pdo->prepare($sql);
-                              $q->execute($params);
-
-                              $results = $q->fetchAll(PDO::FETCH_ASSOC);
-                              $unique_ids = [];
-
-                              foreach ($results as $row) {
-                                  if (in_array($row['id'], $unique_ids)) {
-                                      continue;
-                                  }
-                                  $unique_ids[] = $row['id'];
-
-                                  echo '<tr>';
-                                  echo '<td class="d-none">'. $row['id'] . '</td>';
-                                  echo '<td>'. $row['nro_oc'] . ' / '. $row['nro_revision']. '</td>';
-                                  echo '<td>'. $row['nro_sitio'] .' / '.$row['nro_subsitio'].' / '.$row['nro'].'</td>';
-                                  echo '<td>'. $row['nombre'] . '</td>';
-                                  echo '<td>'. $row['estado'] . '</td>';
-                                  echo '<td><span style="display: none;">'. $row["DATE_FORMAT(c.`fecha_emision`,'%y%m%d')"] . '</span>'. $row["DATE_FORMAT(c.`fecha_emision`,'%d/%m/%y')"] . '</td>';
-                                  echo '<td><span style="display: none;">'. $row["DATE_FORMAT(c.`fecha_entrega`,'%y%m%d')"] . '</span>'. $row["DATE_FORMAT(c.`fecha_entrega`,'%d/%m/%y')"] . '</td>';
-                                  echo '<td>' . ($row['aprobado'] == 1 ? 'Si' : 'No') . '</td>';
-                                  echo '<td style="display: none;">'.$row['id_proyecto'].'</td>';
-                                  echo '</tr>';
-                                  
-                                  ?>
-                                  <div class="modal fade" id="aprobarModal_<?php echo $row['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                      <div class="modal-header">
-                                      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                      </div>
-                                      <div class="modal-body">¿Está seguro que desea aprobar la OC?</div>
-                                      <div class="modal-footer">
-                                      <a href="aprobarCompra.php?id=<?php echo $row['id']; ?>" class="btn btn-primary">Aprobar</a>
-                                      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                      </div>
-                                    </div>
-                                    </div>
+                              ?>
+                              <div class="modal fade" id="aprobarModal_<?php echo $row['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                  <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+                                  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                                   </div>
-                                  <div class="modal fade" id="rechazarModal_<?php echo $row['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                    <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                      <div class="modal-header">
-                                      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                      </div>
-                                      <div class="modal-body">¿Está seguro que desea rechazar la OC?</div>
-                                      <div class="modal-footer">
-                                      <a href="rechazarCompra.php?id=<?php echo $row['id']; ?>" class="btn btn-primary">Rechazar</a>
-                                      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                      </div>
-                                    </div>
-                                    </div>
+                                  <div class="modal-body">¿Está seguro que desea aprobar la OC?</div>
+                                  <div class="modal-footer">
+                                  <a href="aprobarCompra.php?id=<?php echo $row['id']; ?>" class="btn btn-primary">Aprobar</a>
+                                  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
                                   </div>
-                                  <?php
-                              }
-                              Database::disconnect();
+                                </div>
+                                </div>
+                              </div>
+                              <div class="modal fade" id="rechazarModal_<?php echo $row['id']; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                  <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+                                  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                                  </div>
+                                  <div class="modal-body">¿Está seguro que desea rechazar la OC?</div>
+                                  <div class="modal-footer">
+                                  <a href="rechazarCompra.php?id=<?php echo $row['id']; ?>" class="btn btn-primary">Rechazar</a>
+                                  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+                                  </div>
+                                </div>
+                                </div>
+                              </div>
+                              <?php
                             }
+                            Database::disconnect();
+                            
                           ?>
                         </tbody>
                       </table>
@@ -280,7 +286,7 @@ include 'database.php';
               <!-- Zero Configuration  Ends-->
               <!-- Feature Unable /Disable Order Starts-->
             </div>
-			<div class="row">
+			      <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">
                 <div class="card">

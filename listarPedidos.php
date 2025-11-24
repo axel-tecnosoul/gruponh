@@ -1,26 +1,18 @@
 <?php
-session_start();
-if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
-}
-include 'database.php';
-$nro="";
-if (isset($_POST['nro'])){
-  $nro=$_POST['nro'];
-}
-$fecha="";
-if (isset($_POST['fecha'])){
-  $fecha=$_POST['fecha'];
-}
-$fechah="";
-if (isset($_POST['fechah'])){
-  $fechah=$_POST['fechah'];
-}
-$id_estado=array();
-if (isset($_POST['id_estado'])) {
-  $id_estado=$_POST['id_estado'];
-}
+  session_start();
+  if (empty($_SESSION['user'])) {
+      header("Location: index.php");
+      die("Redirecting to index.php");
+  }
+  include 'database.php';
+  require_once 'manejarFiltros.php';
+
+  $filters = gestionarFiltros('listarPedidos');
+
+  $nro = $filters['nro'] ?? "";
+  $fecha = $filters['fecha'] ?? "";
+  $fechah = $filters['fechah'] ?? "";
+  $id_estado = $filters['id_estado'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -80,7 +72,7 @@ if (isset($_POST['id_estado'])) {
                           <option value="">Todos</option><?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sqlZon = "SELECT id, estado FROM estados_pedidos WHERE 1 order by estado ";
+                          $sqlZon = "SELECT id, estado FROM estados_pedidos WHERE 1 ORDER BY id ASC";
                           $q = $pdo->prepare($sqlZon);
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
@@ -102,7 +94,8 @@ if (isset($_POST['id_estado'])) {
                         </select>
 					            </div> -->
                       <div class="form-group mb-0">
-                        <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarPedidos.php'">Buscar</button>
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                        <a href="listarPedidos.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                       </div>
                     </form>
                   </div>
@@ -154,7 +147,7 @@ if (isset($_POST['id_estado'])) {
                           </tr>
                         </thead>
                         <tbody><?php
-                          if (!empty($_POST)) {
+                          if (!empty($filters)) {
 
                             $filtroNro="";
                             if ($nro!="") {
@@ -186,9 +179,10 @@ if (isset($_POST['id_estado'])) {
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, p.solicitante, pe.aprobado, p.id AS id_proyecto
+                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto
                             FROM pedidos pe 
                               INNER JOIN computos c ON c.id = pe.id_computo 
+                              INNER JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante
                               INNER JOIN tareas t ON t.id = c.id_tarea 
                               INNER JOIN proyectos p ON p.id = t.id_proyecto 
                               LEFT JOIN sitios s ON s.id = p.id_sitio 
@@ -220,19 +214,18 @@ if (isset($_POST['id_estado'])) {
                               </tr><?php
                             }
 
-                            $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, p.solicitante, pe.aprobado, pe.id_proyecto
+                            $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, 
+                            (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
+                            ep.estado, ep.id AS id_estado, 
+                            u.usuario AS solicitante, 
+                            pe.aprobado, pe.id_proyecto
                             FROM pedidos pe 
                               INNER JOIN proyectos p ON p.id = pe.id_proyecto 
                               LEFT JOIN sitios s ON s.id = p.id_sitio 
                               INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                              LEFT JOIN usuarios u ON u.id = pe.id_usuario
                             WHERE pe.id_computo IS NULL ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
                               
-                            /*if (!empty($_POST['nro'])) { $sql2 .= " AND (p.nro = '".intval($_POST['nro'])."' OR s.nro_sitio = '".intval($_POST['nro'])."') "; }
-                            if (!empty($_POST['fecha'])) { $sql2 .= " AND pe.fecha >= '".$_POST['fecha']."' "; }
-                            if (!empty($_POST['fechah'])) { $sql2 .= " AND pe.fecha <= '".$_POST['fechah']."' "; }
-                            if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) { $sql2 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0); }
-                            if (!empty($_POST['id_estado']) && !empty($_POST['id_estado'][0])) { $sql2 .= " AND ep.id IN (".implode(', ', array_map('intval', $_POST['id_estado'])).") "; }*/
-
                             foreach ($pdo->query($sql2) as $row) {
                               $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
                               $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
@@ -457,7 +450,6 @@ if (isset($_POST['id_estado'])) {
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
-    <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
@@ -630,54 +622,7 @@ if (isset($_POST['id_estado'])) {
         
     });
   
-    /*$(document).ready(function() {
-      // Setup - add a text input to each footer cell
-      $('#dataTables-example667 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-      } );
-	    
-      $('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-          "decimal": "",
-          "emptyTable": "No hay información",
-          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-          "infoFiltered": "(Filtrado de _MAX_ total registros)",
-          "infoPostFix": "",
-          "thousands": ",",
-          "lengthMenu": "Mostrar _MENU_ Registros",
-          "loadingRecords": "Cargando...",
-          "processing": "Procesando...",
-          "search": "Buscar:",
-          "zeroRecords": "No hay resultados",
-          "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-          }
-        }
-      });
- 
-      // DataTable
-      var table = $('#dataTables-example667').DataTable();
-  
-      // Apply the search
-      table.columns().every( function () {
-        var that = this;
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-          if ( that.search() !== this.value ) {
-            that.search( this.value ).draw();
-          }
-        });
-		  });
-	  
-    } );*/
-	
-	  function selectRow(t){
+    function selectRow(t){
       t.addClass('selected');
     }
     function deselectRow(t){
