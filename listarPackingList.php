@@ -72,7 +72,7 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `estado` FROM `estados_packing_list` WHERE 1 order by estado ";
+							$sqlZon = "SELECT `id`, `estado` FROM `estados_packing_list` WHERE 1 ORDER BY id ASC";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {

@@ -16,18 +16,18 @@
         header("Location: listarProyectos.php");
     }
     
-    if (!empty($_POST)) {
-        
-       
-    } else {
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT p.`id`, p.`id_sitio`, s.latitud, s.longitud, p.`descripcion`, p.`id_tipo_proyecto`, p.`observaciones`, p.`solicitante`, p.`fecha_pedido`, p.`fecha_entrega`, p.`id_estado_proyecto`, p.`id_usuario`, p.`informacion_entrada`, p.`facturado`, p.`id_gerente`, p.`id_linea_negocio`, p.`anulado`, p.`id_cliente`, p.`nombre`, p.`tags` FROM `proyectos` p inner join sitios s on s.id = p.id_sitio WHERE p.id = ? ";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id]);
-        $data = $q->fetch(PDO::FETCH_ASSOC);
-        
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    $sql = "SELECT p.`id`, p.`id_sitio`, s.latitud, s.longitud, p.`descripcion`, p.`id_tipo_proyecto`, p.`observaciones`, p.`solicitante`, p.`fecha_pedido`, p.`fecha_entrega`, p.`id_estado_proyecto`, p.`id_usuario`, p.`informacion_entrada`, p.`facturado`, p.`id_gerente`, p.`id_linea_negocio`, p.`anulado`, p.`id_cliente`, p.`nombre`, p.`tags` FROM `proyectos` p inner join sitios s on s.id = p.id_sitio WHERE p.id = ? ";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+
+    if (!$data) {
         Database::disconnect();
+        header("Location: listarProyectos.php");
+        exit();
     }
     
 ?>
@@ -249,23 +249,35 @@
 							<div class="col-sm-9"><textarea name="observaciones" class="form-control"><?php echo $data['observaciones']; ?></textarea></div>
 							</div>
 							<hr>
-							<h5>Sucesos</h5>
+							<h5>Sucesos del Proyecto</h5>
 							<div class="form-group row">
-								<div class="col-sm-9">
+								<div class="col-sm-12">
 								<div class="timeline-small">
 								  <?php 
-									$pdo = Database::connect();
-									$sql = " SELECT s.`id`, date_format(s.`fecha_hora`,'%d/%m/%y %H:%i'), s.`suceso`, s.`titulo`, t.tipo FROM `sucesos_proyecto` s inner join tipos_suceso t on t.id = s.id_tipo_suceso WHERE s.`id_proyecto` = ".$_GET['id'].' order by s.id desc';
+									$sql_sucesos = "
+										SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, u.usuario AS nombre_usuario
+										FROM sucesos s 
+										INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+										LEFT JOIN usuarios u ON u.id = s.id_usuario
+										WHERE s.entidad_tipo = 'proyectos' AND s.entidad_id = ?
+										ORDER BY s.fecha_hora DESC, s.id DESC";
 									
-									foreach ($pdo->query($sql) as $row) {
-										echo '<div class="media">';
-										echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
-										echo '<div class="media-body">';
-										echo '<h6>'.$row[3].' <span class="pull-right f-14">'.$row[1].'hs</span></h6>';
-										echo '<p>'.$row[4].': '.$row[2].'</p>';
-										echo '</div></div>';
-								   }
-								   Database::disconnect();
+									$q_sucesos = $pdo->prepare($sql_sucesos);
+									$q_sucesos->execute([$id]);
+
+														if ($q_sucesos->rowCount() > 0) {
+										foreach ($q_sucesos as $row_suceso) {
+											$usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';
+											echo '<div class="media">';
+											echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
+											echo '<div class="media-body">';
+											echo '<h6>'.htmlspecialchars($row_suceso['titulo']).' <span class="pull-right f-14">'.$row_suceso['fecha_formateada'].'hs</span></h6>';
+											echo '<p><strong>'.htmlspecialchars($row_suceso['tipo']).':</strong> '.htmlspecialchars($row_suceso['suceso']).' <small class="text-muted">'.$usuario_suceso.'</small></p>';
+											echo '</div></div>';
+										}
+									} else {
+										echo '<p>No hay sucesos registrados para este proyecto.</p>';
+									}
 								  ?>
 								</div>
 								</div>
@@ -409,38 +421,28 @@
     <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
     
 	<script>
-    // Inicializa la plataforma con tu API Key de HERE
-    var platform = new H.service.Platform({
-        apikey: '9fZ937HZp9Pg9l8A36-K8U-HYO6g_yRNJIk7YoRNic0' // Reemplaza con tu API Key
-    });
+		var platform = new H.service.Platform({ apikey: '9fZ937HZp9Pg9l8A36-K8U-HYO6g_yRNJIk7YoRNic0' });
+		var defaultLayers = platform.createDefaultLayers();
+		
+		var latitud = <?php echo json_encode($data['latitud']); ?>;
+		var longitud = <?php echo json_encode($data['longitud']); ?>;
 
-    // Obtiene las capas del mapa predeterminadas (ej. vista de mapa normal, satélite, etc.)
-    var defaultLayers = platform.createDefaultLayers();
+		var map = new H.Map(
+			document.getElementById('mapContainer'),
+			defaultLayers.vector.normal.map,
+			{
+				zoom: 11,
+				center: {lat: latitud, lng: longitud}
+			}
+		);
 
-	// map12
-	function addMarkersToMap(map) {
-	  var parisMarker = new H.map.Marker({lat:<?php echo $data['latitud']; ?>, lng:<?php echo $data['longitud']; ?>});
-	  map.addObject(parisMarker);
-	}
+		var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
 
-    // Inicializa el mapa en el contenedor con las capas predeterminadas
-    var map = new H.Map(
-        document.getElementById('mapContainer'),  // ID del contenedor HTML
-        defaultLayers.vector.normal.map,  // Tipo de mapa (mapa base normal en vector)
-        {
-            zoom: 11,  // Nivel de zoom inicial
-            center: {lat:<?php echo $data['latitud']; ?>, lng:<?php echo $data['longitud']; ?>} // Coordenadas iniciales (Berlín en este caso)
-        }
-    );
-
-    // Habilita interacciones de usuario como el zoom y el arrastre
-    var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
-
-    // Agrega controles de UI como el zoom y la brújula
-    var ui = H.ui.UI.createDefault(map, defaultLayers);
-	
-	addMarkersToMap(map);
-</script>
+		var ui = H.ui.UI.createDefault(map, defaultLayers);
+		
+		var marker = new H.map.Marker({lat: latitud, lng: longitud});
+		map.addObject(marker);
+	</script>
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
@@ -570,5 +572,6 @@
     
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
+    <?php Database::disconnect(); ?>
   </body>
 </html>

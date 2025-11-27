@@ -232,9 +232,13 @@
 										$q2 = $pdo->prepare($sql2);
 										$q2->execute([$_GET['id']]);
 										$data3 = $q2->fetch(PDO::FETCH_ASSOC);
-										
-										$colada = $data3['nro_sitio']."/".$data3['nro_subsitio']."/".$data3['nro']."-".$count;
-										
+
+										if ($data3) {
+											$colada = $data3['nro_sitio']."/".$data3['nro_subsitio']."/".$data3['nro']."-".$count;
+										} else {
+											$colada = "S/D-" . $count;
+										}
+
 										echo '<td>'. $row[1] . '</td>';
 										echo '<td>'. $colada . '</td>';
 										echo '<td>$'. number_format($row[5],2) . '</td>';

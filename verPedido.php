@@ -22,18 +22,38 @@ if (null==$id) {
 $proyectoDisplay = '';
 $codigoObra = '';
 $data = [];
+$solicitante_mostrar = '';
 
 if (!empty($_POST)) {
-  
-}else {
+} else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
+  
+  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido, u.usuario AS usuario_creador 
+  FROM pedidos pe 
+  LEFT JOIN computos c ON c.id = pe.id_computo 
+  LEFT JOIN tareas t ON t.id = c.id_tarea 
+  LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
+  LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
+  LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
+  LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
+  LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante 
+  LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe 
+  LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+  LEFT JOIN usuarios u ON u.id = pe.id_usuario 
+  WHERE pe.id = ?";
+  
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
   if ($data) {
+    if (!empty($data['cuenta_solicitante'])) {
+        $solicitante_mostrar = $data['cuenta_solicitante'];
+    } else {
+        $solicitante_mostrar = $data['usuario_creador'];
+    }
+
     $codigoObraPartes = array_filter([
       $data['nro_sitio'] ?? null,
       $data['nro_subsitio'] ?? null,
@@ -73,16 +93,12 @@ if (!empty($_POST)) {
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
   </head>
   <body>
-    <!-- Loader ends-->
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
     <?php include('header.php');?>
     
-      <!-- Page Header Start-->
       <div class="page-body-wrapper">
         <?php include('menu.php');?>
-        <!-- Page Sidebar Start-->
-        <!-- Right sidebar Ends-->
         <div class="page-body"><?php
           $ubicacion="Ver ".$tipoPedido;
           include_once("head_page.php")?>
@@ -92,7 +108,6 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header pedido-summary">
-                    <!-- <div class="pedido-summary-text"><?=!empty($headerText) ? $headerText : 'INFORMACIÓN DEL PEDIDO';?></div> -->
                     <h5>
                       <?=$ubicacion." N° ".$data["id"]?>
                       <a href="imprimirPedido.php?id=<?=$data['id'];?>" target="_blank"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir Pedido" title="Imprimir Pedido"></a>
@@ -120,9 +135,9 @@ if (!empty($_POST)) {
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-2 col-form-label font-weight-bold">Estado</label>
-                            <div class="col-sm-4"><?=$data['estado_pedido'];?></div>
+                            <div class="col-sm-4"><?=$data['estado_pedido'];?></div>                            
                             <label class="col-sm-2 col-form-label font-weight-bold">Solicitante</label>
-                            <div class="col-sm-4"><?=$data['cuenta_solicitante']?></div>
+                            <div class="col-sm-4"><?=$solicitante_mostrar?></div>
                           </div>
                         </div>
                       </div>
@@ -148,34 +163,25 @@ if (!empty($_POST)) {
                             </thead>
                             <tbody><?php
                               $pdo = Database::connect();
-                              $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$_GET['id'];
-                              
-                              foreach ($pdo->query($sql) as $row) {
-                                $cantidadDisponible = $row["cantidad"] - $row["reservado"] - $row["comprado"];
+                              $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ?";
+                              $q_detalle = $pdo->prepare($sql);
+                              $q_detalle->execute([$_GET['id']]);
 
-                                $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') AS fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
+                              foreach ($q_detalle as $row) {
+                                $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') AS fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ? order by c.id desc limit 1";
                                 $q2 = $pdo->prepare($sql2);
-                                $q2->execute();
+                                $q2->execute([$row['id_material']]);
                                 $data2 = $q2->fetch(PDO::FETCH_ASSOC);
 
-                                $fecha_emision="";
-                                if (!empty($data2['fecha_emision'])) {
-                                  $fecha_emision = $data2['fecha_emision'];
-                                }
+                                $fecha_emision = $data2['fecha_emision'] ?? '';
+                                $precio = !empty($data2['precio']) ? "$".number_format($data2['precio'],2) : '';
                                 
-                                $precio = "";
-                                if (!empty($data2['precio'])) {
-                                  $precio = "$".number_format($data2['precio'],2);
-                                }
+                                $sql_stock = "SELECT SUM(id.saldo) AS disponible FROM ingresos_detalle id WHERE id_material = ?";
+                                $q_stock = $pdo->prepare($sql_stock);
+                                $q_stock->execute([$row['id_material']]);
+                                $data3 = $q_stock->fetch(PDO::FETCH_ASSOC);
                                 
-                                $sql = "SELECT SUM(id.saldo) AS disponible FROM ingresos_detalle id WHERE id_material = ? ";
-                                $q = $pdo->prepare($sql);
-                                $q->execute([$row[5]]);
-                                $data3 = $q->fetch(PDO::FETCH_ASSOC);
-                                
-                                $disponible=0;
-                                if (empty($data3['disponible'])) {
-                                }?>
+                                $disponible = $data3['disponible'] ?? 0;?>
 
                                 <tr>
                                   <td><?=$row["concepto"]?></td>
@@ -198,35 +204,63 @@ if (!empty($_POST)) {
                       <hr class="mt-4 mb-4">
                       <div class="row">
                         <div class="col-sm-12">
-                          <h6 class="mb-3 font-weight-bold">Sucesos del Proyecto Asociado</h6>
+                          <h6 class="mb-5 font-weight-bold">Historial y Sucesos del Pedido</h6>
                             <div class="timeline-small">
-                              <?php 
-                                if (!empty($data['proyecto_id'])) {
-                                    $pdo = Database::connect();
-                                    $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i'), s.suceso, s.titulo, t.tipo 
-                                                    FROM sucesos_proyecto s 
-                                                    INNER JOIN tipos_suceso t ON t.id = s.id_tipo_suceso 
-                                                    WHERE s.id_proyecto = ? 
-                                                    ORDER BY s.id DESC";
-                                    $q_sucesos = $pdo->prepare($sql_sucesos);
-                                    $q_sucesos->execute([$data['proyecto_id']]);
-                                    
-                                    if ($q_sucesos->rowCount() > 0) {
-                                        foreach ($q_sucesos as $row_suceso) {
-                                            echo '<div class="media">';
-                                            echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
-                                            echo '<div class="media-body">';
-                                            echo '<h6>'.htmlspecialchars($row_suceso['titulo']).' <span class="pull-right f-14">'.$row_suceso[1].'hs</span></h6>';
-                                            echo '<p>'.htmlspecialchars($row_suceso['tipo']).': '.htmlspecialchars($row_suceso['suceso']).'</p>';
-                                            echo '</div></div>';
-                                       }
-                                    } else {
-                                        echo '<p>No hay sucesos registrados para el proyecto asociado.</p>';
-                                    }
-                                   Database::disconnect();
-                                } else {
-                                    echo '<p>Este pedido no está asociado a un proyecto para mostrar sucesos.</p>';
+                              <?php
+                                $pdo = Database::connect();
+                                $id_pedido_actual = $data['id'];
+                                $id_proyecto_asociado = $data['proyecto_id'] ?? null;
+
+                                $conditions = [];
+                                $params = [];
+
+                                $conditions[] = "(s.entidad_tipo = 'pedidos' AND s.entidad_id = :id_pedido)";
+                                $params[':id_pedido'] = $id_pedido_actual;
+
+                                $conditions[] = "(s.entidad_tipo = 'compras' AND s.entidad_id IN (SELECT id FROM compras WHERE id_pedido = " . intval($id_pedido_actual) . "))";
+                                
+                                if ($id_proyecto_asociado) {
+                                  $conditions[] = "(s.entidad_tipo = 'proyectos' AND s.entidad_id = :id_proyecto)";
+                                  $params[':id_proyecto'] = $id_proyecto_asociado;
                                 }
+
+                                $where_clause = implode(' OR ', $conditions);
+
+                                $sql_sucesos = "
+                                  SELECT 
+                                    s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo,
+                                    s.entidad_tipo, s.entidad_id, u.usuario AS nombre_usuario
+                                  FROM sucesos s 
+                                  INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+                                  LEFT JOIN usuarios u ON u.id = s.id_usuario 
+                                  WHERE $where_clause
+                                  ORDER BY s.fecha_hora DESC, s.id DESC";
+                                
+                                $q_sucesos = $pdo->prepare($sql_sucesos);
+                                $q_sucesos->execute($params);
+                                
+                                if ($q_sucesos->rowCount() > 0) {
+                                    foreach ($q_sucesos as $row_suceso) {
+                                        $origen = '';
+                                        if ($row_suceso['entidad_tipo'] == 'compras') {
+                                            $origen = " (Compra N° " . htmlspecialchars($row_suceso['entidad_id']) . ")";
+                                        } elseif ($row_suceso['entidad_tipo'] == 'proyectos') {
+                                            $origen = " (Proyecto N° " . htmlspecialchars($row_suceso['entidad_id']) . ")";
+                                        }
+
+                                        $usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';
+
+                                        echo '<div class="media">';
+                                        echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
+                                        echo '<div class="media-body">';
+                                        echo '<h6>'.htmlspecialchars($row_suceso['titulo']).$origen.' <span class="pull-right f-14">'.$row_suceso['fecha_formateada'].'hs</span></h6>';
+                                        echo '<p><strong>'.htmlspecialchars($row_suceso['tipo']).':</strong> '.htmlspecialchars($row_suceso['suceso']).' <small class="text-muted">'.$usuario_suceso.'</small></p>';
+                                        echo '</div></div>';
+                                   }
+                                } else {
+                                    echo '<p>No hay sucesos registrados para este pedido, sus compras o su proyecto asociado.</p>';
+                                }
+                                Database::disconnect();
                               ?>
                             </div>
                         </div>
@@ -235,7 +269,7 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-12 text-center"><?php
-                        if ($data['id_estado'] == 1 && tienePermiso(298)){?>
+                        if ($data['id_estado'] == 1 && function_exists('tienePermiso') && tienePermiso(298)){?>
                           <button type="button" class="btn btn-primary mt-2 mt-sm-0" id="btnEnviarAprobacion">Enviar a aprobación</button><?php
                         }?>
                         <a href='listarPedidos.php' class="btn btn-light">Volver</a>
@@ -274,24 +308,17 @@ if (!empty($_POST)) {
       </div>
     </div>
     
-    <!-- latest jquery-->
+    <!-- Scripts (sin cambios) -->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-    <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
 	  <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
