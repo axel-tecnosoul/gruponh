@@ -217,13 +217,13 @@
                             $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, 
                             (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
                             ep.estado, ep.id AS id_estado, 
-                            u.usuario AS solicitante, 
+                            cu.nombre AS solicitante, 
                             pe.aprobado, pe.id_proyecto
                             FROM pedidos pe 
                               INNER JOIN proyectos p ON p.id = pe.id_proyecto 
                               LEFT JOIN sitios s ON s.id = p.id_sitio 
                               INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
-                              LEFT JOIN usuarios u ON u.id = pe.id_usuario
+                              LEFT JOIN cuentas cu ON cu.id = pe.id_cuenta_solicitante 
                             WHERE pe.id_computo IS NULL ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
                               
                             foreach ($pdo->query($sql2) as $row) {
@@ -331,90 +331,38 @@
       </div>
     </div>
 	
-	  <!-- <div style="width: 0;height: 0;display: none;">
-      <select id="select_estado_base"><?php
-        $pdo = Database::connect();
-        $sql = "SELECT id,estado FROM estados_pedidos";
-        foreach ($pdo->query($sql) as $row) {
-          echo '<option value="'.$row["id"].'">'.$row["estado"].'</option>';
-        }
-        Database::disconnect();?>
-      </select>
-    </div> -->
-  <?php
-    $pdo = Database::connect();
-    $sql = " SELECT pe.`id`, s.nombre, p.descripcion, t.`estructura`, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado` FROM pedidos pe inner join `computos` c on c.id = pe.id_computo inner join cuentas cu on cu.id = pe.id_cuenta_recibe inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto left join sitios s on s.id = p.id_sitio WHERE 1 ";
-	foreach ($pdo->query($sql) as $row) {
-        ?>
-  <div class="modal fade" id="aprobarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea aprobar el pedido?</div>
-      <div class="modal-footer">
-      <a href="aprobarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Aprobar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+	    <!-- Modales únicos -->
+    <div class="modal fade" id="aprobarModal" tabindex="-1" role="dialog" aria-labelledby="aprobarModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="aprobarModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea aprobar el pedido?</div>
+          <div class="modal-footer">
+            <a href="#" id="btnAprobarPedido" class="btn btn-primary">Aprobar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
-    </div>
-  </div>
-  <div class="modal fade" id="rechazarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea rechazar el pedido?</div>
-      <div class="modal-footer">
-      <a href="rechazarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Rechazar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-      </div>
-    </div>
-    </div>
-  </div>
-  <?php
-    }
-	$sql = " SELECT pe.`id`, s.nombre, p.descripcion, p.descripcion, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado` FROM pedidos pe inner join `proyectos` p on p.id = pe.id_proyecto inner join cuentas cu on cu.id = pe.id_cuenta_recibe left join sitios s on s.id = p.id_sitio WHERE 1 ";
-	foreach ($pdo->query($sql) as $row) {
-        ?>
-  <div class="modal fade" id="aprobarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea aprobar el pedido?</div>
-      <div class="modal-footer">
-      <a href="aprobarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Aprobar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+
+    <div class="modal fade" id="rechazarModal" tabindex="-1" role="dialog" aria-labelledby="rechazarModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rechazarModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea rechazar el pedido?</div>
+          <div class="modal-footer">
+            <a href="#" id="btnRechazarPedido" class="btn btn-primary">Rechazar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
-    </div>
-  </div>
-  <div class="modal fade" id="rechazarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea rechazar el pedido?</div>
-      <div class="modal-footer">
-      <a href="rechazarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Rechazar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-      </div>
-    </div>
-    </div>
-  </div>
-  <?php
-    }
-    Database::disconnect();
-    ?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -464,7 +412,7 @@
 
       $('#dataTables-example666').DataTable({
         stateSave: false,
-        searching: false,
+        //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
         dom: 'Bfrtp<"bottom"l>',
         buttons: [
@@ -520,6 +468,11 @@
       });
       let selectedPedidoInfo = null;
 
+      // Función para obtener el ID del estado de la fila seleccionada
+      function getSelectedPedidoEstadoId() {
+        return selectedPedidoInfo ? selectedPedidoInfo.estadoId : null;
+      }
+
       $("#link_gestionar_pedido").on("click",function(e){
         if(!selectedPedidoInfo){
           e.preventDefault();
@@ -540,16 +493,32 @@
           alert("Por favor seleccione un pedido directo para modificar")
         }
       });
-      $("#link_aprobar_pedido").on("click",function(){
-        let target=this.dataset.target;
-        if(target==undefined || target=="#"){
-          alert("Por favor seleccione un pedido para aprobar")
+      $("#link_aprobar_pedido").on("click",function(e){
+        if(!selectedPedidoInfo){
+          e.preventDefault();
+          alert("Por favor seleccione un pedido para aprobar");
+          return false;
+        }
+        
+        // Validar estado: solo se puede aprobar si está en estado "Para aprobar" (id=2)
+        if(selectedPedidoInfo.estadoId != 2){
+          e.preventDefault();
+          alert('Solo se pueden aprobar pedidos en estado "Para aprobar"');
+          return false;
         }
       });
-      $("#link_rechazar_pedido").on("click",function(){
-        let target=this.dataset.target;
-        if(target==undefined || target=="#"){
-          alert("Por favor seleccione un pedido para rechazar")
+      $("#link_rechazar_pedido").on("click",function(e){
+        if(!selectedPedidoInfo){
+          e.preventDefault();
+          alert("Por favor seleccione un pedido para rechazar");
+          return false;
+        }
+        
+        // Validar estado: solo se puede rechazar si está en estado "Para aprobar" (id=2)
+        if(selectedPedidoInfo.estadoId != 2){
+          e.preventDefault();
+          alert('Solo se pueden rechazar pedidos en estado "Para aprobar"');
+          return false;
         }
       });
       $("#link_nuevo_suceso").on("click",function(){
@@ -576,8 +545,12 @@
           $("#link_gestionar_pedido").attr("href", "#");
           $("#link_modificar_pedido").attr("href", "#");
           $("#link_nuevo_suceso").attr("href", "#");
-          $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-          $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+          $("#link_aprobar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          $("#link_rechazar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          
+          // Limpiar los enlaces de los modales
+          $("#btnAprobarPedido").attr("href", "#");
+          $("#btnRechazarPedido").attr("href", "#");
           selectedPedidoInfo = null;
           $("#link_gestionar_pedido").removeData("estadoId").removeData("tipo").removeData("pedidoId");
         } else {
@@ -593,12 +566,16 @@
             $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
           }
 
-          if (estado === 'Pendiente' || estado === 'Generado' || estado === 'A Evaluar') {
-            $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal_" + id_pedido);
-            $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal_" + id_pedido);
+          if (estadoId == 2) { // Solo si está en estado "Para aprobar"
+            $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal");
+            $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal");
+            
+            // Configurar los enlaces de los modales con el ID del pedido seleccionado
+            $("#btnAprobarPedido").attr("href", "aprobarPedido.php?id=" + id_pedido);
+            $("#btnRechazarPedido").attr("href", "rechazarPedido.php?id=" + id_pedido);
           } else {
-            $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-            $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+            $("#link_aprobar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+            $("#link_rechazar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
           }
 
           selectedPedidoInfo = {
