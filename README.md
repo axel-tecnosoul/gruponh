@@ -25,6 +25,8 @@ return [
     'password' => 'secret',
     'from' => 'noreply@example.local',
     'from_name' => 'GrupoNH Dev'
+    'port' => xxx,
+    'smtpSecure' => 'tls'
 ];
 ```
 
