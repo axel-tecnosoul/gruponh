@@ -26,7 +26,48 @@ $id_estado = $filters['id_estado'] ?? [];
         text-overflow: ellipsis;
       }
       .truncate-project {
-        max-width: 250px;
+        width: 35%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-solicitante {
+        width: 7%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      #dataTables-example666 td.truncate-project {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 td.truncate-solicitante {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      /* Tabla de conceptos */
+      #dataTables-example667 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      .truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 td.truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 th {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -146,11 +187,11 @@ $id_estado = $filters['id_estado'] ?? [];
                             <th style="width: 40px;">Nro.</th>
                             <th style="width: 100px;">Sitio/Sub/Proy</th>
                             <th class="truncate-project">Nombre Proyecto</th>
-                            <th style="width: 90px;">F. de Carga</th>
-                            <th style="width: 90px;">F. Pedida</th>
-                            <th style="width: 90px;">F. Entrega</th>
-                            <th style="width: 100px;">Estado</th>
-                            <th style="width: 120px;">Solicitante</th>
+                            <th style="width: 85px;">F. de Carga</th>
+                            <th style="width: 85px;">F. Pedida</th>
+                            <th style="width: 85px;">F. Entrega</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th class="truncate-solicitante">Solicitante</th>
                             <!-- <th>Aprobado</th> -->
                             <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
@@ -215,7 +256,7 @@ $id_estado = $filters['id_estado'] ?? [];
                               <tr>
                                 <td><?=htmlspecialchars($row['id'])?></td>
                                 <td><?=$obra?></td>
-                                <td style="text-overflow: ellipsis;"><?=$nombre_proyecto_mostrar?></td>
+                                <td class="truncate-project"><?=$nombre_proyecto_mostrar?></td>
                                 <td>
                                   <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                                   <?=date('d/m/Y', strtotime($row['fecha']))?></td>
@@ -228,7 +269,7 @@ $id_estado = $filters['id_estado'] ?? [];
                                   <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
                                 </td>
                                 <td><?=htmlspecialchars($row['estado']) ?></td>
-                                <td><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
+                                <td class="truncate-solicitante"><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                                 <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
                                 <td>Computo</td>
                                 <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
@@ -254,16 +295,16 @@ $id_estado = $filters['id_estado'] ?? [];
                               $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
                               
                               $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
-                              $nombre_proyecto_mostrar=$nombre_proyecto;
+                              /*$nombre_proyecto_mostrar=$nombre_proyecto;
                               
                               if (strlen($nombre_proyecto) > $limite_chars) {
                                 $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
-                              }?>
+                              }*/?>
 
                               <tr>
                               <td><?=htmlspecialchars($row['id'])?></td>
                               <td><?=$obra?></td>
-                              <td><?=$nombre_proyecto_mostrar?></td>
+                              <td class="truncate-project"><?=$nombre_proyecto_mostrar?></td>
                               <td>
                                 <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                                 <?=date('d/m/Y', strtotime($row['fecha'])) ?>
@@ -277,7 +318,7 @@ $id_estado = $filters['id_estado'] ?? [];
                                 <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
                               </td>
                               <td><?=htmlspecialchars($row['estado']) ?></td>
-                              <td><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
+                              <td class="truncate-solicitante"><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                               <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
                               <td>Directo</td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
@@ -292,11 +333,11 @@ $id_estado = $filters['id_estado'] ?? [];
                             <th style="width: 40px;">Nro.</th>
                             <th style="width: 100px;">Sitio/Sub/Proy</th>
                             <th class="truncate-project">Nombre Proyecto</th>
-                            <th style="width: 90px;">F. de Carga</th>
-                            <th style="width: 90px;">F. Pedida</th>
-                            <th style="width: 90px;">F. Entrega</th>
-                            <th style="width: 100px;">Estado</th>
-                            <th style="width: 120px;">Solicitante</th>
+                            <th style="width: 85px;">F. de Carga</th>
+                            <th style="width: 85px;">F. Pedida</th>
+                            <th style="width: 85px;">F. Entrega</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th class="truncate-solicitante">Solicitante</th>
                             <!-- <th>Aprobado</th> -->
                             <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
@@ -323,14 +364,14 @@ $id_estado = $filters['id_estado'] ?? [];
                       <table class="display truncate" id="dataTables-example667">
                         <thead>
                           <tr>
-                            <th>Concepto</th>
-                            <th>Requerido</th>
-                            <th>Stock</th>
-                            <th>Reservado</th>
-                            <th>Comprado</th>
-                            <th>Fecha Necesidad</th>
-                            <th>Fecha Última Compra</th>
-                            <th>Costo Último Precio</th>
+                            <th class="truncate-concepto">Concepto</th>
+                            <th style="width: 70px;">Requerido</th>
+                            <th style="width: 55px;">Stock</th>
+                            <th style="width: 70px;">Reservado</th>
+                            <th style="width: 70px;">Comprado</th>
+                            <th style="width: 85px;">F. Necesidad</th>
+                            <th style="width: 100px;">F. Última Compra</th>
+                            <th style="width: 90px;">Costo Último Precio</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
@@ -341,8 +382,8 @@ $id_estado = $filters['id_estado'] ?? [];
                             <th>Stock</th>
                             <th>Reservado</th>
                             <th>Comprado</th>
-                            <th>Fecha Necesidad</th>
-                            <th>Fecha Última Compra</th>
+                            <th>F. Necesidad</th>
+                            <th>F. Última Compra</th>
                             <th>Costo Último Precio</th>
                           </tr>
                         </tfoot>
@@ -476,6 +517,8 @@ $id_estado = $filters['id_estado'] ?? [];
         },
         initComplete: function(){
           $('[title]').tooltip();
+          // Añadir title solo cuando el texto está truncado
+          addTitleToTruncated();
         }
       });
   
@@ -657,6 +700,41 @@ $id_estado = $filters['id_estado'] ?? [];
             responsive: false,
             autoWidth: false,
             data: data,
+            columnDefs: [
+              {
+                targets: 0, // Concepto
+                className: 'truncate-concepto',
+                width: '30%'
+              },
+              {
+                targets: 1, // Requerido
+                width: '12%'
+              },
+              {
+                targets: 2, // Stock
+                width: '8%'
+              },
+              {
+                targets: 3, // Reservado
+                width: '10%'
+              },
+              {
+                targets: 4, // Comprado
+                width: '10%'
+              },
+              {
+                targets: 5, // F. Necesidad
+                width: '12%'
+              },
+              {
+                targets: 6, // F. Última Compra
+                width: '10%'
+              },
+              {
+                targets: 7, // Costo
+                width: '8%'
+              }
+            ],
             language: {
               "decimal": "",
               "emptyTable": "No hay información",
@@ -691,9 +769,36 @@ $id_estado = $filters['id_estado'] ?? [];
             });
           });
 
+          // Añadir title a elementos truncados después de actualizar la tabla
+          setTimeout(addTitleToTruncated, 100);
         }
       });
     }
+
+    // Función para añadir title solo a elementos truncados
+    function addTitleToTruncated() {
+      // Primero limpiar todos los tooltips existentes
+      $('.truncate-project, .truncate-solicitante, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
+      
+      $('.truncate-project, .truncate-solicitante, .truncate-concepto, #dataTables-example667 th').each(function() {
+        var element = $(this);
+        // Limpiar atributos de tooltip residuales
+        element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
+        
+        // Verificar si el contenido se desborda (está truncado)
+        if (this.scrollWidth > this.offsetWidth) {
+          element.attr('title', element.text().trim());
+        }
+      });
+      
+      // Inicializar tooltips solo para elementos con title
+      $('.truncate-project[title], .truncate-solicitante[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip();
+    }
+
+    // Llamar la función cuando se redimensiona la ventana o cambia el zoom
+    $(window).on('resize', function() {
+      setTimeout(addTitleToTruncated, 100);
+    });
     
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
