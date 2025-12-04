@@ -20,8 +20,17 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT c.`id`, c.`id_pedido`, c.`id_cuenta_proveedor`, c.`fecha_emision`, c.`fecha_entrega`, c.`id_forma_pago`, c.`id_estado_compra`, c.`nro_oc`, c.`total`, c.`comentarios`, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.`iva`, c.`descuento` FROM `compras` c inner join pedidos pe on pe.id = c.id_pedido WHERE c.id = ? ";
-        $q = $pdo->prepare($sql);
+		$sql = "SELECT 
+					c.`id`, c.`id_pedido`, c.`id_cuenta_proveedor`, c.`fecha_emision`, c.`fecha_entrega`, c.`id_forma_pago`, c.`id_estado_compra`, c.`nro_oc`, c.`total`, c.`comentarios`, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.`iva`, c.`descuento`,
+					COALESCE(proy_computo.nombre, proy_directo.nombre) AS proyecto_nombre
+				FROM `compras` c 
+				INNER JOIN pedidos pe ON pe.id = c.id_pedido
+				LEFT JOIN computos co ON co.id = pe.id_computo
+				LEFT JOIN tareas ta ON ta.id = co.id_tarea
+				LEFT JOIN proyectos proy_computo ON proy_computo.id = ta.id_proyecto
+				LEFT JOIN proyectos proy_directo ON proy_directo.id = pe.id_proyecto
+				WHERE c.id = ?";
+		$q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
         
@@ -67,27 +76,33 @@
 							<div class="col-sm-9"><input name="nro_oc" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['nro_oc'];?>"></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Proveedor(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_cuenta_proveedor']) {
-									echo " selected ";
-								}
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
+								<label class="col-sm-3 col-form-label">Proveedor(*)</label>
+								<div class="col-sm-9">
+									<select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required="required">
+										<option value="">Seleccione...</option>
+										<?php
+											$pdo = Database::connect();
+											$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+											$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
+											$q = $pdo->prepare($sqlZon);
+											$q->execute();
+											while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+												echo "<option value='".$fila['id']."'";
+												if ($fila['id']==$data['id_cuenta_proveedor']) {
+													echo " selected ";
+												}
+												echo ">".$fila['nombre']."</option>";
+											}
+											Database::disconnect();
+											?>
+									</select>
+								</div>
 							</div>
+							<div class="form-group row">
+								<label class="col-sm-3 col-form-label">Proyecto</label>
+								<div class="col-sm-9">
+									<input type="text" class="form-control" value="<?php echo htmlspecialchars($data['proyecto_nombre'] ?? 'No especificado'); ?>" readonly>
+								</div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
