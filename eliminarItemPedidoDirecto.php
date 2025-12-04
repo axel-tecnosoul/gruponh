@@ -12,17 +12,28 @@
         $id = $_REQUEST['id'];
     }
     
-    if (null==$id) {
-        header("Location: listarPedidos.php");
+    $idPedido = null;
+    if (!empty($_GET['idPedido'])) {
+        $idPedido = $_REQUEST['idPedido'];
     }
     
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $sql = "delete from pedidos_detalle where id = ? ";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($id));
+    if (null == $id || null == $idPedido) {
+        header("Location: listarPedidos.php");
+    } else {
         
-    Database::disconnect();
+        $pdo = Database::connect();
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-    header("Location: itemsPedidoDirecto.php?id=".$_GET['idPedido']);
+        $sql_log = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Se ha eliminado un item (ID: $id) del pedido','Pedidos','verPedido.php?id=$idPedido')";
+        $q_log = $pdo->prepare($sql_log);
+        $q_log->execute(array($_SESSION['user']['id']));
+
+        $sql = "DELETE FROM `pedidos_detalle` WHERE `id` = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute(array($id));
+        
+        Database::disconnect();
+        
+        header("Location: itemsPedidoDirecto.php?id=" . $idPedido);
+    }
+?>

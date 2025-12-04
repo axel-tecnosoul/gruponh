@@ -191,7 +191,7 @@ if (!empty($_POST)) {
         $mail = new PHPMailer();
         $mail->IsSMTP();
         $mail->SMTPAuth = true;
-        $mail->Port = 25; 
+        $mail->Port = 587; 
         $mail->SMTPSecure = 'ssl';
         $mail->SMTPAutoTLS = false;
         $mail->SMTPSecure = false;
