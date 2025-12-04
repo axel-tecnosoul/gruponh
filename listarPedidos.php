@@ -377,14 +377,14 @@ $id_estado = $filters['id_estado'] ?? [];
                         <tbody></tbody>
 						            <tfoot>
                           <tr>
-                            <th>Concepto</th>
-                            <th>Requerido</th>
-                            <th>Stock</th>
-                            <th>Reservado</th>
-                            <th>Comprado</th>
-                            <th>F. Necesidad</th>
-                            <th>F. Última Compra</th>
-                            <th>Costo Último Precio</th>
+                            <th class="truncate-concepto">Concepto</th>
+                            <th style="width: 70px;">Requerido</th>
+                            <th style="width: 55px;">Stock</th>
+                            <th style="width: 70px;">Reservado</th>
+                            <th style="width: 70px;">Comprado</th>
+                            <th style="width: 85px;">F. Necesidad</th>
+                            <th style="width: 100px;">F. Última Compra</th>
+                            <th style="width: 90px;">Costo Último Precio</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -700,6 +700,15 @@ $id_estado = $filters['id_estado'] ?? [];
             responsive: false,
             autoWidth: false,
             data: data,
+            createdRow: function(row, data, dataIndex) {
+              // Aplicar clase truncate-concepto a la primera celda (concepto)
+              $(row).find('td:eq(0)').addClass('truncate-concepto');
+            },
+            drawCallback: function() {
+              setTimeout(function() {
+                addTitleToTruncated();
+              }, 100);
+            },
             columnDefs: [
               {
                 targets: 0, // Concepto
@@ -792,12 +801,26 @@ $id_estado = $filters['id_estado'] ?? [];
       });
       
       // Inicializar tooltips solo para elementos con title
-      $('.truncate-project[title], .truncate-solicitante[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip();
+      $('.truncate-project[title], .truncate-solicitante[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
+        placement: 'top',
+        trigger: 'hover',
+        delay: { show: 300, hide: 100 },
+        boundary: 'viewport',
+        fallbackPlacement: ['top', 'bottom'],
+        flip: false
+      });
     }
 
     // Llamar la función cuando se redimensiona la ventana o cambia el zoom
     $(window).on('resize', function() {
       setTimeout(addTitleToTruncated, 100);
+    });
+    
+    // Aplicar tooltips cuando se actualicen las tablas DataTables
+    $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
+      setTimeout(function() {
+        addTitleToTruncated();
+      }, 50);
     });
     
     </script>

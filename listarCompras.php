@@ -27,13 +27,58 @@ $id_estado = $filters['id_estado'] ?? [];?>
         text-overflow: ellipsis;
       }
       .truncate-project {
-        max-width: 200px;
+        width: 30%;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
       .truncate-provider {
-        max-width: 200px;
+        width: 25%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      #dataTables-example666 td.truncate-project {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 td.truncate-provider {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      /* Tabla de conceptos de compras */
+      #dataTables-example667 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      .truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 td.truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 th {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-header {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-header {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -147,14 +192,14 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <thead>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th style="width: 120px;">Nro.OC / Rev</th>
-                            <th style="width: 90px;">Nro Pedido</th>
-                            <th style="width: 120px;">Sitio/Sub/Proy</th>
-                            <th>Nombre Proyecto</th>
-                            <th>Proveedor</th>
-                            <th style="width: 100px;">Estado</th>
-                            <th style="width: 90px;">F. Emisión</th>
-                            <th style="width: 90px;">F. Entrega</th>
+                            <th style="width: 80px;">Nro.OC / Rev</th>
+                            <th style="width: 80px;">Nro Pedido</th>
+                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th class="truncate-provider">Proveedor</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th style="width: 85px;">F. Emisión</th>
+                            <th style="width: 85px;">F. Entrega</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -212,16 +257,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
                                 </a>
                               </td>
                               <td><?=$row['nro_sitio'].'/'.$row['nro_subsitio'].'/'.$row['nro']?></td>
-                              <td><?php 
-                                $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
-                                $limite_chars = 30;
-                                if (strlen($nombre_proyecto) > $limite_chars) {
-                                  echo '<span class="proyecto-truncado" title="' . $nombre_proyecto . '">' . substr($nombre_proyecto, 0, $limite_chars) . '...</span>';
-                                } else {
-                                  echo $nombre_proyecto;
-                                }
-                              ?></td>
-                              <td><?=$row['nombre']?></td>
+                              <td class="truncate-project"><?=htmlspecialchars($row['nombre_proyecto'])?></td>
+                              <td class="truncate-provider"><?=$row['nombre']?></td>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_entrega"]?></span><?=$row["fecha_entrega_formatted"]?></td>
@@ -234,14 +271,14 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th style="width: 120px;">Nro.OC / Rev</th>
-                            <th style="width: 90px;">Nro Pedido</th>
-                            <th style="width: 120px;">Sitio/Sub/Proy</th>
+                            <th style="width: 80px;">Nro.OC / Rev</th>
+                            <th style="width: 80px;">Nro Pedido</th>
+                            <th style="width: 100px;">Sitio/Sub/Proy</th>
                             <th class="truncate-project">Nombre Proyecto</th>
                             <th class="truncate-provider">Proveedor</th>
-                            <th style="width: 100px;">Estado</th>
-                            <th style="width: 90px;">F. Emisión</th>
-                            <th style="width: 90px;">F. Entrega</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th style="width: 85px;">F. Emisión</th>
+                            <th style="width: 85px;">F. Entrega</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -266,31 +303,31 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <table class="display truncate" id="dataTables-example667">
                         <thead>
                           <tr>
-                            <th>Concepto</th>
-                            <th>Cantidad</th>
-                            <th>Unidad</th>
-                            <th>Peso Total kg</th>
-                            <th>$/Kg</th>
-                            <th>$/Unitario</th>
-                            <th>$/Total</th>
-                            <th>Entregado</th>
-                            <th>Remitos</th>
-                            <th>Facturas</th>
+                            <th class="truncate-concepto">Concepto</th>
+                            <th style="width: 70px;">Cantidad</th>
+                            <th style="width: 60px;">Unidad</th>
+                            <th style="width: 80px;">Kg Totales</th>
+                            <th style="width: 60px;">$/Kg</th>
+                            <th style="width: 80px;">$/Unitario</th>
+                            <th style="width: 80px;">$/Total</th>
+                            <th style="width: 80px;">Entregado</th>
+                            <th style="width: 70px;">Remitos</th>
+                            <th style="width: 70px;">Facturas</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
 						            <tfoot>
                           <tr>
-                            <th>Concepto</th>
-                            <th>Cantidad</th>
-                            <th>Unidad</th>
-                            <th>Peso Total Kg</th>
-                            <th>$/Kg</th>
-                            <th>$/Unitario</th>
-                            <th>$/Total</th>
-                            <th>Entregado</th>
-                            <th>Remitos</th>
-                            <th>Facturas</th>
+                            <th class="truncate-concepto">Concepto</th>
+                            <th style="width: 70px;">Cantidad</th>
+                            <th style="width: 60px;">Unidad</th>
+                            <th style="width: 80px;">Kg Totales</th>
+                            <th style="width: 60px;">$/Kg</th>
+                            <th style="width: 80px;">$/Unitario</th>
+                            <th style="width: 80px;">$/Total</th>
+                            <th style="width: 80px;">Entregado</th>
+                            <th style="width: 70px;">Remitos</th>
+                            <th style="width: 70px;">Facturas</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -347,6 +384,19 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script>
+      // Configuración global para tooltips - previene parpadeo en bordes del viewport
+      if (typeof $ !== 'undefined' && $.fn.tooltip && $.fn.tooltip.Constructor) {
+        $.fn.tooltip.Constructor.Default = $.extend({}, $.fn.tooltip.Constructor.Default, {
+          placement: 'top',
+          trigger: 'hover',
+          delay: { show: 300, hide: 100 },
+          boundary: 'viewport',
+          fallbackPlacement: ['top', 'bottom'],
+          flip: false
+        });
+      }
+    </script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -382,6 +432,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <script src="assets/js/script.js"></script>
     <script>
     $(document).ready(function() {
+      get_conceptos(0);
+
       let selectedCompraInfo = null;
       
       // Función para obtener el ID del estado de la fila seleccionada
@@ -446,6 +498,9 @@ $id_estado = $filters['id_estado'] ?? [];?>
  
       // DataTable
       var table = $('#dataTables-example666').DataTable();
+      
+      // Añadir tooltips dinámicos después de inicializar
+      setTimeout(addTitleToTruncated, 100);
       // Apply the search
       table.columns().every( function () {
         var that = this;
@@ -627,52 +682,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
 	  } );
 	
-    $(document).ready(function() {
-      // Setup - add a text input to each footer cell
-      $('#dataTables-example667 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-      } );
-
-      $('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        autoWidth: false,
-        language: {
-          "decimal": "",
-          "emptyTable": "No hay información",
-          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-          "infoFiltered": "(Filtrado de _MAX_ total registros)",
-          "infoPostFix": "",
-          "thousands": ",",
-          "lengthMenu": "Mostrar _MENU_ Registros",
-          "loadingRecords": "Cargando...",
-          "processing": "Procesando...",
-          "search": "Buscar:",
-          "zeroRecords": "No hay resultados",
-          "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-          }
-        }
-      });
- 
-      // DataTable
-      var table = $('#dataTables-example667').DataTable();
-      // Apply the search
-      table.columns().every( function () {
-        var that = this;
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-          if ( that.search() !== this.value ) {
-            that.search( this.value ).draw();
-          }
-        });
-      });
-    });
-	
 	  function selectRow(t){
       t.addClass('selected');
     }
@@ -695,12 +704,34 @@ $id_estado = $filters['id_estado'] ?? [];?>
           data = JSON.parse(data);
           console.log(data);
 
+          /*$('#dataTables-example667 tfoot th').each( function () {
+            var title = $(this).text();
+            $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
+          } );*/
+
           $('#dataTables-example667').DataTable().destroy();
           $('#dataTables-example667').DataTable({
             stateSave: false,
             responsive: false,
             autoWidth: false,
             data: data,
+            columnDefs: [
+              { "width": "auto", "targets": 0, "className": "truncate-concepto" }, // Concepto - Ancho flexible
+              { "width": "70px", "targets": 1 }, // Cantidad
+              { "width": "60px", "targets": 2 }, // Unidad
+              { "width": "80px", "targets": 3 }, // Peso Total kg
+              { "width": "60px", "targets": 4 }, // $/Kg
+              { "width": "80px", "targets": 5 }, // $/Unitario
+              { "width": "80px", "targets": 6 }, // $/Total
+              { "width": "80px", "targets": 7 }, // Entregado
+              { "width": "70px", "targets": 8 }, // Remitos
+              { "width": "70px", "targets": 9 }  // Facturas
+            ],
+            drawCallback: function() {
+              setTimeout(function() {
+                addTitleToTruncated();
+              }, 100);
+            },
             language: {
               "decimal": "",
               "emptyTable": "No hay información",
@@ -735,10 +766,53 @@ $id_estado = $filters['id_estado'] ?? [];?>
             });
           });
 
+          // Aplicar tooltips inmediatamente después de cargar los datos
+          setTimeout(function() {
+            addTitleToTruncated();
+          }, 200);
           
         }
       });
     }
+
+    // Función para añadir title solo a elementos truncados
+    function addTitleToTruncated() {
+      // Primero limpiar todos los tooltips existentes
+      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
+      
+      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').each(function() {
+        var element = $(this);
+        // Limpiar atributos de tooltip residuales
+        element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
+        
+        // Verificar si el contenido se desborda (está truncado)
+        if (this.scrollWidth > this.offsetWidth) {
+          element.attr('title', element.text().trim());
+        }
+      });
+      
+      // Inicializar tooltips solo para elementos con title con configuración anti-parpadeo
+      $('.truncate-project[title], .truncate-provider[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
+        placement: 'top',
+        trigger: 'hover',
+        delay: { show: 300, hide: 100 },
+        boundary: 'viewport',
+        fallbackPlacement: ['top', 'bottom'],
+        flip: false
+      });
+    }
+
+    // Llamar la función cuando se redimensiona la ventana o cambia el zoom
+    $(window).on('resize', function() {
+      setTimeout(addTitleToTruncated, 100);
+    });
+    
+    // Aplicar tooltips cuando se actualicen las tablas DataTables
+    $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
+      setTimeout(function() {
+        addTitleToTruncated();
+      }, 50);
+    });
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
