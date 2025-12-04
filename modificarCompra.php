@@ -140,7 +140,7 @@
 							<div class="col-sm-9"><input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha_emision'];?>" class="form-control" readonly="readonly"></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Entrega Estimada</label>
+							<label class="col-sm-3 col-form-label">Fecha Entrega</label>
 							<div class="col-sm-9"><input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha_entrega'];?>" class="form-control"></div>
 							</div>
 							<div class="form-group row">

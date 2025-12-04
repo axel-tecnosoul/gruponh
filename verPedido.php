@@ -64,9 +64,9 @@ if (!empty($_POST)) {
     $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
 
     $tieneComputo = !empty($data['id_computo']);
-    $tipoPedido = "Pedido Directo";
+    $tipoPedido = "Directo";
     if($tieneComputo){
-      $tipoPedido = 'Pedido de Cómputo';
+      $tipoPedido = 'de Cómputo';
     }
 
     $proyectoDisplay = '';
@@ -114,29 +114,26 @@ if (!empty($_POST)) {
                     </h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
-                    <div class="card-body"><?php
-                      if (isset($error)){?>
-                        <div class="alert alert-danger"><?=$error;?></div><?php
-                      }?>
+                    <div class="card-body">
                       <div class="row">
                         <div class="col-md-12">
                           <h6 class="mb-3 font-weight-bold">Datos del Pedido</h6>
-                          <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Fecha Pedido</label>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Fecha Pedido</label>
                             <div class="col-sm-4"><?=$data['fecha'];?></div>
-                            <label class="col-sm-2 col-form-label font-weight-bold">Proyecto</label>
+                            <label class="col-sm-2 font-weight-bold">Proyecto</label>
                             <div class="col-sm-4"><?=$proyectoDisplay;?></div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Lugar de Entrega</label>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Lugar de Entrega</label>
                             <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
-                            <label class="col-sm-2 col-form-label font-weight-bold">Recibe</label>
+                            <label class="col-sm-2 font-weight-bold">Recibe</label>
                             <div class="col-sm-4"><?=$data['cuenta_recibe']?></div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Estado</label>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Estado</label>
                             <div class="col-sm-4"><?=$data['estado_pedido'];?></div>
-                            <label class="col-sm-2 col-form-label font-weight-bold">Solicitante</label>
+                            <label class="col-sm-2 font-weight-bold">Solicitante</label>
                             <div class="col-sm-4"><?=$solicitante_mostrar?></div>
                           </div>
                         </div>
