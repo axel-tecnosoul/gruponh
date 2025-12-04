@@ -1,18 +1,18 @@
 <?php
-  session_start();
-  if (empty($_SESSION['user'])) {
-      header("Location: index.php");
-      die("Redirecting to index.php");
-  }
-  include 'database.php';
-  require_once 'manejarFiltros.php';
+require("config.php");
+if (empty($_SESSION['user'])) {
+  header("Location: index.php");
+  die("Redirecting to index.php");
+}
+include 'database.php';
+require_once 'manejarFiltros.php';
 
-  $filters = gestionarFiltros('listarPedidos');
+$filters = gestionarFiltros('listarPedidos');
 
-  $nro = $filters['nro'] ?? "";
-  $fecha = $filters['fecha'] ?? "";
-  $fechah = $filters['fechah'] ?? "";
-  $id_estado = $filters['id_estado'] ?? [];
+$nro = $filters['nro'] ?? "";
+$fecha = $filters['fecha'] ?? "";
+$fechah = $filters['fechah'] ?? "";
+$id_estado = $filters['id_estado'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -33,6 +33,10 @@
       .editable {
         text-decoration: underline;
         cursor: default;
+      }
+      .proyecto-truncado {
+        cursor: help;
+        border-bottom: 1px dotted #999;
       }
     </style>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
@@ -134,10 +138,11 @@
                         <thead>
                           <tr>
                             <th>Nro.</th>
-                            <th>Obra</th>
-                            <th>Fecha de Carga</th>
-                            <th>Fecha Entrega Pedida</th>
-                            <th>Fecha Pactada Prov.</th>
+                            <th>Sitio / Sub / Proy</th>
+                            <th>Nombre Proyecto</th>
+                            <th>F. de Carga</th>
+                            <th>F. Pedida</th>
+                            <th>F. Entrega</th>
                             <th>Estado</th>
                             <th>Solicitante</th>
                             <!-- <th>Aprobado</th> -->
@@ -179,7 +184,7 @@
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto
+                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.descripcion AS nombre_proyecto
                             FROM pedidos pe 
                               INNER JOIN computos c ON c.id = pe.id_computo 
                               INNER JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante
@@ -192,10 +197,20 @@
                             foreach ($pdo->query($sql1) as $row) {
                               $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
                               $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
-                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');?>
+                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
+
+                              $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
+                              $nombre_proyecto_mostrar=$nombre_proyecto;
+                              
+                              $limite_chars = 30;
+                              if (strlen($nombre_proyecto) > $limite_chars) {
+                                $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
+                              }?>
                               <tr>
                                 <td><?=htmlspecialchars($row['id'])?></td>
                                 <td><?=$obra?></td>
+                                <td><?=$nombre_proyecto_mostrar?>
+                                </td>
                                 <td>
                                   <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                                   <?=date('d/m/Y', strtotime($row['fecha']))?></td>
@@ -206,7 +221,7 @@
                                   <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0)?></span>
                                   <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?></td>
                                 <td><?=htmlspecialchars($row['estado']) ?></td>
-                                <td><?=htmlspecialchars($row['solicitante']) ?></td>
+                                <td><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                                 <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
                                 <td>Computo</td>
                                 <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
@@ -218,7 +233,7 @@
                             (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
                             ep.estado, ep.id AS id_estado, 
                             cu.nombre AS solicitante, 
-                            pe.aprobado, pe.id_proyecto
+                            pe.aprobado, pe.id_proyecto, p.descripcion AS nombre_proyecto
                             FROM pedidos pe 
                               INNER JOIN proyectos p ON p.id = pe.id_proyecto 
                               LEFT JOIN sitios s ON s.id = p.id_sitio 
@@ -229,11 +244,20 @@
                             foreach ($pdo->query($sql2) as $row) {
                               $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
                               $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
-                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');?>
+                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
+                              
+                              $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
+                              $nombre_proyecto_mostrar=$nombre_proyecto;
+                              
+                              $limite_chars = 30;
+                              if (strlen($nombre_proyecto) > $limite_chars) {
+                                $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
+                              }?>
 
                               <tr>
                               <td><?=htmlspecialchars($row['id'])?></td>
                               <td><?=$obra?></td>
+                              <td><?=$nombre_proyecto_mostrar?></td>
                               <td>
                                 <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                                 <?=date('d/m/Y', strtotime($row['fecha'])) ?>
@@ -247,7 +271,7 @@
                                 <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
                               </td>
                               <td><?=htmlspecialchars($row['estado']) ?></td>
-                              <td><?=htmlspecialchars($row['solicitante']) ?></td>
+                              <td><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                               <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
                               <td>Directo</td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
@@ -260,10 +284,11 @@
                         <tfoot>
                           <tr>
                             <th>Nro.</th>
-                            <th>Obra</th>
-                            <th>Fecha de Carga</th>
-                            <th>Fecha Entrega Pedida</th>
-                            <th>Fecha Pactada Prov.</th>
+                            <th>Sitio / Sub / Proy</th>
+                            <th>Nombre Proyecto</th>
+                            <th>F. de Carga</th>
+                            <th>F. Pedida</th>
+                            <th>F. Entrega</th>
                             <th>Estado</th>
                             <th>Solicitante</th>
                             <!-- <th>Aprobado</th> -->
@@ -533,10 +558,10 @@
         var table = $('#dataTables-example666').DataTable();
 
         let id_pedido = t.find("td:nth-child(1)").html()?.trim() || '';
-        let estado = t.find("td:nth-child(6)").html()?.trim() || '';
-        let tipo = t.find("td:nth-child(8)").html()?.trim() || '';
-        let id_proyecto = t.find("td:nth-child(9)").html()?.trim() || '';
-        let estadoId = t.find("td:nth-child(10)").html()?.trim() || '';
+        let estado = t.find("td:nth-child(7)").html()?.trim() || ''; // Estado ahora en columna 7
+        let tipo = t.find("td:nth-child(9)").html()?.trim() || ''; // Tipo ahora en columna 9  
+        let id_proyecto = t.find("td:nth-child(10)").html()?.trim() || ''; // Proyecto ahora en columna 10
+        let estadoId = t.find("td:nth-child(11)").html()?.trim() || ''; // Estado ID ahora en columna 11
 
         if (t.hasClass('selected')) {
           t.removeClass('selected');
@@ -593,7 +618,7 @@
             $("#link_gestionar_pedido").attr("href", "#");
           }
 
-          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?desdePedidos=1&id=" + id_proyecto);
+          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=pedidos&entidad_id=" + selectedPedidoInfo.id);
         }
       });
         

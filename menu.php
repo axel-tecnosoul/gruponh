@@ -22,7 +22,8 @@ function abrirMenu($op) {
 		($current_page == "listarOrdenesCompraClientes.php") || 
 		($current_page == "listarCertificadosMaestros.php") || 
 		($current_page == "listarRegimenes.php") || 
-		($current_page == "listarPolizas.php")) {
+		($current_page == "listarPolizas.php") || 
+		($current_page == "listarSucesos.php")) {
 			echo 'class="active"';
 		}
 	} else if ($op == "4") {
@@ -105,6 +106,7 @@ function abrirMenu($op) {
 				<?php if(tienePermiso(263)){?><li><a href="listarSubcuentas.php"><i class="fa fa-circle"></i>Subcuentas</a></li><?php }?>
 				<?php if(tienePermiso(335)){?><li><a href="listarFacturasVenta.php"><i class="fa fa-circle"></i>Facturas Venta</a></li><?php }?>
 				<?php if(tienePermiso(367)){?><li><a href="listarEventos.php"><i class="fa fa-circle"></i>Calendario Eventos</a></li><?php }?>
+				<li><a href="listarSucesos.php"><i class="fa fa-circle"></i>Sucesos</a></li>
 				<?php if(tienePermiso(369)){?><li><a href="listarOrdenesCompraClientes.php"><i class="fa fa-circle"></i>Ordenes</a></li><?php }?>
 				<?php if(tienePermiso(373)){?><li><a href="listarCertificadosMaestros.php"><i class="fa fa-circle"></i>Certificados</a></li><?php }?>
 				<?php if(tienePermiso(379)){?><li><a href="listarPolizas.php"><i class="fa fa-circle"></i>Polizas</a></li><?php }?>

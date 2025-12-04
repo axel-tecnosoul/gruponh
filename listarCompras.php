@@ -1,22 +1,20 @@
 <?php
-  session_start();
-  if (empty($_SESSION['user'])) {
-      header("Location: index.php");
-      die("Redirecting to index.php");
-  }
-  include 'database.php';
-  require_once 'manejarFiltros.php';
+require("config.php");
+if (empty($_SESSION['user'])) {
+  header("Location: index.php");
+  die("Redirecting to index.php");
+}
+include 'database.php';
+require_once 'manejarFiltros.php';
 
-  $filters = gestionarFiltros('listarCompras');
+$filters = gestionarFiltros('listarCompras');
 
-  $nro_ocnp = $filters['nro_ocnp'] ?? "";
-  $nro = $filters['nro'] ?? "";
-  $proveedor = $filters['proveedor'] ?? "";
-  $fecha = $filters['fecha'] ?? "";
-  $fechah = $filters['fechah'] ?? "";
-  $id_estado = $filters['id_estado'] ?? [];
-
-?>
+$nro_ocnp = $filters['nro_ocnp'] ?? "";
+$nro = $filters['nro'] ?? "";
+$proveedor = $filters['proveedor'] ?? "";
+$fecha = $filters['fecha'] ?? "";
+$fechah = $filters['fechah'] ?? "";
+$id_estado = $filters['id_estado'] ?? [];?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -27,6 +25,10 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+      .proyecto-truncado {
+        cursor: help;
+        border-bottom: 1px dotted #999;
       }
     </style>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
@@ -96,9 +98,6 @@
                             Database::disconnect();?>
                           </select>
                         </div>
-                      </div>
-
-                      <div class="form-group mb-0">
                         <div class="form-group mb-0">
                           <button type="submit" class="btn btn-primary">Buscar</button>
                           <a href="listarCompras.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
@@ -137,18 +136,20 @@
                           <tr>
                             <th class="d-none">ID</th>
                             <th>Nro.OC / Rev</th>
+                            <th>Nro Pedido</th>
                             <th>Sitio / Sub / Proy</th>
+                            <th>Nombre Proyecto</th>
                             <th>Proveedor</th>
                             <th>Estado</th>
-                            <th>F.Emisión</th>
-                            <th>F.Entrega</th>
+                            <th>F. Emisión</th>
+                            <th>F. Entrega</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
                           $pdo = Database::connect();
-                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido INNER JOIN computos co ON co.id = pe.id_computo INNER JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
+                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, pe.id AS id_pedido, p.descripcion AS nombre_proyecto FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido INNER JOIN computos co ON co.id = pe.id_computo INNER JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
                           $params = [];
                           if (!empty($nro)) {
                             $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
@@ -192,8 +193,22 @@
 
                             <tr>
                               <td class="d-none"><?=$row['id']?></td>
-                              <td><?=$row['nro_oc']?> / <?=$row['nro_revision']?></td>
+                              <td><?=$row['id']?> / <?=$row['nro_revision']?></td>
+                              <td>
+                                <a href="verPedido.php?id=<?=$row['id_pedido']?>" target="_blank" title="Ver Pedido">
+                                  <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>
+                                </a>
+                              </td>
                               <td><?=$row['nro_sitio'].' / '.$row['nro_subsitio'].' / '.$row['nro']?></td>
+                              <td><?php 
+                                $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
+                                $limite_chars = 30;
+                                if (strlen($nombre_proyecto) > $limite_chars) {
+                                  echo '<span class="proyecto-truncado" title="' . $nombre_proyecto . '">' . substr($nombre_proyecto, 0, $limite_chars) . '...</span>';
+                                } else {
+                                  echo $nombre_proyecto;
+                                }
+                              ?></td>
                               <td><?=$row['nombre']?></td>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
@@ -208,11 +223,13 @@
                           <tr>
                             <th class="d-none">ID</th>
                             <th>Nro.OC / Rev</th>
+                            <th>Nro Pedido</th>
                             <th>Sitio / Sub / Proy</th>
+                            <th>Nombre Proyecto</th>
                             <th>Proveedor</th>
                             <th>Estado</th>
-                            <th>F.Emisión</th>
-                            <th>F.Entrega</th>
+                            <th>F. Emisión</th>
+                            <th>F. Entrega</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -514,9 +531,9 @@
         var t=$(this).parent();
 		
         let id_compra=t.find("td:first-child").html();
-        let estado = t.find("td:nth-child(5)").html(); // Estado está en columna 5
-        let id_proyecto=t.find("td:nth-child(8)").html(); // Proyecto está en columna 8 (oculta)
-        let id_estado_compra=t.find("td:nth-child(9)").html(); // Estado ID está en columna 9 (oculta)
+        let estado = t.find("td:nth-child(7)").html(); // Estado está en columna 7
+        let id_proyecto=t.find("td:nth-child(10)").html(); // Proyecto está en columna 10 (oculta)
+        let id_estado_compra=t.find("td:nth-child(11)").html(); // Estado ID está en columna 11 (oculta)
 		
         if(t.hasClass('selected')){
           deselectRow(t);
@@ -562,32 +579,37 @@
             $("#link_adjuntar_factura").attr("href","#");
             $("#link_nuevo_pago").attr("href","#");
           }
-        if (id_estado_compra == 2) { // Solo si está en estado "Para aprobar"
+        // Aprobar: solo en estado "Para aprobar" (id=2)
+        if (id_estado_compra == 2) {
             $("#link_aprobar_compra").attr("data-toggle","modal");
             $("#link_aprobar_compra").attr("data-target","#aprobarModal");
-            $("#link_rechazar_compra").attr("data-toggle","modal");
-            $("#link_rechazar_compra").attr("data-target","#rechazarModal");
-            
-            // Configurar los enlaces de los modales con el ID de la compra seleccionada
             $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
-            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
-            
-            // Actualizar información de compra seleccionada
-            selectedCompraInfo = {
-              id: id_compra,
-              estado: estado,
-              id_proyecto: id_proyecto,
-              id_estado: id_estado_compra
-            };
-          } else {
+        } else {
             $("#link_aprobar_compra").removeAttr("data-toggle");
             $("#link_aprobar_compra").removeAttr("data-target");
             $("#link_aprobar_compra").attr("href","#");
+        }
+        
+        // Rechazar: solo en estado "Para aprobar" (id=2)
+        if (id_estado_compra == 2) {
+            $("#link_rechazar_compra").attr("data-toggle","modal");
+            $("#link_rechazar_compra").attr("data-target","#rechazarModal");
+            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
+        } else {
             $("#link_rechazar_compra").removeAttr("data-toggle");
             $("#link_rechazar_compra").removeAttr("data-target");
             $("#link_rechazar_compra").attr("href","#");
-          }
-		      $("#link_nuevo_suceso").attr("href","nuevoSucesoCompra.php?id="+id_compra);
+        }
+            
+        // Actualizar información de compra seleccionada
+        selectedCompraInfo = {
+          id: id_compra,
+          estado: estado,
+          id_proyecto: id_proyecto,
+          id_estado: id_estado_compra
+        };
+
+		      $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?entidad_tipo=compras&entidad_id="+selectedCompraInfo.id);
         }
       });
 	  } );

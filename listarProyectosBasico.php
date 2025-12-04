@@ -530,7 +530,7 @@ include 'database.php';
           $("#link_nueva_tarea").attr("href","nuevaTarea.php?id="+id_proyecto);
           $("#link_modificar_proyecto").attr("href","modificarProyecto.php?id="+id_proyecto);
           $("#link_adjuntar_proyecto").attr("href","adjuntarProyecto.php?id="+id_proyecto);
-          $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?id="+id_proyecto);
+          $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?entidad_tipo=proyectos&entidad_id="+id_proyecto);
           $("#link_agregar_presupuesto").attr("href","agregarPresupuestoProyecto.php?id="+id_proyecto);
 		  $("#link_nueva_lc").attr("href","nuevaListaCorte.php?idProyecto="+id_proyecto);
 		  $("#link_nuevo_packing").attr("href","nuevaPackingList.php?idProyecto="+id_proyecto);

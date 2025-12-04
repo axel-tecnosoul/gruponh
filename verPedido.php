@@ -141,9 +141,7 @@ if (!empty($_POST)) {
                           </div>
                         </div>
                       </div>
-                      
                       <hr class="mt-4 mb-4">
-                      
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3 font-weight-bold">Detalle de Conceptos</h6>
@@ -200,7 +198,6 @@ if (!empty($_POST)) {
                           </div>
                         </div>
                       </div>
-
                       <hr class="mt-4 mb-4">
                       <div class="row">
                         <div class="col-sm-4">
@@ -241,13 +238,19 @@ if (!empty($_POST)) {
 
                                 $usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';?>
 
-                                <div class="media">';
+                                <div class="media">
                                   <div class="timeline-round m-r-30 timeline-line-1 bg-primary">
                                     <i data-feather="message-circle"></i>
                                   </div>
                                   <div class="media-body">
-                                    <h6><?=htmlspecialchars($row_suceso['titulo']).$origen?> <span class="pull-right f-14"><?=$row_suceso['fecha_formateada']?>hs</span></h6>
-                                    <p><strong><?=htmlspecialchars($row_suceso['tipo'])?>:</strong> <?=htmlspecialchars($row_suceso['suceso'])?> <small class="text-muted"><?=$usuario_suceso?></small></p>
+                                    <h6>
+                                      <?=htmlspecialchars($row_suceso['titulo']).$origen?> <span class="pull-right f-14"><?=$row_suceso['fecha_formateada']?>hs</span>
+                                    </h6>
+                                    <p>
+                                      <strong><?=htmlspecialchars($row_suceso['tipo'])?>:</strong> 
+                                      <?=htmlspecialchars($row_suceso['suceso'])?> 
+                                      <small class="text-muted"><?=$usuario_suceso?></small>
+                                    </p>
                                   </div>
                                 </div><?php
                               }
