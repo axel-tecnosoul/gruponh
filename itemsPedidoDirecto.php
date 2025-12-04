@@ -133,7 +133,11 @@
                         echo '<td>'. $row['concepto'] . '</td>';
                         echo '<td>'. $row['cantidad'] . '</td>';
                         echo '<td><span style="display: none;">'. $row['fecha_necesidad_raw'] . '</span>'. $row['fecha_formateada'] . '</td>';
-                        echo '<td></td>';
+                        echo '<td>';
+                            echo '<a href="#" onclick="$(\'#eliminarModal_'.$row['id'].'\').modal(\'show\'); event.stopPropagation();" title="Eliminar">';
+                            echo '<img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar">';
+                            echo '</a>';
+                        echo '</td>';
                         echo '</tr>';
                     }
                     Database::disconnect();

@@ -85,11 +85,29 @@ if (!empty($_POST)) {
     }
 
     if (!empty($items_para_comprar)) {
+      $id_parametro_limite = ($_POST['id_moneda'] == 1) ? 13 : 12;
       
+      $sql_p = "SELECT valor FROM parametros WHERE id = ?";
+      $q_p = $pdo->prepare($sql_p);
+      $q_p->execute([$id_parametro_limite]);
+      $data_p = $q_p->fetch(PDO::FETCH_ASSOC);
+      
+      $monto_limite = $data_p ? (float)$data_p['valor'] : 0;
+      
+      $id_estado_compra = 1; 
+      $mensaje_extra_email = "";
+      
+      if ($total < $monto_limite) {
+          $id_estado_compra = 3;
+          $mensaje_extra_email = " (Aprobada Automáticamente por monto menor a límite)";
+      }
+
       $iva = $total * 0.21;
-      $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento) VALUES (?,?,?,?,?,1,?, ?, ?,?,?,?,'Revisión Original',?)";
+      
+      $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento) VALUES (?,?,?,?,?, ?, ?, ?, ?,?,?,?,'Revisión Original',?)";
       $q = $pdo->prepare($sql);
-      $q->execute([$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento']]);
+      $q->execute([$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], $id_estado_compra, '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento']]);   
+      
       $idCompra = $pdo->lastInsertId();
       
       $nroOC = $id . '/' . $idCompra;
@@ -154,19 +172,26 @@ if (!empty($_POST)) {
       
       $sql_notif = "SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
       foreach ($pdo->query($sql_notif) as $row_notif) {
+        
+        $estado_texto = ($id_estado_compra == 3) ? "APROBADA (Automática)" : "Pendiente de Aprobación";
+        
         $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
         $q2 = $pdo->prepare($sql2);
-        $q2->execute([$row_notif[0],'ID Orden de Compra: #'.$idCompra,$idCompra]);
+        $q2->execute([$row_notif[0],'ID OC: #'.$idCompra . ' - ' . $estado_texto ,$idCompra]);
         
         $address = $row_notif[1];
         
-        $titulo = "ERP Notificaciones - Módulo Compras - Nueva Compra";
-        $mensaje="Nueva compra dada de alta en el sistema: #".$idCompra;
+        $titulo = "ERP Notificaciones - Compras - Nueva OC #$idCompra ($estado_texto)";
+        $mensaje = "Nueva compra generada en el sistema.\n";
+        $mensaje .= "Nro ID: #".$idCompra . "\n";
+        $mensaje .= "Estado: " . $estado_texto . "\n";
+        $mensaje .= "Monto Total: $" . number_format($total, 2);
         
+        $mail = new PHPMailer();
         $mail = new PHPMailer();
         $mail->IsSMTP();
         $mail->SMTPAuth = true;
-        $mail->Port = 25; 
+        $mail->Port = 587; 
         $mail->SMTPSecure = 'ssl';
         $mail->SMTPAutoTLS = false;
         $mail->SMTPSecure = false;

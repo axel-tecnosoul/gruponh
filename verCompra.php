@@ -15,6 +15,7 @@ if (null==$id) {
   header("Location: listarCompras.php");
 }
     
+
 if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
@@ -26,8 +27,8 @@ if (!empty($_POST)) {
           LEFT JOIN formas_pago fp ON fp.id = c.id_forma_pago 
           LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra 
           LEFT JOIN monedas m ON m.id = c.id_moneda
-          LEFT JOIN computos comp ON comp.id = pe.id_computo 
-          LEFT JOIN tareas t ON t.id = comp.id_tarea 
+          LEFT JOIN computos co ON co.id = pe.id_computo 
+          LEFT JOIN tareas t ON t.id = co.id_tarea 
           LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
           LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
           LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
@@ -197,7 +198,7 @@ if (!empty($_POST)) {
                                 } else {
                                   $subtotal_calculado = $precio * $cantidad;
                                 }
-
+                                
                                 $precio_unitario_formateado = number_format($precio, 2);
                                 $precio_kg_formateado = number_format($precio_kg, 2);
                                 $peso_total_formateado = number_format($peso_total_linea, 2);

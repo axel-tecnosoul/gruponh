@@ -10,11 +10,12 @@ if (empty($_SESSION['user'])) {
   <head>
   <?php include('head_tables.php');?>
   <style>
-	.truncate {
-	  max-width:50px;
-	  white-space: nowrap;
-	  overflow: hidden;
-	  text-overflow: ellipsis;
+	.texto-wrap {
+	  white-space: normal;
+	  word-wrap: break-word;
+      min-width: 350px;
+      max-width: 900px;
+      vertical-align: top;
 	}
   </style>
   </head>
@@ -23,7 +24,6 @@ if (empty($_SESSION['user'])) {
     <div class="page-wrapper">
       <!-- Page Header Start-->
       <?php include('header.php');?>
-     
       <!-- Page Header Ends                              -->
       <!-- Page Body Start-->
       <div class="page-body-wrapper">
@@ -46,7 +46,7 @@ if (empty($_SESSION['user'])) {
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
-                      <table class="display truncate" id="dataTables-example666">
+                      <table class="display" id="dataTables-example666">
                         <thead>
                           <tr>
                             <th>ID</th>
@@ -65,7 +65,7 @@ if (empty($_SESSION['user'])) {
                                 echo '<tr>';
                                 echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
-                                echo '<td>'. $row[2] . '</td>';
+                                echo '<td><div class="texto-wrap" title="'.htmlspecialchars($row[2]).'">'. $row[2] . '</div></td>';
                                 echo '<td>';
                                 if (!empty(tienePermiso(14))) {
                                     echo '<a href="modificarParametro.php?id='.$row[0].'"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';

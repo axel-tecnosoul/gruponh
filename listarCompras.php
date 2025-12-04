@@ -305,8 +305,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
           <!-- Container-fluid Ends-->
         </div>
         <!-- footer start-->
-        <?php include("footer.php"); ?>
       </div>
+      <?php include("footer.php"); ?>
     </div>
 
     <!-- Modales únicos -->
