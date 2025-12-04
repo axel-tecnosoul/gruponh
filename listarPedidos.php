@@ -25,6 +25,12 @@ $id_estado = $filters['id_estado'] ?? [];
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .truncate-project {
+        max-width: 250px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .faClass{
         width: 24px;
         height: 20px;
@@ -137,16 +143,16 @@ $id_estado = $filters['id_estado'] ?? [];
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
                           <tr>
-                            <th>Nro.</th>
-                            <th>Sitio / Sub / Proy</th>
-                            <th>Nombre Proyecto</th>
-                            <th>F. de Carga</th>
-                            <th>F. Pedida</th>
-                            <th>F. Entrega</th>
-                            <th>Estado</th>
-                            <th>Solicitante</th>
+                            <th style="width: 40px;">Nro.</th>
+                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th style="width: 90px;">F. de Carga</th>
+                            <th style="width: 90px;">F. Pedida</th>
+                            <th style="width: 90px;">F. Entrega</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 120px;">Solicitante</th>
                             <!-- <th>Aprobado</th> -->
-                            <th>Tipo</th>
+                            <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -194,6 +200,7 @@ $id_estado = $filters['id_estado'] ?? [];
                               INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
                             WHERE 1 ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
 
+                            $limite_chars = 40;
                             foreach ($pdo->query($sql1) as $row) {
                               $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
                               $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
@@ -202,24 +209,24 @@ $id_estado = $filters['id_estado'] ?? [];
                               $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
                               $nombre_proyecto_mostrar=$nombre_proyecto;
                               
-                              $limite_chars = 30;
-                              if (strlen($nombre_proyecto) > $limite_chars) {
+                              /*if (strlen($nombre_proyecto) > $limite_chars) {
                                 $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
-                              }?>
+                              }*/?>
                               <tr>
                                 <td><?=htmlspecialchars($row['id'])?></td>
                                 <td><?=$obra?></td>
-                                <td><?=$nombre_proyecto_mostrar?>
-                                </td>
+                                <td style="text-overflow: ellipsis;"><?=$nombre_proyecto_mostrar?></td>
                                 <td>
                                   <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                                   <?=date('d/m/Y', strtotime($row['fecha']))?></td>
                                 <td>
                                   <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0)?></span>
-                                  <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?></td>
+                                  <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?>
+                                </td>
                                 <td>
                                   <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0)?></span>
-                                  <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?></td>
+                                  <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
+                                </td>
                                 <td><?=htmlspecialchars($row['estado']) ?></td>
                                 <td><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                                 <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
@@ -249,7 +256,6 @@ $id_estado = $filters['id_estado'] ?? [];
                               $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
                               $nombre_proyecto_mostrar=$nombre_proyecto;
                               
-                              $limite_chars = 30;
                               if (strlen($nombre_proyecto) > $limite_chars) {
                                 $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
                               }?>
@@ -283,16 +289,16 @@ $id_estado = $filters['id_estado'] ?? [];
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th>Nro.</th>
-                            <th>Sitio / Sub / Proy</th>
-                            <th>Nombre Proyecto</th>
-                            <th>F. de Carga</th>
-                            <th>F. Pedida</th>
-                            <th>F. Entrega</th>
-                            <th>Estado</th>
-                            <th>Solicitante</th>
+                            <th style="width: 40px;">Nro.</th>
+                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th style="width: 90px;">F. de Carga</th>
+                            <th style="width: 90px;">F. Pedida</th>
+                            <th style="width: 90px;">F. Entrega</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 120px;">Solicitante</th>
                             <!-- <th>Aprobado</th> -->
-                            <th>Tipo</th>
+                            <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -439,6 +445,7 @@ $id_estado = $filters['id_estado'] ?? [];
         stateSave: false,
         //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
+        autoWidth: false,
         dom: 'Bfrtp<"bottom"l>',
         buttons: [
           'excel'
@@ -648,6 +655,7 @@ $id_estado = $filters['id_estado'] ?? [];
           $('#dataTables-example667').DataTable({
             stateSave: false,
             responsive: false,
+            autoWidth: false,
             data: data,
             language: {
               "decimal": "",

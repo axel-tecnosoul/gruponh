@@ -26,6 +26,18 @@ $id_estado = $filters['id_estado'] ?? [];?>
         overflow: hidden;
         text-overflow: ellipsis;
       }
+      .truncate-project {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-provider {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .proyecto-truncado {
         cursor: help;
         border-bottom: 1px dotted #999;
@@ -135,14 +147,14 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <thead>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th>Nro.OC / Rev</th>
-                            <th>Nro Pedido</th>
-                            <th>Sitio / Sub / Proy</th>
+                            <th style="width: 120px;">Nro.OC / Rev</th>
+                            <th style="width: 90px;">Nro Pedido</th>
+                            <th style="width: 120px;">Sitio/Sub/Proy</th>
                             <th>Nombre Proyecto</th>
                             <th>Proveedor</th>
-                            <th>Estado</th>
-                            <th>F. Emisión</th>
-                            <th>F. Entrega</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 90px;">F. Emisión</th>
+                            <th style="width: 90px;">F. Entrega</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -199,7 +211,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>
                                 </a>
                               </td>
-                              <td><?=$row['nro_sitio'].' / '.$row['nro_subsitio'].' / '.$row['nro']?></td>
+                              <td><?=$row['nro_sitio'].'/'.$row['nro_subsitio'].'/'.$row['nro']?></td>
                               <td><?php 
                                 $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
                                 $limite_chars = 30;
@@ -222,14 +234,14 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th>Nro.OC / Rev</th>
-                            <th>Nro Pedido</th>
-                            <th>Sitio / Sub / Proy</th>
-                            <th>Nombre Proyecto</th>
-                            <th>Proveedor</th>
-                            <th>Estado</th>
-                            <th>F. Emisión</th>
-                            <th>F. Entrega</th>
+                            <th style="width: 120px;">Nro.OC / Rev</th>
+                            <th style="width: 90px;">Nro Pedido</th>
+                            <th style="width: 120px;">Sitio/Sub/Proy</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th class="truncate-provider">Proveedor</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 90px;">F. Emisión</th>
+                            <th style="width: 90px;">F. Entrega</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -401,6 +413,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
         stateSave: false,
 		    //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
+        autoWidth: false,
 		    dom: 'Bfrtp<"bottom"l>',
         buttons: [
           'excel'
@@ -624,6 +637,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
       $('#dataTables-example667').DataTable({
         stateSave: false,
         responsive: false,
+        autoWidth: false,
         language: {
           "decimal": "",
           "emptyTable": "No hay información",
@@ -685,6 +699,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
           $('#dataTables-example667').DataTable({
             stateSave: false,
             responsive: false,
+            autoWidth: false,
             data: data,
             language: {
               "decimal": "",
