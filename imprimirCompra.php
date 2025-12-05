@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_oc, c.total, c.comentarios, pe.lugar_entrega, c.id_moneda, c.tipo_cambio_dia, pe.id_proyecto, pe.id_computo, cu.nombre, cu.direccion, cu.telefono, cu.cuit, fp.forma_pago,cu.contacto, c.iva, c.descuento, c.nro_revision FROM compras c inner join pedidos pe on pe.id = c.id_pedido inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join formas_pago fp on fp.id = c.id_forma_pago WHERE c.id = ? ";
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.id_moneda, c.tipo_cambio_dia, pe.id_proyecto, pe.id_computo, cu.nombre, cu.direccion, cu.telefono, cu.cuit, fp.forma_pago,cu.contacto, c.iva, c.descuento FROM compras c inner join pedidos pe on pe.id = c.id_pedido inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join formas_pago fp on fp.id = c.id_forma_pago WHERE c.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);

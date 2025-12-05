@@ -9,11 +9,13 @@ require_once 'manejarFiltros.php';
 
 $filters = gestionarFiltros('listarSucesos');
 
-$entidad_tipo = $filters['entidad_tipo'] ?? $_GET['entidad_tipo'] ?? '';
-$fecha_desde = $filters['fecha_desde'] ?? "";
-$fecha_hasta = $filters['fecha_hasta'] ?? "";
-$id_tipo_suceso = $filters['id_tipo_suceso'] ?? [];
-$entidad_id = $filters['entidad_id'] ?? "";
+// Priorizar POST para formularios, GET solo para precarga desde otros lugares
+$entidad_tipo = $filters['entidad_tipo'] ?? $_POST['entidad_tipo'] ?? $_GET['entidad_tipo'] ?? '';
+$fecha_desde = $filters['fecha_desde'] ?? $_POST['fecha_desde'] ?? $_GET['fecha_desde'] ?? "";
+$fecha_hasta = $filters['fecha_hasta'] ?? $_POST['fecha_hasta'] ?? $_GET['fecha_hasta'] ?? "";
+$id_tipo_suceso = $filters['id_tipo_suceso'] ?? $_POST['id_tipo_suceso'] ?? $_GET['id_tipo_suceso'] ?? [];
+$entidad_id = $filters['entidad_id'] ?? $_POST['entidad_id'] ?? $_GET['entidad_id'] ?? "";
+$id_proyecto = $filters['id_proyecto'] ?? $_POST['id_proyecto'] ?? $_GET['id_proyecto'] ?? "";
 
 // Manejar limpiar filtros
 if (isset($_GET['clear_filters'])) {
@@ -23,8 +25,7 @@ if (isset($_GET['clear_filters'])) {
   }
   header("Location: listarSucesos.php");
   exit;
-}
-?>
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -52,21 +53,40 @@ if (isset($_GET['clear_filters'])) {
               <div class="col-md-12">
                 <div class="card">
                   <div class="card-body">
-                    <form class="form-inline theme-form mt-3" method="GET" action="listarSucesos.php">
+                    <form class="form-inline theme-form mt-3" method="POST" action="listarSucesos.php">
                       <div class='form-group mb-12' style='width: 100%;'>
-                        <div class="form-group mb-0">
-                          Entidad:&nbsp;
-                          <select name="entidad_tipo" class="js-example-basic-single form-control">
-                            <option value="">Todas las entidades</option>
-                            <option value="proyectos"<?= $entidad_tipo === 'proyectos' ? ' selected' : '' ?>>Proyectos</option>
-                            <option value="pedidos"<?= $entidad_tipo === 'pedidos' ? ' selected' : '' ?>>Pedidos</option>
-                            <option value="compras"<?= $entidad_tipo === 'compras' ? ' selected' : '' ?>>Compras</option>
+                        <!-- Filtro rápido por proyecto -->
+                        <div class="row" id="filtro-proyecto" style="width: 100%; padding: 10px; background: #f8f9fa; border-radius: 5px; margin-bottom: 15px;">
+                          <strong style="align-content: center;" class="col-2">🎯 Filtro Rápido por Proyecto:</strong>&nbsp;
+                          <select name="id_proyecto" id="select-proyecto" class="js-example-basic-single form-control col-8">
+                            <option value="">Seleccionar proyecto...</option><?php
+                            $pdo = Database::connect();
+                            $sql = "SELECT DISTINCT p.id, CONCAT(s.nro_sitio, '/', s.nro_subsitio, '/', p.nro, ' - ', p.descripcion) as proyecto_completo FROM proyectos p LEFT JOIN sitios s ON s.id = p.id_sitio ORDER BY s.nro_sitio, p.nro";
+                            foreach ($pdo->query($sql) as $row) {
+                              $selected = ($row['id'] == $id_proyecto) ? ' selected' : '';?>
+                              <option value="<?= $row['id'] ?>"<?= $selected ?>><?= htmlspecialchars($row['proyecto_completo']) ?></option><?php
+                            }
+                            Database::disconnect();?>
                           </select>
+                          <button type="button" id="limpiar-proyecto" class="btn btn-sm btn-outline-secondary ml-2 col-1" style="display: none;">✕ Limpiar</button>
                         </div>
-                        <div class="form-group mb-0">
-                          ID Entidad:&nbsp;
-                          <input type="number" name="entidad_id" class="form-control" size="5" value="<?= htmlspecialchars($entidad_id) ?>" placeholder="ID específico">
-                        </div>
+                        
+                        <!-- Filtros detallados -->
+                        <!-- <div id="filtros-detallados" style="<?= !empty($id_proyecto) ? 'display: none;' : '' ?>"> -->
+                          <div class="form-group mb-0">
+                            Entidad:&nbsp;
+                            <select name="entidad_tipo" id="select-entidad" class="js-example-basic-single form-control">
+                              <option value="">Todas las entidades</option>
+                              <option value="proyectos"<?= $entidad_tipo === 'proyectos' ? ' selected' : '' ?>>Proyectos</option>
+                              <option value="pedidos"<?= $entidad_tipo === 'pedidos' ? ' selected' : '' ?>>Pedidos</option>
+                              <option value="compras"<?= $entidad_tipo === 'compras' ? ' selected' : '' ?>>Compras</option>
+                            </select>
+                          </div>
+                          <div class="form-group mb-0" id="grupo-entidad-id" style="<?= empty($entidad_tipo) ? 'display: none;' : '' ?>">
+                            <label id="label-entidad-id">ID Entidad:</label>&nbsp;
+                            <input type="number" name="entidad_id" id="input-entidad-id" class="form-control" style="width: 180px;" size="5" value="<?= htmlspecialchars($entidad_id) ?>" placeholder="ID específico">
+                          </div>
+                        <!-- </div> -->
                         <div class="form-group mb-0">
                           Rango:&nbsp;
                           <input type="date" name="fecha_desde" class="form-control" size="10" value="<?= htmlspecialchars($fecha_desde) ?>">-
@@ -74,7 +94,7 @@ if (isset($_GET['clear_filters'])) {
                         </div>
                         <div class="form-group mb-0">
                           Tipo:&nbsp;
-                          <select name="id_tipo_suceso[]" class="js-example-basic-multiple" multiple="multiple"><?php
+                          <select name="id_tipo_suceso[]" class="js-example-basic-multiple" multiple="multiple" data-placeholder="Seleccionar tipos..."><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                             $sql = "SELECT id, tipo FROM tipos_suceso ORDER BY tipo";
@@ -91,7 +111,14 @@ if (isset($_GET['clear_filters'])) {
                           <a href="listarSucesos.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                         </div>
                       </div>
-                    </form>
+                    </form><?php
+                    
+                    /*if (!empty($id_proyecto)){?>
+                    <div class="alert alert-info mt-3" role="alert">
+                      <strong>🎯 Mostrando todos los eventos del proyecto seleccionado</strong><br>
+                      Incluye: sucesos directos, sucesos de pedidos y sucesos de compras relacionados a este proyecto.
+                    </div><?php
+                    } */?>
                   </div>
                 </div>
               </div>
@@ -118,65 +145,161 @@ if (isset($_GET['clear_filters'])) {
                           <tr>
                             <th>ID</th>
                             <th>Fecha/Hora</th>
-                            <th>Entidad</th>
-                            <th>ID Entidad</th>
+                            <!-- <th>Entidad</th>
+                            <th>ID Entidad</th> -->
+                            <th>Origen</th>
                             <th>Tipo Suceso</th>
                             <th>Título</th>
                             <th>Suceso</th>
                             <th>Usuario</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          <?php
+                        <tbody><?php
                           // Construir la consulta con filtros
                           $where_conditions = [];
                           $params = [];
                           
-                          if (!empty($entidad_tipo)) {
-                            $where_conditions[] = "s.entidad_tipo = ?";
-                            $params[] = $entidad_tipo;
-                          }
+                          // Filtro por proyecto (prioritario)
+                          /*if (!empty($id_proyecto)) {
+                            // UNION de consultas para todos los eventos relacionados al proyecto
+                            $sql = "
+                              (SELECT 
+                                s.id,
+                                DATE_FORMAT(s.fecha_hora, '%d/%m/%Y %H:%i') AS fecha_formateada,
+                                s.entidad_tipo,
+                                s.entidad_id,
+                                ts.tipo AS tipo_suceso,
+                                s.titulo,
+                                s.suceso,
+                                u.usuario AS nombre_usuario,
+                                s.fecha_hora,
+                                'Directo del proyecto' as origen
+                              FROM sucesos s
+                              INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+                              LEFT JOIN usuarios u ON u.id = s.id_usuario
+                              WHERE s.entidad_tipo = 'proyectos' AND s.entidad_id = ?)
+                              
+                              UNION ALL
+                              
+                              (SELECT 
+                                s.id,
+                                DATE_FORMAT(s.fecha_hora, '%d/%m/%Y %H:%i') AS fecha_formateada,
+                                s.entidad_tipo,
+                                s.entidad_id,
+                                ts.tipo AS tipo_suceso,
+                                s.titulo,
+                                s.suceso,
+                                u.usuario AS nombre_usuario,
+                                s.fecha_hora,
+                                'Pedido del proyecto' as origen
+                              FROM sucesos s
+                              INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+                              LEFT JOIN usuarios u ON u.id = s.id_usuario
+                              INNER JOIN pedidos pe ON pe.id = s.entidad_id AND s.entidad_tipo = 'pedidos'
+                              LEFT JOIN computos co ON co.id = pe.id_computo
+                              LEFT JOIN tareas t ON t.id = co.id_tarea
+                              WHERE (t.id_proyecto = ? OR pe.id_proyecto = ?))
+                              
+                              UNION ALL
+                              
+                              (SELECT 
+                                s.id,
+                                DATE_FORMAT(s.fecha_hora, '%d/%m/%Y %H:%i') AS fecha_formateada,
+                                s.entidad_tipo,
+                                s.entidad_id,
+                                ts.tipo AS tipo_suceso,
+                                s.titulo,
+                                s.suceso,
+                                u.usuario AS nombre_usuario,
+                                s.fecha_hora,
+                                'Compra del proyecto' as origen
+                              FROM sucesos s
+                              INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+                              LEFT JOIN usuarios u ON u.id = s.id_usuario
+                              INNER JOIN compras c ON c.id = s.entidad_id AND s.entidad_tipo = 'compras'
+                              INNER JOIN pedidos pe ON pe.id = c.id_pedido
+                              LEFT JOIN computos co ON co.id = pe.id_computo
+                              LEFT JOIN tareas t ON t.id = co.id_tarea
+                              WHERE (t.id_proyecto = ? OR pe.id_proyecto = ?))";
+                            
+                            $params = [$id_proyecto, $id_proyecto, $id_proyecto, $id_proyecto, $id_proyecto];
+                            
+                            // Aplicar filtros adicionales si existen
+                            $having_conditions = [];
+                            if (!empty($fecha_desde)) {
+                              $having_conditions[] = "DATE(fecha_hora) >= ?";
+                              $params[] = $fecha_desde;
+                            }
+                            if (!empty($fecha_hasta)) {
+                              $having_conditions[] = "DATE(fecha_hora) <= ?";
+                              $params[] = $fecha_hasta;
+                            }
+                            if (!empty($id_tipo_suceso)) {
+                              $placeholders = str_repeat('?,', count($id_tipo_suceso) - 1) . '?';
+                              $having_conditions[] = "id_tipo_suceso IN ($placeholders)";
+                              $params = array_merge($params, $id_tipo_suceso);
+                            }
+                            
+                            if (!empty($having_conditions)) {
+                              $sql = "SELECT * FROM ($sql) as eventos WHERE " . implode(" AND ", $having_conditions);
+                            }
+                            
+                            $sql .= " ORDER BY fecha_hora DESC";
+                          } else {*/
+
+                            if (!empty($id_proyecto)) {
+                              $where_conditions[] = " s.id_proyecto = ? ";
+                              $params[] = $id_proyecto;
+                            }
+
+                            // Filtros tradicionales
+                            if (!empty($entidad_tipo)) {
+                              $where_conditions[] = "s.entidad_tipo = ?";
+                              $params[] = $entidad_tipo;
+                            }
+                            
+                            if (!empty($entidad_id)) {
+                              $where_conditions[] = "s.entidad_id = ?";
+                              $params[] = $entidad_id;
+                            }
+                            
+                            if (!empty($fecha_desde)) {
+                              $where_conditions[] = "DATE(s.fecha_hora) >= ?";
+                              $params[] = $fecha_desde;
+                            }
+                            
+                            if (!empty($fecha_hasta)) {
+                              $where_conditions[] = "DATE(s.fecha_hora) <= ?";
+                              $params[] = $fecha_hasta;
+                            }
+                            
+                            if (!empty($id_tipo_suceso)) {
+                              $placeholders = str_repeat('?,', count($id_tipo_suceso) - 1) . '?';
+                              $where_conditions[] = "s.id_tipo_suceso IN ($placeholders)";
+                              $params = array_merge($params, $id_tipo_suceso);
+                            }
+                            
+                            $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+                            
+                            $sql = "SELECT 
+                                s.id,
+                                DATE_FORMAT(s.fecha_hora, '%d/%m/%Y %H:%i') AS fecha_formateada,
+                                s.entidad_tipo,
+                                s.entidad_id,
+                                ts.tipo AS tipo_suceso,
+                                s.titulo,
+                                s.suceso,
+                                u.usuario AS nombre_usuario,
+                                s.fecha_hora
+                              FROM sucesos s
+                              INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
+                              LEFT JOIN usuarios u ON u.id = s.id_usuario
+                              $where_clause
+                              ORDER BY s.fecha_hora DESC, s.id DESC";
+                          //}
                           
-                          if (!empty($entidad_id)) {
-                            $where_conditions[] = "s.entidad_id = ?";
-                            $params[] = $entidad_id;
-                          }
-                          
-                          if (!empty($fecha_desde)) {
-                            $where_conditions[] = "DATE(s.fecha_hora) >= ?";
-                            $params[] = $fecha_desde;
-                          }
-                          
-                          if (!empty($fecha_hasta)) {
-                            $where_conditions[] = "DATE(s.fecha_hora) <= ?";
-                            $params[] = $fecha_hasta;
-                          }
-                          
-                          if (!empty($id_tipo_suceso)) {
-                            $placeholders = str_repeat('?,', count($id_tipo_suceso) - 1) . '?';
-                            $where_conditions[] = "s.id_tipo_suceso IN ($placeholders)";
-                            $params = array_merge($params, $id_tipo_suceso);
-                          }
-                          
-                          $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
-                          
-                          $sql = "
-                            SELECT 
-                              s.id,
-                              DATE_FORMAT(s.fecha_hora, '%d/%m/%Y %H:%i') AS fecha_formateada,
-                              s.entidad_tipo,
-                              s.entidad_id,
-                              ts.tipo AS tipo_suceso,
-                              s.titulo,
-                              s.suceso,
-                              u.usuario AS nombre_usuario,
-                              s.fecha_hora
-                            FROM sucesos s
-                            INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
-                            LEFT JOIN usuarios u ON u.id = s.id_usuario
-                            $where_clause
-                            ORDER BY s.fecha_hora DESC, s.id DESC
-                          ";
+                          $pdo = Database::connect();
+                          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                           
                           $q = $pdo->prepare($sql);
                           $q->execute($params);
@@ -194,15 +317,22 @@ if (isset($_GET['clear_filters'])) {
                               case 'compras':
                                 $link_entidad = "verCompra.php?id=" . $row['entidad_id'];
                                 break;
-                            }?>
+                            }
+                            
+                            $origen=ucfirst(htmlspecialchars($row['entidad_tipo']))." Nro ".$row['entidad_id']?>
                             
                             <tr data-entidad-tipo='<?=htmlspecialchars($row['entidad_tipo'])?>' data-entidad-id='<?=htmlspecialchars($row['entidad_id'])?>'>
                               <td><?=htmlspecialchars($row['id'])?></td>
                               <td><?=htmlspecialchars($row['fecha_formateada'])?></td>
-                              <td><?=ucfirst(htmlspecialchars($row['entidad_tipo']))?></td>
+                              <!-- <td><?=ucfirst(htmlspecialchars($row['entidad_tipo']))?></td>
                               <td>
                                 <a href='<?=$link_entidad?>' target='_blank'>
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=htmlspecialchars($row['entidad_id'])?></a>
+                              </td> -->
+                              <td>
+                                <a href='<?=$link_entidad?>' target='_blank'>
+                                  <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$origen?>
+                                </a>
                               </td>
                               <td><?=htmlspecialchars($row['tipo_suceso'])?></td>
                               <td><?=htmlspecialchars($row['titulo'])?></td>
@@ -216,8 +346,9 @@ if (isset($_GET['clear_filters'])) {
                           <tr>
                             <th>ID</th>
                             <th>Fecha/Hora</th>
-                            <th>Entidad</th>
-                            <th>ID Entidad</th>
+                            <!-- <th>Entidad</th>
+                            <th>ID Entidad</th> -->
+                            <th>Origen</th>
                             <th>Tipo Suceso</th>
                             <th>Título</th>
                             <th>Suceso</th>
@@ -351,19 +482,15 @@ if (isset($_GET['clear_filters'])) {
         
         // DataTable
         var table = $('#dataTables-example666').DataTable();
-        
         // Apply the search
         table.columns().every( function () {
           var that = this;
-          
           $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
-              that
-                .search( this.value )
-                .draw();
+              that.search( this.value ).draw();
             }
-          } );
-        } );
+          });
+        });
         
         // Manejar el botón de nuevo suceso
         $('#link_nuevo_suceso').click(function(e) {
@@ -397,6 +524,75 @@ if (isset($_GET['clear_filters'])) {
             $(this).addClass('selected');
           }
         });
+      });
+      
+      // Manejo del filtro por proyecto y labels dinámicos
+      $(document).ready(function() {
+        // Función para actualizar label y visibilidad según tipo de entidad
+        function actualizarLabelEntidad() {
+          var tipoEntidad = $('#select-entidad').val();
+          var label = $('#label-entidad-id');
+          var input = $('#input-entidad-id');
+          var grupo = $('#grupo-entidad-id');
+          
+          if (tipoEntidad) {
+            // Mostrar el input cuando hay una entidad seleccionada
+            grupo.show();
+            
+            switch(tipoEntidad) {
+              case 'proyectos':
+                label.text('Proyecto Nro:');
+                input.attr('placeholder', 'Número de proyecto');
+                break;
+              case 'pedidos':
+                label.text('Pedido Nro:');
+                input.attr('placeholder', 'Número de pedido');
+                break;
+              case 'compras':
+                label.text('Compra Nro:');
+                input.attr('placeholder', 'Número de compra');
+                break;
+            }
+          } else {
+            // Ocultar el input cuando no hay entidad seleccionada
+            grupo.hide();
+            input.val(''); // Limpiar el valor
+          }
+        }
+        
+        // Evento para cambio de tipo de entidad
+        $('#select-entidad').on('change', actualizarLabelEntidad);
+        
+        // Inicializar label al cargar la página
+        actualizarLabelEntidad();
+        
+        // Manejo del filtro por proyecto
+        $('#select-proyecto').on('change', function() {
+          var proyectoSeleccionado = $(this).val();
+          
+          if (proyectoSeleccionado) {
+            // Ocultar filtros detallados y mostrar botón limpiar
+            //$('#filtros-detallados').hide();
+            $('#limpiar-proyecto').show();
+          } else {
+            // Mostrar filtros detallados y ocultar botón limpiar
+            //$('#filtros-detallados').show();
+            $('#limpiar-proyecto').hide();
+          }
+        });
+        
+        // Botón para limpiar filtro por proyecto
+        $('#limpiar-proyecto').on('click', function() {
+          $('#select-proyecto').val('').trigger('change');
+          //$('#filtros-detallados').show();
+          $(this).hide();
+        });
+        
+        // Estado inicial
+        var proyectoInicial = $('#select-proyecto').val();
+        if (proyectoInicial) {
+          $('#limpiar-proyecto').show();
+        }
       });
     </script>
     

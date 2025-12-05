@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_oc, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
           FROM compras c 
           INNER JOIN pedidos pe ON pe.id = c.id_pedido 
           LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
@@ -95,7 +95,7 @@ if (!empty($_POST)) {
                 <div class="card">
                   <div class="card-header compra-summary">
                     <h5>
-                      <?=$ubicacion." N° ".$data["nro_oc"]?> - Pedido N° <?=$data["id_pedido"]?>
+                      <?=$ubicacion." N° ".$data["id"]."/".$data["nro_revision"]?> - Pedido N° <?=$data["id_pedido"]?>
                       <a href="imprimirCompra.php?id=<?=$data['id'];?>" target="_blank"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir O.C." title="Imprimir O.C."></a>
                     </h5>
                   </div>
@@ -106,7 +106,7 @@ if (!empty($_POST)) {
                           <h6 class="mb-3 font-weight-bold">Datos de la Orden de Compra</h6>
                           <div class="form-group row mt-1">
                             <label class="col-sm-2 font-weight-bold">Nro O.C.</label>
-                            <div class="col-sm-4"><?=$data['nro_oc'];?></div>
+                            <div class="col-sm-4"><?=$data['id']."/".$data['nro_revision'];?></div>
                             <label class="col-sm-2 font-weight-bold">Proveedor</label>
                             <div class="col-sm-4"><?=$data['proveedor_nombre'];?></div>
                           </div>
@@ -198,7 +198,7 @@ if (!empty($_POST)) {
                                 } else {
                                   $subtotal_calculado = $precio * $cantidad;
                                 }
-                                
+
                                 $precio_unitario_formateado = number_format($precio, 2);
                                 $precio_kg_formateado = number_format($precio_kg, 2);
                                 $peso_total_formateado = number_format($peso_total_linea, 2);

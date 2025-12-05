@@ -10,6 +10,7 @@ require_once 'manejarFiltros.php';
 $filters = gestionarFiltros('listarCompras');
 
 $nro_ocnp = $filters['nro_ocnp'] ?? "";
+$nro_pedido = $filters['nro_pedido'] ?? "";
 $nro = $filters['nro'] ?? "";
 $proveedor = $filters['proveedor'] ?? "";
 $fecha = $filters['fecha'] ?? "";
@@ -126,8 +127,12 @@ $id_estado = $filters['id_estado'] ?? [];?>
                     <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCompras.php" >
                       <div class='form-group mb-12' style='width: 100%;'>
                         <div class="form-group mb-0">
-                          N.OC/N.NP:&nbsp;
-                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_ocnp)?>" name="nro_ocnp">
+                          N.OC/Rev:&nbsp;
+                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_ocnp)?>", name="nro_ocnp" placeholder="ej: 123, 123/A" title="Buscar por ID de OC o ID/Revisión">
+                        </div>
+                        <div class="form-group mb-0">
+                          N.Ped.:&nbsp;
+                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_pedido)?>", name="nro_pedido" placeholder="ej: 456" title="Buscar por Número de Pedido">
                         </div>
                         <div class="form-group mb-0">
                           N.Sitio/N.Proy:&nbsp;
@@ -206,7 +211,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         </thead>
                         <tbody><?php
                           $pdo = Database::connect();
-                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, pe.id AS id_pedido, p.descripcion AS nombre_proyecto FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido INNER JOIN computos co ON co.id = pe.id_computo INNER JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
+                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, pe.id AS id_pedido, p.descripcion AS nombre_proyecto FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido LEFT JOIN computos co ON co.id = pe.id_computo LEFT JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = pe.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
                           $params = [];
                           if (!empty($nro)) {
                             $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
@@ -215,9 +220,52 @@ $id_estado = $filters['id_estado'] ?? [];?>
                           }
                           if (!empty($nro_ocnp)) {
                             $nro_ocnp_trimmed = trim($nro_ocnp);
-                            $sql .= " AND (c.nro_oc LIKE ? OR pe.id = ?)";
-                            $params[] = '%' . $nro_ocnp_trimmed . '%';
-                            $params[] = $nro_ocnp_trimmed;
+                            
+                            // Detectar si contiene barra "/" para busqueda id_oc/nro_revision
+                            /*if (strpos($nro_ocnp_trimmed, '/') !== false) {
+                              $parts = explode('/', $nro_ocnp_trimmed);
+                              if (count($parts) == 2 && is_numeric($parts[0]) && !empty($parts[1])) {
+                                // Búsqueda por id_oc/nro_revision exacto
+                                $sql .= " AND (c.id = ? AND c.nro_revision = ?)";
+                                $params[] = $parts[0];
+                                $params[] = $parts[1];
+                              } else {
+                                // Si el formato con / no es válido, buscar como string general
+                                $sql .= " AND (CONCAT(c.id, '/', c.nro_revision) LIKE ? OR c.id = ? OR c.nro_revision LIKE ?)";
+                                $params[] = '%' . $nro_ocnp_trimmed . '%';
+                                $params[] = $nro_ocnp_trimmed;
+                                $params[] = '%' . $nro_ocnp_trimmed . '%';
+                              }
+                            } else {
+                              // Búsqueda sin barra: por ID de OC o nro_revision
+                              if (is_numeric($nro_ocnp_trimmed)) {
+                                // Si es numérico, buscar por ID exacto de OC y por nro_revision
+                                $sql .= " AND (c.id = ? OR c.nro_revision LIKE ?)";
+                                $params[] = $nro_ocnp_trimmed;
+                                $params[] = '%' . $nro_ocnp_trimmed . '%';
+                              } else {
+                                // Si no es numérico, buscar solo por nro_revision
+                                $sql .= " AND c.nro_revision LIKE ?";
+                                $params[] = '%' . $nro_ocnp_trimmed . '%';
+                              }
+                            }*/
+                            $ex=explode("/", $nro_ocnp_trimmed);
+                            if(count($ex)>1){
+                              $id_oc = $ex[0];
+                              $nro_revision = $ex[1];
+                              $sql .= " AND (c.nro_revision = ? AND c.id = ? ) ";
+                              $params[] = $nro_revision;
+                              $params[] = $id_oc;
+                              
+                            }else{
+                              $sql .= " AND c.id = ? ";
+                              $params[] = intval($nro_ocnp_trimmed);
+                            }
+                          }
+                          if (!empty($nro_pedido)) {
+                            $nro_pedido_trimmed = trim($nro_pedido);
+                            $sql .= " AND pe.id = ?";
+                            $params[] = $nro_pedido_trimmed;
                           }
                           if (!empty($fecha)) {
                             $sql .= " AND c.fecha_emision >= ?";
@@ -237,6 +285,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $sql .= " AND cu.nombre LIKE ?";
                             $params[] = '%' . $proveedor . '%';
                           }
+                          
                           $q = $pdo->prepare($sql);
                           $q->execute($params);
 

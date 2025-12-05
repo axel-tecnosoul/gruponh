@@ -177,13 +177,13 @@ if (!empty($_POST)) {
         
         $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
         $q2 = $pdo->prepare($sql2);
-        $q2->execute([$row_notif[0],'ID OC: #'.$idCompra . ' - ' . $estado_texto ,$idCompra]);
+        $q2->execute([$row_notif[0],'OC: ' . $idCompra . '/' . $nro_revision . ' - ' . $estado_texto ,$idCompra]);
         
         $address = $row_notif[1];
         
-        $titulo = "ERP Notificaciones - Compras - Nueva OC #$idCompra ($estado_texto)";
+        $titulo = "ERP Notificaciones - Compras - Nueva OC $idCompra/$nro_revision ($estado_texto)";
         $mensaje = "Nueva compra generada en el sistema.\n";
-        $mensaje .= "Nro ID: #".$idCompra . "\n";
+        $mensaje .= "OC: ".$idCompra . "/" . $nro_revision . "\n";
         $mensaje .= "Estado: " . $estado_texto . "\n";
         $mensaje .= "Monto Total: $" . number_format($total, 2);
         
@@ -211,7 +211,7 @@ if (!empty($_POST)) {
       }
       
       Database::disconnect();
-      $_SESSION['flash_message'] = ['type' => 'success', 'message' => '¡Orden de Compra N° ' . $nroOC . ' creada exitosamente!'];
+      $_SESSION['flash_message'] = ['type' => 'success', 'message' => '¡Orden de Compra ' . $idCompra . '/' . $nro_revision . ' creada exitosamente!'];
       header("Location: listarCompras.php");
       exit();
 
