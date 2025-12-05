@@ -85,7 +85,7 @@ if (!empty($_POST)) {
     }
 
     if (!empty($items_para_comprar)) {
-      $id_parametro_limite = ($_POST['id_moneda'] == 1) ? 13 : 12;
+      $id_parametro_limite = ($_POST['id_moneda'] == 1) ? 11 : 10;
       
       $sql_p = "SELECT valor FROM parametros WHERE id = ?";
       $q_p = $pdo->prepare($sql_p);
@@ -97,16 +97,17 @@ if (!empty($_POST)) {
       $id_estado_compra = 1; 
       $mensaje_extra_email = "";
       
-      if ($total < $monto_limite) {
+      if ($total > $monto_limite) {
           $id_estado_compra = 3;
           $mensaje_extra_email = " (Aprobada Automáticamente por monto menor a límite)";
       }
 
       $iva = $total * 0.21;
+      $nro_revision = 0; // Revisión inicial
       
-      $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento) VALUES (?,?,?,?,?, ?, ?, ?, ?,?,?,?,'Revisión Original',?)";
+      $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento, nro_revision) VALUES (?,?,?,?,?, ?, ?, ?, ?,?,?,?,'Revisión Original',?,?)";
       $q = $pdo->prepare($sql);
-      $q->execute([$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], $id_estado_compra, '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento']]);   
+      $q->execute([$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], $id_estado_compra, '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento'], $nro_revision]);   
       
       $idCompra = $pdo->lastInsertId();
       
@@ -173,7 +174,7 @@ if (!empty($_POST)) {
       $sql_notif = "SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
       foreach ($pdo->query($sql_notif) as $row_notif) {
         
-        $estado_texto = ($id_estado_compra == 3) ? "APROBADA (Automática)" : "Pendiente de Aprobación";
+        $estado_texto = ($id_estado_compra == 3) ? "Aprobada automáticamente" : "Pendiente de Aprobación";
         
         $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
         $q2 = $pdo->prepare($sql2);
