@@ -25,7 +25,29 @@ if (isset($_GET['clear_filters'])) {
   }
   header("Location: listarSucesos.php");
   exit;
-}?>
+}
+
+function pluralToSingular(string $word): string {
+  // casos simples: terminados en "es"
+  if (preg_match('/(ces)$/', $word)) {
+    // luces -> luz, veces -> vez
+    return preg_replace('/ces$/', 'z', $word);
+  }
+
+  if (preg_match('/(es)$/', $word)) {
+    // perros -> perro, meses -> mes
+    return preg_replace('/es$/', '', $word);
+  }
+
+  // terminados en "s"
+  if (preg_match('/s$/', $word)) {
+    // casas -> casa
+    return preg_replace('/s$/', '', $word);
+  }
+
+  return $word; // fallback: no se modifica
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -319,7 +341,7 @@ if (isset($_GET['clear_filters'])) {
                                 break;
                             }
                             
-                            $origen=ucfirst(htmlspecialchars($row['entidad_tipo']))." Nro ".$row['entidad_id']?>
+                            $origen=ucfirst(pluralToSingular(htmlspecialchars($row['entidad_tipo'])))." Nro ".$row['entidad_id']?>
                             
                             <tr data-entidad-tipo='<?=htmlspecialchars($row['entidad_tipo'])?>' data-entidad-id='<?=htmlspecialchars($row['entidad_id'])?>'>
                               <td><?=htmlspecialchars($row['id'])?></td>
