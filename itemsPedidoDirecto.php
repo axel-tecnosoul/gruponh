@@ -90,7 +90,7 @@
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Ver/Añadir Items Pedido Directo";
+          $ubicacion="Ver/Añadir Items Pedido Directo N° " . $id;
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
