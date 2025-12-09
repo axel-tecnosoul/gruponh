@@ -1,11 +1,18 @@
 <?php
+// Modo Debug habilitado para ver consultas y resultados
+$modoDebug = 1;
+
 require("config.php");
 require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");
 
 if (empty($_SESSION['user'])) {
-  header("Location: index.php");
-  die("Redirecting to index.php");
+  if ($modoDebug == 0) {
+    header("Location: index.php");
+    die("Redirecting to index.php");
+  } else {
+    echo "<h3>DEBUG: Usuario no logueado (redireccion deshabilitada)</h3>";
+  }
 }
 
 require 'database.php';
@@ -16,7 +23,12 @@ if (!empty($_GET['id'])) {
 }
 
 if (null==$id) {
-  header("Location: listarPedidos.php");
+  if ($modoDebug == 0) {
+    header("Location: listarPedidos.php");
+  } else {
+    echo "<h3>DEBUG: ID no proporcionado (redireccion deshabilitada)</h3>";
+    exit();
+  }
 }
 
 $pdo = Database::connect();
@@ -37,6 +49,19 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+  // Iniciar transacción
+  $pdo->beginTransaction();
+  $transaccionExitosa = false;
+
+  if ($modoDebug == 1) {
+    echo "<h2>🐛 MODO DEBUG ACTIVADO - gestionarPedido.php</h2>";
+    echo "<h3>⚙️ TRANSACCIÓN INICIADA</h3>";
+    echo "<h3>Parámetros recibidos:</h3>";
+    echo "<b>ID Pedido:</b> " . htmlspecialchars($id) . "<br>";
+    echo "<h3>POST Data:</h3>";
+    echo "<pre>" . print_r($_POST, true) . "</pre>";
+  }
+
   $error_message = '';
   if (isset($_POST['id_moneda']) && $_POST['id_moneda'] == 1) {
     if (empty($_POST['tipo_cambio_dia']) || !is_numeric($_POST['tipo_cambio_dia']) || (float)$_POST['tipo_cambio_dia'] <= 0) {
@@ -45,6 +70,7 @@ if (!empty($_POST)) {
   }
 
   if (empty($error_message)) {
+    require_once('funciones.php');
     
     $sql_pedido_detalle = "SELECT d.id, d.id_material, m.concepto, d.cantidad, d.id_unidad_medida, m.peso_metro, m.largo FROM pedidos_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ?";
     $q_pedido_detalle = $pdo->prepare($sql_pedido_detalle);
@@ -58,26 +84,58 @@ if (!empty($_POST)) {
       $precioUnitario = $_POST['precio_'.$row['id']] ?? 0;
       $precioKg = $_POST['preciokg_'.$row['id']] ?? 0;
       
+      if ($modoDebug == 1) {
+        echo "<b>📊 PROCESANDO ITEM:</b> " . htmlspecialchars($row['concepto']) . " (ID: " . $row['id_material'] . ")<br>";
+        echo "<b>Cantidad a pedir:</b> " . $cantidadPedir . "<br>";
+        echo "<b>Precio unitario:</b> $" . number_format($precioUnitario, 2) . "<br>";
+        echo "<b>Precio por kg:</b> $" . number_format($precioKg, 2) . "<br>";
+      }
+      
       if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
         $precioParaGuardar = $precioUnitario;
         
         if ($precioKg > 0) {
           // Cuando es precio por kilo, calcular subtotal pero NO guardar precio unitario
-          $peso_total_unitario = ((float)$row['peso_metro']) / 1000;
+          $peso_total_unitario = (float)$row['peso_metro']; // El peso_metro ya está en kg
+          
+          if ($modoDebug == 1) {
+            echo "<b>🧮 CÁLCULO POR KILOGRAMO:</b><br>";
+            echo "<b>Peso por metro:</b> " . $row['peso_metro'] . " kg/m<br>";
+            echo "<b>Peso unitario inicial:</b> " . number_format($peso_total_unitario, 6) . " kg<br>";
+          }
           
           $largo = isset($row['largo']) ? (float)$row['largo'] : 0;
           if ($largo > 0) {
-            $largo_metros = $largo / 1000;
+            $largo_metros = $largo / 1000; // Convertir de mm a metros
             $peso_total_unitario = $peso_total_unitario * $largo_metros;
+            
+            if ($modoDebug == 1) {
+              echo "<b>Largo:</b> " . $largo . " mm = " . number_format($largo_metros, 3) . " m<br>";
+              echo "<b>Peso total unitario final:</b> " . number_format($peso_total_unitario, 6) . " kg<br>";
+            }
           }
           
           $precioUnitarioCalculado = $precioKg * $peso_total_unitario;
           $subtotal = $cantidadPedir * $precioUnitarioCalculado;
           $precioParaGuardar = 0; // No guardar precio unitario cuando es por kilo
+          
+          if ($modoDebug == 1) {
+            echo "<b>Precio unitario calculado:</b> $" . number_format($precioUnitarioCalculado, 4) . "<br>";
+            echo "<b>Subtotal:</b> " . $cantidadPedir . " × $" . number_format($precioUnitarioCalculado, 4) . " = $" . number_format($subtotal, 2) . "<br>";
+          }
         } else {
           $subtotal = $cantidadPedir * $precioUnitario;
+          
+          if ($modoDebug == 1) {
+            echo "<b>🧮 CÁLCULO POR PRECIO UNITARIO:</b><br>";
+            echo "<b>Subtotal:</b> " . $cantidadPedir . " × $" . number_format($precioUnitario, 2) . " = $" . number_format($subtotal, 2) . "<br>";
+          }
         }
         $total += $subtotal;
+        
+        if ($modoDebug == 1) {
+          echo "<b>Total acumulado:</b> $" . number_format($total, 2) . "<br><br>";
+        }
         
         $descuentoItem = $_POST['descuento_'.$row['id']] ?? 0;
         $fechaEntregaItem = $_POST['fecha_entrega_'.$row['id']] ?? $_POST['fecha_entrega'];
@@ -97,6 +155,7 @@ if (!empty($_POST)) {
     }
 
     if (!empty($items_para_comprar)) {
+      try {
       $id_parametro_limite = ($_POST['id_moneda'] == 1) ? 11 : 10;
       
       $sql_p = "SELECT valor FROM parametros WHERE id = ?";
@@ -118,24 +177,46 @@ if (!empty($_POST)) {
       $nro_revision = 0; // Revisión inicial
       
       $sql = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento, nro_revision) VALUES (?,?,?,?,?, ?, ?, ?, ?,?,?,?,'Revisión Original',?,?)";
+      $params = [$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], $id_estado_compra, '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento'], $nro_revision];
+      if ($modoDebug == 1) {
+        echo "<b>✅ SQL 1 - Crear orden de compra:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
+      }
       $q = $pdo->prepare($sql);
-      $q->execute([$id, $_POST['id_cuenta_proveedor'], $_POST['fecha_emision'], $_POST['fecha_entrega'], $_POST['id_forma_pago'], $id_estado_compra, '', $total, $iva, $_POST['comentarios'], $_POST['id_moneda'], $_POST['tipo_cambio_dia'], $_POST['descuento'], $nro_revision]);   
+      $q->execute($params);   
       
       $idCompra = $pdo->lastInsertId();
       
       $nroOC = $id . '/' . $idCompra;
       $sql = "UPDATE compras SET nro_oc = ? where id = ?";
+      $params = [$nroOC, $idCompra];
+      if ($modoDebug == 1) {
+        echo "<b>✅ SQL 2 - Actualizar número OC:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
+      }
       $q = $pdo->prepare($sql);
-      $q->execute([$nroOC, $idCompra]);
+      $q->execute($params);
+      if ($modoDebug == 1) {
+        echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br><br>";
+      }
 
       foreach ($items_para_comprar as $item) {
         $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, subtotal, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?,?)";
+        $params2 = [$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['subtotal'], $item['descuento'], $item['fecha_entrega']];
+        if ($modoDebug == 1) {
+          echo "<b>✅ SQL 3 - Insertar detalle compra (Material ID: " . $item['id_material'] . "):</b><br>" . debugQuery($pdo, $sql2, $params2) . "<br>";
+        }
         $q2 = $pdo->prepare($sql2);
-        $q2->execute([$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['subtotal'], $item['descuento'], $item['fecha_entrega']]);
+        $q2->execute($params2);
 
         $sql3 = "UPDATE pedidos_detalle SET comprado = ? WHERE id_pedido=? AND id_material=?";
+        $params3 = [$item['cantidad'], $id, $item['id_material']];
+        if ($modoDebug == 1) {
+          echo "<b>✅ SQL 4 - Actualizar comprado en pedido_detalle:</b><br>" . debugQuery($pdo, $sql3, $params3) . "<br>";
+        }
         $q3 = $pdo->prepare($sql3);
-        $q3->execute([$item['cantidad'], $id, $item['id_material']]);
+        $q3->execute($params3);
+        if ($modoDebug == 1) {
+          echo "<b>Filas afectadas:</b> " . $q3->rowCount() . "<br><br>";
+        }
         
         // Actualizar estado del pedido_detalle después de crear la compra
         if (isset($item['id_pedido_detalle'])) {
@@ -144,95 +225,99 @@ if (!empty($_POST)) {
         }
         
         $sql4 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
+        $params4 = [$id, $item['id_material']];
+        if ($modoDebug == 1) {
+          echo "<b>✅ SQL 5 - Buscar computo_detalle:</b><br>" . debugQuery($pdo, $sql4, $params4) . "<br>";
+        }
         $q4 = $pdo->prepare($sql4);
-        $q4->execute([$id, $item['id_material']]);
+        $q4->execute($params4);
         $data4 = $q4->fetch(PDO::FETCH_ASSOC);
         
         if ($data4) {
           $sql5 = "UPDATE computos_detalle set comprado = ? WHERE id = ?";
+          $params5 = [$item['cantidad'], $data4['id']];
+          if ($modoDebug == 1) {
+            echo "<b>✅ SQL 6 - Actualizar comprado en computos_detalle:</b><br>" . debugQuery($pdo, $sql5, $params5) . "<br>";
+          }
           $q5 = $pdo->prepare($sql5);
-          $q5->execute([$item['cantidad'], $data4['id']]);
+          $q5->execute($params5);
+          if ($modoDebug == 1) {
+            echo "<b>Filas afectadas:</b> " . $q5->rowCount() . "<br><br>";
+          }
         }
       }
 
       $sql_log = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva orden de compra','Compras','verCompra.php?id=$idCompra')";
+      $params_log = [$_SESSION['user']['id']];
+      if ($modoDebug == 1) {
+        echo "<b>✅ SQL 7 - Registrar log:</b><br>" . debugQuery($pdo, $sql_log, $params_log) . "<br>";
+      }
       $q_log = $pdo->prepare($sql_log);
-      $q_log->execute([$_SESSION['user']['id']]);
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data_param = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpHost = $data_param['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data_param = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpUsuario = $data_param['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data_param = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpClave = $data_param['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data_param = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpFrom = $data_param['valor'];  
-      
-      $sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
-      $q = $pdo->prepare($sql);
-      $q->execute();
-      $data_param = $q->fetch(PDO::FETCH_ASSOC);
-      $smtpFromName = $data_param['valor'];  
-      
-      $sql_notif = "SELECT t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 4 ";
-      foreach ($pdo->query($sql_notif) as $row_notif) {
-        
-        $estado_texto = ($id_estado_compra == 3) ? "Aprobada automáticamente" : "Pendiente de Aprobación";
-        
-        $sql2 = "INSERT INTO notificaciones(id_tipo_notificacion, id_usuario, fecha_hora, leida,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
-        $q2 = $pdo->prepare($sql2);
-        $q2->execute([$row_notif[0],'OC: ' . $idCompra . '/' . $nro_revision . ' - ' . $estado_texto ,$idCompra]);
-        
-        $address = $row_notif[1];
-        
-        $titulo = "ERP Notificaciones - Compras - Nueva OC $idCompra/$nro_revision ($estado_texto)";
-        $mensaje = "Nueva compra generada en el sistema.\n";
-        $mensaje .= "OC: ".$idCompra . "/" . $nro_revision . "\n";
-        $mensaje .= "Estado: " . $estado_texto . "\n";
-        $mensaje .= "Monto Total: $" . number_format($total, 2);
-        
-        $mail = new PHPMailer();
-        $mail = new PHPMailer();
-        $mail->IsSMTP();
-        $mail->SMTPAuth = true;
-        $mail->Port = 587; 
-        $mail->SMTPSecure = 'ssl';
-        $mail->SMTPAutoTLS = false;
-        $mail->SMTPSecure = false;
-        $mail->IsHTML(true); 
-        $mail->CharSet = "utf-8";
-        $mail->From = $smtpFrom;
-        $mail->FromName = $_SESSION['user']['usuario'];
-        $mail->Host = $smtpHost; 
-        $mail->Username = $smtpUsuario; 
-        $mail->Password = $smtpClave;
-        $mail->AddAddress($address);
-        $mail->Subject = $titulo; 
-        $mensajeHtml = nl2br($mensaje);
-        $mail->Body = "{$mensajeHtml} <br /><br />"; 
-        $mail->AltBody = "{$mensaje} \n\n"; 
-        $mail->Send();
+      $q_log->execute($params_log);
+      if ($modoDebug == 1) {
+        echo "<b>Filas afectadas:</b> " . $q_log->rowCount() . "<br><br>";
       }
       
-      Database::disconnect();
-      $_SESSION['flash_message'] = ['type' => 'success', 'message' => '¡Orden de Compra ' . $idCompra . '/' . $nro_revision . ' creada exitosamente!'];
-      header("Location: listarCompras.php");
-      exit();
+      // Enviar notificaciones usando la función crearNotificacion
+      $estado_texto = ($id_estado_compra == 3) ? "Aprobada automáticamente" : "Pendiente de Aprobación";
+      $detalleNotificacion = "OC: " . $idCompra . "/" . $nro_revision . " - " . $estado_texto;
+      $asuntoEmail = "Compras - Nueva OC " . $idCompra . "/" . $nro_revision . " (" . $estado_texto . ")";
+      $cuerpoEmail = "Nueva compra generada en el sistema.\n";
+      $cuerpoEmail .= "OC: " . $idCompra . "/" . $nro_revision . "\n";
+      $cuerpoEmail .= "Estado: " . $estado_texto . "\n";
+      $cuerpoEmail .= "Monto Total: $" . number_format($total, 2);
+      
+      if ($modoDebug == 1) {
+        echo "<b>✅ SQL 8 - Crear notificaciones con crearNotificacion():</b><br>";
+        echo "<b>Tipo Notificación:</b> 4<br>";
+        echo "<b>ID Entidad:</b> " . $idCompra . "<br>";
+        echo "<b>Detalle:</b> " . htmlspecialchars($detalleNotificacion) . "<br>";
+        echo "<b>Asunto:</b> " . htmlspecialchars($asuntoEmail) . "<br>";
+        echo "<b>Cuerpo:</b> " . htmlspecialchars($cuerpoEmail) . "<br><br>";
+      }
+      
+      crearNotificacion($pdo, 4, $idCompra, $detalleNotificacion, $asuntoEmail, $cuerpoEmail);
+
+      // Si llegamos aquí, todo salió bien
+      $transaccionExitosa = true;
+      
+      if ($modoDebug == 1) {
+        echo "<h3>✅ PROCESO COMPLETADO EXITOSAMENTE</h3>";
+      }
+      
+    } catch (Exception $e) {
+      // Error en el procesamiento
+      if ($modoDebug == 1) {
+        echo "<h3>❌ ERROR EN EL PROCESAMIENTO</h3>";
+        echo "<b>Mensaje:</b> " . htmlspecialchars($e->getMessage()) . "<br>";
+        echo "<b>Línea:</b> " . $e->getLine() . "<br>";
+        echo "<b>Archivo:</b> " . $e->getFile() . "<br>";
+      }
+      $transaccionExitosa = false;
+      $error = "Error al procesar la orden de compra: " . $e->getMessage();
+    }
+
+    // Finalizar transacción
+    if ($modoDebug == 1) {
+      // En modo debug, siempre rollback para no afectar la BD
+      echo "<h3>🔄 ROLLBACK - Transacción revertida en modo debug</h3>";
+      $pdo->rollback();
+      echo "<p><b>⚠️ IMPORTANTE:</b> Todos los cambios han sido revertidos para mantener integridad en modo debug.</p>";
+      die();
+    } else {
+      // En modo normal, commit solo si todo salió bien
+      if ($transaccionExitosa) {
+        $pdo->commit();
+        Database::disconnect();
+        $_SESSION['flash_message'] = ['type' => 'success', 'message' => '¡Orden de Compra ' . $idCompra . '/' . $nro_revision . ' creada exitosamente!'];
+        header("Location: listarCompras.php");
+        exit();
+      } else {
+        $pdo->rollback();
+      }
+    }
+
+    Database::disconnect();
 
     } else {
       $error = "Debe ingresar al menos un concepto con cantidad mayor a 0 y precio.";

@@ -121,11 +121,11 @@
 							</div>
 						  </div>
 						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Largo</label>
+							<label class="col-sm-3 col-form-label">Largo (mm)</label>
 							<div class="col-sm-9"><input name="largo" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['largo']; ?>"></div>
 						  </div>
 						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Peso x Metro</label>
+							<label class="col-sm-3 col-form-label">Peso x Metro (kg)</label>
 							<div class="col-sm-9"><input name="peso_metro" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['peso_metro']; ?>"></div>
 						  </div>
 						  <div class="form-group row">

@@ -111,12 +111,18 @@
 							</div>
 						  </div>
 						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Largo(*)</label>
-							<div class="col-sm-9"><input name="largo" type="number" step="0.01" class="form-control" required="required"></div>
+							<label class="col-sm-3 col-form-label">Largo (mm)(*)</label>
+							<div class="col-sm-9">
+								<input name="largo" type="number" step="0.01" class="form-control" required="required">
+								<small class="form-text text-muted">Ingrese el largo en <strong>milímetros (mm)</strong></small>
+							</div>
 						  </div>
 						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Peso x Metro(*)</label>
-							<div class="col-sm-9"><input name="peso_metro" type="number" step="0.01" class="form-control" required="required"></div>
+							<label class="col-sm-3 col-form-label">Peso x Metro (kg)(*)</label>
+							<div class="col-sm-9">
+								<input name="peso_metro" type="number" step="0.01" class="form-control" required="required">
+								<small class="form-text text-muted">Ingrese el peso por metro en <strong>kilogramos (kg)</strong></small>
+							</div>
 						  </div>
 						  <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Stock Mínimo(*)</label>

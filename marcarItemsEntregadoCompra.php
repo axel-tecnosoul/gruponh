@@ -12,6 +12,7 @@ if (empty($_SESSION['user'])) {
   }
 }
 require 'database.php';
+require_once('funciones.php');
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -60,7 +61,6 @@ if (empty($_POST['id_compra_detalle']) || !is_array($_POST['id_compra_detalle'])
 
 $count = 1;
 $idIngreso = 0;
-require_once('funciones.php');
 
 try {
   // Obtener datos básicos de la compra una sola vez
@@ -303,7 +303,6 @@ try {
       $qAllItems->execute($paramsAllItems);
     }
     
-    require_once('funciones.php');
     while ($item = $qAllItems->fetch(PDO::FETCH_ASSOC)) {
       if ($modoDebug == 1) {
         echo "<b>🔄 Actualizando estado pedido_detalle ID:</b> " . $item['id'] . "<br>";
