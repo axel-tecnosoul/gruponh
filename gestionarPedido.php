@@ -59,7 +59,10 @@ if (!empty($_POST)) {
       $precioKg = $_POST['preciokg_'.$row['id']] ?? 0;
       
       if ($cantidadPedir > 0 && ($precioUnitario > 0 || $precioKg > 0)) {
+        $precioParaGuardar = $precioUnitario;
+        
         if ($precioKg > 0) {
+          // Cuando es precio por kilo, calcular subtotal pero NO guardar precio unitario
           $peso_total_unitario = ((float)$row['peso_metro']) / 1000;
           
           $largo = isset($row['largo']) ? (float)$row['largo'] : 0;
@@ -68,9 +71,12 @@ if (!empty($_POST)) {
             $peso_total_unitario = $peso_total_unitario * $largo_metros;
           }
           
-          $precioUnitario = $precioKg * $peso_total_unitario;
+          $precioUnitarioCalculado = $precioKg * $peso_total_unitario;
+          $subtotal = $cantidadPedir * $precioUnitarioCalculado;
+          $precioParaGuardar = 0; // No guardar precio unitario cuando es por kilo
+        } else {
+          $subtotal = $cantidadPedir * $precioUnitario;
         }
-        $subtotal = $cantidadPedir * $precioUnitario;
         $total += $subtotal;
         
         $descuentoItem = $_POST['descuento_'.$row['id']] ?? 0;
@@ -80,8 +86,9 @@ if (!empty($_POST)) {
           'id_material' => $row['id_material'],
           'cantidad' => $cantidadPedir,
           'id_unidad_medida' => $row['id_unidad_medida'],
-          'precio' => $precioUnitario,
+          'precio' => $precioParaGuardar,
           'precio_kg' => $precioKg,
+          'subtotal' => $subtotal,
           'descuento' => $descuentoItem,
           'fecha_entrega' => $fechaEntregaItem,
           'id_pedido_detalle' => $row['id']
@@ -122,9 +129,9 @@ if (!empty($_POST)) {
       $q->execute([$nroOC, $idCompra]);
 
       foreach ($items_para_comprar as $item) {
-        $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?)";
+        $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, subtotal, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?,?)";
         $q2 = $pdo->prepare($sql2);
-        $q2->execute([$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['descuento'], $item['fecha_entrega']]);
+        $q2->execute([$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['subtotal'], $item['descuento'], $item['fecha_entrega']]);
 
         $sql3 = "UPDATE pedidos_detalle SET comprado = ? WHERE id_pedido=? AND id_material=?";
         $q3 = $pdo->prepare($sql3);

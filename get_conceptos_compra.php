@@ -7,16 +7,16 @@ $id_compra = $_POST['id_compra'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
+$sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, cd.subtotal, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
 $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {
-  $cantidad = (float) $row[2];
-  $precioUnitario = (float) $row[5];
-  $precioKgRaw = (float) $row[7];
-  $pesoMetro = (float) $row[8];
-  $largo = (float) $row[9];
-  $id_material = $row[4];
+  $cantidad = (float) $row["cantidad"];
+  $precioUnitario = (float) $row["precio"];
+  $precioKgRaw = (float) $row["precio_kg"];
+  $pesoMetro = (float) $row["peso_metro"];
+  $largo = (float) $row["largo"];
+  $id_material = $row["id_material"];
 
   $precio = number_format($precioUnitario,2);
   $preciokg = number_format($precioKgRaw,2);
@@ -33,10 +33,18 @@ foreach ($pdo->query($sql) as $row) {
   $pesoTotalRaw = $pesoUnitario * (float) $cantidad;
   $peso = number_format($pesoTotalRaw,2);
   
-  if ($precioUnitario == 0) {
-    $subtotalValue = $precioKgRaw * $pesoTotalRaw;
+  // Usar subtotal guardado si existe, sino calcularlo (compatibilidad con registros antiguos)
+  $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
+  
+  if ($subtotalGuardado > 0) {
+    $subtotalValue = $subtotalGuardado;
   } else {
-    $subtotalValue = $precioUnitario * (float) $cantidad;
+    // Fallback: calcular como antes para registros antiguos
+    if ($precioUnitario == 0) {
+      $subtotalValue = $precioKgRaw * $pesoTotalRaw;
+    } else {
+      $subtotalValue = $precioUnitario * (float) $cantidad;
+    }
   }
   $subtotal = number_format($subtotalValue,2);
 	
