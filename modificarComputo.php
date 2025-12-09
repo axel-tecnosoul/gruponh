@@ -182,12 +182,19 @@ if (!empty($_POST)) {
       }
 
       if ($tienePedido) {
+          // Obtener el id_proyecto del cómputo
+          $sqlProyecto = "SELECT t.id_proyecto FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea WHERE c.id = ?";
+          $qProyecto = $pdo->prepare($sqlProyecto);
+          $qProyecto->execute([$idComputo]);
+          $dataProyecto = $qProyecto->fetch(PDO::FETCH_ASSOC);
+          $id_proyecto = $dataProyecto ? $dataProyecto['id_proyecto'] : null;
+
           // 2.a) Insertar cabecera
-          $sqlInsPedido = "INSERT INTO pedidos (id_computo, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, NOW(), ?, ?, 1)";
-          $params = [$idComputo,$_POST['lugar_entrega'],$_POST['id_cuenta_recibe']];
+          $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, ?, NOW(), ?, ?, 1)";
+          $params = [$idComputo, $id_proyecto, $_POST['lugar_entrega'], $_POST['id_cuenta_recibe']];
 
           if ($modoDebug == 1) {
-            // Generar y mostrar la consulta “real”
+            // Generar y mostrar la consulta "real"
             $fullSql = debugQuery($pdo, $sqlInsPedido, $params);
             echo $fullSql . "<br><br>";
           }

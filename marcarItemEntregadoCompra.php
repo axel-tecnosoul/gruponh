@@ -23,10 +23,20 @@
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
 	
-	$sql = "SELECT cd.`id`, cd.`id_compra`, cd.`id_material`, cd.`cantidad`, cd.`id_unidad_medida`, cd.`precio`, cd.`entregado`,p.lugar_entrega,p.id_cuenta_recibe,c.comentarios,c.nro_oc,c.id_cuenta_proveedor FROM `compras_detalle` cd inner join compras c on c.id = cd.id_compra inner join pedidos p on p.id = c.id_pedido WHERE cd.id = ? ";
+	$sql = "SELECT cd.`id`, cd.`id_compra`, cd.`id_material`, cd.`cantidad`, cd.`id_unidad_medida`, cd.`precio`, cd.`entregado`,p.lugar_entrega,p.id_cuenta_recibe,c.comentarios,c.nro_oc,c.id_cuenta_proveedor, p.id AS id_pedido FROM `compras_detalle` cd inner join compras c on c.id = cd.id_compra inner join pedidos p on p.id = c.id_pedido WHERE cd.id = ? ";
 	$q = $pdo->prepare($sql);
 	$q->execute([$id]);
 	$data = $q->fetch(PDO::FETCH_ASSOC);
+	
+	// Actualizar estado del pedido_detalle después de marcar como entregado
+	$sqlPedidoDetalle = "SELECT id FROM pedidos_detalle WHERE id_pedido = ? AND id_material = ?";
+	$qPedidoDetalle = $pdo->prepare($sqlPedidoDetalle);
+	$qPedidoDetalle->execute([$data['id_pedido'], $data['id_material']]);
+	$pedidoDetalle = $qPedidoDetalle->fetch(PDO::FETCH_ASSOC);
+	if ($pedidoDetalle) {
+		require_once('funciones.php');
+		actualizarEstadoPedidoDetalle($pdo, $pedidoDetalle['id']);
+	}
 	
 	/*$sql = "SELECT `id`, `disponible`, `reservado`, `comprando` FROM `stock` WHERE `id_material` = ? ";
 	$q = $pdo->prepare($sql);

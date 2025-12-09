@@ -22,9 +22,28 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
+        // Obtener datos antes de actualizar para localizar el pedido_detalle
+        $sqlBefore = "SELECT cd.id_material, c.id_pedido FROM compras_detalle cd 
+                      INNER JOIN compras c ON c.id = cd.id_compra WHERE cd.id = ?";
+        $qBefore = $pdo->prepare($sqlBefore);
+        $qBefore->execute([$_GET['id']]);
+        $dataBefore = $qBefore->fetch(PDO::FETCH_ASSOC);
+        
         $sql = "UPDATE `compras_detalle` set `precio`= ?, `precio_kg`= ?, `cantidad`= ? where id = ?";
         $q = $pdo->prepare($sql);
         $q->execute([$_POST['precio'],$_POST['precio_kg'],$_POST['cantidad'],$_GET['id']]);
+        
+        // Actualizar estado del pedido_detalle después de modificar cantidad
+        if ($dataBefore) {
+            $sqlPedidoDetalle = "SELECT id FROM pedidos_detalle WHERE id_pedido = ? AND id_material = ?";
+            $qPedidoDetalle = $pdo->prepare($sqlPedidoDetalle);
+            $qPedidoDetalle->execute([$dataBefore['id_pedido'], $dataBefore['id_material']]);
+            $pedidoDetalle = $qPedidoDetalle->fetch(PDO::FETCH_ASSOC);
+            if ($pedidoDetalle) {
+                require_once('funciones.php');
+                actualizarEstadoPedidoDetalle($pdo, $pedidoDetalle['id']);
+            }
+        }
 		
 		$sql = " select cantidad,precio from compras_detalle where id_compra = ".$_POST['id_compra'];
 		

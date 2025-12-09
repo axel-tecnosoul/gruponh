@@ -73,12 +73,17 @@ if (!empty($_POST)) {
         $subtotal = $cantidadPedir * $precioUnitario;
         $total += $subtotal;
         
+        $descuentoItem = $_POST['descuento_'.$row['id']] ?? 0;
+        $fechaEntregaItem = $_POST['fecha_entrega_'.$row['id']] ?? $_POST['fecha_entrega'];
+        
         $items_para_comprar[] = [
           'id_material' => $row['id_material'],
           'cantidad' => $cantidadPedir,
           'id_unidad_medida' => $row['id_unidad_medida'],
           'precio' => $precioUnitario,
           'precio_kg' => $precioKg,
+          'descuento' => $descuentoItem,
+          'fecha_entrega' => $fechaEntregaItem,
           'id_pedido_detalle' => $row['id']
         ];
       }
@@ -97,7 +102,7 @@ if (!empty($_POST)) {
       $id_estado_compra = 1; 
       $mensaje_extra_email = "";
       
-      if ($total > $monto_limite) {
+      if ($total < $monto_limite) {
           $id_estado_compra = 3;
           $mensaje_extra_email = " (Aprobada Automáticamente por monto menor a límite)";
       }
@@ -117,13 +122,19 @@ if (!empty($_POST)) {
       $q->execute([$nroOC, $idCompra]);
 
       foreach ($items_para_comprar as $item) {
-        $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg) VALUES (?,?,?,?,?,?)";
+        $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?)";
         $q2 = $pdo->prepare($sql2);
-        $q2->execute([$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg']]);
+        $q2->execute([$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['descuento'], $item['fecha_entrega']]);
 
         $sql3 = "UPDATE pedidos_detalle SET comprado = ? WHERE id_pedido=? AND id_material=?";
         $q3 = $pdo->prepare($sql3);
         $q3->execute([$item['cantidad'], $id, $item['id_material']]);
+        
+        // Actualizar estado del pedido_detalle después de crear la compra
+        if (isset($item['id_pedido_detalle'])) {
+          require_once('funciones.php');
+          actualizarEstadoPedidoDetalle($pdo, $item['id_pedido_detalle']);
+        }
         
         $sql4 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
         $q4 = $pdo->prepare($sql4);
@@ -402,6 +413,21 @@ Database::disconnect();?>
         max-width: 80px !important;
       }
       
+      #dataTables-example667 th:nth-child(13),
+      #dataTables-example667 td:nth-child(13) {
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+        text-align: center;
+      }
+      
+      #dataTables-example667 th:nth-child(14),
+      #dataTables-example667 td:nth-child(14) {
+        width: 90px !important;
+        min-width: 90px !important;
+        max-width: 90px !important;
+      }
+      
       /* Resto de celdas sin wrap */
       #dataTables-example667 tbody td {
         white-space: nowrap;
@@ -463,6 +489,109 @@ Database::disconnect();?>
       .dataTables_wrapper .dataTables_paginate .paginate_button {
         padding: 0.25rem 0.5rem;
         font-size: 0.8rem;
+      }
+      
+      /* Custom controls styling in DataTables toolbar */
+      .dataTables_wrapper .dataTables_length,
+      .dataTables_wrapper .dataTables_filter {
+        display: inline-block;
+        vertical-align: middle;
+      }
+      
+      #custom-controls-container {
+        display: inline-block;
+        vertical-align: middle;
+        flex: 1;
+        max-width: calc(100% - 400px);
+        margin: 0 20px;
+        padding: 5px 0;
+      }
+      
+      #custom-controls {
+        display: flex !important;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 25px;
+        margin: 0 !important;
+        width: 100%;
+        flex-wrap: nowrap;
+      }
+      
+      #custom-controls .col-md-3 {
+        flex: 0 0 auto;
+        width: auto;
+        padding: 0;
+        margin: 0;
+        min-width: 150px;
+      }
+      
+      #custom-controls .form-label {
+        font-size: 11px;
+        font-weight: 500;
+        margin-bottom: 3px;
+        color: #666;
+        display: block;
+        white-space: nowrap;
+      }
+      
+      #custom-controls .form-control {
+        font-size: 11px !important;
+        padding: 5px 8px !important;
+        height: 30px !important;
+        width: 130px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      
+      /* Ensure DataTables wrapper uses flexbox layout */
+      .dataTables_wrapper .dataTables_length {
+        float: none !important;
+        margin-right: 10px;
+      }
+      
+      .dataTables_wrapper .dataTables_filter {
+        float: none !important;
+        margin-left: 10px;
+      }
+      
+      /* Make the top row of DataTables a flexbox */
+      .dataTables_wrapper .dataTables_length,
+      .dataTables_wrapper .dataTables_filter,
+      #custom-controls-container {
+        display: inline-flex;
+        align-items: center;
+      }
+      
+      /* Estilos para items cancelados */
+      .table-secondary {
+        background-color: #f8f9fa !important;
+        opacity: 0.8;
+      }
+      
+      .table-secondary td {
+        text-decoration: line-through;
+        color: #6c757d;
+      }
+      
+      .table-secondary .badge-danger {
+        text-decoration: none;
+        font-size: 0.7rem;
+        padding: 0.5rem 1rem;
+      }
+      
+      .text-muted {
+        color: #6c757d !important;
+      }
+      
+      /* Estilos para las celdas combinadas */
+      .cancelado-badge {
+        display: inline-block;
+        min-width: 120px;
+      }
+      
+      /* Asegurar que las celdas ocultas no interfieran */
+      td[style*="display: none"], td.hidden-cell {
+        display: none !important;
       }
     </style>
   </head>
@@ -615,12 +744,7 @@ Database::disconnect();?>
                                 <input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?=date('Y-m-d');?>" class="form-control" required>
                               </div>
                             </div>
-                            <div class="form-group row">
-                              <label class="col-sm-4 col-form-label">Fecha Entrega</label>
-                              <div class="col-sm-8">
-                                <input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$data["fecha"]?>" class="form-control">
-                              </div>
-                            </div>
+
                             <div class="form-group row">
                               <label class="col-sm-4 col-form-label">Moneda(*)</label>
                               <div class="col-sm-8">
@@ -644,12 +768,7 @@ Database::disconnect();?>
                                 <input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number" step="0.01" class="form-control">
                               </div>
                             </div>
-                            <div class="form-group row">
-                              <label class="col-sm-4 col-form-label">Descuento</label>
-                              <div class="col-sm-8">
-                                <input name="descuento" type="number" step="0.01" class="form-control">
-                              </div>
-                            </div>
+
                             <div class="form-group row">
                               <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
                               <div class="col-sm-8">
@@ -680,6 +799,16 @@ Database::disconnect();?>
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3">Detalle de Conceptos</h6>
+                          <div id="custom-controls" class="row mb-3" style="display: none; text-align-last: center;">
+                            <div class="col-md-6" style="text-align: center;">
+                              <label class="">Fecha Entrega General:</label>
+                              <input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$data["fecha"]?>" class="form-control d-inline-block" style="font-size: 12px;">
+                            </div>
+                            <div class="col-md-6" style="text-align: center;">
+                              <label class="">Descuento General (%):</label>
+                              <input name="descuento" type="number" step="0.01" class="form-control d-inline-block" style="font-size: 12px;">
+                            </div>
+                          </div>
                           <div class="table-responsive">
                             <table class="display" id="dataTables-example667" style="width:100%">
                               <thead>
@@ -696,13 +825,15 @@ Database::disconnect();?>
                                     <th>Cant. Solic.</th>
                                     <th>Cant. Pedir</th>
                                     <th>P. Unit.</th>
-                                    <th>P. x Kg</th><?php
+                                    <th>P. x Kg</th>
+                                    <th>Desc. %</th>
+                                    <th>F. Entrega</th><?php
                                   }?>
                                 </tr>
                               </thead>
                               <tbody><?php
                                 $pdo = Database::connect();
-                                $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$id;
+                                $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado,pd.cancelado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$id;
                                 foreach ($pdo->query($sql) as $row) {
                                   $id_material=(int)$row["id_material"];
 
@@ -735,7 +866,7 @@ Database::disconnect();?>
 
                                   ?>
 
-                                  <tr data-id="<?=$row["id"]?>">
+                                  <tr data-id="<?=$row["id"]?>" <?=($row["cancelado"] == 1) ? 'class="table-secondary"' : ''?>>
                                     <td><?=$row["concepto"]?></td>
                                     <td><?=$row["fecha_necesidad"]?></td>
                                     <td><?=$fecha_emision?></td>
@@ -743,22 +874,34 @@ Database::disconnect();?>
                                     <td><?=$row["cantidad"] .' '.$row["unidad_medida"]?></td>
                                     <td><?=$disponible?></td>
                                     <td><?=$row["reservado"]?></td>
-                                    <td><?=$row["comprado"]?></td><?php
+                                    <td><?=$row["comprado"]?></td>
+                                    <td><?=$cantidadComparar?></td><?php
                                     if ($data['aprobado']==1 && tienePermiso(298)) {?>
-                                      <td><?=$cantidadComparar?></td>
-                                      <td><?php
-                                        if ($cantidadComparar > 0) {?>
+                                      <td class="cantidad-col" data-cancelado="<?=$row["cancelado"]?>" data-cantidad="<?=$cantidadComparar?>" data-id="<?=$row["id"]?>" data-fecha="<?=$data['fecha']?>"><?php
+                                        if ($cantidadComparar > 0 && $row["cancelado"] != 1) {?>
                                           <input name="cantidad_<?=$row["id"]?>" type="number" step="0.01" min="0" max="<?=$cantidadComparar?>" class="form-control cantidad-input" value="<?=$cantidadComparar?>"><?php
+                                        } elseif ($row["cancelado"] == 1) { ?>
+                                          <span class="badge badge-danger cancelado-badge">Concepto cancelado</span><?php
                                         }?>
                                       </td>
-                                      <td><?php
-                                        if ($cantidadComparar > 0) {?>
+                                      <td class="precio-col" data-cancelado="<?=$row["cancelado"]?>"><?php
+                                        if ($cantidadComparar > 0 && $row["cancelado"] != 1) {?>
                                           <input name="precio_<?=$row["id"]?>" type="number" step="0.01" class="form-control precio-input" value="0"><?php
                                         }?>
                                       </td>
-                                      <td><?php
-                                        if ($cantidadComparar > 0) {?>
+                                      <td class="preciokg-col" data-cancelado="<?=$row["cancelado"]?>"><?php
+                                        if ($cantidadComparar > 0 && $row["cancelado"] != 1) {?>
                                           <input name="preciokg_<?=$row["id"]?>" type="number" step="0.01" class="form-control preciokg-input" value="0"><?php
+                                        }?>
+                                      </td>
+                                      <td class="descuento-col" data-cancelado="<?=$row["cancelado"]?>"><?php
+                                        if ($cantidadComparar > 0 && $row["cancelado"] != 1) {?>
+                                          <input name="descuento_<?=$row["id"]?>" type="number" step="0.1" min="0" max="100" class="form-control descuento-input" value="0"><?php
+                                        }?>
+                                      </td>
+                                      <td class="fecha-col" data-cancelado="<?=$row["cancelado"]?>"><?php
+                                        if ($cantidadComparar > 0 && $row["cancelado"] != 1) {?>
+                                          <input name="fecha_entrega_<?=$row["id"]?>" type="date" onfocus="this.showPicker()" class="form-control fecha-entrega-input" value="<?=$data['fecha']?>"><?php
                                         }?>
                                       </td><?php
                                     }?>
@@ -843,7 +986,26 @@ Database::disconnect();?>
     <!-- Plugins JS Ends-->
     <script>
       $(document).ready(function() {
+        <?php if ($data['aprobado']==1 && tienePermiso(298)){ ?>
+        // Show custom controls only when editing is allowed
+        $('#custom-controls').show();
+        <?php } ?>
+        
+        // Función común para manejar celdas de items cancelados
+        function handleCanceledRowCells($row) {
+          var cantidadCol = $row.find('.cantidad-col');
+          
+          if (cantidadCol.data('cancelado') == 1) {
+            // Ocultar las otras columnas de input
+            $row.find('.precio-col, .preciokg-col, .descuento-col, .fecha-col').hide();
+            
+            // Expandir la columna de cantidad para ocupar el espacio
+            cantidadCol.attr('colspan', '5').addClass('text-center');
+          }
+        }
+        
         $('#dataTables-example667').DataTable({
+          dom: 'l<"#custom-controls-container">frtip',
           stateSave: false,
           responsive: false,
           scrollX: false,
@@ -851,6 +1013,9 @@ Database::disconnect();?>
           autoWidth: false,
           paging: true,
           pageLength: 10,
+          createdRow: function(row, data, dataIndex) {
+            handleCanceledRowCells($(row));
+          },
           columnDefs: [
             { width: "180px", targets: 0, orderable: true },
             { width: "85px", targets: 1, orderable: true },
@@ -863,7 +1028,9 @@ Database::disconnect();?>
             { width: "75px", targets: 8, orderable: true, className: "text-center" },
             { width: "95px", targets: 9, orderable: false },
             { width: "80px", targets: 10, orderable: false },
-            { width: "80px", targets: 11, orderable: false }
+            { width: "80px", targets: 11, orderable: false },
+            { width: "70px", targets: 12, orderable: false, className: "text-center" },
+            { width: "90px", targets: 13, orderable: false }
           ],
           language: {
             "decimal": "",
@@ -884,6 +1051,42 @@ Database::disconnect();?>
               "next": "Siguiente",
               "previous": "Anterior"
             }
+          },
+          drawCallback: function() {
+            var api = this.api();
+            api.rows().every(function() {
+              handleCanceledRowCells($(this.node()));
+            });
+          },
+          initComplete: function() {
+            // Move custom controls to DataTables toolbar
+            var customControls = $('#custom-controls').detach();
+            $('#custom-controls-container').append(customControls);
+            customControls.show();
+            
+            // Reorganize the DataTables top elements to use available space better
+            var wrapper = $('#dataTables-example667_wrapper');
+            var lengthDiv = wrapper.find('.dataTables_length');
+            var filterDiv = wrapper.find('.dataTables_filter');
+            var customContainer = $('#custom-controls-container');
+            
+            // Create a flex container for the top row
+            var topRow = $('<div class="datatables-top-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: nowrap;"></div>');
+            
+            // Move elements to the flex container
+            lengthDiv.css({'margin': '0', 'flex': '0 0 auto'});
+            customContainer.css({'margin': '0 15px', 'flex': '1 1 auto', 'min-width': '300px'});
+            filterDiv.css({'margin': '0', 'flex': '0 0 auto'});
+            
+            // Insert the new structure
+            lengthDiv.parent().prepend(topRow);
+            topRow.append(lengthDiv);
+            topRow.append(customContainer);
+            topRow.append(filterDiv);
+            
+            // Hide the original container divs that are now empty
+            lengthDiv.parent().find('.dataTables_length').not(lengthDiv).hide();
+            filterDiv.parent().find('.dataTables_filter').not(filterDiv).hide();
           }
         });
 
@@ -898,6 +1101,27 @@ Database::disconnect();?>
             $('#tc_required_star').hide();
           }
         }).trigger('change');
+
+        // Propagar descuento global a todos los conceptos
+        $('input[name="descuento"]').on('input', function() {
+          var valorDescuento = $(this).val();
+          $('.descuento-input').val(valorDescuento);
+        });
+
+        // Propagar fecha de entrega global a todos los conceptos
+        $('input[name="fecha_entrega"]').on('change', function() {
+          var valorFecha = $(this).val();
+          $('.fecha-entrega-input').val(valorFecha);
+        });
+
+        // Inicializar valores de descuento y fecha en conceptos al cargar
+        var descuentoInicial = $('input[name="descuento"]').val() || '0';
+        var fechaInicial = $('input[name="fecha_entrega"]').val();
+        
+        $('.descuento-input').val(descuentoInicial);
+        if (fechaInicial) {
+          $('.fecha-entrega-input').val(fechaInicial);
+        }
       });
 
       function validarFormularioCompra() {

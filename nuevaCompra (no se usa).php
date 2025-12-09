@@ -29,7 +29,9 @@
 		$sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.`cantidad`, d.`id_unidad_medida`,m.peso_metro FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = m.id_unidad_medida WHERE d.id in (".$_GET['conceptos'].")";
 		
 		$total = 0;
+		$count = 0;
 		foreach ($pdo->query($sql) as $row) {
+			$count++;
 			
 			if ($_POST['preciokg_'.$row[0]] != 0) {
 				$_POST['precio_'.$row[0]] = $_POST['preciokg_'.$row[0]] * $row[5];
@@ -43,9 +45,16 @@
 			
 			$comprando = $_POST['cantidad_'.$row[0]];
 			
-			$sql = "UPDATE `pedidos_detalle` SET `comprado`=? WHERE `id_pedido`=? AND `id_material`=?";
+				$sql = "UPDATE `pedidos_detalle` SET `comprado`=? WHERE `id_pedido`=? AND `id_material`=?";
 			$q = $pdo->prepare($sql);
 			$q->execute([$comprando,$_GET['idPedido'],$row[1]]);
+			
+			// Actualizar estado del pedido a "Gestionando" (id 4) al crear la primera OC
+			if ($count == 1) {
+				$sqlUpdatePedido = "UPDATE pedidos SET id_estado = 4 WHERE id = ?";
+				$qUpdatePedido = $pdo->prepare($sqlUpdatePedido);
+				$qUpdatePedido->execute([$_GET['idPedido']]);
+			}
 			
 			$sql3 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
 			$q3 = $pdo->prepare($sql3);

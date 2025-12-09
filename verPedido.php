@@ -300,6 +300,30 @@ if (!empty($_POST)) {
         </div>
       </div>
     </div>
+
+    <!-- Modal de resultado de envío -->
+    <div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="resultModalTitle">Resultado</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div id="resultModalIcon" class="text-center mb-3">
+              <!-- Icono se agregará dinámicamente -->
+            </div>
+            <p id="resultModalMessage" class="text-center"></p>
+          </div>
+          <div class="modal-footer">
+            <a class="btn btn-primary" href="listarPedidos.php">Ir a Lista de Pedidos</a>
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
     
     <!-- Scripts (sin cambios) -->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
@@ -399,16 +423,37 @@ if (!empty($_POST)) {
             url: 'modificarEstadoPedido.php',
             data: { idEstado: 2, idPosicion: pedidoId },
             success: function (response) {
+              $('#modalEnviarAprobacion').modal('hide');
               var trimmed = $.trim(response || '');
               var pattern = new RegExp('^2\\s*-\\s*' + pedidoId + '$');
+              
               if (pattern.test(trimmed)) {
-                window.location.href = 'listarPedidos.php';
+                // Ocultar botón de envío a aprobación
+                $('#btnEnviarAprobacion').hide();
+                
+                // Mostrar modal de éxito
+                showResultModal(
+                  '¡Éxito!', 
+                  'El pedido ha sido enviado para aprobación correctamente.',
+                  'success'
+                );
               } else {
-                mostrarErrorEstado('No se pudo actualizar el estado. Respuesta inesperada del servidor.');
+                // Mostrar modal de error
+                showResultModal(
+                  'Error', 
+                  'No se pudo actualizar el estado. Respuesta inesperada del servidor.',
+                  'error'
+                );
               }
             },
             error: function () {
-              mostrarErrorEstado('No se pudo actualizar el estado. Intente nuevamente.');
+              $('#modalEnviarAprobacion').modal('hide');
+              // Mostrar modal de error
+              showResultModal(
+                'Error de Conexión', 
+                'No se pudo actualizar el estado. Intente nuevamente.',
+                'error'
+              );
             },
             complete: function () {
               $button.prop('disabled', false);
@@ -416,10 +461,20 @@ if (!empty($_POST)) {
           });
         });
 
-        function mostrarErrorEstado(mensaje) {
-          $('#modalEnviarAprobacion').modal('hide');
-          var $error = $('#estado-error');
-          $error.text(mensaje).removeClass('d-none');
+        // Función para mostrar modal de resultado
+        function showResultModal(title, message, type) {
+          $('#resultModalTitle').text(title);
+          $('#resultModalMessage').text(message);
+          
+          var iconHtml = '';
+          if (type === 'success') {
+            iconHtml = '<i class="fa fa-check-circle fa-3x text-success"></i>';
+          } else if (type === 'error') {
+            iconHtml = '<i class="fa fa-times-circle fa-3x text-danger"></i>';
+          }
+          
+          $('#resultModalIcon').html(iconHtml);
+          $('#resultModal').modal('show');
         }
       });
 

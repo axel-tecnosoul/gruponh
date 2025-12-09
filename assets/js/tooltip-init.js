@@ -7,6 +7,7 @@
 			$("input").tooltip();
 			$("img").tooltip();
       $("td").tooltip();
+      $("span").tooltip();
 		}
 	};
     tooltip_init.init();

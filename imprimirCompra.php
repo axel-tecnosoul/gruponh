@@ -130,7 +130,7 @@ if (!empty($_POST)) {
                             <b>Contacto:</b> <?=$data['contacto'];?><br>
                           </div>
                           <div class="col-sm-6 bordered-div">
-                            <b>Fecha:</b> <?=$data['fecha_emision'];?><br>
+                            <b>Fecha:</b> <?=date("d-m-Y", strtotime($data['fecha_emision']));?><br>
                             <b>Proyecto:</b> <?=$nombreProyecto;?><br>
                             <b>Nro:</b> <?=$nroSitio."_".$nroSubsitio."_".$nroProyecto;?><br>
                             <b>Pedido:</b> <?=$data['id_pedido'];?><br>
@@ -196,7 +196,7 @@ if (!empty($_POST)) {
                         </div>
                         <div class="form-group row">
                           <div class="col-sm-11 p-0">
-                            <b>Fecha pactada:</b> <?=$data['fecha_entrega'];?><br>
+                            <b>Fecha de entrega:</b> <?=date("d-m-Y", strtotime($data['fecha_entrega']));?><br>
                             <b>Condición de pago:</b> <?=$data['forma_pago'];?><br>
                             <b>Lugar de entrega:</b> <?=$data['lugar_entrega'];?><br>
                             <b>Comentarios:</b> <?=$data['comentarios'];?><br><br>

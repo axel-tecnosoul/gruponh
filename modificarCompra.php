@@ -16,45 +16,51 @@
         header("Location: listarCompras.php");
     }
     
+    // Verificar que la compra esté en estado "Elaboración" (id=1)
+    $pdo = Database::connect();
+    $sql_estado = "SELECT id_estado_compra FROM compras WHERE id = ?";
+    $q_estado = $pdo->prepare($sql_estado);
+    $q_estado->execute([$id]);
+    $estado_actual = $q_estado->fetch(PDO::FETCH_ASSOC);
+    Database::disconnect();
+    
+    if (!$estado_actual || $estado_actual['id_estado_compra'] != 1) {
+      header("Location: listarCompras.php");
+      exit();
+    }
+    
     if (!empty($_POST)) {
-		
-		 // insert data
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		
-		if (!empty($_POST['btn1'])) {
-			
-			$sql = "UPDATE `compras` set `fecha_entrega` = ?, `id_forma_pago` = ?, `id_estado_compra` = ?, `comentarios` = ?, `id_moneda` = ?, `tipo_cambio_dia` = ?, `iva` = ?, `descuento` = ?, `total` = ? where id = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_POST['fecha_entrega'],$_POST['id_forma_pago'],$_POST['id_estado_compra'],$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['iva'],$_POST['descuento'],$_POST['total'],$_GET['id']]);
-			
-		} else {
-			
-			$sql = "UPDATE `compras` set aprobado = 1 where id = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_GET['id']]);
-			
-			$sql = "SELECT `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `adjunto_factura`, `id_moneda`, `tipo_cambio_dia`, `nro_revision`, `iva`, `descuento` FROM `compras` WHERE `id` = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_GET['id']]);
-			$dataC = $q->fetch(PDO::FETCH_ASSOC);
-				
-			$nro = $dataC['nro_revision']+1;
-			
-			$sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `adjunto_factura`, `id_moneda`, `tipo_cambio_dia`, `nro_revision`, `aprobado`, `comentarios_revision`, `iva`, `descuento`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-			$q = $pdo->prepare($sql);
-			$q->execute([$dataC['id_pedido'],$dataC['id_cuenta_proveedor'],$dataC['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],$_POST['id_estado_compra'],$dataC['nro_oc'],$_POST['total'],$dataC['comentarios'],$dataC['adjunto_factura'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$nro,0,$_POST['comentarios'],$_POST['iva'],$_POST['descuento']]);
-			
-			$id = $pdo->lastInsertId();
-			
-			$sqlList = " SELECT `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `entregado`, `precio_kg` FROM `compras_detalle` WHERE id_compra = ".$_GET['id'];
-			foreach ($pdo->query($sqlList) as $row) {
-				$sql = "INSERT INTO `compras_detalle`(`id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `entregado`, `precio_kg`) VALUES (?,?,?,?,?,?,?)";
-				$q = $pdo->prepare($sql);
-				$q->execute([$id,$row[0],$row[1],$row[2],$row[3],$row[4],$row[5]]);
-			}
-			
-		}
+      // Calcular totales automáticamente
+      $pdo_calc = Database::connect();
+      $sql_calc = "SELECT SUM(precio * cantidad) AS subtotal FROM compras_detalle WHERE id_compra = ?";
+      $q_calc = $pdo_calc->prepare($sql_calc);
+      $q_calc->execute([$_GET['id']]);
+      $calc_data = $q_calc->fetch(PDO::FETCH_ASSOC);
+      $subtotal = $calc_data['subtotal'] ?? 0;
+      $iva = $subtotal * 0.21;
+      $descuento = floatval($_POST['descuento'] ?? 0);
+      $total = $subtotal + $iva - $descuento;
+      Database::disconnect();
+      
+      // insert data
+      $pdo = Database::connect();
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        $sql = "UPDATE compras SET id_cuenta_proveedor = ?, fecha_emision = ?, fecha_entrega = ?, id_moneda = ?, tipo_cambio_dia = ?, descuento = ?, id_forma_pago = ?, comentarios = ?, total = ?, iva = ? WHERE id = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([
+            $_POST['id_cuenta_proveedor'],
+            $_POST['fecha_emision'], 
+            $_POST['fecha_entrega'],
+            $_POST['id_moneda'],
+            $_POST['tipo_cambio_dia'],
+            $descuento,
+            $_POST['id_forma_pago'],
+            $_POST['comentarios'],
+            $total,
+            $iva,
+            $_GET['id']
+        ]);
         
         $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de orden de compra','Compras','verCompra.php?id=$id')";
 		$q = $pdo->prepare($sql);
@@ -66,7 +72,7 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`, `iva`, `descuento` FROM `compras` WHERE id = ? ";
+        $sql = "SELECT `id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`, `iva`, `descuento`, `nro_revision` FROM `compras` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -109,13 +115,13 @@
                       <div class="row">
                         <div class="col">
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Nro OC(*)</label>
-							<div class="col-sm-9"><input name="nro_oc" type="text" maxlength="99" autofocus class="form-control" readonly="readonly" value="<?php echo $data['nro_oc'];?>"></div>
+							<label class="col-sm-3 col-form-label font-weight-bold">Nro OC</label>
+							<div class="col-sm-9 col-form-label"><?php echo $data['id'].'/'.$data['nro_revision'];?></div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Proveedor(*)</label>
 							<div class="col-sm-9">
-							<select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" disabled="disabled">
+							<select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required>
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -194,43 +200,40 @@
 							</div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Estado</label>
-							<div class="col-sm-9">
-							<select name="id_estado_compra" id="id_estado_compra" class="js-example-basic-single col-sm-12">
-							<option value="">Seleccione...</option>
-							<?php
+							<label class="col-sm-3 col-form-label font-weight-bold">Estado</label>
+							<div class="col-sm-9 col-form-label"><?php
 							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `estado` FROM `estados_compra` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_estado_compra']) {
-									echo " selected ";
-								}
-								echo ">".$fila['estado']."</option>";
-							}
+							$sql_est = "SELECT estado FROM estados_compra WHERE id = ?";
+							$q_est = $pdo->prepare($sql_est);
+							$q_est->execute([$data['id_estado_compra']]);
+							$estado_data = $q_est->fetch(PDO::FETCH_ASSOC);
+							echo $estado_data ? $estado_data['estado'] : 'N/A';
 							Database::disconnect();
-							?>
-							</select>
-							</div>
+							?></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Subtotal</label>
-							<div class="col-sm-9"><input name="total" type="number" step="0.01" class="form-control" value="<?php echo $data['total'];?>" required="required"></div>
+							<label class="col-sm-3 col-form-label font-weight-bold">Subtotal</label>
+							<div class="col-sm-9 col-form-label">$<?php
+							$pdo = Database::connect();
+							$sql_sub = "SELECT SUM(precio * cantidad) AS subtotal FROM compras_detalle WHERE id_compra = ?";
+							$q_sub = $pdo->prepare($sql_sub);
+							$q_sub->execute([$_GET['id']]);
+							$sub_data = $q_sub->fetch(PDO::FETCH_ASSOC);
+							echo number_format($sub_data['subtotal'] ?? 0, 2);
+							Database::disconnect();
+							?></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">IVA</label>
-							<div class="col-sm-9"><input name="iva" type="number" step="0.01" class="form-control" value="<?php echo $data['iva'];?>" required="required"></div>
+							<label class="col-sm-3 col-form-label font-weight-bold">IVA (21%)</label>
+							<div class="col-sm-9 col-form-label">$<span id="iva-calculado"><?php echo number_format($data['iva'], 2);?></span></div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Descuento</label>
-							<div class="col-sm-9"><input name="descuento" type="number" step="0.01" class="form-control" value="<?php echo $data['descuento'];?>" required="required"></div>
+							<div class="col-sm-9"><input name="descuento" type="number" step="0.01" class="form-control" value="<?php echo $data['descuento'];?>" id="descuento-input"></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Total</label>
-							<div class="col-sm-9"><input name="total_total" type="number" step="0.01" class="form-control" value="<?php echo $data['total']+$data['iva']-$data['descuento'];?>" readonly="readonly"></div>
+							<label class="col-sm-3 col-form-label font-weight-bold">Total</label>
+							<div class="col-sm-9 col-form-label">$<span id="total-calculado"><?php echo number_format($data['total']+$data['iva']-$data['descuento'], 2);?></span></div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Comentarios</label>
@@ -283,9 +286,8 @@
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-					    <button class="btn btn-success" type="submit" value="1" name="btn1">Guardar Modificación</button>
-						<button class="btn btn-primary" type="submit" value="2" name="btn2">Crear Revisión</button>
-                        <a href="#" onclick="document.location.href='listarCompras.php'" class="btn btn-danger">Volver al Listado</a>
+					    <button class="btn btn-success" type="submit" name="btn_guardar">Guardar Modificación</button>
+                        <a href="listarCompras.php" class="btn btn-light">Volver al Listado</a>
                       </div>
                     </div>
                   </form>
@@ -375,7 +377,27 @@
  
     // DataTable
     var table = $('#dataTables-example667').DataTable();
- 
+    
+    // Calcular totales automáticamente cuando cambia el descuento
+    $('#descuento-input').on('input', function() {
+      // Obtener valores
+      var subtotal = <?php 
+        $pdo = Database::connect();
+        $sql_sub = "SELECT SUM(precio * cantidad) AS subtotal FROM compras_detalle WHERE id_compra = ?";
+        $q_sub = $pdo->prepare($sql_sub);
+        $q_sub->execute([$_GET['id']]);
+        $sub_data = $q_sub->fetch(PDO::FETCH_ASSOC);
+        echo $sub_data['subtotal'] ?? 0;
+        Database::disconnect();
+      ?>;
+      var iva = subtotal * 0.21;
+      var descuento = parseFloat($(this).val()) || 0;
+      var total = subtotal + iva - descuento;
+      
+      // Actualizar displays
+      $('#iva-calculado').text(iva.toFixed(2));
+      $('#total-calculado').text(total.toFixed(2));
+    });
     
 	} );
 		

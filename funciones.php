@@ -112,7 +112,14 @@ function fetchPedidoDetalle(PDO $pdo, int $idComputoDetalle, bool $modoDebug): ?
 function cancelPedidoDetalle(PDO $pdo, int $idPedidoDetalle, bool $modoDebug): bool {
     $sql = "UPDATE pedidos_detalle SET cancelado = 1 WHERE id = ?";
     $stmt=debugExecute($pdo, $sql, [$idPedidoDetalle], $modoDebug, "Cancelar pedido_detalle $idPedidoDetalle");
-    return $stmt->rowCount() == 1; // Retorna true si se canceló correctamente
+    $cancelado = $stmt->rowCount() == 1;
+    
+    // Actualizar estado del pedido_detalle después de cancelar
+    if ($cancelado) {
+        actualizarEstadoPedidoDetalle($pdo, $idPedidoDetalle);
+    }
+    
+    return $cancelado; // Retorna true si se canceló correctamente
 }
 
 /**
@@ -742,6 +749,136 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
         }
       }
     }
+  }
+}
+
+/**
+ * Calcula el estado de un ítem de pedido (pedidos_detalle) sin actualizar la BD.
+ * 
+ * @param PDO $db Conexión a la base de datos
+ * @param int $idPedidoDetalle ID del registro en pedidos_detalle
+ * @return int|null ID del estado correspondiente en estados_pedidos_detalle o null si hay error
+ */
+function calcularEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): ?int {
+  try {
+    // 1) Leer pedidos_detalle por id
+    $sqlPedido = "SELECT cantidad, cancelado, id_pedido, id_material FROM pedidos_detalle WHERE id = ?";
+    $stmtPedido = $db->prepare($sqlPedido);
+    $stmtPedido->execute([$idPedidoDetalle]);
+    $pedido = $stmtPedido->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$pedido) {
+      return null; // No existe el registro
+    }
+    
+    // 2) Si cancelado = 1, devolver el id del estado "Cancelado"
+    if ($pedido['cancelado'] == 1) {
+      return 8; // ID del estado "Cancelado"
+    }
+    
+    $cantidadPedida = (float)$pedido['cantidad'];
+    $idPedido = (int)$pedido['id_pedido'];
+    $idMaterial = (int)$pedido['id_material'];
+    
+    // Si cantidadPedida <= 0, devolver "Pendiente" como fallback seguro
+    if ($cantidadPedida <= 0) {
+      return 1; // ID del estado "Pendiente"
+    }
+    
+    // 3) Calcular cantidadComprada (solo compras con id_estado_compra = 3 "Enviada")
+    $sqlComprada = "SELECT COALESCE(SUM(cd.cantidad), 0) as cantidad_comprada FROM compras_detalle cd INNER JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra = 3";
+    $stmtComprada = $db->prepare($sqlComprada);
+    $stmtComprada->execute([$idPedido, $idMaterial]);
+    $cantidadComprada = (float)$stmtComprada->fetchColumn();
+    
+    // 4) Calcular cantidadEntregada (sin filtrar por estado de compra)
+    $sqlEntregada = "SELECT COALESCE(SUM(cd.entregado), 0) as cantidad_entregada FROM compras_detalle cd INNER JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ?";
+    $stmtEntregada = $db->prepare($sqlEntregada);
+    $stmtEntregada->execute([$idPedido, $idMaterial]);
+    $cantidadEntregada = (float)$stmtEntregada->fetchColumn();
+    
+    // 5) Verificar si tiene OC en elaboración (estados 1 = Elaboración, 2 = Para aprobar)
+    $sqlElaboracion = "SELECT COUNT(*) as tiene_elaboracion FROM compras_detalle cd INNER JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra IN (1, 2)";
+    $stmtElaboracion = $db->prepare($sqlElaboracion);
+    $stmtElaboracion->execute([$idPedido, $idMaterial]);
+    $tieneOcEnElaboracion = (int)$stmtElaboracion->fetchColumn() > 0;
+    
+    //echo "Cantidad Pedida: $cantidadPedida, Comprada: $cantidadComprada, Entregada: $cantidadEntregada, Tiene OC en elaboración: " . ($tieneOcEnElaboracion ? 'Sí' : 'No') . "\n";
+    // 6) Aplicar lógica de estados
+    
+    // Si cantidadEntregada >= cantidadPedida → Entregado
+    if ($cantidadEntregada >= $cantidadPedida) {
+      return 7; // ID del estado "Entregado"
+    }
+    
+    // Si cantidadComprada = 0 y cantidadEntregada = 0
+    if ($cantidadComprada == 0 && $cantidadEntregada == 0) {
+      if ($tieneOcEnElaboracion) {
+        return 2; // ID del estado "Comprando"
+      } else {
+        return 1; // ID del estado "Pendiente"
+      }
+    }
+    
+    // Si cantidadComprada > 0 y cantidadComprada < cantidadPedida y cantidadEntregada = 0
+    if ($cantidadComprada > 0 && $cantidadComprada < $cantidadPedida && $cantidadEntregada == 0) {
+      return 3; // ID del estado "Comprando Parcial"
+    }
+    
+    // Si cantidadComprada < cantidadPedida y cantidadEntregada > 0
+    if ($cantidadComprada < $cantidadPedida && $cantidadEntregada > 0) {
+      return 4; // ID del estado "Comprando y Entregando"
+    }
+    
+    // Si cantidadComprada >= cantidadPedida y cantidadEntregada = 0
+    if ($cantidadComprada >= $cantidadPedida && $cantidadEntregada == 0) {
+      return 5; // ID del estado "Comprando Total"
+    }
+    
+    // Si cantidadComprada >= cantidadPedida y cantidadEntregada > 0 y cantidadEntregada < cantidadPedida
+    if ($cantidadComprada >= $cantidadPedida && $cantidadEntregada > 0 && $cantidadEntregada < $cantidadPedida) {
+      return 6; // ID del estado "Entregado Parcial"
+    }
+    
+    // Fallback por defecto (no debería llegar aquí en condiciones normales)
+    return 1; // ID del estado "Pendiente"
+    
+  } catch (Exception $e) {
+    // En caso de error, devolver null
+    error_log("Error en calcularEstadoPedidoDetalle: " . $e->getMessage());
+    return null;
+  }
+}
+
+/**
+ * Actualiza el campo id_estado en pedidos_detalle usando calcularEstadoPedidoDetalle.
+ * 
+ * @param PDO $db Conexión a la base de datos
+ * @param int $idPedidoDetalle ID del registro en pedidos_detalle a actualizar
+ * @return void
+ */
+function actualizarEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): void {
+  try {
+    // 1) Llamar a calcularEstadoPedidoDetalle para obtener el nuevo estado
+    $nuevoEstadoId = calcularEstadoPedidoDetalle($db, $idPedidoDetalle);
+    
+    // 2) Si el resultado es null, no hacer nada y loguear
+    if ($nuevoEstadoId === null) {
+      error_log("No se pudo calcular el estado para pedidos_detalle ID: $idPedidoDetalle");
+      return;
+    }
+    
+    // 3) Actualizar el campo id_estado en la base de datos
+    $sql = "UPDATE pedidos_detalle SET id_estado = :id_estado WHERE id = :id";
+    $stmt = $db->prepare($sql);
+    $stmt->execute([
+      ':id_estado' => $nuevoEstadoId,
+      ':id' => $idPedidoDetalle
+    ]);
+    
+  } catch (Exception $e) {
+    // En caso de error, loguear el problema
+    error_log("Error en actualizarEstadoPedidoDetalle: " . $e->getMessage());
   }
 }
 

@@ -285,7 +285,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $sql .= " AND cu.nombre LIKE ?";
                             $params[] = '%' . $proveedor . '%';
                           }
-                          
+                          //echo $sql;
                           $q = $pdo->prepare($sql);
                           $q->execute($params);
 
@@ -500,8 +500,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
       }
       
       // Función legacy mantenida por compatibilidad
-      function isCompraAprobada() {
-        return selectedCompraInfo && selectedCompraInfo.id_estado == 3; // Estado "Aprobado"
+      function isCompraEnviada() {
+        return selectedCompraInfo && selectedCompraInfo.id_estado == 3; // Estado "Enviada"
       }
       
       // Setup - add a text input to each footer cell
@@ -579,7 +579,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
             alert("Por favor seleccione una compra para ingresar stock");
           } else if(![3, 5, 6].includes(parseInt(selectedCompraInfo.id_estado))){
             e.preventDefault();
-            alert("Solo se puede ingresar stock en compras con estados válidos (Aprobada, Pendiente, Pendiente Parcial)");
+            alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
             return false;
           }
         }
@@ -591,7 +591,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
             alert("Por favor seleccione una compra para adjuntar factura");
           } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
             e.preventDefault();
-            alert("Solo se pueden adjuntar facturas en compras con estados válidos (Aprobada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
+            alert("Solo se pueden adjuntar facturas en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
             return false;
           }
         }
@@ -638,7 +638,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
             alert("Por favor seleccione una compra para añadir pago");
           } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
             e.preventDefault();
-            alert("Solo se pueden añadir pagos en compras con estados válidos (Aprobada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
+            alert("Solo se pueden añadir pagos en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
             return false;
           }
         }

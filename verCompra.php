@@ -332,7 +332,10 @@ if (!empty($_POST)) {
                       </div>
                     </div>
                     <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3">
+                      <div class="col-sm-12 text-center"><?php
+                        if ($data['id_estado_compra'] == 1 && function_exists('tienePermiso') && tienePermiso(298)){?>
+                          <button type="button" class="btn btn-primary mt-2 mt-sm-0" data-toggle="modal" data-target="#approvalModal">Enviar a aprobación</button><?php
+                        }?>
                         <a href="listarCompras.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -347,6 +350,53 @@ if (!empty($_POST)) {
         <?php include("footer.php"); ?>
       </div>
     </div>
+
+    <!-- Modal Enviar a aprobación -->
+    <div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirmar envío a aprobación</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>¿Desea enviar esta compra a aprobación?</p>
+            <div id="estado-error" class="alert alert-danger d-none" role="alert"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="confirmApproval">Confirmar</button>
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de resultado de envío -->
+    <div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="resultModalTitle">Resultado</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div id="resultModalIcon" class="text-center mb-3">
+              <!-- Icono se agregará dinámicamente -->
+            </div>
+            <p id="resultModalMessage" class="text-center"></p>
+          </div>
+          <div class="modal-footer">
+            <a class="btn btn-primary" href="listarCompras.php">Ir a Lista de Compras</a>
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -532,6 +582,69 @@ if (!empty($_POST)) {
           }
         });
       });
+
+      // Funcionalidad para enviar compra a aprobación
+      $('#confirmApproval').on('click', function() {
+        var compraId = <?= $id ?>;
+        
+        $.ajax({
+          url: 'modificarEstadoCompra.php',
+          type: 'POST',
+          data: {
+            id_compra: compraId,
+            nuevo_estado: 2
+          },
+          dataType: 'json',
+          success: function(response) {
+            $('#approvalModal').modal('hide');
+            
+            if(response.success) {
+              // Ocultar botón de envío a aprobación
+              $('button[data-target="#approvalModal"]').hide();
+              
+              // Mostrar modal de éxito
+              showResultModal(
+                '¡Éxito!', 
+                'La compra ha sido enviada para aprobación correctamente.',
+                'success'
+              );
+            } else {
+              // Mostrar modal de error
+              showResultModal(
+                'Error', 
+                'Error al enviar la compra para aprobación: ' + (response.message || 'Error desconocido'),
+                'error'
+              );
+            }
+          },
+          error: function(xhr, status, error) {
+            $('#approvalModal').modal('hide');
+            console.error('Error AJAX:', error);
+            // Mostrar modal de error de conexión
+            showResultModal(
+              'Error de Conexión', 
+              'No se pudo conectar con el servidor. Intente nuevamente.',
+              'error'
+            );
+          }
+        });
+      });
+
+      // Función para mostrar modal de resultado
+      function showResultModal(title, message, type) {
+        $('#resultModalTitle').text(title);
+        $('#resultModalMessage').text(message);
+        
+        var iconHtml = '';
+        if (type === 'success') {
+          iconHtml = '<i class="fa fa-check-circle fa-3x text-success"></i>';
+        } else if (type === 'error') {
+          iconHtml = '<i class="fa fa-times-circle fa-3x text-danger"></i>';
+        }
+        
+        $('#resultModalIcon').html(iconHtml);
+        $('#resultModal').modal('show');
+      }
 
     });
 		
