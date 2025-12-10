@@ -22,9 +22,16 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO pedidos(id_computo, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?,?,?,?,1)";
+  // Obtener el id_proyecto del cómputo
+  $sqlProyecto = "SELECT t.id_proyecto FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea WHERE c.id = ?";
+  $qProyecto = $pdo->prepare($sqlProyecto);
+  $qProyecto->execute([$_GET['idComputo']]);
+  $dataProyecto = $qProyecto->fetch(PDO::FETCH_ASSOC);
+  $id_proyecto = $dataProyecto ? $dataProyecto['id_proyecto'] : null;
+
+  $sql = "INSERT INTO pedidos(id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?,?,?,?,?,1)";
   $q = $pdo->prepare($sql);
-  $q->execute([$_GET['idComputo'],$_POST['fecha'],$_POST['lugar_entrega'],$_POST['id_cuenta_recibe']]);
+  $q->execute([$_GET['idComputo'], $id_proyecto, $_POST['fecha'], $_POST['lugar_entrega'], $_POST['id_cuenta_recibe']]);
       
   $id = $pdo->lastInsertId();
 

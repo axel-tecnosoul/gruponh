@@ -32,6 +32,17 @@ if (!empty($_POST)) {
 	$q = $pdo->prepare($sql);
 	$q->execute([$_POST['id_orden_compra']]);
 
+	// Actualizar estados de todos los pedidos_detalle afectados por el cambio de estado de compra
+	$sqlAllItems = "SELECT DISTINCT pd.id FROM pedidos_detalle pd 
+	               INNER JOIN compras_detalle cd ON pd.id_pedido = (SELECT id_pedido FROM compras WHERE id = ?) AND pd.id_material = cd.id_material 
+	               INNER JOIN compras c ON c.id = cd.id_compra WHERE cd.id_compra = ?";
+	$qAllItems = $pdo->prepare($sqlAllItems);
+	$qAllItems->execute([$_POST['id_orden_compra'], $_POST['id_orden_compra']]);
+	require_once('funciones.php');
+	while ($item = $qAllItems->fetch(PDO::FETCH_ASSOC)) {
+		actualizarEstadoPedidoDetalle($pdo, $item['id']);
+	}
+
 	$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva Factura de Compra ID #$idFactura','Facturas de Compra','')";
 	$q = $pdo->prepare($sql);
 	$q->execute(array($_SESSION['user']['id']));

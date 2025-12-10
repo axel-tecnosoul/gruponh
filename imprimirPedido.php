@@ -15,7 +15,7 @@ if (!empty($_GET['id'])) {
 if (null==$id) {
   header("Location: listarPedidos.php");
 }
-    
+
 if (!empty($_POST)) {
 
 } else {
@@ -120,52 +120,62 @@ if (!empty($_POST)) {
                         </div>
                         <div class="form-group row">
                           <div class="col-sm-11 bordered-div">
-                            <b>Fecha:</b> <?=$data['fecha'];?><br>
-                            <b>Proyecto:</b> <?=$data['nombre'];?><br>
-                            <b>Nro:</b> <?=$data['nro_sitio']."_".$data['nro_subsitio']."_".$data['nro_proyecto'];?><br>
-                            <b>Solicitó:</b> <?=$data['cuenta_solicitante'];?><br>
+                            <div class="row">
+                              <div class="col-sm-6">
+                                <b>Fecha:</b> <?=$data['fecha'];?><br>
+                                <b>Proyecto:</b> <?=$data['nombre'];?><br>
+                              </div>
+                              <div class="col-sm-6">
+                                <b>Nro:</b> <?=$data['nro_sitio']."_".$data['nro_subsitio']."_".$data['nro_proyecto'];?><br>
+                                <b>Solicitó:</b> <?=$data['cuenta_solicitante'];?><br>
+                              </div>
+                            </div>
                           </div>
                         </div>
                         <div class="form-group row">
-                          <div class="col-sm-11">
+                          <div class="col-sm-11 p-0">
                             <table class="display" border="1" style="width: 100%;">
                               <thead>
                                 <tr>
-                                  <th align="center">Código</th>
-                                  <th align="center">Unidad</th>
-                                  <th align="center">Cantidad</th>
+                                  <th align="center" style="width: 60px;">Iitem</th>
                                   <th align="center">Descripción</th>
+                                  <th align="center" style="width: 100px;">Código</th>
+                                  <th align="center" style="width: 80px;">Cantidad</th>
+                                  <th align="center" style="width: 80px;">Unidad</th>
                                 </tr>
                               </thead>
                               <tbody><?php
                                 $pdo = Database::connect();
                                 $sql = " SELECT m.codigo, u.unidad_medida, d.cantidad, m.concepto FROM pedidos_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_pedido = ".$_GET['id'];
+                                $b=1;
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
-                                    <td><?=$row["codigo"]?></td>
-                                    <td><?=$row["unidad_medida"]?></td>
-                                    <td><?=$row["cantidad"]?></td>
+                                    <td><?=$b?></td>
                                     <td><?=$row["concepto"]?></td>
+                                    <td><?=$row["codigo"]?></td>
+                                    <td><?=$row["cantidad"]?></td>
+                                    <td><?=$row["unidad_medida"]?></td>
                                   </tr><?php
+                                  $b++;
                                 }
                                 Database::disconnect();?>
                               </tbody>
                             </table>
                           </div>
                         </div>
-                        <div class="form-group row">
+                        <!-- <div class="form-group row">
                           <div class="col-sm-11 bordered-div-thin"><?php
-                            $sql666 = "SELECT valor from parametros where id = 9 ";
+                            /*$sql666 = "SELECT valor from parametros where id = 9 ";
                             $q666 = $pdo->prepare($sql666);
                             $q666->execute();
                             $data666 = $q666->fetch(PDO::FETCH_ASSOC);
-                            echo $data666['valor'];?>
+                            echo $data666['valor'];*/?>
                           </div>
-                        </div>
+                        </div> -->
                         <div class="form-group row">
-                          <div class="col-sm-12">
-                            <b>Comentarios:</b> <?=$data['observaciones'];?><br><br>
+                          <div class="col-sm-11 p-0">
                             <b>Lugar de entrega:</b> <?=$data['lugar_entrega'];?><br>
+                            <b>Comentarios:</b> <?=$data['observaciones'];?><br><br>
                           </div>
                         </div>
                       </div>

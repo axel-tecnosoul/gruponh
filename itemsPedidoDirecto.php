@@ -55,9 +55,9 @@ if (!empty($_POST)) {
       
       Database::disconnect();
       if (!empty($_POST['btn2'])) {
-          header("Location: listarPedidos.php");	
+        header("Location: listarPedidos.php");	
       } else {
-          header("Location: itemsPedidoDirecto.php?id=".$id);	
+        header("Location: itemsPedidoDirecto.php?id=".$id);	
       }
     } else {
       header("Location: itemsPedidoDirecto.php?id=".$id."&error=1");	
@@ -96,11 +96,12 @@ if (!empty($_POST)) {
                       &nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(291))){?>
                         <img src="img/icon_modificar.png" id="link_modificar_item" style="cursor: pointer;" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp;
+                        
                         <a href="#" id="link_eliminar_item"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a><?php
-                      } ?>
+                      }?>
                     </h5>
                   </div>
-                  <form class="form theme-form" role="form" method="post" action="itemsPedidoDirecto.php?id=<?php echo $id?>">
+                  <form class="form theme-form" role="form" method="post" action="itemsPedidoDirecto.php?id=<?=$id?>">
                     <input type="hidden" name="id_pedido_detalle" id="id_pedido_detalle" value="">
                     <div class="card-body">
                       <div class="row">
@@ -113,19 +114,16 @@ if (!empty($_POST)) {
                                     <th>Concepto</th>
                                     <th>Cantidad</th>
                                     <th>Fecha Necesidad</th>
-                                    <th>Opciones</th>
                                   </tr>
                                 </thead>
                                 <tbody><?php
                                   $pdo = Database::connect();
                                   $sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y') AS fecha_formateada, d.fecha_necesidad AS fecha_necesidad_raw, d.id_material FROM pedidos_detalle d inner join materiales m on m.id = d.id_material WHERE d.id_pedido = ".$_GET['id'];
-                                  
                                   foreach ($pdo->query($sql) as $row) {?>
-                                    <tr data-id="<?=$row['id']?>" data-material-id="<?=$row['id_material']?>" data-cantidad="<?=$row['cantidad']?>" data-fecha="<?=$row['fecha_necesidad_raw']?>">
-                                      <td><?= $row['concepto']?></td>
-                                      <td><?= $row['cantidad']?></td>
-                                      <td><span style="display: none;"><?= $row['fecha_necesidad_raw']?></span><?= $row['fecha_formateada']?></td>
-                                      <td></td>
+                                    <tr data-id="<?=$row['id']?>" data-material-id="<?=$row['id_material']?>" data-cantidad="<?=$row['cantidad']?>" data-fecha="<?=$row['fecha_necesidad_raw']?>" data-concepto="<?=htmlspecialchars($row['concepto'])?>">
+                                      <td><?=$row['concepto']?></td>
+                                      <td><?=$row['cantidad']?></td>
+                                      <td><span style="display: none;"><?=$row['fecha_necesidad_raw']?></span><?=$row['fecha_formateada']?></td>
                                     </tr><?php
                                   }
                                   Database::disconnect();?>
@@ -135,7 +133,6 @@ if (!empty($_POST)) {
                                     <th>Concepto</th>
                                     <th>Cantidad</th>
                                     <th>Fecha Necesidad</th>
-                                    <th>Opciones</th>
                                   </tr>
                                 </tfoot>
                               </table>
@@ -157,8 +154,8 @@ if (!empty($_POST)) {
                                 Database::disconnect();?>
                               </select><?php
                               if (isset($_GET['error'])) { ?>
-                                <div class="checkbox p-0"><?php
-                                  print("<b><font color='red'>No se puede agregar un concepto repetido!</font></b>");?>
+                                <div class="checkbox p-0">
+                                  <b><font color='red'>No se puede agregar un concepto repetido!</font></b>
                                 </div><?php
                               }?>
                             </div>
@@ -184,8 +181,7 @@ if (!empty($_POST)) {
                         <button class="btn btn-primary" type="submit" value="2" name="btn2">Crear y Volver al Listado</button>
                         <button class="btn btn-success d-none" type="submit" name="btn_modificar">Modificar Item</button>
                         <button class="btn btn-light d-none" type="button" id="btn_cancelar_modificacion">Cancelar</button>
-
-                        <a onclick="document.location.href='listarPedidos.php'" class="btn btn-danger">Volver al Listado</a>
+                        <a href='listarPedidos.php' class="btn btn-danger">Volver al Listado</a>
                       </div>
                     </div>
                   </form>
@@ -198,27 +194,26 @@ if (!empty($_POST)) {
         <!-- footer start-->
 		    <?php include("footer.php"); ?>
       </div>
-    </div><?php
-    $pdo = Database::connect();
-    $sql = " SELECT d.id, m.concepto, d.cantidad, date_format(d.fecha_necesidad,'%d/%m/%y') FROM pedidos_detalle d inner join materiales m on m.id = d.id_material WHERE d.id_pedido = ".$_GET['id'];
-    foreach ($pdo->query($sql) as $row) {?>
-      <div class="modal fade" id="eliminarModal_<?=$row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-              <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-            </div>
-            <div class="modal-body">¿Está seguro que desea quitar el ítem del pedido?</div>
-            <div class="modal-footer">
-              <a href="eliminarItemPedidoDirecto.php?id=<?=$row[0]; ?>&idPedido=<?=$_GET['id']; ?>" class="btn btn-primary">Eliminar</a>
-              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-            </div>
+    </div>
+    
+    <!-- Modal único para eliminar items -->
+    <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="eliminarModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">
+            ¿Está seguro que desea quitar el ítem "<span id="item-concepto"></span>" del pedido?
+          </div>
+          <div class="modal-footer">
+            <a href="#" id="btn-confirmar-eliminar" class="btn btn-primary">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
-      </div><?php
-    }
-    Database::disconnect();?>
+      </div>
+    </div>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -307,7 +302,7 @@ if (!empty($_POST)) {
       // Apply the search
       table.columns().every( function () {
         var that = this;
-        $('input', this.footer() ).on( 'keyup change', function () {
+        $('input', this.footer()).on('keyup change', function () {
           if ( that.search() !== this.value ) {
             that.search( this.value ).draw();
           }
@@ -325,49 +320,54 @@ if (!empty($_POST)) {
             table.$('tr.selected').removeClass('selected');
             fila.addClass('selected');
           }
-      });
+        });
 
-      $('#link_modificar_item').on('click', function() {
-        var filaSeleccionada = table.row('.selected').node();
-        if (!filaSeleccionada) {
-          alert("Por favor, seleccione un ítem para modificar.");
-          return;
-        }
-        var $fila = $(filaSeleccionada);
-        
-        $('#id_pedido_detalle').val($fila.data('id'));
-        $('#id_material').val($fila.data('material-id')).trigger('change');
-        $('input[name="cantidad"]').val($fila.data('cantidad'));
-        $('input[name="fecha_necesidad"]').val($fila.data('fecha'));
+        $('#link_modificar_item').on('click', function() {
+          var filaSeleccionada = table.row('.selected').node();
+          if (!filaSeleccionada) {
+            alert("Por favor, seleccione un ítem para modificar.");
+            return;
+          }
+          var $fila = $(filaSeleccionada);
+          
+          $('#id_pedido_detalle').val($fila.data('id'));
+          $('#id_material').val($fila.data('material-id')).trigger('change');
+          $('input[name="cantidad"]').val($fila.data('cantidad'));
+          $('input[name="fecha_necesidad"]').val($fila.data('fecha'));
 
-        $('button[name="btn1"], button[name="btn2"]').addClass('d-none');
-        $('button[name="btn_modificar"], #btn_cancelar_modificacion').removeClass('d-none');
-        
-        document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
-      });
-      
-      $('#btn_cancelar_modificacion').on('click', function() {
-        $('#id_pedido_detalle').val('');
-        $('#id_material').val('').trigger('change');
-        $('input[name="cantidad"]').val('');
-        $('input[name="fecha_necesidad"]').val('');
-        $('button[name="btn1"], button[name="btn2"]').removeClass('d-none');
-        $('button[name="btn_modificar"], #btn_cancelar_modificacion').addClass('d-none');
-      });
+          $('button[name="btn1"], button[name="btn2"]').addClass('d-none');
+          $('button[name="btn_modificar"], #btn_cancelar_modificacion').removeClass('d-none');
+          
+          document.querySelector('form').scrollIntoView({ behavior: 'smooth' });
+        });
+    
+        $('#btn_cancelar_modificacion').on('click', function() {
+          $('#id_pedido_detalle').val('');
+          $('#id_material').val('').trigger('change');
+          $('input[name="cantidad"]').val('');
+          $('input[name="fecha_necesidad"]').val('');
+          $('button[name="btn1"], button[name="btn2"]').removeClass('d-none');
+          $('button[name="btn_modificar"], #btn_cancelar_modificacion').addClass('d-none');
+        });
 
-      $('#link_eliminar_item').on('click', function(e) {
-        e.preventDefault();
-        var filaSeleccionada = table.row('.selected').node();
-        if (!filaSeleccionada) {
-          alert("Por favor, seleccione un ítem para eliminar.");
-          return;
-        }
-        var id_item = $(filaSeleccionada).data('id');
-        
-        $('#eliminarModal_' + id_item).modal('show');
+        $('#link_eliminar_item').on('click', function(e) {
+          e.preventDefault();
+          var filaSeleccionada = table.row('.selected').node();
+          if (!filaSeleccionada) {
+            alert("Por favor, seleccione un ítem para eliminar.");
+            return;
+          }
+          var $fila = $(filaSeleccionada);
+          var id_item = $fila.data('id');
+          var concepto = $fila.data('concepto');
+          
+          // Actualizar el modal con los datos del item seleccionado
+          $('#item-concepto').text(concepto);
+          $('#btn-confirmar-eliminar').attr('href', 'eliminarItemPedidoDirecto.php?id=' + id_item + '&idPedido=<?=$id?>');
+          
+          $('#eliminarModal').modal('show');
+        });
       });
-
-    });
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>

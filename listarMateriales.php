@@ -71,6 +71,8 @@ if (empty($_SESSION['user'])) {
 							  <th>Código</th>
 							  <th>Concepto</th>
 							  <th>Categoría</th>
+							  <!-- <th>Largo (mm)</th>
+							  <th>Peso x Metro (kg)</th> -->
 							  <th>Stock</th>
 							  <th>Reservado</th>
 							  <th>Activo</th>
@@ -80,7 +82,7 @@ if (empty($_SESSION['user'])) {
                           <?php
                             include 'database.php';
                             $pdo = Database::connect();
-                            $sql = " SELECT m.`id`, m.`codigo`, m.`concepto`, c.`categoria`, m.`activo` FROM `materiales` m inner join categorias c on c.id = m.id_categoria WHERE m.`anulado` = 0 ";
+                            $sql = " SELECT m.`id`, m.`codigo`, m.`concepto`, c.`categoria`, m.`largo`, m.`peso_metro`, m.`activo` FROM `materiales` m inner join categorias c on c.id = m.id_categoria WHERE m.`anulado` = 0 ";
                             
                             foreach ($pdo->query($sql) as $row) {
                                 echo '<tr>';
@@ -88,6 +90,8 @@ if (empty($_SESSION['user'])) {
                                 echo '<td>'. $row[1] . '</td>';
                                 echo '<td>'. $row[2] . '</td>';
                                 echo '<td>'. $row[3] . '</td>';
+                                /*echo '<td>'. number_format($row[4], 2) . '</td>'; // Largo en mm
+                                echo '<td>'. number_format($row[5], 3) . '</td>'; // Peso en kg*/
 								$stock = 0;
 								$sql = "SELECT sum(`cantidad`)-sum(`cantidad_egresada`) as stock FROM `ingresos_detalle` WHERE `id_material` = ? ";
 								$q = $pdo->prepare($sql);
@@ -106,7 +110,7 @@ if (empty($_SESSION['user'])) {
 									$reservado = $data['stock'];
 								}
 								echo '<td>'.$reservado.'</td>';
-                                if ($row[4] == 1) {
+                                if ($row[6] == 1) { // Ahora el índice del campo activo es 6
                                     echo '<td>Si</td>';
                                 } else {
                                     echo '<td>No</td>';
@@ -122,6 +126,8 @@ if (empty($_SESSION['user'])) {
 							  <th>Código</th>
 							  <th>Concepto</th>
 							  <th>Categoría</th>
+							  <!-- <th>Largo (mm)</th>
+							  <th>Peso x Metro (kg)</th> -->
 							  <th>Stock</th>
 							  <th>Reservado</th>
 							  <th>Activo</th>

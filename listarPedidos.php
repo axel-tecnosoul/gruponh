@@ -1,18 +1,33 @@
 <?php
-include 'config.php';
+require("config.php");
 if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
+  header("Location: index.php");
+  die("Redirecting to index.php");
 }
 include 'database.php';
 require_once 'manejarFiltros.php';
+
+// Manejar limpieza de filtros y establecer estados por defecto
+/*if (isset($_GET['clear_filters'])) {
+  session_start();
+  unset($_SESSION['filtros_listarPedidos']);
+  $_SESSION['filtros_listarPedidos'] = ['id_estado' => [1,2,4]];
+  header("Location: listarPedidos.php");
+  exit;
+}*/
 
 $filters = gestionarFiltros('listarPedidos');
 
 $nro = $filters['nro'] ?? "";
 $fecha = $filters['fecha'] ?? "";
 $fechah = $filters['fechah'] ?? "";
-$id_estado = $filters['id_estado'] ?? [];?>
+$id_estado = $filters['id_estado'] ?? [];
+
+// Si id_estado está vacío (filtros limpiados o no seleccionados), mostrar estados por defecto
+/*if (empty($id_estado)) {
+  $id_estado = [1,2,4];
+}*/
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -20,6 +35,53 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <style>
       .truncate {
         max-width:50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-project {
+        width: 35%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-solicitante {
+        width: 7%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      #dataTables-example666 td.truncate-project {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 td.truncate-solicitante {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      /* Tabla de conceptos */
+      #dataTables-example667 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      .truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 td.truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 th {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -32,6 +94,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
       .editable {
         text-decoration: underline;
         cursor: default;
+      }
+      .proyecto-truncado {
+        cursor: help;
+        border-bottom: 1px dotted #999;
       }
     </style>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
@@ -47,8 +113,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
         <!-- Page Sidebar Start-->
         <?php include('menu.php');?>
         <!-- Page Sidebar Ends-->
-        <!-- Right sidebar Start-->
-        <!-- Right sidebar Ends-->
         <div class="page-body"><?php
           $ubicacion="Pedidos ";
           include_once("head_page.php")?>
@@ -84,14 +148,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
                           Database::disconnect();?>
                         </select>
                       </div>
-                      <!-- <div class="form-group mb-0">
-                        Aprobado:&nbsp;
-                        <select name="aprobado" id="aprobado" class="form-control">
-                          <option value="">Seleccione...</option>
-                          <option value="1" <?php /*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==1) { echo " selected "; } }  */?> >Si</option>
-                          <option value="2" <?php /*  if (isset($_POST['aprobado'])) { if ($_POST['aprobado']==2) { echo " selected "; } }  */?> >No</option>
-                        </select>
-					            </div> -->
                       <div class="form-group mb-0">
                         <button type="submit" class="btn btn-primary">Buscar</button>
                         <a href="listarPedidos.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
@@ -132,143 +188,171 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
                           <tr>
-                            <th>Nro.</th>
-                            <th>Obra</th>
-                            <th>Fecha de Carga</th>
-                            <th>Fecha Entrega Pedida</th>
-                            <th>Fecha Pactada Prov.</th>
-                            <th>Estado</th>
-                            <th>Solicitante</th>
+                            <th style="width: 40px;">Nro.</th>
+                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th style="width: 85px;">F. de Carga</th>
+                            <th style="width: 85px;">F. Pedida</th>
+                            <th style="width: 85px;">F. Entrega</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th class="truncate-solicitante">Solicitante</th>
                             <!-- <th>Aprobado</th> -->
-                            <th>Tipo</th>
+                            <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
-                          if (!empty($filters)) {
-                            $filtroNro="";
-                            if ($nro!="") {
-                              $ex=explode("/", $nro);
-                              if(count($ex)>1){
-                                $sitio = $ex[0];
-                                $proyecto = $ex[1];
-                                $filtroNro = " AND (p.nro = ".intval($proyecto)." AND s.nro_sitio = ".intval($sitio).") ";
-                              }else{
-                                $filtroNro = " AND (p.nro = ".intval($nro)." OR s.nro_sitio = ".intval($nro).") ";
-                              }
-                            }
-                            $filtroFecha="";
-                            if ($fecha!="") {
-                              $filtroFecha .= " AND pe.fecha >= '".$fecha."' ";
-                            }
-                            $filtroFechah="";
-                            if ($fechah!="") {
-                              $filtroFechah .= " AND pe.fecha <= '".$fechah."' ";
-                            }
-                            /*if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) {
-                              $sql1 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0);
-                            }*/
-                            $filtroEstadoDefault= " AND pe.id_estado IN (1,2,4) "; //Por defecto mostrar los estados Elaboracion, Para Aprobar y Gestionando
-                            $filtroEstado="";
-                            if (!empty($id_estado) && !empty($id_estado[0])) {
-                              $filtroEstado .= " AND ep.id IN (".implode(', ', array_map('intval', $id_estado)).") ";
-                            }
+                          if (empty($filters)) {
+                            $id_estado = [1,2,4];
+                          }
 
-                            if(empty($_POST["id_estado"])){
-                              $filtroEstado=$filtroEstadoDefault;
+                          $filtroNro="";
+                          if ($nro!="") {
+                            $ex=explode("/", $nro);
+                            if(count($ex)>1){
+                              $sitio = $ex[0];
+                              $proyecto = $ex[1];
+                              $filtroNro = " AND (p.nro = ".intval($proyecto)." AND s.nro_sitio = ".intval($sitio).") ";
+                            }else{
+                              $filtroNro = " AND (p.nro = ".intval($nro)." OR s.nro_sitio = ".intval($nro).") ";
                             }
+                          }
+                          $filtroFecha="";
+                          if ($fecha!="") {
+                            $filtroFecha .= " AND pe.fecha >= '".$fecha."' ";
+                          }
+                          $filtroFechah="";
+                          if ($fechah!="") {
+                            $filtroFechah .= " AND pe.fecha <= '".$fechah."' ";
+                          }
+                          /*if (isset($_POST['aprobado']) && in_array($_POST['aprobado'], [1, 2])) {
+                            $sql1 .= " AND pe.aprobado = " . ($_POST['aprobado'] == 1 ? 1 : 0);
+                          }*/
+                          $filtroEstado="";
+                          if (!empty($id_estado)) {
+                            $filtroEstado .= " AND ep.id IN (".implode(', ', array_map('intval', $id_estado)).") ";
+                          }
 
-                            $pdo = Database::connect();
-                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                          $pdo = Database::connect();
+                          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                            $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto
-                            FROM pedidos pe 
-                              INNER JOIN computos c ON c.id = pe.id_computo 
-                              INNER JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante
-                              INNER JOIN tareas t ON t.id = c.id_tarea 
-                              INNER JOIN proyectos p ON p.id = t.id_proyecto 
-                              LEFT JOIN sitios s ON s.id = p.id_sitio 
-                              INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
-                            WHERE 1 ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
+                          $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.descripcion AS nombre_proyecto, pe.id_computo
+                          FROM pedidos pe 
+                            INNER JOIN computos c ON c.id = pe.id_computo 
+                            INNER JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante
+                            INNER JOIN tareas t ON t.id = c.id_tarea 
+                            INNER JOIN proyectos p ON p.id = t.id_proyecto 
+                            LEFT JOIN sitios s ON s.id = p.id_sitio 
+                            INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                          WHERE 1 ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
 
-                            foreach ($pdo->query($sql1) as $row) {
-                              $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
-                              $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
-                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');?>
-                              <tr>
-                                <td><?=htmlspecialchars($row['id'])?></td>
-                                <td><?=$obra?></td>
-                                <td>
-                                  <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
-                                  <?=date('d/m/Y', strtotime($row['fecha']))?></td>
-                                <td>
-                                  <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0)?></span>
-                                  <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?></td>
-                                <td>
-                                  <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0)?></span>
-                                  <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?></td>
-                                <td><?=htmlspecialchars($row['estado']) ?></td>
-                                <td><?=htmlspecialchars($row['solicitante']) ?></td>
-                                <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
-                                <td>Computo</td>
-                                <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
-                                <td style="display: none;"><?=htmlspecialchars($row['id_estado']) ?></td>
-                              </tr><?php
-                            }
+                          $limite_chars = 40;
+                          foreach ($pdo->query($sql1) as $row) {
+                            $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
+                            $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
+                            $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
 
-                            $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, 
-                            (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
-                            ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, pe.id_proyecto
-                            FROM pedidos pe 
-                              INNER JOIN cuentas cu ON cu.id = pe.id_cuenta_solicitante
-                              INNER JOIN proyectos p ON p.id = pe.id_proyecto 
-                              LEFT JOIN sitios s ON s.id = p.id_sitio 
-                              INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
-                            WHERE pe.id_computo IS NULL ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
-                              
-                            foreach ($pdo->query($sql2) as $row) {
-                              $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
-                              $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
-                              $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');?>
-
-                              <tr>
+                            $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
+                            //$nombre_proyecto_mostrar=$nombre_proyecto;
+                            
+                            /*if (strlen($nombre_proyecto) > $limite_chars) {
+                              $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
+                            }*/?>
+                            <tr>
                               <td><?=htmlspecialchars($row['id'])?></td>
                               <td><?=$obra?></td>
+                              <td class="truncate-project"><?=$nombre_proyecto?></td>
                               <td>
                                 <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
-                                <?=date('d/m/Y', strtotime($row['fecha'])) ?>
-                              </td>
+                                <?=date('d/m/Y', strtotime($row['fecha']))?></td>
                               <td>
-                                <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) ?></span>
+                                <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0)?></span>
                                 <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?>
                               </td>
                               <td>
-                                <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) ?></span>
+                                <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0)?></span>
                                 <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
                               </td>
                               <td><?=htmlspecialchars($row['estado']) ?></td>
-                              <td><?=htmlspecialchars($row['solicitante']) ?></td>
+                              <td class="truncate-solicitante"><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                               <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
-                              <td>Directo</td>
+                              <td><?php
+                                if($row['id_computo']>0){ ?>
+                                  <a href="imprimirComputo.php?id=<?=$row['id_computo']?>" target="_blank" title="Ver Computo">
+                                    <i class="fa fa-file-text-o" style="margin-right: 5px;"></i>Computo <?=$row['id_computo']?>
+                                  </a><?php
+                                } else {
+                                  echo "Computo";
+                                } ?>
+                              </td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_estado']) ?></td>
-                              </tr><?php
-                            }
-                            Database::disconnect();
-                          }?>
+                            </tr><?php
+                          }
+
+                          $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, 
+                          (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
+                          ep.estado, ep.id AS id_estado, 
+                          cu.nombre AS solicitante, 
+                          pe.aprobado, pe.id_proyecto, p.descripcion AS nombre_proyecto
+                          FROM pedidos pe 
+                            INNER JOIN proyectos p ON p.id = pe.id_proyecto 
+                            LEFT JOIN sitios s ON s.id = p.id_sitio 
+                            INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+                            LEFT JOIN cuentas cu ON cu.id = pe.id_cuenta_solicitante 
+                          WHERE pe.id_computo IS NULL ".$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
+                            
+                          foreach ($pdo->query($sql2) as $row) {
+                            $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
+                            $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
+                            $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
+                            
+                            $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
+                            /*$nombre_proyecto_mostrar=$nombre_proyecto;
+                            
+                            if (strlen($nombre_proyecto) > $limite_chars) {
+                              $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
+                            }*/?>
+
+                            <tr>
+                            <td><?=htmlspecialchars($row['id'])?></td>
+                            <td><?=$obra?></td>
+                            <td class="truncate-project"><?=$nombre_proyecto?></td>
+                            <td>
+                              <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
+                              <?=date('d/m/Y', strtotime($row['fecha'])) ?>
+                            </td>
+                            <td>
+                              <span style="display: none;"><?=($fecha_entrega_valida ? date('Ymd', strtotime($row['fecha_entrega'])) : 0) ?></span>
+                              <?=($fecha_entrega_valida ? date('d/m/Y', strtotime($row['fecha_entrega'])) : 'N/A') ?>
+                            </td>
+                            <td>
+                              <span style="display: none;"><?=($fecha_pactada_valida ? date('Ymd', strtotime($row['fecha_pactada_prov'])) : 0) ?></span>
+                              <?=($fecha_pactada_valida ? date('d/m/Y', strtotime($row['fecha_pactada_prov'])) : 'N/A') ?>
+                            </td>
+                            <td><?=htmlspecialchars($row['estado']) ?></td>
+                            <td class="truncate-solicitante"><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
+                            <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
+                            <td>Directo</td>
+                            <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
+                            <td style="display: none;"><?=htmlspecialchars($row['id_estado']) ?></td>
+                            </tr><?php
+                          }
+                          Database::disconnect();?>
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th>Nro.</th>
-                            <th>Obra</th>
-                            <th>Fecha de Carga</th>
-                            <th>Fecha Entrega Pedida</th>
-                            <th>Fecha Pactada Prov.</th>
-                            <th>Estado</th>
-                            <th>Solicitante</th>
+                            <th style="width: 40px;">Nro.</th>
+                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th style="width: 85px;">F. de Carga</th>
+                            <th style="width: 85px;">F. Pedida</th>
+                            <th style="width: 85px;">F. Entrega</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th class="truncate-solicitante">Solicitante</th>
                             <!-- <th>Aprobado</th> -->
-                            <th>Tipo</th>
+                            <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -293,27 +377,29 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <table class="display truncate" id="dataTables-example667">
                         <thead>
                           <tr>
-                            <th>Concepto</th>
-                            <th>Requerido</th>
-                            <th>Stock</th>
-                            <th>Reservado</th>
-                            <th>Comprado</th>
-                            <th>Fecha Necesidad</th>
-                            <th>Fecha Última Compra</th>
-                            <th>Costo Último Precio</th>
+                            <th class="truncate-concepto">Concepto</th>
+                            <th style="width: 70px;">Requerido</th>
+                            <th style="width: 55px;">Stock</th>
+                            <th style="width: 70px;">Reservado</th>
+                            <th style="width: 70px;">Comprado</th>
+                            <th style="width: 85px;">F. Necesidad</th>
+                            <th style="width: 100px;">F. Última Compra</th>
+                            <th style="width: 90px;">Costo Último Precio</th>
+                            <th style="width: 90px;">Estado</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
 						            <tfoot>
                           <tr>
-                            <th>Concepto</th>
-                            <th>Requerido</th>
-                            <th>Stock</th>
-                            <th>Reservado</th>
-                            <th>Comprado</th>
-                            <th>Fecha Necesidad</th>
-                            <th>Fecha Última Compra</th>
-                            <th>Costo Último Precio</th>
+                            <th class="truncate-concepto">Concepto</th>
+                            <th style="width: 70px;">Requerido</th>
+                            <th style="width: 55px;">Stock</th>
+                            <th style="width: 70px;">Reservado</th>
+                            <th style="width: 70px;">Comprado</th>
+                            <th style="width: 85px;">F. Necesidad</th>
+                            <th style="width: 100px;">F. Última Compra</th>
+                            <th style="width: 90px;">Costo Último Precio</th>
+                            <th style="width: 90px;">Estado</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -332,90 +418,38 @@ $id_estado = $filters['id_estado'] ?? [];?>
       </div>
     </div>
 	
-	  <!-- <div style="width: 0;height: 0;display: none;">
-      <select id="select_estado_base"><?php
-        $pdo = Database::connect();
-        $sql = "SELECT id,estado FROM estados_pedidos";
-        foreach ($pdo->query($sql) as $row) {
-          echo '<option value="'.$row["id"].'">'.$row["estado"].'</option>';
-        }
-        Database::disconnect();?>
-      </select>
-    </div> -->
-  <?php
-    $pdo = Database::connect();
-    $sql = " SELECT pe.`id`, s.nombre, p.descripcion, t.`estructura`, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado` FROM pedidos pe inner join `computos` c on c.id = pe.id_computo inner join cuentas cu on cu.id = pe.id_cuenta_recibe inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto left join sitios s on s.id = p.id_sitio WHERE 1 ";
-	foreach ($pdo->query($sql) as $row) {
-        ?>
-  <div class="modal fade" id="aprobarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea aprobar el pedido?</div>
-      <div class="modal-footer">
-      <a href="aprobarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Aprobar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+	    <!-- Modales únicos -->
+    <div class="modal fade" id="aprobarModal" tabindex="-1" role="dialog" aria-labelledby="aprobarModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="aprobarModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea aprobar el pedido?</div>
+          <div class="modal-footer">
+            <a href="#" id="btnAprobarPedido" class="btn btn-primary">Aprobar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
-    </div>
-  </div>
-  <div class="modal fade" id="rechazarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea rechazar el pedido?</div>
-      <div class="modal-footer">
-      <a href="rechazarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Rechazar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-      </div>
-    </div>
-    </div>
-  </div>
-  <?php
-    }
-	$sql = " SELECT pe.`id`, s.nombre, p.descripcion, p.descripcion, date_format(pe.`fecha`,'%d/%m/%y'), cu.`nombre`, pe.`lugar_entrega`, pe.`aprobado` FROM pedidos pe inner join `proyectos` p on p.id = pe.id_proyecto inner join cuentas cu on cu.id = pe.id_cuenta_recibe left join sitios s on s.id = p.id_sitio WHERE 1 ";
-	foreach ($pdo->query($sql) as $row) {
-        ?>
-  <div class="modal fade" id="aprobarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea aprobar el pedido?</div>
-      <div class="modal-footer">
-      <a href="aprobarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Aprobar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+
+    <div class="modal fade" id="rechazarModal" tabindex="-1" role="dialog" aria-labelledby="rechazarModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rechazarModalLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea rechazar el pedido?</div>
+          <div class="modal-footer">
+            <a href="#" id="btnRechazarPedido" class="btn btn-primary">Rechazar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
-    </div>
-  </div>
-  <div class="modal fade" id="rechazarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea rechazar el pedido?</div>
-      <div class="modal-footer">
-      <a href="rechazarPedido.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Rechazar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-      </div>
-    </div>
-    </div>
-  </div>
-  <?php
-    }
-    Database::disconnect();
-    ?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -467,6 +501,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
         stateSave: false,
         //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
+        autoWidth: false,
         dom: 'Bfrtp<"bottom"l>',
         buttons: [
           'excel'
@@ -497,6 +532,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
         },
         initComplete: function(){
           $('[title]').tooltip();
+          // Añadir title solo cuando el texto está truncado
+          addTitleToTruncated();
         }
       });
   
@@ -521,6 +558,11 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
       let selectedPedidoInfo = null;
 
+      // Función para obtener el ID del estado de la fila seleccionada
+      function getSelectedPedidoEstadoId() {
+        return selectedPedidoInfo ? selectedPedidoInfo.estadoId : null;
+      }
+
       $("#link_gestionar_pedido").on("click",function(e){
         if(!selectedPedidoInfo){
           e.preventDefault();
@@ -535,22 +577,47 @@ $id_estado = $filters['id_estado'] ?? [];?>
           return false;
         }
       });
-      $("#link_modificar_pedido").on("click",function(){
+      $("#link_modificar_pedido").on("click",function(e){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione un pedido directo para modificar")
+          e.preventDefault();
+          alert("Por favor seleccione un pedido directo para modificar");
+          return false;
+        }
+        
+        // Validar que el pedido esté en estado modificable (solo 1 y 2)
+        if(selectedPedidoInfo && !['1','2'].includes(String(selectedPedidoInfo.estadoId))){
+          e.preventDefault();
+          alert('Solo se pueden modificar pedidos en estado "Pendiente" o "Para aprobar"');
+          return false;
         }
       });
-      $("#link_aprobar_pedido").on("click",function(){
-        let target=this.dataset.target;
-        if(target==undefined || target=="#"){
-          alert("Por favor seleccione un pedido para aprobar")
+      $("#link_aprobar_pedido").on("click",function(e){
+        if(!selectedPedidoInfo){
+          e.preventDefault();
+          alert("Por favor seleccione un pedido para aprobar");
+          return false;
+        }
+        
+        // Validar estado: solo se puede aprobar si está en estado "Para aprobar" (id=2)
+        if(selectedPedidoInfo.estadoId != 2){
+          e.preventDefault();
+          alert('Solo se pueden aprobar pedidos en estado "Para aprobar"');
+          return false;
         }
       });
-      $("#link_rechazar_pedido").on("click",function(){
-        let target=this.dataset.target;
-        if(target==undefined || target=="#"){
-          alert("Por favor seleccione un pedido para rechazar")
+      $("#link_rechazar_pedido").on("click",function(e){
+        if(!selectedPedidoInfo){
+          e.preventDefault();
+          alert("Por favor seleccione un pedido para rechazar");
+          return false;
+        }
+        
+        // Validar estado: solo se puede rechazar si está en estado "Para aprobar" (id=2)
+        if(selectedPedidoInfo.estadoId != 2){
+          e.preventDefault();
+          alert('Solo se pueden rechazar pedidos en estado "Para aprobar"');
+          return false;
         }
       });
       $("#link_nuevo_suceso").on("click",function(){
@@ -565,10 +632,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
         var table = $('#dataTables-example666').DataTable();
 
         let id_pedido = t.find("td:nth-child(1)").html()?.trim() || '';
-        let estado = t.find("td:nth-child(6)").html()?.trim() || '';
-        let tipo = t.find("td:nth-child(8)").html()?.trim() || '';
-        let id_proyecto = t.find("td:nth-child(9)").html()?.trim() || '';
-        let estadoId = t.find("td:nth-child(10)").html()?.trim() || '';
+        let estado = t.find("td:nth-child(7)").html()?.trim() || ''; // Estado ahora en columna 7
+        let tipo = t.find("td:nth-child(9)").html()?.trim() || ''; // Tipo ahora en columna 9  
+        let id_proyecto = t.find("td:nth-child(10)").html()?.trim() || ''; // Proyecto ahora en columna 10
+        let estadoId = t.find("td:nth-child(11)").html()?.trim() || ''; // Estado ID ahora en columna 11
 
         if (t.hasClass('selected')) {
           t.removeClass('selected');
@@ -577,8 +644,12 @@ $id_estado = $filters['id_estado'] ?? [];?>
           $("#link_gestionar_pedido").attr("href", "#");
           $("#link_modificar_pedido").attr("href", "#");
           $("#link_nuevo_suceso").attr("href", "#");
-          $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-          $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+          $("#link_aprobar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          $("#link_rechazar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          
+          // Limpiar los enlaces de los modales
+          $("#btnAprobarPedido").attr("href", "#");
+          $("#btnRechazarPedido").attr("href", "#");
           selectedPedidoInfo = null;
           $("#link_gestionar_pedido").removeData("estadoId").removeData("tipo").removeData("pedidoId");
         } else {
@@ -586,7 +657,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
           t.addClass('selected');
           get_conceptos(id_pedido);
 
-          if (tipo === 'Directo') {
+          if (tipo === 'Directo' && ['1','2'].includes(String(estadoId))) {
+            // Solo permitir modificar pedidos directos en estado Pendiente o Para aprobar
             $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
             $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
           } else {
@@ -594,12 +666,16 @@ $id_estado = $filters['id_estado'] ?? [];?>
             $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
           }
 
-          if (estado === 'Pendiente' || estado === 'Generado' || estado === 'A Evaluar') {
-            $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal_" + id_pedido);
-            $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal_" + id_pedido);
+          if (estadoId == 2) { // Solo si está en estado "Para aprobar"
+            $("#link_aprobar_pedido").attr("data-toggle", "modal").attr("data-target", "#aprobarModal");
+            $("#link_rechazar_pedido").attr("data-toggle", "modal").attr("data-target", "#rechazarModal");
+            
+            // Configurar los enlaces de los modales con el ID del pedido seleccionado
+            $("#btnAprobarPedido").attr("href", "aprobarPedido.php?id=" + id_pedido);
+            $("#btnRechazarPedido").attr("href", "rechazarPedido.php?id=" + id_pedido);
           } else {
-            $("#link_aprobar_pedido").attr("data-target", "#").removeAttr("data-toggle");
-            $("#link_rechazar_pedido").attr("data-target", "#").removeAttr("data-toggle");
+            $("#link_aprobar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+            $("#link_rechazar_pedido").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
           }
 
           selectedPedidoInfo = {
@@ -617,7 +693,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
             $("#link_gestionar_pedido").attr("href", "#");
           }
 
-          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?desdePedidos=1&id=" + id_proyecto);
+          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=pedidos&entidad_id=" + selectedPedidoInfo.id);
         }
       });
         
@@ -647,7 +723,54 @@ $id_estado = $filters['id_estado'] ?? [];?>
           $('#dataTables-example667').DataTable({
             stateSave: false,
             responsive: false,
+            autoWidth: false,
             data: data,
+            createdRow: function(row, data, dataIndex) {
+              // Aplicar clase truncate-concepto a la primera celda (concepto)
+              $(row).find('td:eq(0)').addClass('truncate-concepto');
+            },
+            drawCallback: function() {
+              setTimeout(initializeAllTooltips, 100);
+            },
+            columnDefs: [
+              {
+                targets: 0, // Concepto
+                className: 'truncate-concepto',
+                width: '30%'
+              },
+              {
+                targets: 1, // Requerido
+                width: '12%'
+              },
+              {
+                targets: 2, // Stock
+                width: '8%'
+              },
+              {
+                targets: 3, // Reservado
+                width: '10%'
+              },
+              {
+                targets: 4, // Comprado
+                width: '10%'
+              },
+              {
+                targets: 5, // F. Necesidad
+                width: '12%'
+              },
+              {
+                targets: 6, // F. Última Compra
+                width: '10%'
+              },
+              {
+                targets: 7, // Costo
+                width: '8%'
+              },
+              {
+                targets: 8, // Estado
+                width: '12%'
+              }
+            ],
             language: {
               "decimal": "",
               "emptyTable": "No hay información",
@@ -682,9 +805,66 @@ $id_estado = $filters['id_estado'] ?? [];?>
             });
           });
 
+          // Añadir title a elementos truncados después de actualizar la tabla
+          setTimeout(addTitleToTruncated, 100);
         }
       });
     }
+
+    // Función para añadir title solo a elementos truncados
+    function addTitleToTruncated() {
+      // Solo limpiar tooltips de elementos truncados, NO los de estado
+      $('.truncate-project, .truncate-solicitante, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
+      
+      $('.truncate-project, .truncate-solicitante, .truncate-concepto, #dataTables-example667 th').each(function() {
+        var element = $(this);
+        // Limpiar atributos de tooltip residuales solo si no es un badge de estado
+        if (!element.hasClass('badge') && !element.find('.badge').length) {
+          element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
+        }
+        
+        // Verificar si el contenido se desborda (está truncado)
+        if (this.scrollWidth > this.offsetWidth) {
+          element.attr('title', element.text().trim());
+        }
+      });
+      
+      // Inicializar tooltips solo para elementos con title (excluyendo badges)
+      $('.truncate-project[title], .truncate-solicitante[title], .truncate-concepto[title], #dataTables-example667 th[title]').not('.badge').tooltip({
+        placement: 'top',
+        trigger: 'hover',
+        delay: { show: 300, hide: 100 },
+        boundary: 'viewport',
+        fallbackPlacement: ['top', 'bottom'],
+        flip: false
+      });
+      
+
+    }
+
+    // Llamar la función cuando se redimensiona la ventana o cambia el zoom
+    $(window).on('resize', function() {
+      setTimeout(addTitleToTruncated, 100);
+    });
+    
+    // Función para inicializar todos los tooltips
+    function initializeAllTooltips() {
+      // Inicializar tooltips de badges de estado
+      $('.badge[data-toggle="tooltip"]').tooltip({
+        container: 'body',
+        boundary: 'window',
+        trigger: 'hover',
+        html: false
+      });
+      
+      // Inicializar tooltips de elementos truncados
+      addTitleToTruncated();
+    }
+
+    // Aplicar tooltips cuando se actualicen las tablas DataTables
+    $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
+      setTimeout(initializeAllTooltips, 50);
+    });
     
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>

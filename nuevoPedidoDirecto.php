@@ -7,14 +7,6 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }require 'database.php';
 
-$pdo = Database::connect();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT valor FROM parametros WHERE id = 8 ";
-$q = $pdo->prepare($sql);
-$q->execute();
-$data = $q->fetch(PDO::FETCH_ASSOC);
-$direccion = $data['valor'];  
-    
 if (!empty($_POST)) {
   
   // insert data
@@ -29,7 +21,15 @@ if (!empty($_POST)) {
   
   Database::disconnect();
   header("Location: itemsPedidoDirecto.php?id=".$id);
-}?>
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sql = "SELECT valor FROM parametros WHERE id = 8 ";
+$q = $pdo->prepare($sql);
+$q->execute();
+$data = $q->fetch(PDO::FETCH_ASSOC);
+$direccion = $data['valor'];?>
 <!DOCTYPE html>
 <html lang="en">
   <head>

@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.0.2
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 23-07-2025 a las 23:54:13
--- Versión del servidor: 10.4.11-MariaDB
--- Versión de PHP: 7.4.4
+-- Tiempo de generación: 09-12-2025 a las 20:00:48
+-- Versión del servidor: 10.4.32-MariaDB
+-- Versión de PHP: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -30,7 +30,7 @@ SET time_zone = "+00:00";
 CREATE TABLE `acciones` (
   `id` int(11) NOT NULL,
   `accion` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `acciones`
@@ -190,7 +190,7 @@ CREATE TABLE `acciones_permisos` (
   `id` int(11) NOT NULL,
   `id_accion` int(11) NOT NULL,
   `id_permiso` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `acciones_permisos`
@@ -470,7 +470,7 @@ CREATE TABLE `adjuntos_proyecto` (
   `archivo` varchar(99) NOT NULL,
   `descripcion` varchar(99) NOT NULL,
   `anulado` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -484,7 +484,7 @@ CREATE TABLE `adjuntos_sitio` (
   `archivo` varchar(99) NOT NULL,
   `descripcion` varchar(99) NOT NULL,
   `anulado` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -501,7 +501,7 @@ CREATE TABLE `anuncios_dashboard` (
   `id_relevancia` int(11) NOT NULL,
   `muestra_calendario` tinyint(4) NOT NULL,
   `adjunto` varchar(99) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `anuncios_dashboard`
@@ -529,7 +529,7 @@ CREATE TABLE `anuncios_dashboard_cuentas` (
   `id` int(11) NOT NULL,
   `id_anuncio` int(11) NOT NULL,
   `id_cuenta_destino` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `anuncios_dashboard_cuentas`
@@ -565,7 +565,7 @@ CREATE TABLE `bultos` (
   `nombre` varchar(99) NOT NULL,
   `color` varchar(99) NOT NULL,
   `id_estado_bulto` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `bultos`
@@ -593,7 +593,7 @@ CREATE TABLE `bultos_detalle` (
   `id_origen_bulto` int(11) NOT NULL,
   `id_detalle_bulto` int(11) NOT NULL,
   `cantidad` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `bultos_detalle`
@@ -612,7 +612,7 @@ INSERT INTO `bultos_detalle` (`id`, `id_bulto`, `id_tipo_bulto`, `id_origen_bult
 CREATE TABLE `categorias` (
   `id` int(11) NOT NULL,
   `categoria` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `categorias`
@@ -686,7 +686,7 @@ CREATE TABLE `certificados_avances_cabecera` (
   `monto_acumulado_ajustes` double NOT NULL,
   `observaciones` text NOT NULL,
   `aprobado_cliente` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `certificados_avances_cabecera`
@@ -718,7 +718,7 @@ CREATE TABLE `certificados_avances_detalle` (
   `precio_unitario` double NOT NULL,
   `subtotal` double NOT NULL,
   `id_comprobante` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `certificados_avances_detalle`
@@ -761,7 +761,7 @@ CREATE TABLE `certificados_maestros` (
   `monto_acumulado_descuentos` double NOT NULL,
   `monto_acumulado_ajustes` double NOT NULL,
   `observaciones` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `certificados_maestros`
@@ -791,7 +791,7 @@ CREATE TABLE `certificados_maestros_detalles` (
   `id_unidad_medida` int(11) NOT NULL,
   `precio_unitario` double NOT NULL,
   `subtotal` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `certificados_maestros_detalles`
@@ -839,7 +839,7 @@ CREATE TABLE `coladas` (
   `cod_fabricante` varchar(99) DEFAULT NULL,
   `nro_colada` varchar(99) DEFAULT NULL,
   `adjunto` varchar(99) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `coladas`
@@ -864,7 +864,7 @@ CREATE TABLE `compras` (
   `fecha_entrega` date DEFAULT NULL,
   `id_forma_pago` int(11) DEFAULT NULL,
   `id_estado_compra` int(11) NOT NULL,
-  `nro_oc` varchar(99) NOT NULL,
+  `nro_oc` varchar(99) DEFAULT NULL,
   `total` double DEFAULT NULL,
   `comentarios` text DEFAULT NULL,
   `adjunto_factura` varchar(99) DEFAULT NULL,
@@ -875,7 +875,7 @@ CREATE TABLE `compras` (
   `comentarios_revision` text DEFAULT NULL,
   `iva` double NOT NULL,
   `descuento` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `compras`
@@ -884,8 +884,8 @@ CREATE TABLE `compras` (
 INSERT INTO `compras` (`id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `adjunto_factura`, `id_moneda`, `tipo_cambio_dia`, `nro_revision`, `aprobado`, `comentarios_revision`, `iva`, `descuento`) VALUES
 (7, 2, 1000006, '2024-08-02', '2024-08-08', 3, 3, '2 / 7', 31.12, 'Pintados de Azul', NULL, 2, 0, 0, 1, NULL, 0, 0),
 (8, 2, 1000006, '2024-08-02', '2024-08-08', 3, 1, '2 / 8', 20, 'Pintados de Azul', NULL, 2, 0, 0, 1, NULL, 0, 0),
-(9, 1, 1000024, '2024-08-29', '2024-08-29', 5, 5, '1 / 9', 0, 'Verde', NULL, 2, 0, 1, 1, NULL, 0, 0),
-(10, 1, 1000001, '2024-08-02', '2024-08-23', 5, 5, '1 / 10', 25, '', NULL, 1, 0, 0, 1, NULL, 0, 0),
+(9, 1, 1000024, '2024-08-29', '2024-08-29', 5, 6, '1 / 9', 0, 'Verde', NULL, 2, 0, 1, 1, NULL, 0, 0),
+(10, 1, 1000001, '2024-08-02', '2024-08-23', 5, 6, '1 / 10', 25, '', NULL, 1, 0, 0, 1, NULL, 0, 0),
 (11, 3, 1000001, '2024-08-02', '2024-08-09', 2, 1, '3 / 11', 500, '', NULL, 2, 0, 0, 0, NULL, 0, 0),
 (12, 3, 1000004, '2024-08-29', '2024-08-31', 5, 1, '3 / 12', 8, '', NULL, 2, 0, 0, 0, NULL, 0, 0),
 (13, 5, 4000159, '2024-09-20', '2024-09-21', 3, 3, '5 / 13', 30, '', NULL, 2, 0, 0, 1, NULL, 0, 0),
@@ -900,17 +900,22 @@ INSERT INTO `compras` (`id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`
 (22, 8, 1000010, '2024-11-20', '2024-09-05', 5, 1, '8/22', 12000, '', NULL, 2, 0, 0, 0, 'Revisión Original', 0, 0),
 (23, 10, 5000331, '2024-11-20', '2024-12-06', 5, 1, '10/23', 89964, '', NULL, 2, 0, 0, 1, 'Revisión Original', 0, 0),
 (24, 10, 1000002, '2024-11-20', '2024-10-02', 3, 1, '10/24', 135945.6, '', NULL, 2, 0, 0, 0, 'Revisión Original', 0, 0),
-(25, 9, 5001184, '2024-12-26', '2025-01-24', 5, 5, '9/25', 4554.591, '', NULL, 1, 1050, 0, 1, 'Revisión Original', 0, 0),
+(25, 9, 5001184, '2024-12-26', '2025-01-24', 5, 6, '9/25', 4554.591, '', NULL, 1, 1050, 0, 1, 'Revisión Original', 0, 0),
 (26, 17, 4001283, '2025-02-12', '2025-02-08', 3, 1, '17/26', 530, '', NULL, 2, 0, 0, 1, 'Revisión Original', 0, 0),
 (27, 21, 1001059, '2025-02-20', '2025-02-27', 5, 3, '21/27', 9350, 'Entrega Armados ', NULL, 2, 0, 0, 1, 'Revisión Original', 0, 0),
 (28, 21, 1000001, '2025-02-20', '2025-02-20', 3, 3, '21/28', 770, '', NULL, 1, 0, 0, 1, 'Revisión Original', 0, 0),
 (29, 22, 1000003, '2025-02-21', '2025-02-21', 3, 3, '22/29', 1276, '', NULL, 2, 0, 0, 1, 'Revisión Original', 0, 0),
 (30, 23, 1000006, '2025-02-21', '2025-02-21', 6, 1, '23/30', 73.9, '', NULL, 2, 0, 0, 0, 'Revisión Original', 0, 0),
 (31, 2, 1000006, '2024-08-02', '2024-08-08', 3, 1, '2 / 8', 20, 'Pintados de Azul', NULL, 2, 0, 1, 0, 'Pintados de Azul', 0, 0),
-(32, 1, 1000024, '2024-08-29', '2024-08-29', 5, 2, '1 / 9', 0, 'Verde', NULL, 2, 0, 2, 0, 'Verde', 0, 0),
+(32, 1, 1000024, '2024-08-29', '2024-08-29', 5, 2, '1 / 9', 0, 'Verde', NULL, 2, 0, 2, 1, 'Verde', 0, 0),
 (33, 15, 5000539, '2025-03-21', '2025-01-03', 5, 1, '15/33', 1000, '', NULL, 2, 0, 0, 1, 'Revisión Original', 210, 10),
 (34, 38, 1000001, '2025-05-26', '2025-05-26', 2, 1, '38/34', 1500, '', NULL, 2, 0, 0, 0, 'Revisión Original', 315, 0),
-(36, 35, 1000001, '2025-05-26', '2025-05-23', 2, 1, '35/36', 0, '', NULL, 2, 0, 0, 0, 'Revisión Original', 0, 0);
+(36, 35, 1000001, '2025-05-26', '2025-05-23', 2, 1, '35/36', 0, '', NULL, 2, 0, 0, 0, 'Revisión Original', 0, 0),
+(39, 223, 1000001, '2025-10-23', '2025-06-12', 2, 7, '223/39', 10500, '', NULL, 2, 0, 0, 1, 'Revisión Original', 2205, 0),
+(40, 224, 1000004, '2025-12-05', '2025-09-30', 3, 1, '224/40', 34025, 'comments', NULL, 2, 0, 0, 0, 'Revisión Original', 7145.25, 0),
+(41, 224, 1000001, '2025-12-05', '2025-09-26', 2, 1, '224/41', 800, 'asd', NULL, 2, 0, 0, 0, 'Revisión Original', 168, 0),
+(42, 224, 1000001, '2025-12-05', '2025-09-26', 3, 3, '224/42', 950, '', NULL, 2, 0, 0, 0, 'Revisión Original', 199.5, 0),
+(49, 223, 1000003, '2025-12-09', '2025-06-12', 2, 7, '223/49', 202380, '', NULL, 1, 1450, 0, 1, 'Revisión Original', 42499.8, 10);
 
 -- --------------------------------------------------------
 
@@ -925,50 +930,63 @@ CREATE TABLE `compras_detalle` (
   `cantidad` double NOT NULL,
   `id_unidad_medida` int(11) NOT NULL,
   `precio` double NOT NULL,
-  `entregado` double NOT NULL,
-  `precio_kg` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `precio_kg` double NOT NULL,
+  `subtotal` double NOT NULL DEFAULT 0,
+  `descuento` double NOT NULL,
+  `fecha_entrega` date DEFAULT NULL,
+  `entregado` double NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `compras_detalle`
 --
 
-INSERT INTO `compras_detalle` (`id`, `id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `entregado`, `precio_kg`) VALUES
-(12, 7, 1, 2, 2, 15.56, 2, 1),
-(14, 9, 454, 2, 1, 0, 0, 2.3),
-(15, 10, 30, 5, 4, 5, 0, 1.2),
-(16, 11, 367, 5, 1, 100, 0, 500),
-(17, 12, 373, 4, 1, 2, 0, 1200),
-(18, 13, 9, 6, 1, 5, 10, 0),
-(19, 14, 497, 10, 1, 274.5, 0, 1.22),
-(20, 15, 373, 1, 1, 12000, 0, 1200),
-(21, 16, 56, 800, 4, 10, 0, 0),
-(22, 17, 17, 3, 1, 4083799.16, 0, 122563),
-(23, 18, 373, 4, 1, 35, 4, 0),
-(24, 18, 497, 70, 1, 115, 130, 0),
-(25, 19, 9, 6, 1, 0, 0, 0),
-(26, 20, 13, 4, 1, 75.9, 0, 3),
-(27, 21, 1, 2, 2, 15.56, 2, 1),
-(28, 22, 499, 24, 1, 500, 0, 0),
-(29, 23, 17, 2, 1, 44982, 0, 1350),
-(30, 24, 17, 3, 1, 45315.2, 0, 1360),
-(31, 25, 15, 34, 1, 10.374, 34, 1.14),
-(32, 25, 11, 5, 1, 840.375, 5, 1.5),
-(33, 26, 33, 10, 4, 6, 0, 0),
-(34, 26, 31, 10, 4, 15, 0, 0),
-(35, 26, 34, 10, 4, 32, 0, 0),
-(36, 27, 31, 45, 4, 30, 60, 0),
-(37, 27, 33, 200, 4, 40, 200, 0),
-(38, 28, 53, 77, 4, 10, 77, 0),
-(39, 29, 13, 3, 1, 12, 3, 0),
-(40, 29, 22, 2, 1, 120, 2, 0),
-(41, 29, 33, 100, 4, 10, 100, 0),
-(42, 30, 11, 9.98, 1, 5, 0, 0),
-(43, 30, 17, 2, 1, 12, 0, 0),
-(44, 32, 454, 2, 1, 0, 0, 2.3),
-(45, 33, 105, 10, 4, 100, 0, 0),
-(46, 34, 9, 1, 1, 1500, 0, 0),
-(47, 36, 10, 5, 1, 0, 0, 0);
+INSERT INTO `compras_detalle` (`id`, `id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `precio_kg`, `subtotal`, `descuento`, `fecha_entrega`, `entregado`) VALUES
+(12, 7, 1, 2, 2, 15.56, 1, 31.12, 0, '2024-08-08', 2),
+(14, 9, 454, 2, 1, 0, 2.3, 13.9104, 0, '2024-08-29', 0),
+(15, 10, 30, 5, 4, 5, 1.2, 25, 0, '2024-08-23', 0),
+(16, 11, 367, 5, 1, 100, 500, 500, 0, '2024-08-09', 0),
+(17, 12, 373, 4, 1, 2, 1200, 8, 0, '2024-08-31', 0),
+(18, 13, 9, 6, 1, 5, 0, 30, 0, '2024-09-21', 10),
+(19, 14, 497, 10, 1, 274.5, 1.22, 2745, 0, '2024-09-20', 0),
+(20, 15, 373, 1, 1, 12000, 1200, 12000, 0, '2024-08-02', 0),
+(21, 16, 56, 800, 4, 10, 0, 8000, 0, '2024-10-04', 0),
+(22, 17, 17, 3, 1, 4083799.16, 122563, 12251397.48, 0, '2024-10-02', 0),
+(23, 18, 373, 4, 1, 35, 0, 140, 0, '2024-08-02', 4),
+(24, 18, 497, 70, 1, 115, 0, 8050, 0, '2024-08-02', 130),
+(25, 19, 9, 6, 1, 0, 0, 0, 0, '2024-09-07', 0),
+(26, 20, 13, 4, 1, 75.9, 3, 303.6, 0, '2024-08-30', 0),
+(27, 21, 1, 2, 2, 15.56, 1, 31.12, 0, '2024-11-23', 2),
+(28, 22, 499, 24, 1, 500, 0, 12000, 0, '2024-09-05', 0),
+(29, 23, 17, 2, 1, 44982, 1350, 89964, 0, '2024-12-06', 0),
+(30, 24, 17, 3, 1, 45315.2, 1360, 135945.59999999998, 0, '2024-10-02', 0),
+(31, 25, 15, 34, 1, 10.374, 1.14, 352.716, 0, '2025-01-24', 34),
+(32, 25, 11, 5, 1, 840.375, 1.5, 4201.875, 0, '2025-01-24', 5),
+(33, 26, 33, 10, 4, 6, 0, 60, 0, '2025-02-08', 0),
+(34, 26, 31, 10, 4, 15, 0, 150, 0, '2025-02-08', 0),
+(35, 26, 34, 10, 4, 32, 0, 320, 0, '2025-02-08', 0),
+(36, 27, 31, 45, 4, 30, 0, 1350, 0, '2025-02-27', 60),
+(37, 27, 33, 200, 4, 40, 0, 8000, 0, '2025-02-27', 200),
+(38, 28, 53, 77, 4, 10, 0, 770, 0, '2025-02-20', 77),
+(39, 29, 13, 3, 1, 12, 0, 36, 0, '2025-02-21', 3),
+(40, 29, 22, 2, 1, 120, 0, 240, 0, '2025-02-21', 2),
+(41, 29, 33, 100, 4, 10, 0, 1000, 0, '2025-02-21', 100),
+(42, 30, 11, 9.98, 1, 5, 0, 49.900000000000006, 0, '2025-02-21', 0),
+(43, 30, 17, 2, 1, 12, 0, 24, 0, '2025-02-21', 0),
+(44, 32, 454, 2, 1, 0, 2.3, 13.9104, 0, '2024-08-29', 0),
+(45, 33, 105, 10, 4, 100, 0, 1000, 0, '2025-01-03', 0),
+(46, 34, 9, 1, 1, 1500, 0, 1500, 0, '2025-05-26', 0),
+(47, 36, 10, 5, 1, 0, 0, 0, 0, '2025-05-23', 0),
+(48, 39, 24, 3, 1, 1000, 0, 3000, 0, '2025-06-12', 3),
+(49, 39, 25, 2, 1, 3500, 0, 7000, 0, '2025-06-12', 2),
+(50, 39, 26, 1, 1, 500, 0, 500, 0, '2025-06-12', 1),
+(51, 39, 30, 100, 4, 0, 2.5, 0, 0, '2025-06-12', 0),
+(52, 40, 1, 5, 2, 2205, 3500, 11025, 0, '2025-09-30', 0),
+(53, 40, 9, 5, 1, 4600, 0, 23000, 0, '2025-09-30', 0),
+(54, 41, 9, 1, 1, 800, 0, 800, 0, '2025-09-26', 0),
+(55, 42, 9, 1, 1, 950, 0, 950, 0, '2025-09-26', 0),
+(68, 49, 19, 20, 1, 0, 300, 199080, 10, '2025-06-12', 20),
+(69, 49, 24, 3, 1, 1100, 0, 3300, 10, '2025-06-12', 3);
 
 -- --------------------------------------------------------
 
@@ -983,7 +1001,7 @@ CREATE TABLE `compras_pagos` (
   `monto` double NOT NULL,
   `comentarios` text DEFAULT NULL,
   `id_usuario` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -998,7 +1016,7 @@ CREATE TABLE `compras_revisiones` (
   `fecha_hora` datetime NOT NULL,
   `comentarios` text NOT NULL,
   `id_usuario` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `compras_revisiones`
@@ -1034,7 +1052,7 @@ CREATE TABLE `compras_sucesos` (
   `suceso` text NOT NULL,
   `id_tipo_suceso` int(11) NOT NULL,
   `titulo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `compras_sucesos`
@@ -1063,7 +1081,7 @@ CREATE TABLE `computos` (
   `id_cuenta_realizo` int(11) DEFAULT NULL,
   `id_cuenta_reviso` int(11) DEFAULT NULL,
   `id_cuenta_valido` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `computos`
@@ -1175,7 +1193,9 @@ INSERT INTO `computos` (`id`, `nro_revision`, `id_tarea`, `fecha`, `id_cuenta_so
 (112, 0, 121, '2025-06-04', 4001866, 5, 112, NULL, NULL, 9, 4001866, NULL, NULL),
 (113, 0, 122, '2025-06-12', 4001866, 4, 113, NULL, NULL, 10, 4001866, NULL, NULL),
 (114, 1, 122, '2025-06-12', 4001866, 2, 113, 'testing', '2025-06-12', 10, 4001866, 4001866, 4001866),
-(115, 0, 123, '2025-07-09', 4001866, 1, 115, NULL, NULL, 1, 4001866, NULL, NULL);
+(115, 0, 123, '2025-07-09', 4001866, 1, 115, NULL, NULL, 1, 4001866, NULL, NULL),
+(116, 1, 118, '2025-05-26', 4001866, 1, 101, 'testing', '2025-08-06', 6, 4001866, 4001866, 4001866),
+(117, 1, 118, '2025-05-26', 4001866, 1, 101, 'testing 2', '2025-08-06', 6, 4001866, 4001866, 4001866);
 
 -- --------------------------------------------------------
 
@@ -1195,7 +1215,7 @@ CREATE TABLE `computos_detalle` (
   `comprado` double NOT NULL,
   `cancelado` tinyint(4) NOT NULL,
   `comentarios` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `computos_detalle`
@@ -1345,13 +1365,13 @@ INSERT INTO `computos_detalle` (`id`, `id_computo`, `id_material`, `cantidad`, `
 (235, 48, 10, 2, '2025-02-12', 1, 0, 0, 0, 0, '05/02'),
 (236, 48, 38, 10, '2025-02-12', 1, 0, 0, 0, 0, ''),
 (237, 48, 85, 1000, '2025-02-12', 1, 0, 0, 0, 0, '05/02'),
-(238, 49, 48, 10, '2025-02-19', 1, 0, 0, 0, 0, ''),
+(238, 49, 48, 10, '2025-02-19', 1, -1, 0, 1, 0, ''),
 (239, 49, 11, 7, '2025-02-26', 1, 0, 0, 0, 0, 'CH12/02'),
 (240, 49, 13, 3, '2025-02-19', 1, 0, 0, 0, 0, 'PER 12/02'),
 (241, 50, 48, 10, '2025-02-19', 1, 0, 0, 0, 0, ''),
 (242, 50, 11, 7, '2025-02-26', 1, 5, 0, 0, 0, 'CH12/02'),
 (243, 50, 13, 3, '2025-02-19', 1, 0, 0, 0, 0, 'PER 12/02'),
-(244, 50, 14, 3, '2025-02-19', 1, 3, 0, 0, 0, ''),
+(244, 50, 14, 3, '2025-02-19', 1, 1, 0, 2, 0, ''),
 (245, 50, 10, 3, '2025-02-19', 1, 3, 0, 0, 0, ''),
 (246, 51, 1, 2, '2025-02-21', 1, -5, 0, 5, 0, 'Prueba 14/02'),
 (247, 51, 30, 100, '2025-02-21', 1, 0, 0, 0, 1, ''),
@@ -1478,9 +1498,9 @@ INSERT INTO `computos_detalle` (`id`, `id_computo`, `id_material`, `cantidad`, `
 (368, 88, 12, 3, '2025-04-17', 1, 0, 0, 0, 0, ''),
 (369, 88, 18, 4, '2025-04-17', 1, 0, 0, 0, 0, ''),
 (370, 88, 30, 100, '2025-04-17', 1, 0, 0, 0, 0, ''),
-(371, 89, 30, 50, '2025-05-14', 1, 0, 0, 0, 0, ''),
-(372, 89, 1, 2, '2025-05-14', 1, 0, 0, 0, 0, 'asdasd'),
-(373, 89, 12, 6, '2025-05-14', 1, 0, 0, 0, 0, 'eeeeeeeeeeee'),
+(371, 89, 30, 50, '2025-05-14', 1, -21, 0, 21, 0, ''),
+(372, 89, 1, 2, '2025-05-14', 1, -7, 0, 7, 0, 'asdasd'),
+(373, 89, 12, 6, '2025-05-14', 1, -2, 0, 2, 0, 'eeeeeeeeeeee'),
 (374, 89, 9, 5, '2025-05-14', 1, -1, 0, 1, 0, ''),
 (375, 90, 1, 6, '2025-05-23', 1, 0, 0, 0, 0, 'asdasd'),
 (376, 90, 9, 2, '2025-05-23', 1, 0, 0, 0, 0, 'asdasd'),
@@ -1505,7 +1525,7 @@ INSERT INTO `computos_detalle` (`id`, `id_computo`, `id_material`, `cantidad`, `
 (402, 93, 19, 3, '2025-05-23', 1, 0, 0, 0, 0, 'asdasd'),
 (403, 93, 17, 1, '2025-05-25', 1, 0, 0, 0, 0, 'asdas'),
 (404, 92, 12, 2, '2025-05-29', 1, 0, 0, 0, 0, ''),
-(405, 92, 14, 3, '2025-05-29', 1, 0, 0, 0, 0, ''),
+(405, 92, 14, 3, '2025-05-29', 1, -15, 0, 15, 0, ''),
 (407, 94, 14, 4, '2025-05-29', 1, 0, 0, 0, 0, ''),
 (408, 94, 18, 5, '2025-05-29', 1, 0, 0, 0, 0, ''),
 (415, 97, 14, 5, '2025-05-29', 1, 5, 0, 0, 0, ''),
@@ -1537,12 +1557,12 @@ INSERT INTO `computos_detalle` (`id`, `id_computo`, `id_material`, `cantidad`, `
 (460, 113, 1, 5, '2025-06-26', 1, 5, 0, 0, 0, ''),
 (461, 113, 9, 10, '2025-06-26', 1, 10, 0, 0, 0, ''),
 (462, 113, 14, 8, '2025-06-12', 1, 7, 1, 0, 0, ''),
-(463, 113, 19, 20, '2025-06-26', 1, 0, 0, 0, 0, ''),
+(463, 113, 19, 20, '2025-06-26', 1, 10, 0, 0, 0, ''),
 (464, 113, 20, 40, '2025-06-26', 1, 40, 0, 0, 0, ''),
-(465, 113, 24, 6, '2025-06-26', 1, 0, 0, 0, 0, ''),
-(466, 113, 25, 2, '2025-06-26', 1, 0, 0, 0, 0, ''),
-(467, 113, 26, 1, '2025-06-26', 1, 0, 0, 0, 0, ''),
-(468, 113, 30, 170, '2025-06-26', 1, 0, 0, 0, 0, ''),
+(465, 113, 24, 6, '2025-06-26', 1, -1, 0, -1, 0, ''),
+(466, 113, 25, 2, '2025-06-26', 1, 1, 0, 0, 0, ''),
+(467, 113, 26, 1, '2025-06-26', 1, -5, 0, 0, 0, ''),
+(468, 113, 30, 170, '2025-06-26', 1, 0, 0, 100, 0, ''),
 (469, 114, 1, 5, '2025-06-26', 0, 0, 0, 0, 0, ''),
 (470, 114, 9, 10, '2025-06-26', 0, 0, 0, 0, 0, ''),
 (471, 114, 14, 8, '2025-06-12', 0, 0, 0, 0, 0, ''),
@@ -1551,7 +1571,11 @@ INSERT INTO `computos_detalle` (`id`, `id_computo`, `id_material`, `cantidad`, `
 (474, 114, 24, 16, '2025-06-26', 0, 0, 0, 0, 0, ''),
 (475, 114, 25, 2, '2025-06-26', 0, 0, 0, 0, 0, ''),
 (477, 114, 30, 150, '2025-06-26', 0, 0, 0, 0, 0, ''),
-(478, 115, 1, 5, '2025-07-16', 0, 0, 5, 0, 0, '');
+(478, 115, 1, 5, '2025-07-16', 0, 0, 5, 0, 0, ''),
+(479, 116, 9, 4, '2025-06-02', 0, 0, 0, 0, 0, 'asdasd'),
+(480, 116, 10, 5, '2025-06-02', 0, 0, 0, 0, 0, ''),
+(482, 117, 9, 4, '2025-06-02', 0, 0, 0, 0, 0, 'asdasd'),
+(483, 117, 10, 5, '2025-06-02', 0, 0, 0, 0, 0, '');
 
 -- --------------------------------------------------------
 
@@ -1566,7 +1590,7 @@ CREATE TABLE `computos_old` (
   `fecha` date NOT NULL,
   `id_cuenta_solicitante` int(11) NOT NULL,
   `id_estado` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `computos_old`
@@ -1591,7 +1615,7 @@ CREATE TABLE `computos_revisiones` (
   `nro_revision` int(11) NOT NULL,
   `comentarios` text NOT NULL,
   `fecha_hora` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `computos_revisiones`
@@ -1616,7 +1640,7 @@ CREATE TABLE `conceptos_contables` (
   `id` int(11) NOT NULL,
   `codigo` varchar(99) NOT NULL,
   `descripcion` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `conceptos_contables`
@@ -1863,7 +1887,7 @@ INSERT INTO `conceptos_contables` (`id`, `codigo`, `descripcion`) VALUES
 CREATE TABLE `condiciones_iva` (
   `id` int(11) NOT NULL,
   `condicion_iva` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `condiciones_iva`
@@ -1893,7 +1917,14 @@ CREATE TABLE `consumos` (
   `fecha_hora_alta` datetime NOT NULL DEFAULT current_timestamp(),
   `id_usuario` int(11) NOT NULL,
   `anulado` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+--
+-- Volcado de datos para la tabla `consumos`
+--
+
+INSERT INTO `consumos` (`id`, `fecha`, `id_orden_trabajo_revision`, `nro_revision`, `descripcion`, `fecha_hora_alta`, `id_usuario`, `anulado`) VALUES
+(20, '2025-08-29', 21, '0', 'Emision original', '2025-08-29 10:43:04', 1, 0);
 
 -- --------------------------------------------------------
 
@@ -1910,7 +1941,7 @@ CREATE TABLE `consumos_detalle` (
   `cantidad` int(11) NOT NULL,
   `id_unidad_medida` int(11) NOT NULL,
   `observacion` varchar(199) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- --------------------------------------------------------
 
@@ -1941,7 +1972,7 @@ CREATE TABLE `cuentas` (
   `id_condicion_iva` int(11) DEFAULT NULL,
   `direccion` varchar(199) DEFAULT NULL,
   `id_usuario` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `cuentas`
@@ -7435,7 +7466,7 @@ CREATE TABLE `cuentas_import` (
   `TelefonoDeConsultasFiscalesDeSalida` varchar(99) DEFAULT NULL,
   `IdPuesto` varchar(99) DEFAULT NULL,
   `CuitSinGuiones` varchar(99) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `cuentas_import`
@@ -13000,7 +13031,7 @@ CREATE TABLE `despachos` (
   `id_estado_despacho` int(11) NOT NULL,
   `id_proyecto` int(11) DEFAULT NULL,
   `detalle_oc` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `despachos`
@@ -13027,7 +13058,7 @@ CREATE TABLE `devoluciones` (
   `id_usuario` int(11) NOT NULL,
   `nro_obra` varchar(99) NOT NULL,
   `observaciones` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `devoluciones`
@@ -13059,7 +13090,7 @@ CREATE TABLE `devoluciones_detalle` (
   `id_devolucion` int(11) NOT NULL,
   `id_material` int(11) NOT NULL,
   `cantidad` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `devoluciones_detalle`
@@ -13102,7 +13133,7 @@ CREATE TABLE `egresos` (
   `id_tarea` int(11) DEFAULT NULL,
   `observaciones` text NOT NULL,
   `id_proyecto` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -13119,7 +13150,7 @@ CREATE TABLE `egresos_detalle` (
   `cantidad` double NOT NULL,
   `precio` double DEFAULT NULL,
   `subtotal` double DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -13130,7 +13161,7 @@ CREATE TABLE `egresos_detalle` (
 CREATE TABLE `empresas` (
   `id` int(11) NOT NULL,
   `empresa` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `empresas`
@@ -13150,7 +13181,7 @@ INSERT INTO `empresas` (`id`, `empresa`) VALUES
 CREATE TABLE `estados_bulto` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_bulto`
@@ -13169,7 +13200,7 @@ INSERT INTO `estados_bulto` (`id`, `estado`) VALUES
 CREATE TABLE `estados_componentes_packing_list` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_componentes_packing_list`
@@ -13188,19 +13219,21 @@ INSERT INTO `estados_componentes_packing_list` (`id`, `estado`) VALUES
 CREATE TABLE `estados_compra` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_compra`
 --
 
 INSERT INTO `estados_compra` (`id`, `estado`) VALUES
-(1, 'Enviada'),
-(2, 'Pendiente'),
-(3, 'Terminada'),
+(1, 'Elaboracion'),
+(2, 'Para Aprobar'),
+(3, 'Enviada'),
 (4, 'Cancelada'),
-(5, 'Facturada'),
-(6, 'Terminada Forzada');
+(6, 'Entrega parcial'),
+(7, 'Terminada'),
+(8, 'Terminada Forzado'),
+(9, 'Facturada');
 
 -- --------------------------------------------------------
 
@@ -13211,7 +13244,7 @@ INSERT INTO `estados_compra` (`id`, `estado`) VALUES
 CREATE TABLE `estados_computos` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_computos`
@@ -13235,7 +13268,7 @@ INSERT INTO `estados_computos` (`id`, `estado`) VALUES
 CREATE TABLE `estados_despacho` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_despacho`
@@ -13254,7 +13287,7 @@ INSERT INTO `estados_despacho` (`id`, `estado`) VALUES
 CREATE TABLE `estados_factura` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_factura`
@@ -13275,7 +13308,7 @@ INSERT INTO `estados_factura` (`id`, `estado`) VALUES
 CREATE TABLE `estados_lista_corte` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_lista_corte`
@@ -13283,13 +13316,12 @@ CREATE TABLE `estados_lista_corte` (
 
 INSERT INTO `estados_lista_corte` (`id`, `estado`) VALUES
 (1, 'Elaboración'),
-(2, 'Enviada'),
+(2, 'Para Aprobar'),
 (3, 'Aprobada'),
-(4, 'En proceso'),
+(4, 'Gestionando'),
 (5, 'Terminada'),
 (6, 'Cancelada'),
-(7, 'Superada'),
-(8, 'Superada');
+(7, 'Superada');
 
 -- --------------------------------------------------------
 
@@ -13300,7 +13332,7 @@ INSERT INTO `estados_lista_corte` (`id`, `estado`) VALUES
 CREATE TABLE `estados_lista_corte_conjuntos` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_lista_corte_conjuntos`
@@ -13321,7 +13353,7 @@ INSERT INTO `estados_lista_corte_conjuntos` (`id`, `estado`) VALUES
 CREATE TABLE `estados_lista_corte_procesos` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_lista_corte_procesos`
@@ -13341,16 +13373,16 @@ INSERT INTO `estados_lista_corte_procesos` (`id`, `estado`) VALUES
 CREATE TABLE `estados_orden_trabajo` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_orden_trabajo`
 --
 
 INSERT INTO `estados_orden_trabajo` (`id`, `estado`) VALUES
-(1, 'Elaborando'),
-(2, 'Pendiente'),
-(3, 'En Producción'),
+(1, 'Elaboracion'),
+(2, 'Para Aprobar'),
+(3, 'En Produccion'),
 (4, 'Terminada'),
 (5, 'Cancelada');
 
@@ -13363,16 +13395,16 @@ INSERT INTO `estados_orden_trabajo` (`id`, `estado`) VALUES
 CREATE TABLE `estados_orden_trabajo_posicion` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_orden_trabajo_posicion`
 --
 
 INSERT INTO `estados_orden_trabajo_posicion` (`id`, `estado`) VALUES
-(1, 'Elaboración'),
-(2, 'Pendiente'),
-(3, 'Proceso'),
+(1, 'Elaboracion'),
+(2, 'Para Aprobar'),
+(3, 'En Produccion'),
 (4, 'Terminada'),
 (5, 'Liberada'),
 (6, 'Reproceso'),
@@ -13388,7 +13420,7 @@ INSERT INTO `estados_orden_trabajo_posicion` (`id`, `estado`) VALUES
 CREATE TABLE `estados_packing_list` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_packing_list`
@@ -13413,20 +13445,46 @@ INSERT INTO `estados_packing_list` (`id`, `estado`) VALUES
 CREATE TABLE `estados_pedidos` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_pedidos`
 --
 
 INSERT INTO `estados_pedidos` (`id`, `estado`) VALUES
-(1, 'Cargando'),
-(2, 'A Evaluar'),
+(1, 'Elaboración'),
+(2, 'Para Aprobar'),
 (3, 'Aprobado'),
-(4, 'En Proceso'),
+(4, 'Gestionando'),
 (5, 'Terminado'),
 (6, 'Terminado Forzado'),
 (7, 'Cancelado');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `estados_pedidos_detalle`
+--
+
+CREATE TABLE `estados_pedidos_detalle` (
+  `id` int(11) NOT NULL,
+  `estado` varchar(99) NOT NULL,
+  `descripcion` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+--
+-- Volcado de datos para la tabla `estados_pedidos_detalle`
+--
+
+INSERT INTO `estados_pedidos_detalle` (`id`, `estado`, `descripcion`) VALUES
+(1, 'Pendiente', 'El ítem no tiene ninguna Orden de Compra asociada, ni en elaboración ni aprobada. El proceso de compra aún no inició.'),
+(2, 'Comprando', 'Todavía no hay OCs aprobadas para este ítem, pero tiene al menos una Orden de Compra en estado \"Elaboración\" o \"Para Aprobar\".'),
+(3, 'Comprando Parcial', 'El ítem tiene una o más OCs aprobadas por una cantidad menor a la cantidad pedida y aún no registra entregas. Se empezó a comprar, pero todavía no se compró todo ni llegó nada.'),
+(4, 'Comprando y Entregando', 'El ítem tiene OCs aprobadas por una cantidad menor a la cantidad pedida y ya registra entregas parciales. Es decir, una parte del ítem ya fue entregada mientras otra parte aún no fue comprada.'),
+(5, 'Comprando Total', 'Las OCs aprobadas cubren la totalidad de la cantidad pedida, pero todavía no se registran entregas. Ya se compró todo lo necesario y se encuentra en espera de recepción.'),
+(6, 'Entregado Parcial', 'Las OCs aprobadas cubren la totalidad de la cantidad pedida y ya se registran entregas, pero la cantidad entregada es menor que la cantidad pedida. El ítem está totalmente comprado, pero aún no se entregó todo.'),
+(7, 'Entregado', 'La cantidad entregada alcanza la cantidad pedida. El ítem se considera totalmente recibido.'),
+(8, 'Cancelado', 'El ítem fue cancelado en su totalidad. No se espera que se realicen nuevas compras ni entregas para este ítem.');
 
 -- --------------------------------------------------------
 
@@ -13437,7 +13495,7 @@ INSERT INTO `estados_pedidos` (`id`, `estado`) VALUES
 CREATE TABLE `estados_proyecto` (
   `id` int(11) NOT NULL,
   `estado` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_proyecto`
@@ -13477,7 +13535,7 @@ CREATE TABLE `estados_tareas` (
   `presentado` tinyint(4) NOT NULL,
   `verificado` tinyint(4) NOT NULL,
   `aprobado_cliente` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_tareas`
@@ -13515,7 +13573,7 @@ CREATE TABLE `facturas_compra` (
   `id_usuario` int(11) NOT NULL,
   `id_estado` int(11) NOT NULL,
   `exportada` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_compra`
@@ -13542,7 +13600,7 @@ CREATE TABLE `facturas_compra_detalle` (
   `precio` double NOT NULL,
   `subtotal` double NOT NULL,
   `id_concepto_contable` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_compra_detalle`
@@ -13567,7 +13625,7 @@ CREATE TABLE `facturas_compra_detalle_x_compras_detalle` (
   `id` int(11) NOT NULL,
   `id_factura_compra_detalle` int(11) NOT NULL,
   `id_compra_detalle` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_compra_detalle_x_compras_detalle`
@@ -13590,7 +13648,7 @@ CREATE TABLE `facturas_compra_retenciones` (
   `id_factura_compra` int(11) NOT NULL,
   `id_regimen_facturacion` int(11) NOT NULL,
   `monto` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_compra_retenciones`
@@ -13631,7 +13689,7 @@ CREATE TABLE `facturas_venta` (
   `id_usuario` int(11) NOT NULL,
   `id_estado` int(11) NOT NULL,
   `exportada` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_venta`
@@ -13660,7 +13718,7 @@ CREATE TABLE `facturas_venta_detalle` (
   `precio` double NOT NULL,
   `subtotal` double NOT NULL,
   `id_concepto_contable` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_venta_detalle`
@@ -13681,7 +13739,7 @@ CREATE TABLE `facturas_venta_detalle_x_certificados_avance` (
   `id` int(11) NOT NULL,
   `id_factura_venta_detalle` int(11) NOT NULL,
   `id_certificado_avance` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -13694,7 +13752,7 @@ CREATE TABLE `facturas_venta_otros` (
   `id_factura_venta` int(11) NOT NULL,
   `id_regimen` int(11) NOT NULL,
   `porcentaje` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `facturas_venta_otros`
@@ -13715,7 +13773,7 @@ CREATE TABLE `facturas_venta_retenciones` (
   `id_factura_venta` int(11) NOT NULL,
   `id_regimen_facturacion` int(11) NOT NULL,
   `monto` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -13726,7 +13784,7 @@ CREATE TABLE `facturas_venta_retenciones` (
 CREATE TABLE `formas_pago` (
   `id` int(11) NOT NULL,
   `forma_pago` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `formas_pago`
@@ -13768,7 +13826,7 @@ CREATE TABLE `ingresos` (
   `observaciones` text NOT NULL,
   `nro_remito` int(11) NOT NULL,
   `fecha_remito` date DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `ingresos`
@@ -13797,7 +13855,13 @@ INSERT INTO `ingresos` (`id`, `fecha_hora`, `id_tipo_ingreso`, `nro`, `id_cuenta
 (25, '2025-02-21 14:57:50', 1, 22, 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 1, '2025-02-21'),
 (26, '2025-03-16 19:07:19', 1, 9, 5000815, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 0, '2025-03-16'),
 (27, '2025-03-21 10:57:14', 1, 5, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 0, '2025-03-21'),
-(28, '2025-03-21 11:17:22', 1, 2, 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 'Pintados de Azul', 1234, '2025-03-21');
+(28, '2025-03-21 11:17:22', 1, 2, 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 'Pintados de Azul', 1234, '2025-03-21'),
+(29, '2025-12-09 09:28:02', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 123, '2025-12-09'),
+(30, '2025-12-09 09:36:31', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 123, '2025-12-09'),
+(32, '2025-12-09 11:31:20', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 456, '2025-12-09'),
+(33, '2025-12-09 15:17:16', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 789, '2025-12-09'),
+(34, '2025-12-09 15:49:45', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 741, '2025-12-09'),
+(35, '2025-12-09 15:59:35', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 951, '2025-12-09');
 
 -- --------------------------------------------------------
 
@@ -13817,7 +13881,7 @@ CREATE TABLE `ingresos_detalle` (
   `id_compra` int(11) DEFAULT NULL,
   `id_proveedor` int(11) DEFAULT NULL,
   `nro_colada_interna` varchar(99) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `ingresos_detalle`
@@ -13857,7 +13921,16 @@ INSERT INTO `ingresos_detalle` (`id`, `id_ingreso`, `id_material`, `id_unidad_me
 (39, 26, 15, 1, 34, 0, 34, NULL, 25, 5001184, '6462/0/0-1'),
 (40, 26, 11, 1, 5, 0, 5, NULL, 25, 5001184, '6462/0/0-2'),
 (41, 27, 9, 1, 10, 0, 10, NULL, 13, 4000159, '6465/0/1-1'),
-(42, 28, 1, 2, 2, 0, 2, NULL, 21, 1000006, '6462/0/0-1');
+(42, 28, 1, 2, 2, 0, 2, NULL, 21, 1000006, '6462/0/0-1'),
+(43, 29, 24, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(44, 30, 24, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(46, 32, 25, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(47, 33, 26, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(48, 33, 24, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-2'),
+(49, 33, 25, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-3'),
+(50, 34, 24, 1, 3, 0, 3, NULL, 49, 1000003, '7337/0/1-1'),
+(51, 34, 19, 1, 10, 0, 10, NULL, 49, 1000003, '7337/0/1-2'),
+(52, 35, 19, 1, 10, 0, 10, NULL, 49, 1000003, '7337/0/1-1');
 
 -- --------------------------------------------------------
 
@@ -13868,7 +13941,7 @@ INSERT INTO `ingresos_detalle` (`id`, `id_ingreso`, `id_material`, `id_unidad_me
 CREATE TABLE `letras_comprobante` (
   `id` int(11) NOT NULL,
   `letra` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `letras_comprobante`
@@ -13890,7 +13963,7 @@ INSERT INTO `letras_comprobante` (`id`, `letra`) VALUES
 CREATE TABLE `lineas_negocio` (
   `id` int(11) NOT NULL,
   `linea_negocio` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `lineas_negocio`
@@ -13911,49 +13984,76 @@ INSERT INTO `lineas_negocio` (`id`, `linea_negocio`) VALUES
 
 CREATE TABLE `listas_corte` (
   `id` int(11) NOT NULL,
-  `ultimo_nro_revision` int(11) NOT NULL,
-  `anulado` tinyint(4) NOT NULL DEFAULT 0,
-  `id_tarea` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+  `id_lista_corteX` int(11) DEFAULT NULL,
+  `id_proyecto` int(11) NOT NULL,
+  `id_tarea` int(11) DEFAULT NULL,
+  `fecha` date NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `id_estado_lista_corte` int(11) NOT NULL,
+  `nro_revision` int(11) NOT NULL,
+  `anulado` tinyint(4) NOT NULL,
+  `nombre` varchar(99) NOT NULL,
+  `numero` varchar(99) NOT NULL,
+  `adjunto` varchar(199) DEFAULT NULL,
+  `descripcion` text DEFAULT NULL,
+  `id_cuenta_realizo` int(11) DEFAULT NULL,
+  `id_cuenta_reviso` int(11) DEFAULT NULL,
+  `id_cuenta_valido` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `listas_corte`
 --
 
-INSERT INTO `listas_corte` (`id`, `ultimo_nro_revision`, `anulado`, `id_tarea`) VALUES
-(31, 0, 0, NULL),
-(32, 0, 1, 2),
-(33, 0, 1, 2),
-(34, 0, 1, 2),
-(35, 0, 1, 15),
-(36, 0, 1, 18),
-(37, 0, 1, 10),
-(38, 0, 0, 25),
-(39, 1, 0, 30),
-(40, 0, 1, NULL),
-(41, 0, 1, 33),
-(42, 0, 1, 13),
-(43, 0, 1, 36),
-(44, 0, 1, 39),
-(45, 2, 0, 41),
-(46, 1, 1, 43),
-(47, 1, 1, 51),
-(48, 2, 0, 45),
-(49, 0, 0, 59),
-(50, 0, 0, 62),
-(51, 0, 0, 66),
-(52, 1, 0, 75),
-(53, 0, 0, 78),
-(54, 1, 0, 84),
-(55, 0, 0, NULL),
-(56, 0, 0, NULL),
-(57, 0, 0, 85),
-(58, 0, 0, 90),
-(59, 0, 0, 94),
-(60, 1, 0, 109),
-(61, 0, 0, 113),
-(62, 0, 0, 114),
-(63, 0, 0, 114);
+INSERT INTO `listas_corte` (`id`, `id_lista_corteX`, `id_proyecto`, `id_tarea`, `fecha`, `id_usuario`, `id_estado_lista_corte`, `nro_revision`, `anulado`, `nombre`, `numero`, `adjunto`, `descripcion`, `id_cuenta_realizo`, `id_cuenta_reviso`, `id_cuenta_valido`) VALUES
+(57, 32, 1, 2, '2024-07-24', 3, 1, 0, 0, 'Adleanto de piezas', '1', NULL, 'Emisión original', NULL, NULL, NULL),
+(58, 33, 1, 2, '2024-07-24', 3, 1, 0, 0, 'Viga bis', '2', NULL, 'Emisión original', NULL, NULL, NULL),
+(59, 34, 1, 2, '2024-08-08', 3, 1, 0, 0, 'Puente', '1', NULL, 'Emisión original', NULL, NULL, NULL),
+(60, 35, 6, 15, '2024-08-15', 9, 1, 0, 0, 'viga', '1', '60_330-0-1-PL001-Rev0-Percha.dwg', 'Emisión original', NULL, NULL, NULL),
+(61, 36, 6, 18, '2024-08-16', 9, 1, 0, 0, 'COSTILLAS', 'LC002', '', 'Emisión original', NULL, NULL, NULL),
+(62, 37, 5, 10, '2024-08-21', 9, 1, 0, 0, 'Vigas', '1', NULL, 'Emisión original', NULL, NULL, NULL),
+(63, 38, 7, 25, '2024-08-22', 9, 6, 0, 0, 'Pontón 1', '1', NULL, 'Emisión original', NULL, NULL, NULL),
+(64, 39, 8, 30, '2024-08-22', 24, 5, 0, 0, 'Escalera Acceso Norte Filtro 3100 FL- 021', 'LC001', NULL, 'Emisión original', NULL, NULL, NULL),
+(65, 40, 1, 2, '2024-08-29', 9, 4, 0, 0, 'LC001-NHC', '2', NULL, 'Emisión original', NULL, NULL, NULL),
+(66, 41, 7, 33, '2024-08-30', 9, 2, 0, 0, 'Barandas', '20240830', NULL, 'Emisión original', NULL, NULL, NULL),
+(67, 42, 5, 13, '2024-09-18', 9, 2, 0, 0, 'Prueba 17/09', '2', NULL, 'Emisión original', NULL, NULL, NULL),
+(68, 43, 6, 36, '2024-09-17', 9, 1, 0, 0, 'Costillas', '3', NULL, 'Emisión original', NULL, NULL, NULL),
+(69, 44, 9, 39, '2024-09-24', 9, 2, 0, 0, 'LC002-Rev0-Soportes fila india', '1', NULL, 'Emisión original', NULL, NULL, NULL),
+(70, 45, 9, 41, '2024-09-25', 9, 5, 0, 0, 'LC2', '2', 'No sirve adjuntar plano', 'Emisión original', NULL, NULL, NULL),
+(71, 46, 9, 43, '2024-10-01', 24, 1, 0, 0, 'LC001', '3', NULL, 'Emisión original', NULL, NULL, NULL),
+(72, 46, 9, 43, '2024-10-01', 24, 4, 1, 0, 'LC001', '3', NULL, 'Se agrega pos.10', 4001734, 4001263, 4000014),
+(73, 47, 9, 51, '2024-10-15', 9, 5, 0, 0, 'LC01', '4', 'SI', 'Emisión original', NULL, NULL, NULL),
+(74, 47, 9, 51, '2024-10-15', 9, 3, 1, 0, 'LC01', '4', NULL, 'dadsa', 2000002, 2000005, 2000005),
+(75, 45, 9, 41, '2024-11-13', 9, 5, 1, 0, 'LC2', '2', NULL, 'Se agrega \"info del plano\"', 4001801, 4000014, 4000014),
+(76, 48, 9, 45, '2024-11-20', 9, 5, 0, 0, 'LC20112024', '5', 'debería ser un adjunto', 'Emisión original', NULL, NULL, NULL),
+(77, 48, 9, 45, '2024-11-28', 9, 5, 1, 0, 'LC20112024', '5', NULL, 'PRUEBA', 2000001, 2000005, 2000023),
+(78, 48, 9, 45, '2024-11-28', 9, 4, 2, 0, 'LC20112024', '5', NULL, '28/11', 2000001, 2000005, 2000023),
+(79, 49, 12, 59, '2024-12-12', 9, 3, 0, 0, 'Zancas', '1', 'Sigue sin funcionar \"Adjuntar plano\"', 'Emisión original', NULL, NULL, NULL),
+(81, 50, 8, 62, '2024-12-18', 24, 2, 0, 0, 'LC002', '2', NULL, 'Emisión original', NULL, NULL, NULL),
+(82, 45, 9, 41, '2025-01-22', 9, 3, 2, 0, 'LC2', '2', NULL, 'Agregado de chapas 1/2', 5002023, 4000014, 4000014),
+(83, 51, 12, 66, '2025-01-30', 9, 1, 0, 0, 'Prueba 30/01', '3', '', 'Emisión original', NULL, NULL, NULL),
+(84, 52, 12, 75, '2025-02-12', 9, 5, 0, 0, 'Zancas 2 PC 12/02', '2', NULL, 'Emisión original', NULL, NULL, NULL),
+(85, 52, 12, 75, '2025-02-14', 9, 2, 1, 0, 'Zancas 2 PC 12/02', '2', NULL, 'Se agrega chapa 7,9', 2000004, 2000002, 2000004),
+(86, 53, 13, 78, '2025-08-19', 5, 3, 0, 0, 'prueba laura', '1', NULL, 'Emisión original', 4001263, 4001263, 4001263),
+(87, 54, 15, 84, '2025-02-21', 5, 5, 0, 0, 'prueba 1 lc', '1', 'PL1 REV 1', 'Emisión original', 4001263, 4001263, 4001263),
+(88, 54, 15, 84, '2025-02-21', 5, 2, 1, 0, 'prueba 1 lc', '1', NULL, 'CAMBIA POS 2', 4001119, 4001263, 4001263),
+(89, 57, 15, 85, '2025-02-21', 5, 1, 0, 0, '34', '2', 'pl 34', 'Emisión original', 4001263, 4001263, 4001263),
+(90, 58, 16, 90, '2025-03-10', 9, 3, 0, 0, 'SOPORTES T', '1', NULL, 'Emisión original', 4001801, 4000014, 4000001),
+(91, 59, 17, 94, '2025-03-13', 9, 1, 0, 0, 'Vallas', '1', NULL, 'Emisión original', 4001801, 4000017, 4000070),
+(92, 60, 22, 109, '2025-04-11', 9, 7, 0, 0, 'LC001 - MOLDE 1', '1', NULL, 'Emisión original', 4001801, 4000017, 4000017),
+(93, 60, 22, 109, '2025-04-11', 9, 2, 1, 0, 'LC001 - MOLDE 1', '1', NULL, 'Se cambia la cantidad de moldes, de 4 a 6.', NULL, 4000017, 4000017),
+(94, 61, 24, 113, '2025-07-16', 1, 1, 0, 0, 'testing', '1', NULL, 'Emisión original', 4001866, 4000001, 4000014),
+(95, 62, 24, 114, '2025-07-23', 1, 1, 0, 0, 'Nueva LC', '2', NULL, 'Emisión original', 4001866, NULL, NULL),
+(96, 63, 24, 114, '2025-07-23', 1, 1, 0, 0, 'Nueva LC', '3', '', 'Emisión original', 4001866, NULL, NULL),
+(97, 64, 24, 114, '2025-07-23', 1, 1, 0, 0, 'Nueva lista de corte 3', '4', '', 'Emisión original', 4001866, NULL, NULL),
+(98, NULL, 24, 114, '2025-07-25', 1, 5, 0, 0, 'nombre LC modificada', '5', 'tiene plano', 'Emisión original', 4001866, NULL, NULL),
+(106, NULL, 24, 113, '2025-07-16', 1, 1, 0, 0, 'testing', '6', NULL, 'Emisión original', 4001866, 4000001, 4000014),
+(107, NULL, 24, 113, '2025-07-25', 1, 1, 0, 0, 'nombre LC modificada', '7', 'tiene plano', 'Emisión original', 4001866, NULL, NULL),
+(108, NULL, 24, 113, '2025-07-25', 1, 6, 0, 0, 'nombre LC modificada', '8', 'tiene plano', 'Emisión original', 4001866, NULL, NULL),
+(109, NULL, 24, 113, '2025-07-25', 1, 4, 0, 0, 'nombre LC modificada', '9', 'tiene plano', 'Emisión original', 4001866, NULL, NULL),
+(110, NULL, 22, 110, '2025-07-25', 1, 1, 0, 0, 'nombre LC modificada', '2', 'tiene plano', 'Emisión original', 4001866, NULL, NULL),
+(111, NULL, 24, 113, '2025-07-25', 1, 1, 1, 0, 'nombre LC modificada', '9', 'tiene plano', 'probando', 4001866, NULL, NULL),
+(112, NULL, 24, 113, '2025-07-25', 1, 6, 1, 0, 'nombre LC modificada', '9', 'tiene plano', 'probando 2', 4001866, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -13968,7 +14068,7 @@ CREATE TABLE `listas_corte_conjuntos` (
   `cantidad` int(11) NOT NULL,
   `peso` double NOT NULL,
   `id_estado_lista_corte_conjuntos` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `listas_corte_conjuntos`
@@ -14010,10 +14110,10 @@ INSERT INTO `listas_corte_conjuntos` (`id`, `id_lista_corte`, `nombre`, `cantida
 (130, 79, 'Zancas', 4, 13072.5, 1),
 (131, 81, '5V-2', 1, 1120.5, 1),
 (132, 82, 'CONJ', 2, 300, 1),
-(133, 83, 'CONT 1', 1, 5602.5, 1),
+(133, 83, 'Base de pilar', 4, 5602.5, 1),
 (134, 84, 'Zancas', 8, 5725.1, 1),
 (135, 85, 'Zancas', 8, 9086.6, 1),
-(136, 83, 'CONT 2', 1, 0, 1),
+(136, 83, 'Pilar', 4, 195.2, 1),
 (137, 86, 'columna', 54, 9837.5, 1),
 (138, 87, 'columnas 1 a 5', 5, 3285.5, 1),
 (139, 87, 'vigas 1 a 5', 10, 18687, 1),
@@ -14023,15 +14123,99 @@ INSERT INTO `listas_corte_conjuntos` (`id`, `id_lista_corte`, `nombre`, `cantida
 (143, 90, 'SOPORTES T', 10, 2999, 1),
 (144, 92, 'Moldes', 4, 560.2, 1),
 (145, 93, 'Moldes', 6, 1190.2, 1),
-(146, 94, 'conjunto 1', 5, 1, 1);
+(146, 94, 'conjunto 1', 5, 1, 1),
+(147, 98, 'conjunto nro uno', 7, 183, 2),
+(148, 98, 'Conjunto nro 2', 3, 1494.4, 2),
+(149, 97, 'asd', 5, 0, 1),
+(163, 106, 'conjunto 1', 5, 1, 1),
+(164, 107, 'conjunto nro uno', 7, 183, 1),
+(165, 107, 'Conjunto nro 2', 3, 1494.4, 1),
+(166, 108, 'conjunto nro uno', 7, 183, 1),
+(167, 109, 'conjunto nro uno', 7, 122, 1),
+(168, 109, 'Conjunto nro 2', 3, 1494.4, 1),
+(169, 110, 'conjunto nro uno', 7, 122, 1),
+(170, 110, 'Conjunto nro 2', 3, 1494.4, 1),
+(171, 111, 'conjunto nro uno', 7, 122, 1),
+(172, 111, 'Conjunto nro 2', 3, 1494.4, 1),
+(173, 112, 'conjunto nro uno', 7, 122, 1),
+(174, 112, 'Conjunto nro 2', 3, 1494.4, 1),
+(175, 111, 'conjunto con perfiles', 5, 1561.95, 1),
+(176, 96, 'pata', 2, 2.5, 1);
 
 -- --------------------------------------------------------
 
 --
--- Estructura de tabla para la tabla `listas_corte_revisiones`
+-- Estructura de tabla para la tabla `listas_corte_old2`
 --
 
-CREATE TABLE `listas_corte_revisiones` (
+CREATE TABLE `listas_corte_old2` (
+  `id` int(11) NOT NULL,
+  `ultimo_nro_revision` int(11) NOT NULL,
+  `anulado` tinyint(4) NOT NULL DEFAULT 0,
+  `id_tarea` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
+
+--
+-- Volcado de datos para la tabla `listas_corte_old2`
+--
+
+INSERT INTO `listas_corte_old2` (`id`, `ultimo_nro_revision`, `anulado`, `id_tarea`) VALUES
+(31, 0, 0, NULL),
+(32, 0, 1, 2),
+(33, 0, 1, 2),
+(34, 0, 1, 2),
+(35, 0, 1, 15),
+(36, 0, 1, 18),
+(37, 0, 1, 10),
+(38, 0, 0, 25),
+(39, 1, 0, 30),
+(40, 0, 1, NULL),
+(41, 0, 1, 33),
+(42, 0, 1, 13),
+(43, 0, 1, 36),
+(44, 0, 1, 39),
+(45, 2, 0, 41),
+(46, 1, 1, 43),
+(47, 1, 1, 51),
+(48, 2, 0, 45),
+(49, 0, 0, 59),
+(50, 0, 0, 62),
+(51, 0, 0, 66),
+(52, 1, 0, 75),
+(53, 0, 0, 78),
+(54, 1, 0, 84),
+(55, 0, 0, NULL),
+(56, 0, 0, NULL),
+(57, 0, 0, 85),
+(58, 0, 0, 90),
+(59, 0, 0, 94),
+(60, 1, 0, 109),
+(61, 0, 0, 113),
+(62, 0, 0, 114),
+(63, 0, 0, 114),
+(64, 0, 0, 114);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `listas_corte_revisiones_old`
+--
+
+CREATE TABLE `listas_corte_revisiones_old` (
+  `id` int(11) NOT NULL,
+  `id_lista_corte` int(11) NOT NULL,
+  `nro_revision` int(11) NOT NULL,
+  `comentarios` text NOT NULL,
+  `fecha_hora` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `listas_corte_revisiones_old2`
+--
+
+CREATE TABLE `listas_corte_revisiones_old2` (
   `id` int(11) NOT NULL,
   `id_lista_corte` int(11) NOT NULL,
   `id_proyecto` int(11) NOT NULL,
@@ -14047,13 +14231,13 @@ CREATE TABLE `listas_corte_revisiones` (
   `id_cuenta_realizo` int(11) DEFAULT NULL,
   `id_cuenta_reviso` int(11) DEFAULT NULL,
   `id_cuenta_valido` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Volcado de datos para la tabla `listas_corte_revisiones`
+-- Volcado de datos para la tabla `listas_corte_revisiones_old2`
 --
 
-INSERT INTO `listas_corte_revisiones` (`id`, `id_lista_corte`, `id_proyecto`, `fecha`, `id_usuario`, `id_estado_lista_corte`, `nro_revision`, `anulado`, `nombre`, `numero`, `adjunto`, `descripcion`, `id_cuenta_realizo`, `id_cuenta_reviso`, `id_cuenta_valido`) VALUES
+INSERT INTO `listas_corte_revisiones_old2` (`id`, `id_lista_corte`, `id_proyecto`, `fecha`, `id_usuario`, `id_estado_lista_corte`, `nro_revision`, `anulado`, `nombre`, `numero`, `adjunto`, `descripcion`, `id_cuenta_realizo`, `id_cuenta_reviso`, `id_cuenta_valido`) VALUES
 (57, 32, 1, '2024-07-24', 3, 1, 0, 0, 'Adleanto de piezas', '1', NULL, 'Emisión original', NULL, NULL, NULL),
 (58, 33, 1, '2024-07-24', 3, 1, 0, 0, 'Viga bis', '2', NULL, 'Emisión original', NULL, NULL, NULL),
 (59, 34, 1, '2024-08-08', 3, 1, 0, 0, 'Puente', '1', NULL, 'Emisión original', NULL, NULL, NULL),
@@ -14092,21 +14276,8 @@ INSERT INTO `listas_corte_revisiones` (`id`, `id_lista_corte`, `id_proyecto`, `f
 (93, 60, 22, '2025-04-11', 9, 2, 1, 0, 'LC001 - MOLDE 1', '1', NULL, 'Se cambia la cantidad de moldes, de 4 a 6.', NULL, 4000017, 4000017),
 (94, 61, 24, '2025-07-16', 1, 1, 0, 0, 'testing', '1', NULL, 'Emisión original', 4001866, 4000001, 4000014),
 (95, 62, 24, '2025-07-23', 1, 1, 0, 0, 'Nueva LC', '2', NULL, 'Emisión original', 4001866, NULL, NULL),
-(96, 63, 24, '2025-07-23', 1, 1, 0, 0, 'Nueva LC', '3', NULL, 'Emisión original', 4001866, NULL, NULL);
-
--- --------------------------------------------------------
-
---
--- Estructura de tabla para la tabla `listas_corte_revisiones_old`
---
-
-CREATE TABLE `listas_corte_revisiones_old` (
-  `id` int(11) NOT NULL,
-  `id_lista_corte` int(11) NOT NULL,
-  `nro_revision` int(11) NOT NULL,
-  `comentarios` text NOT NULL,
-  `fecha_hora` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+(96, 63, 24, '2025-07-23', 1, 1, 0, 0, 'Nueva LC', '3', NULL, 'Emisión original', 4001866, NULL, NULL),
+(97, 64, 24, '2025-07-23', 1, 1, 0, 0, 'Nueva lista de corte 3', '4', NULL, 'Emisión original', 4001866, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -14124,89 +14295,125 @@ CREATE TABLE `lista_corte_posiciones` (
   `ancho` double DEFAULT NULL,
   `marca` varchar(99) DEFAULT NULL,
   `peso` double DEFAULT NULL,
+  `peso_calculado_posicion` double DEFAULT NULL,
   `finalizado` tinyint(11) NOT NULL,
   `id_colada` int(11) DEFAULT NULL,
   `diametro` double DEFAULT NULL,
   `calidad` varchar(99) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `lista_corte_posiciones`
 --
 
-INSERT INTO `lista_corte_posiciones` (`id`, `id_lista_corte_conjunto`, `id_material`, `posicion`, `cantidad`, `largo`, `ancho`, `marca`, `peso`, `finalizado`, `id_colada`, `diametro`, `calidad`) VALUES
-(168, 95, 347, '1', 4, 13000, 0, '', 8, 0, NULL, 0, ''),
-(169, 95, 21, '2', 4, 13000, 400, '', 2616.45, 0, NULL, 0, ''),
-(170, 96, 21, '1', 4, 13000, 800, '', 2616.45, 0, NULL, 0, ''),
-(171, 96, 21, '2', 2, 13000, 400, '', 2616.45, 0, NULL, 0, ''),
-(172, 97, 413, '1', 2, 13000, 0, '', 42, 0, NULL, 0, ''),
-(173, 97, 10, '2', 2, 12900, 0, '', 1867.5, 0, NULL, 0, ''),
-(174, 98, 17, '3', 2, 3000, 0, '', 33.32, 0, NULL, 0, ''),
-(175, 99, 20, '3', 2, 300, 1000, '', 1.6, 0, NULL, 0, ''),
-(176, 100, 354, '1', 2, 6000, 100, '', 31, 0, NULL, 0, ''),
-(177, 102, 1, '4', 35, 5, 10, '', 100, 0, NULL, 0, ''),
-(178, 103, 13, '18', 1, 4290, 0, '', 25.3, 0, NULL, 0, ''),
-(179, 103, 11, '8', 1, 216, 112, '5V-4', 560.25, 0, NULL, 0, ''),
-(180, 104, 13, '10', 1, 2176, 0, '5V-10', 25.3, 0, NULL, 0, ''),
-(181, 105, 13, '60', 30, 1500, 0, '', 25.3, 0, NULL, 0, ''),
-(182, 103, 11, '22', 2, 216, 112, '5V-4', 560.25, 0, NULL, 0, ''),
-(183, 102, 56, '10', 50, 0, 0, '', 0, 0, NULL, 0, ''),
-(184, 102, 17, '6', 7, 4000, 4, '', 33.32, 0, NULL, 0, ''),
-(185, 107, 497, '1', 5, 50, 10, '', 225, 0, NULL, 0, ''),
-(186, 107, 17, '2', 5, 0, 0, '', 33.32, 0, NULL, 5, ''),
-(187, 108, 1, '3', 10, 2, 5, '', 100, 0, NULL, 0, ''),
-(188, 109, 21, '1', 12, 4, 5, '', 2616.45, 0, NULL, 0, ''),
-(189, 110, 1, '1', 2, 30, 50, '', 100, 0, NULL, 0, ''),
-(190, 110, 10, '2', 3, 30, 20, '', 1867.5, 0, NULL, 0, ''),
-(191, 111, 10, '1', 5, 10, 20, '', 1867.5, 0, NULL, 0, ''),
-(192, 112, 376, '3', 8, 7600, 0, 'P3 NH', 13, 0, NULL, 0, ''),
-(193, 112, 18, '4', 16, 469, 0, 'Marcar 8 como: \"P4a NH\" conjunto armado. Marcar 8 como: \"P4b NH\" pieza suelta. ', 2.85, 0, NULL, 0, ''),
-(194, 112, 18, '4A', 8, 400, 0, '', 2.85, 0, NULL, 0, ''),
-(195, 112, 18, '4B', 16, 34, 0, '', 2.85, 0, NULL, 0, ''),
-(196, 113, 18, '1', 2, 2, 1, '', 2.85, 0, NULL, 0, ''),
-(197, 114, 376, '38', 1, 5600, 0, 'P38', 13, 0, NULL, 0, ''),
-(199, 115, 376, '39.1', 1, 5460, 0, 'P39.2', 13, 0, NULL, 0, ''),
-(200, 116, 376, 'POS.39.2', 1, 5460, 0, 'P.39.2', 13, 0, NULL, 0, ''),
-(201, 117, 372, '37', 1, 2300, 0, 'P37', 8, 0, NULL, 0, ''),
-(202, 117, 372, '37A', 1, 830, 0, '', 8, 0, NULL, 0, ''),
-(203, 118, 11, '37', 2, 220, 300, '', 560.25, 0, NULL, 0, ''),
-(204, 119, 376, '38', 1, 5600, 0, 'P38', 13, 0, NULL, 0, ''),
-(205, 120, 376, '39.1', 1, 5460, 0, 'P39.2', 13, 0, NULL, 0, ''),
-(206, 121, 376, 'POS.39.2', 1, 5460, 0, 'P.39.2', 13, 0, NULL, 0, ''),
-(207, 122, 372, '37', 1, 2300, 0, 'P37', 8, 0, NULL, 0, ''),
-(208, 122, 372, '37A', 1, 830, 0, '', 8, 0, NULL, 0, ''),
-(209, 123, 10, '3', 1, 2, 5, 'P3 NH', 1867.5, 0, NULL, 0, ''),
-(210, 124, 10, '3', 1, 2, 5, 'P3 NH', 1867.5, 0, NULL, 0, ''),
-(211, 125, 18, '1', 2, 2, 1, '', 2.85, 0, NULL, 0, ''),
-(212, 126, 1, '5', 2, 2, 1, '', 100, 0, NULL, 0, NULL),
-(213, 127, 1, '5', 2, 2, 1, '', 100, 0, NULL, 0, NULL),
-(214, 128, 1, '5', 2, 2, 1, '', 100, 0, NULL, 0, NULL),
-(215, 130, 10, '33', 4, 5, 3, '', 1867.5, 0, NULL, 0, NULL),
-(216, 130, 10, '35', 3, 4, 2, '', 1867.5, 0, NULL, 0, NULL),
-(217, 131, 11, '100', 2, 500, 100, 'SV-2', 560.25, 0, NULL, 0, NULL),
-(218, 132, 18, '1', 2, 2, 1, '', 2.85, 0, NULL, 0, ''),
-(219, 133, 10, '1', 3, 30, 23, '', 1867.5, 0, NULL, 0, 'F26/A36'),
-(220, 134, 12, '1', 2, 500, 0, 'Z1', 61.3, 0, NULL, 0, NULL),
-(221, 134, 10, '2', 3, 500, 100, 'CH', 1867.5, 0, NULL, 0, 'F26/A36'),
-(222, 135, 12, '1', 2, 500, 0, 'Z1', 61.3, 0, NULL, 0, NULL),
-(223, 135, 10, '2', 3, 500, 100, 'CH', 1867.5, 0, NULL, 0, 'F26/A36'),
-(224, 137, 1, 'p1', 5, 627, 230, '', 100, 0, NULL, 0, 'F24'),
-(225, 137, 10, '2', 5, 627, 230, '', 1867.5, 0, NULL, 0, 'F26/A36'),
-(227, 138, 1, 'POS 2', 24, 300, 200, '', 100, 0, NULL, 0, 'F24'),
-(228, 139, 22, 'pos 3', 10, 300, 250, '1x V1, 2x v2, restoV3', 1868.7, 0, NULL, 0, NULL),
-(229, 138, 13, 'POS 1', 35, 5667, 0, '', 25.3, 0, NULL, 0, NULL),
-(230, 140, 1, 'POS 2', 24, 600, 200, '', 100, 0, NULL, 0, 'F24'),
-(231, 140, 13, 'POS 1', 35, 5667, 0, '', 25.3, 0, NULL, 0, NULL),
-(232, 141, 22, 'pos 3', 10, 300, 250, '1x V1, 2x v2, restoV3', 1868.7, 0, NULL, 0, NULL),
-(233, 142, 13, 'po34', 3, 4567, 0, 't1', 25.3, 0, NULL, 0, NULL),
-(234, 142, 22, 'pos 35', 30, 122, 11, '', 1868.7, 0, NULL, 0, NULL),
-(235, 143, 371, '1', 1, 900, 0, '', 8, 0, NULL, 0, NULL),
-(236, 143, 23, '2', 2, 500, 1500, '', 1495.5, 0, NULL, 0, NULL),
-(237, 144, 1, '1', 3, 1000, 1000, 'CH', 105, 0, NULL, 0, 'F24'),
-(238, 144, 12, '2', 4, 2000, 0, 'P1', 61.3, 0, NULL, 0, NULL),
-(239, 145, 1, '1', 3, 1000, 1000, 'CH', 105, 0, NULL, 0, 'F24'),
-(240, 145, 12, '2', 4, 2000, 0, 'P1', 61.3, 0, NULL, 0, NULL),
-(241, 146, 9, '1', 1, 0, 0, '', 1, 0, NULL, 0, NULL);
+INSERT INTO `lista_corte_posiciones` (`id`, `id_lista_corte_conjunto`, `id_material`, `posicion`, `cantidad`, `largo`, `ancho`, `marca`, `peso`, `peso_calculado_posicion`, `finalizado`, `id_colada`, `diametro`, `calidad`) VALUES
+(168, 95, 347, '1', 4, 13000, 0, '', 8, NULL, 0, NULL, 0, ''),
+(169, 95, 21, '2', 4, 13000, 400, '', 2616.45, NULL, 0, NULL, 0, ''),
+(170, 96, 21, '1', 4, 13000, 800, '', 2616.45, NULL, 0, NULL, 0, ''),
+(171, 96, 21, '2', 2, 13000, 400, '', 2616.45, NULL, 0, NULL, 0, ''),
+(172, 97, 413, '1', 2, 13000, 0, '', 42, NULL, 0, NULL, 0, ''),
+(173, 97, 10, '2', 2, 12900, 0, '', 1867.5, NULL, 0, NULL, 0, ''),
+(174, 98, 17, '3', 2, 3000, 0, '', 33.32, NULL, 0, NULL, 0, ''),
+(175, 99, 20, '3', 2, 300, 1000, '', 1.6, NULL, 0, NULL, 0, ''),
+(176, 100, 354, '1', 2, 6000, 100, '', 31, NULL, 0, NULL, 0, ''),
+(177, 102, 1, '4', 35, 5, 10, '', 100, NULL, 0, NULL, 0, ''),
+(178, 103, 13, '18', 1, 4290, 0, '', 25.3, NULL, 0, NULL, 0, ''),
+(179, 103, 11, '8', 1, 216, 112, '5V-4', 560.25, NULL, 0, NULL, 0, ''),
+(180, 104, 13, '10', 1, 2176, 0, '5V-10', 25.3, NULL, 0, NULL, 0, ''),
+(181, 105, 13, '60', 30, 1500, 0, '', 25.3, NULL, 0, NULL, 0, ''),
+(182, 103, 11, '22', 2, 216, 112, '5V-4', 560.25, NULL, 0, NULL, 0, ''),
+(183, 102, 56, '10', 50, 0, 0, '', 0, NULL, 0, NULL, 0, ''),
+(184, 102, 17, '6', 7, 4000, 4, '', 33.32, NULL, 0, NULL, 0, ''),
+(185, 107, 497, '1', 5, 50, 10, '', 225, NULL, 0, NULL, 0, ''),
+(186, 107, 17, '2', 5, 0, 0, '', 33.32, NULL, 0, NULL, 5, ''),
+(187, 108, 1, '3', 10, 2, 5, '', 100, NULL, 0, NULL, 0, ''),
+(188, 109, 21, '1', 12, 4, 5, '', 2616.45, NULL, 0, NULL, 0, ''),
+(189, 110, 1, '1', 2, 30, 50, '', 100, NULL, 0, NULL, 0, ''),
+(190, 110, 10, '2', 3, 30, 20, '', 1867.5, NULL, 0, NULL, 0, ''),
+(191, 111, 10, '1', 5, 10, 20, '', 1867.5, NULL, 0, NULL, 0, ''),
+(192, 112, 376, '3', 8, 7600, 0, 'P3 NH', 13, NULL, 0, NULL, 0, ''),
+(193, 112, 18, '4', 16, 469, 0, 'Marcar 8 como: \"P4a NH\" conjunto armado. Marcar 8 como: \"P4b NH\" pieza suelta. ', 2.85, NULL, 0, NULL, 0, ''),
+(194, 112, 18, '4A', 8, 400, 0, '', 2.85, NULL, 0, NULL, 0, ''),
+(195, 112, 18, '4B', 16, 34, 0, '', 2.85, NULL, 0, NULL, 0, ''),
+(196, 113, 18, '1', 2, 2, 1, '', 2.85, NULL, 0, NULL, 0, ''),
+(197, 114, 376, '38', 1, 5600, 0, 'P38', 13, NULL, 0, NULL, 0, ''),
+(199, 115, 376, '39.1', 1, 5460, 0, 'P39.2', 13, NULL, 0, NULL, 0, ''),
+(200, 116, 376, 'POS.39.2', 1, 5460, 0, 'P.39.2', 13, NULL, 0, NULL, 0, ''),
+(201, 117, 372, '37', 1, 2300, 0, 'P37', 8, NULL, 0, NULL, 0, ''),
+(202, 117, 372, '37A', 1, 830, 0, '', 8, NULL, 0, NULL, 0, ''),
+(204, 119, 376, '38', 1, 5600, 0, 'P38', 13, NULL, 0, NULL, 0, ''),
+(205, 120, 376, '39.1', 1, 5460, 0, 'P39.2', 13, NULL, 0, NULL, 0, ''),
+(206, 121, 376, 'POS.39.2', 1, 5460, 0, 'P.39.2', 13, NULL, 0, NULL, 0, ''),
+(207, 122, 372, '37', 1, 2300, 0, 'P37', 8, NULL, 0, NULL, 0, ''),
+(208, 122, 372, '37A', 1, 830, 0, '', 8, NULL, 0, NULL, 0, ''),
+(209, 123, 10, '3', 1, 2, 5, 'P3 NH', 1867.5, NULL, 0, NULL, 0, ''),
+(210, 124, 10, '3', 1, 2, 5, 'P3 NH', 1867.5, NULL, 0, NULL, 0, ''),
+(211, 125, 18, '1', 2, 2, 1, '', 2.85, NULL, 0, NULL, 0, ''),
+(212, 126, 1, '5', 2, 2, 1, '', 100, NULL, 0, NULL, 0, NULL),
+(213, 127, 1, '5', 2, 2, 1, '', 100, NULL, 0, NULL, 0, NULL),
+(214, 128, 1, '5', 2, 2, 1, '', 100, NULL, 0, NULL, 0, NULL),
+(215, 130, 10, '33', 4, 5, 3, '', 1867.5, NULL, 0, NULL, 0, NULL),
+(216, 130, 10, '35', 3, 4, 2, '', 1867.5, NULL, 0, NULL, 0, NULL),
+(217, 131, 11, '100', 2, 500, 100, 'SV-2', 560.25, NULL, 0, NULL, 0, NULL),
+(218, 132, 18, '1', 2, 2, 1, '', 2.85, NULL, 0, NULL, 0, ''),
+(219, 133, 10, '1', 3, 30, 23, '', 1867.5, NULL, 0, NULL, 0, 'F26/A36'),
+(220, 134, 12, '1', 2, 500, 0, 'Z1', 61.3, NULL, 0, NULL, 0, NULL),
+(221, 134, 10, '2', 3, 500, 100, 'CH', 1867.5, NULL, 0, NULL, 0, 'F26/A36'),
+(222, 135, 12, '1', 2, 500, 0, 'Z1', 61.3, NULL, 0, NULL, 0, NULL),
+(223, 135, 10, '2', 3, 500, 100, 'CH', 1867.5, NULL, 0, NULL, 0, 'F26/A36'),
+(224, 137, 1, 'p1', 5, 627, 230, '', 100, NULL, 0, NULL, 0, 'F24'),
+(225, 137, 10, '2', 5, 627, 230, '', 1867.5, NULL, 0, NULL, 0, 'F26/A36'),
+(227, 138, 1, 'POS 2', 24, 300, 200, '', 100, NULL, 0, NULL, 0, 'F24'),
+(228, 139, 22, 'pos 3', 10, 300, 250, '1x V1, 2x v2, restoV3', 1868.7, NULL, 0, NULL, 0, NULL),
+(229, 138, 13, 'POS 1', 35, 5667, 0, '', 25.3, NULL, 0, NULL, 0, NULL),
+(230, 140, 1, 'POS 2', 24, 600, 200, '', 100, NULL, 0, NULL, 0, 'F24'),
+(231, 140, 13, 'POS 1', 35, 5667, 0, '', 25.3, NULL, 0, NULL, 0, NULL),
+(232, 141, 22, 'pos 3', 10, 300, 250, '1x V1, 2x v2, restoV3', 1868.7, NULL, 0, NULL, 0, NULL),
+(233, 142, 13, 'po34', 3, 4567, 0, 't1', 25.3, NULL, 0, NULL, 0, NULL),
+(234, 142, 22, 'pos 35', 30, 122, 11, '', 1868.7, NULL, 0, NULL, 0, NULL),
+(235, 143, 371, '1', 1, 900, 0, '', 8, NULL, 0, NULL, 0, NULL),
+(236, 143, 23, '2', 2, 500, 1500, '', 1495.5, NULL, 0, NULL, 0, NULL),
+(237, 144, 1, '1', 3, 1000, 1000, 'CH', 105, NULL, 0, NULL, 0, 'F24'),
+(238, 144, 12, '2', 4, 2000, 0, 'P1', 61.3, NULL, 0, NULL, 0, NULL),
+(239, 145, 1, '1', 3, 1000, 1000, 'CH', 105, NULL, 0, NULL, 0, 'F24'),
+(240, 145, 12, '2', 4, 2000, 0, 'P1', 61.3, NULL, 0, NULL, 0, NULL),
+(241, 146, 9, '1', 1, 0, 0, '', 1, NULL, 0, NULL, 0, NULL),
+(242, 147, 14, '1', 5, 20, 10, '4', 12.2, NULL, 0, NULL, 30, NULL),
+(248, 147, 14, '2', 5, 10, 5, '2', 12.2, NULL, 0, NULL, 15, NULL),
+(249, 147, 14, '3', 5, 40, 20, '8', 12.2, NULL, 0, NULL, 60, NULL),
+(250, 148, 14, '1', 5, 2000, 1000, '10', 12.2, 24.4, 0, NULL, 5, NULL),
+(251, 148, 1, '2', 2, 14000, 1000, '2', 105, 1470, 0, NULL, 0, 'F24'),
+(283, 163, 9, '1', 1, 0, 0, '', 1, NULL, 0, NULL, 0, NULL),
+(284, 164, 14, '1', 5, 20, 10, '4', 12.2, NULL, 0, NULL, 30, NULL),
+(285, 164, 14, '1', 5, 10, 5, '2', 12.2, NULL, 0, NULL, 15, NULL),
+(286, 164, 14, '1', 5, 40, 20, '8', 12.2, NULL, 0, NULL, 60, NULL),
+(287, 165, 14, '1', 5, 2000, 1000, '10', 12.2, NULL, 0, NULL, 5, NULL),
+(288, 165, 1, '1', 2, 14000, 1000, '2', 105, NULL, 0, NULL, 0, 'F24'),
+(289, 167, 14, '1', 5, 20, 10, '4', 12.2, NULL, 0, NULL, 30, NULL),
+(290, 167, 14, '1', 5, 10, 5, '2', 12.2, NULL, 0, NULL, 15, NULL),
+(292, 168, 14, '1', 5, 2000, 1000, '10', 12.2, 24.4, 0, NULL, 5, NULL),
+(293, 168, 1, '1', 2, 14000, 1000, '2', 105, 1470, 0, NULL, 0, 'F24'),
+(294, 169, 14, '1', 5, 20, 10, '4', 12.2, NULL, 0, NULL, 30, NULL),
+(295, 169, 14, '1', 5, 10, 5, '2', 12.2, NULL, 0, NULL, 15, NULL),
+(296, 170, 14, '1', 5, 2000, 1000, '10', 12.2, 24.4, 0, NULL, 5, NULL),
+(297, 170, 1, '1', 2, 14000, 1000, '2', 105, 1470, 0, NULL, 0, 'F24'),
+(298, 171, 14, '1', 5, 20, 10, '4', 12.2, NULL, 0, NULL, 30, NULL),
+(299, 171, 14, '1', 5, 10, 5, '2', 12.2, NULL, 0, NULL, 15, NULL),
+(300, 172, 14, '1', 5, 2000, 1000, '10', 12.2, 24.4, 0, NULL, 5, NULL),
+(301, 172, 1, '1', 2, 14000, 1000, '2', 105, 1470, 0, NULL, 0, 'F24'),
+(302, 173, 14, '1', 5, 20, 10, '4', 12.2, NULL, 0, NULL, 30, NULL),
+(303, 173, 14, '1', 5, 10, 5, '2', 12.2, NULL, 0, NULL, 15, NULL),
+(304, 174, 14, '1', 5, 2000, 1000, '10', 12.2, 24.4, 0, NULL, 5, NULL),
+(305, 174, 1, '1', 2, 14000, 1000, '2', 105, 1470, 0, NULL, 0, 'F24'),
+(306, 175, 12, '1', 2, 1500, 0, '', 61.3, 91.95, 0, NULL, 0, NULL),
+(307, 175, 1, '2', 5, 14000, 1000, '', 105, 1470, 0, NULL, 0, 'F24'),
+(308, 176, 26, '4', 5, 2500, 1000, '', 1, 2.5, 0, NULL, 10, NULL),
+(309, 176, 30, '5', 10, 200, 100, '', 0, 0, 0, NULL, 0, NULL),
+(310, 176, 24, '6', 6, 10000, 0, '', 0, 0, 0, NULL, 0, NULL),
+(311, 176, 30, '5', 11, 200, 100, '', 0, 0, 0, NULL, 0, NULL),
+(312, 136, 48, '3', 1, 100, 0, '', 0, 0, 0, NULL, 0, NULL),
+(313, 136, 14, '4', 1, 1000, 0, '', 12.2, 12.2, 0, NULL, 0, NULL),
+(314, 136, 14, '5', 1, 15000, 0, '', 12.2, 183, 0, NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -14220,7 +14427,7 @@ CREATE TABLE `lista_corte_procesos` (
   `id_tipo_proceso` int(11) NOT NULL,
   `observaciones` text NOT NULL,
   `id_estado_lista_corte_proceso` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `lista_corte_procesos`
@@ -14346,7 +14553,6 @@ INSERT INTO `lista_corte_procesos` (`id`, `id_lista_corte_posicion`, `id_tipo_pr
 (707, 202, 7, '', 1),
 (708, 202, 8, '', 1),
 (709, 202, 9, '', 1),
-(710, 203, 9, '', 1),
 (711, 204, 1, '', 1),
 (712, 204, 3, '', 1),
 (713, 204, 5, '', 1),
@@ -14467,7 +14673,109 @@ INSERT INTO `lista_corte_procesos` (`id`, `id_lista_corte_posicion`, `id_tipo_pr
 (863, 239, 11, '', 1),
 (864, 240, 1, '', 1),
 (865, 240, 11, '', 1),
-(866, 241, 9, '', 1);
+(866, 241, 9, '', 1),
+(867, 242, 1, '', 1),
+(868, 242, 2, '', 1),
+(869, 242, 11, '', 1),
+(876, 248, 1, '', 1),
+(877, 248, 2, '', 1),
+(878, 248, 11, '', 1),
+(879, 249, 1, '', 1),
+(880, 249, 2, '', 1),
+(881, 249, 11, '', 1),
+(882, 250, 1, '', 1),
+(883, 250, 2, '', 1),
+(884, 250, 11, '', 1),
+(885, 251, 1, '', 1),
+(886, 251, 9, '', 1),
+(972, 283, 9, '', 1),
+(973, 284, 1, '', 1),
+(974, 284, 2, '', 1),
+(975, 284, 11, '', 1),
+(976, 285, 1, '', 1),
+(977, 285, 2, '', 1),
+(978, 285, 11, '', 1),
+(979, 286, 1, '', 1),
+(980, 286, 2, '', 1),
+(981, 286, 11, '', 1),
+(982, 287, 1, '', 1),
+(983, 287, 2, '', 1),
+(984, 287, 11, '', 1),
+(985, 288, 1, '', 1),
+(986, 288, 9, '', 1),
+(987, 289, 1, '', 1),
+(988, 289, 2, '', 1),
+(989, 289, 11, '', 1),
+(990, 290, 1, '', 1),
+(991, 290, 2, '', 1),
+(992, 290, 11, '', 1),
+(996, 292, 1, '', 1),
+(997, 292, 2, '', 1),
+(998, 292, 11, '', 1),
+(999, 293, 1, '', 1),
+(1000, 293, 9, '', 1),
+(1001, 294, 1, '', 1),
+(1002, 294, 2, '', 1),
+(1003, 294, 11, '', 1),
+(1004, 295, 1, '', 1),
+(1005, 295, 2, '', 1),
+(1006, 295, 11, '', 1),
+(1007, 296, 1, '', 1),
+(1008, 296, 2, '', 1),
+(1009, 296, 11, '', 1),
+(1010, 297, 1, '', 1),
+(1011, 297, 9, '', 1),
+(1012, 298, 1, '', 1),
+(1013, 298, 2, '', 1),
+(1014, 298, 11, '', 1),
+(1015, 299, 1, '', 1),
+(1016, 299, 2, '', 1),
+(1017, 299, 11, '', 1),
+(1018, 300, 1, '', 1),
+(1019, 300, 2, '', 1),
+(1020, 300, 11, '', 1),
+(1021, 301, 1, '', 1),
+(1022, 301, 9, '', 1),
+(1023, 302, 1, '', 1),
+(1024, 302, 2, '', 1),
+(1025, 302, 11, '', 1),
+(1026, 303, 1, '', 1),
+(1027, 303, 2, '', 1),
+(1028, 303, 11, '', 1),
+(1029, 304, 1, '', 1),
+(1030, 304, 2, '', 1),
+(1031, 304, 11, '', 1),
+(1032, 305, 1, '', 1),
+(1033, 305, 9, '', 1),
+(1038, 307, 2, '', 1),
+(1039, 307, 3, '', 1),
+(1040, 307, 6, '', 1),
+(1041, 307, 11, '', 1),
+(1054, 306, 2, '', 1),
+(1055, 306, 4, '', 1),
+(1056, 306, 6, '', 1),
+(1057, 306, 10, '', 1),
+(1058, 308, 2, '', 1),
+(1059, 308, 4, '', 1),
+(1060, 308, 11, '', 1),
+(1062, 309, 7, '', 1),
+(1063, 309, 8, '', 1),
+(1064, 309, 11, '', 1),
+(1065, 310, 4, '', 1),
+(1066, 310, 5, '', 1),
+(1067, 310, 11, '', 1),
+(1068, 311, 7, '', 1),
+(1069, 311, 8, '', 1),
+(1070, 311, 11, '', 1),
+(1071, 312, 2, '', 1),
+(1072, 312, 5, '', 1),
+(1073, 312, 11, '', 1),
+(1074, 313, 1, '', 1),
+(1075, 313, 2, '', 1),
+(1076, 313, 10, '', 1),
+(1077, 314, 2, '', 1),
+(1078, 314, 4, '', 1),
+(1079, 314, 10, '', 1);
 
 -- --------------------------------------------------------
 
@@ -14479,7 +14787,7 @@ CREATE TABLE `localidades` (
   `id` int(11) NOT NULL,
   `localidad` varchar(99) NOT NULL,
   `id_provincia` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `localidades`
@@ -18492,7 +18800,7 @@ CREATE TABLE `logs` (
   `detalle_accion` varchar(299) NOT NULL,
   `modulo` varchar(99) NOT NULL,
   `link` varchar(199) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `logs`
@@ -20912,7 +21220,141 @@ INSERT INTO `logs` (`id`, `fecha_hora`, `id_usuario`, `detalle_accion`, `modulo`
 (2466, '2025-07-16 09:44:58', 1, 'Nuevo Conjunto ID #146 de Lista de Corte', 'Listas de Corte', ''),
 (2467, '2025-07-16 09:46:17', 1, 'Nueva Posición ID #241 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
 (2468, '2025-07-23 16:48:54', 1, 'Nueva Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=95'),
-(2469, '2025-07-23 17:13:38', 1, 'Nueva Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=96');
+(2469, '2025-07-23 17:13:38', 1, 'Nueva Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=96'),
+(2470, '2025-07-23 19:24:04', 1, 'Nueva Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=97'),
+(2471, '2025-07-25 19:45:58', 1, 'Nueva Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=98'),
+(2472, '2025-07-26 13:52:13', 1, 'Nuevo Conjunto ID #147 de Lista de Corte', 'Listas de Corte', ''),
+(2473, '2025-07-26 13:53:47', 1, 'Modificacion de Conjunto ID #147 de Lista de Corte', 'Listas de Corte', ''),
+(2474, '2025-07-28 19:29:06', 1, 'Modificacion de Conjunto ID #147 de Lista de Corte', 'Listas de Corte', ''),
+(2475, '2025-07-28 19:29:22', 1, 'Modificacion de Conjunto ID #147 de Lista de Corte', 'Listas de Corte', ''),
+(2476, '2025-07-28 19:48:54', 1, 'Nuevo Conjunto ID #148 de Lista de Corte', 'Listas de Corte', ''),
+(2477, '2025-07-28 21:36:20', 1, 'Nueva Posición ID #246 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2478, '2025-07-28 21:38:42', 1, 'Eliminación de posición ID #246 de conjunto en lista de corte', 'Listas de Corte', ''),
+(2479, '2025-07-28 21:39:38', 1, 'Nueva Posición ID #247 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', '');
+INSERT INTO `logs` (`id`, `fecha_hora`, `id_usuario`, `detalle_accion`, `modulo`, `link`) VALUES
+(2480, '2025-07-29 07:41:28', 1, 'Eliminación de posición ID #247 de conjunto en lista de corte', 'Listas de Corte', ''),
+(2481, '2025-07-29 07:47:05', 1, 'Nueva Posición ID #248 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2482, '2025-07-29 07:52:02', 1, 'Nueva Posición ID #249 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2483, '2025-07-29 11:55:19', 1, 'Nueva Posición ID #250 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2484, '2025-07-29 18:25:37', 1, 'Nueva Posición ID #251 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2485, '2025-07-31 09:53:58', 1, 'Aprobación de la lista de corte.', 'Listas de Corte', 'imprimirListaCorte.php?id=98'),
+(2486, '2025-07-31 12:06:37', 1, 'Nuevo Conjunto ID #149 de Lista de Corte', 'Listas de Corte', ''),
+(2494, '2025-08-04 17:04:14', 1, 'Se ha clonado una Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=106'),
+(2495, '2025-08-04 17:05:43', 1, 'Se ha clonado una Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=107'),
+(2496, '2025-08-04 17:11:30', 1, 'Se ha clonado una Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=109'),
+(2497, '2025-08-04 17:52:36', 1, 'Eliminación de lista de corte ID #108', 'Listas de Corte', ''),
+(2498, '2025-08-04 19:39:09', 1, 'Eliminación de posición ID #291 de conjunto en lista de corte', 'Listas de Corte', ''),
+(2499, '2025-08-06 09:01:49', 1, 'Se ha clonado una Lista de Corte', 'Listas de Corte', 'imprimirListaCorte.php?id=110'),
+(2500, '2025-08-06 09:02:44', 1, 'Aprobación de la lista de corte.', 'Listas de Corte', 'imprimirListaCorte.php?id=109'),
+(2504, '2025-08-06 09:28:26', 1, 'Aprobación de la lista de corte.', 'Listas de Corte', 'imprimirListaCorte.php?id=109'),
+(2505, '2025-08-06 17:34:05', 1, 'Nueva revisión de lista de corte', 'Listas de Corte', 'imprimirListaCorte.php?id=111'),
+(2506, '2025-08-06 17:35:52', 1, 'Nueva revisión de lista de corte', 'Listas de Corte', 'imprimirListaCorte.php?id=112'),
+(2509, '2025-08-07 10:40:22', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2510, '2025-08-07 10:40:33', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2511, '2025-08-07 15:09:13', 1, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte', ''),
+(2512, '2025-08-07 15:09:13', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2513, '2025-08-13 11:47:10', 1, 'Aprobación de la lista de corte.', 'Listas de Corte', 'imprimirListaCorte.php?id=98'),
+(2515, '2025-08-19 08:37:14', 1, 'Nuevo Conjunto ID #175 de Lista de Corte', 'Listas de Corte', ''),
+(2516, '2025-08-19 08:41:25', 1, 'Nueva Posición ID #306 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2517, '2025-08-19 08:42:30', 1, 'Nueva Posición ID #307 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2518, '2025-08-19 08:56:00', 1, 'Modificación de posición ID #306 en conjunto de lista de corte', 'Listas de Corte', ''),
+(2519, '2025-08-19 08:56:19', 1, 'Modificación de posición ID #306 en conjunto de lista de corte', 'Listas de Corte', ''),
+(2520, '2025-08-19 08:56:40', 1, 'Modificación de posición ID #306 en conjunto de lista de corte', 'Listas de Corte', ''),
+(2521, '2025-08-19 08:57:21', 1, 'Modificación de posición ID #306 en conjunto de lista de corte', 'Listas de Corte', ''),
+(2522, '2025-08-19 09:51:44', 1, 'Eliminación de lista de corte ID #112', 'Listas de Corte', ''),
+(2523, '2025-08-20 16:56:25', 1, 'Eliminación de orden de trabajo ID #16', 'Ordenes de Trabajo', ''),
+(2527, '2025-08-20 18:42:42', 1, 'Lista de Corte pasada a En Proceso al crear primera OT', 'Lista de Corte', ''),
+(2528, '2025-08-20 18:42:42', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2529, '2025-08-21 09:59:11', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2530, '2025-08-21 11:32:47', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2531, '2025-08-21 11:41:49', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2532, '2025-08-21 11:42:19', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2533, '2025-08-21 13:14:13', 1, 'Nuevo Conjunto ID #176 de Lista de Corte', 'Listas de Corte', ''),
+(2534, '2025-08-22 08:00:31', 1, 'Envio a producción OT', 'Orden de Trabajo', 'verOrdenTrabajo.php?id=20'),
+(2535, '2025-08-22 09:41:56', 1, 'Nueva Posición ID #308 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2536, '2025-08-22 09:42:40', 1, 'Nueva Posición ID #309 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2537, '2025-08-22 09:56:08', 1, 'Modificación de posición ID #309 en conjunto de lista de corte', 'Listas de Corte', ''),
+(2538, '2025-08-22 10:11:07', 1, 'Nueva Posición ID #310 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2539, '2025-08-22 12:17:21', 1, 'Nueva Posición ID #311 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2540, '2025-08-26 10:10:53', 1, 'Eliminación de orden de trabajo ID #20', 'Ordenes de Trabajo', ''),
+(2541, '2025-08-26 10:38:26', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2542, '2025-08-26 11:42:06', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2553, '2025-08-27 08:23:43', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2554, '2025-08-27 08:44:34', 1, 'Envio a producción OT', 'Orden de Trabajo', 'verOrdenTrabajo.php?id=21'),
+(2555, '2025-08-27 08:55:17', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2556, '2025-08-27 09:00:45', 1, 'Modificación de notificaciones de usuario', 'Perfiles', 'modificarUsuario.php?id=1'),
+(2557, '2025-08-27 09:00:59', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2561, '2025-08-27 10:19:21', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2562, '2025-08-27 10:19:51', 1, 'Envio a producción OT', 'Orden de Trabajo', 'verOrdenTrabajo.php?id=21'),
+(2563, '2025-08-27 10:21:26', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2564, '2025-08-27 10:25:10', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2565, '2025-08-27 12:04:13', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2566, '2025-08-27 12:04:45', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2567, '2025-08-27 12:05:42', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2569, '2025-08-27 16:56:11', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2570, '2025-08-27 16:57:01', 1, 'Modificacion de Orden de Trabajo', 'Orden de Trabajo', ''),
+(2571, '2025-08-27 16:57:22', 1, 'Envio a producción OT', 'Orden de Trabajo', 'verOrdenTrabajo.php?id=30'),
+(2572, '2025-08-27 17:46:56', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2573, '2025-08-27 17:47:45', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2574, '2025-08-27 17:48:02', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2575, '2025-08-27 17:48:29', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2576, '2025-08-27 17:48:42', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2577, '2025-08-27 17:50:10', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2578, '2025-08-27 17:50:39', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2579, '2025-08-27 17:50:54', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2580, '2025-08-27 17:51:20', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2581, '2025-08-27 17:51:33', 1, 'Modificacion de Cantidades en Orden de Trabajo', 'Orden de Trabajo', ''),
+(2582, '2025-09-26 10:48:41', 1, 'Aprobación de pedido', 'Pedidos', 'verPedido.php?id=223'),
+(2583, '2025-09-26 10:50:06', 1, 'Modificacion de Estado de Pedido', 'Pedidos', ''),
+(2584, '2025-10-05 22:26:08', 1, 'Nuevo Concepto', 'Conceptos', 'verConcepto.php?id='),
+(2585, '2025-10-05 22:26:21', 1, 'Eliminación de concepto ID #500', 'Conceptos', ''),
+(2586, '2025-10-15 16:38:14', 1, 'Modificacion de Conjunto ID #133 de Lista de Corte', 'Listas de Corte', ''),
+(2587, '2025-10-15 16:38:39', 1, 'Modificacion de Conjunto ID #136 de Lista de Corte', 'Listas de Corte', ''),
+(2588, '2025-10-15 16:42:09', 1, 'Nueva Posición ID #312 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2589, '2025-10-15 16:44:21', 1, 'Nueva Posición ID #313 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2590, '2025-10-15 16:45:26', 1, 'Nueva Posición ID #314 de Concepto en Conjunto de Lista de Corte', 'Listas de Corte', ''),
+(2591, '2025-10-15 16:50:50', 1, 'Nueva Orden de Trabajo', 'Orden de Trabajo', ''),
+(2592, '2025-10-15 17:20:13', 1, 'Modificacion de Estado de Pedido', 'Pedidos', ''),
+(2593, '2025-10-15 17:28:03', 1, 'Se ha modificado un item de un pedido', 'Pedidos', 'verPedido.php?id=225'),
+(2594, '2025-10-15 17:28:13', 1, 'Se ha modificado un item de un pedido', 'Pedidos', 'verPedido.php?id=225'),
+(2595, '2025-10-23 11:10:13', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2596, '2025-10-23 11:53:56', 1, 'Aprobación de pedido', 'Pedidos', 'verPedido.php?id=222'),
+(2597, '2025-10-23 14:06:21', 1, 'Se ha modificado un item de un pedido', 'Pedidos', 'verPedido.php?id=226'),
+(2598, '2025-10-23 14:06:37', 1, 'Se ha modificado un item de un pedido', 'Pedidos', 'verPedido.php?id=226'),
+(2599, '2025-10-23 14:06:51', 1, 'Se ha modificado un item de un pedido', 'Pedidos', 'verPedido.php?id=226'),
+(2600, '2025-10-31 19:19:55', 1, 'Modificacion de Estado de Pedido', 'Pedidos', ''),
+(2601, '2025-10-31 19:20:13', 1, 'Aprobación de pedido', 'Pedidos', 'verPedido.php?id=224'),
+(2602, '2025-11-20 18:44:09', 1, 'Se ha agregado un nuevo item a un pedido', 'Pedidos', 'verPedido.php?id=227'),
+(2603, '2025-11-20 18:44:26', 1, 'Se ha modificado un item (ID: 105) de un pedido', 'Pedidos', 'verPedido.php?id=227'),
+(2604, '2025-11-20 18:44:34', 1, 'Se ha agregado un nuevo item a un pedido', 'Pedidos', 'verPedido.php?id=227'),
+(2605, '2025-11-27 09:51:13', 1, 'Nuevo Suceso', 'Proyectos', 'verProyecto.php?id=25'),
+(2606, '2025-11-27 11:18:15', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=32'),
+(2607, '2025-12-03 19:08:21', 1, 'Nuevo Suceso', 'Proyectos', 'verProyecto.php?id=14'),
+(2608, '2025-12-03 19:13:42', 1, 'Nuevo Suceso', 'Compras', 'verCompra.php?id=34'),
+(2609, '2025-12-05 12:02:42', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=40'),
+(2610, '2025-12-05 14:08:28', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=41'),
+(2611, '2025-12-05 14:16:13', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=42'),
+(2612, '2025-12-05 18:56:44', 1, 'Modificación de parámetro del sistema ID #10', 'Parámetros', ''),
+(2613, '2025-12-05 18:56:52', 1, 'Modificación de parámetro del sistema ID #11', 'Parámetros', ''),
+(2614, '2025-12-05 18:57:07', 1, 'Modificación de parámetro del sistema ID #11', 'Parámetros', ''),
+(2615, '2025-12-08 15:59:52', 1, 'Modificacion de Estado de Pedido', 'Pedidos', ''),
+(2616, '2025-12-08 16:02:07', 1, 'Modificación de Estado de Compra', 'Compras', 'verCompra.php?id=39'),
+(2617, '2025-12-08 16:04:04', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=39'),
+(2618, '2025-12-08 16:35:00', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=39'),
+(2619, '2025-12-08 20:16:09', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2620, '2025-12-08 20:21:49', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2621, '2025-12-08 23:01:33', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2622, '2025-12-09 09:28:02', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2623, '2025-12-09 09:36:32', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2625, '2025-12-09 11:31:20', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2626, '2025-12-09 11:37:26', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=43'),
+(2627, '2025-12-09 13:00:50', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=44'),
+(2632, '2025-12-09 15:12:50', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=49'),
+(2633, '2025-12-09 15:17:16', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2634, '2025-12-09 15:28:56', 1, 'Modificación de Estado de Compra', 'Compras', 'verCompra.php?id=49'),
+(2635, '2025-12-09 15:48:25', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=49'),
+(2636, '2025-12-09 15:49:45', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=49'),
+(2637, '2025-12-09 15:59:35', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=49');
 
 -- --------------------------------------------------------
 
@@ -20933,7 +21375,7 @@ CREATE TABLE `materiales` (
   `stock_minimo` double NOT NULL,
   `anulado` tinyint(4) NOT NULL,
   `calidad` varchar(99) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `materiales`
@@ -20948,8 +21390,8 @@ INSERT INTO `materiales` (`id`, `codigo`, `concepto`, `descripcion`, `largo`, `p
 (7, 'A7', 'Concepto7', '', 1, 1, 1, 1, 1, 1, 1, NULL),
 (8, 'A8', 'Concepto8', '', 1, 1, 1, 1, 1, 1, 1, NULL),
 (9, 'tDgWji', 'Pintura Esmalte sintetico secado rápido rojo', '', 1, 1, 17, 1, 1, 20, 0, NULL),
-(10, 'CHA0001', 'Chapa 7,9 x 2500 x 12000', '', 1000, 1867.5, 12, 1, 1, 5, 0, 'F26/A36'),
-(11, 'CHA0002', 'Chapa 7,9 x 1500 x 6000 Calidad F24', '', 1000, 560.25, 12, 1, 1, 5, 0, NULL),
+(10, 'CHA0001', 'Chapa 7,9 x 2500 x 12000', '', 1000, 18.675, 12, 1, 1, 5, 0, 'F26/A36'),
+(11, 'CHA0002', 'Chapa 7,9 x 1500 x 6000 Calidad F24', '', 1000, 5.6025, 12, 1, 1, 5, 0, NULL),
 (12, 'HEB0001', 'Perfil HEB 200 x 12000 Cal F36', '', 12000, 61.3, 16, 1, 1, 3, 0, NULL),
 (13, 'UPN00001', 'Perfil UPN 200 x 12000 Calidad F26', '', 12000, 25.3, 16, 1, 1, 3, 0, NULL),
 (14, 'ANG0001', 'Angulo 4 x 5/16 x 12000 Calidad F36', '', 12000, 12.2, 16, 1, 1, 3, 0, NULL),
@@ -20959,9 +21401,9 @@ INSERT INTO `materiales` (`id`, `codigo`, `concepto`, `descripcion`, `largo`, `p
 (18, 'PLA0001', 'Planchuela 3 x 3/16 x 6000 Calidad F-24', '', 6000, 2.85, 16, 1, 1, 2, 0, NULL),
 (19, 'PLA0002', 'Planchuela 2 x 1/4 x 6000 Calidad F24', '', 6000, 5.53, 16, 1, 1, 2, 0, NULL),
 (20, 'HIE0001', 'Hierro Redondo laminado  15.9 x 6000 mm Calidad SAE 1010', '', 6000, 1.6, 16, 1, 1, 2, 0, NULL),
-(21, 'CHA0003', 'Chapa 22,2 x 2500 x 6000 Calidad F36', '', 1000, 2616.45, 12, 1, 1, 2, 0, NULL),
-(22, 'CHA0004', 'Chapa 15,9 x 2500 x 6000 Calidad F36', '', 1000, 1868.7, 12, 1, 1, 2, 0, NULL),
-(23, 'CHA0005', 'Chapa 12,7 x 2500 x 6000 Calidad F36', '', 1000, 1495.5, 12, 1, 1, 2, 0, NULL),
+(21, 'CHA0003', 'Chapa 22,2 x 2500 x 6000 Calidad F36', '', 1000, 26.1645, 12, 1, 1, 2, 0, NULL),
+(22, 'CHA0004', 'Chapa 15,9 x 2500 x 6000 Calidad F36', '', 1000, 18.687, 12, 1, 1, 2, 0, NULL),
+(23, 'CHA0005', 'Chapa 12,7 x 2500 x 6000 Calidad F36', '', 1000, 14.955, 12, 1, 1, 2, 0, NULL),
 (24, 'CAB0001', 'Cable de Acero Ø10  (6x19)', '', 250, 0, 10, 1, 1, 2, 0, NULL),
 (25, 'Fer0001', 'Candado verde claro', '', 1, 1, 14, 1, 1, 1, 0, NULL),
 (26, 'Bal6578', 'Baliza verde ', 'Plastica ', 1, 1, 3, 1, 1, 1, 0, NULL),
@@ -21434,7 +21876,8 @@ INSERT INTO `materiales` (`id`, `codigo`, `concepto`, `descripcion`, `largo`, `p
 (496, 'HEB600x12F36', 'Perfil HEB 600 x 12000 - Calidad F36', '0', 12000, 212, 16, 1, 1, 1, 0, NULL),
 (497, 'HEB650x12F36', 'Perfil HEB 650 x 12000 - Calidad F36', '0', 12000, 225, 16, 1, 1, 1, 0, NULL),
 (498, 'HEB700x12F36', 'Perfil HEB 700 x 12000 - Calidad F36', '0', 12000, 241, 16, 1, 1, 1, 0, NULL),
-(499, 'HEB1000x12F36', 'Perfil HEB 1000 x 12000 - Calidad F36', '0', 12000, 314, 16, 1, 1, 1, 0, NULL);
+(499, 'HEB1000x12F36', 'Perfil HEB 1000 x 12000 - Calidad F36', '0', 12000, 314, 16, 1, 1, 1, 0, NULL),
+(500, 'ac1', 'acero uno', 'es un acero super duro', 70, 150, 50, 1, 1, 10, 1, 'TOP');
 
 -- --------------------------------------------------------
 
@@ -21445,7 +21888,7 @@ INSERT INTO `materiales` (`id`, `codigo`, `concepto`, `descripcion`, `largo`, `p
 CREATE TABLE `monedas` (
   `id` int(11) NOT NULL,
   `moneda` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `monedas`
@@ -21469,7 +21912,7 @@ CREATE TABLE `notificaciones` (
   `leida` tinyint(4) NOT NULL,
   `detalle` text NOT NULL,
   `id_entidad` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `notificaciones`
@@ -21916,7 +22359,75 @@ INSERT INTO `notificaciones` (`id`, `id_tipo_notificacion`, `id_usuario`, `fecha
 (438, 5, 1, '2025-07-23 16:49:15', 0, 'ID Lista de Corte: #95', 95),
 (439, 5, 3, '2025-07-23 17:13:38', 0, 'ID Lista de Corte: #96', 96),
 (440, 5, 9, '2025-07-23 17:13:38', 0, 'ID Lista de Corte: #96', 96),
-(441, 5, 1, '2025-07-23 17:13:38', 0, 'ID Lista de Corte: #96', 96);
+(441, 5, 1, '2025-07-23 17:13:38', 0, 'ID Lista de Corte: #96', 96),
+(442, 5, 3, '2025-07-23 19:24:04', 0, 'ID Lista de Corte: #97', 97),
+(443, 5, 9, '2025-07-23 19:24:04', 0, 'ID Lista de Corte: #97', 97),
+(444, 5, 1, '2025-07-23 19:24:04', 0, 'ID Lista de Corte: #97', 97),
+(445, 5, 3, '2025-07-25 19:45:58', 0, 'ID Lista de Corte: #98', 98),
+(446, 5, 9, '2025-07-25 19:45:58', 0, 'ID Lista de Corte: #98', 98),
+(447, 5, 1, '2025-07-25 19:45:58', 0, 'ID Lista de Corte: #98', 98),
+(448, 5, 3, '2025-07-31 09:05:14', 0, 'ID Computo: #98', 98),
+(449, 5, 9, '2025-07-31 09:05:17', 0, 'ID Computo: #98', 98),
+(450, 5, 1, '2025-07-31 09:05:20', 0, 'ID Computo: #98', 98),
+(451, 5, 3, '2025-08-04 19:39:34', 0, 'ID Computo: #109', 109),
+(452, 5, 9, '2025-08-04 19:39:45', 0, 'ID Computo: #109', 109),
+(453, 5, 1, '2025-08-04 19:39:55', 0, 'ID Computo: #109', 109),
+(454, 8, 3, '2025-08-07 15:09:13', 0, 'ID Orden de Trabajo: #16', 16),
+(455, 8, 9, '2025-08-07 15:09:23', 0, 'ID Orden de Trabajo: #16', 16),
+(456, 8, 1, '2025-08-07 15:09:33', 0, 'ID Orden de Trabajo: #16', 16),
+(457, 5, 3, '2025-08-19 09:52:05', 0, 'ID Computo: #111', 111),
+(458, 5, 9, '2025-08-19 09:52:15', 0, 'ID Computo: #111', 111),
+(459, 5, 1, '2025-08-19 09:52:25', 1, 'ID Computo: #111', 111),
+(460, 8, 3, '2025-08-20 18:42:42', 0, 'ID Orden de Trabajo: #20', 20),
+(461, 8, 9, '2025-08-20 18:42:52', 0, 'ID Orden de Trabajo: #20', 20),
+(462, 8, 1, '2025-08-20 18:43:02', 0, 'ID Orden de Trabajo: #20', 20),
+(463, 8, 3, '2025-08-22 08:00:31', 0, 'ID OT: #20', 20),
+(464, 8, 9, '2025-08-22 08:00:41', 0, 'ID OT: #20', 20),
+(465, 8, 1, '2025-08-22 08:00:51', 0, 'ID OT: #20', 20),
+(466, 8, 3, '2025-08-27 08:44:34', 0, 'ID OT: #21', 21),
+(467, 8, 9, '2025-08-27 08:44:44', 0, 'ID OT: #21', 21),
+(468, 8, 1, '2025-08-27 08:44:54', 0, 'ID OT: #21', 21),
+(469, 19, 1, '2025-08-27 09:00:59', 0, 'ID Orden de Trabajo: #21', 21),
+(473, 19, 1, '2025-08-27 10:19:21', 0, 'ID Orden de Trabajo: #21', 21),
+(474, 21, 1, '2025-08-27 10:19:51', 0, 'ID OT: #21', 21),
+(475, 19, 1, '2025-08-27 16:57:01', 0, 'ID Orden de Trabajo: #30', 30),
+(476, 21, 1, '2025-08-27 16:57:22', 0, 'ID OT: #30', 30),
+(477, 3, 3, '2025-09-26 10:48:41', 0, 'ID Pedido: #223', 223),
+(478, 3, 1, '2025-09-26 10:48:51', 0, 'ID Pedido: #223', 223),
+(479, 4, 3, '2025-10-23 11:10:13', 0, 'ID Orden de Compra: #39', 39),
+(480, 4, 1, '2025-10-23 11:10:23', 0, 'ID Orden de Compra: #39', 39),
+(481, 3, 3, '2025-10-23 11:53:56', 0, 'ID Pedido: #222', 222),
+(482, 3, 1, '2025-10-23 11:54:06', 0, 'ID Pedido: #222', 222),
+(483, 3, 3, '2025-10-31 19:20:13', 0, 'ID Pedido: #224', 224),
+(484, 3, 1, '2025-10-31 19:20:23', 0, 'ID Pedido: #224', 224),
+(485, 12, 3, '2025-11-27 09:51:13', 0, 'ID Proyecto: #25', 25),
+(486, 12, 1, '2025-11-27 09:51:23', 0, 'ID Proyecto: #25', 25),
+(487, 2, 3, '2025-11-27 11:18:15', 0, 'ID Compra: #32', 32),
+(488, 2, 1, '2025-11-27 11:18:26', 0, 'ID Compra: #32', 32),
+(489, 12, 3, '2025-12-03 19:08:21', 0, 'ID Proyectos: #14', 14),
+(490, 12, 1, '2025-12-03 19:08:24', 0, 'ID Proyectos: #14', 14),
+(491, 12, 3, '2025-12-03 19:13:42', 0, 'ID Compras: #34', 34),
+(492, 12, 1, '2025-12-03 19:13:45', 0, 'ID Compras: #34', 34),
+(493, 4, 3, '2025-12-05 12:02:42', 0, 'ID OC: #40 - Pendiente de Aprobación', 40),
+(494, 4, 1, '2025-12-05 12:02:45', 0, 'ID OC: #40 - Pendiente de Aprobación', 40),
+(495, 4, 3, '2025-12-05 14:08:28', 0, 'OC: 41/ - Pendiente de Aprobación', 41),
+(496, 4, 1, '2025-12-05 14:08:30', 0, 'OC: 41/ - Pendiente de Aprobación', 41),
+(497, 4, 3, '2025-12-05 14:16:13', 0, 'OC: 42/0 - APROBADA (Automática)', 42),
+(498, 4, 1, '2025-12-05 14:16:15', 0, 'OC: 42/0 - APROBADA (Automática)', 42),
+(499, 2, 3, '2025-12-08 16:04:04', 0, 'ID Compra: #39', 39),
+(500, 2, 1, '2025-12-08 16:04:15', 0, 'ID Compra: #39', 39),
+(501, 2, 3, '2025-12-08 16:35:00', 0, 'ID Compra: #39', 39),
+(502, 2, 1, '2025-12-08 16:35:10', 0, 'ID Compra: #39', 39),
+(503, 4, 3, '2025-12-09 11:37:26', 0, 'OC: 43/0 - Pendiente de Aprobación', 43),
+(504, 4, 1, '2025-12-09 11:37:29', 0, 'OC: 43/0 - Pendiente de Aprobación', 43),
+(505, 4, 3, '2025-12-09 13:00:50', 0, 'OC: 44/0 - Pendiente de Aprobación', 44),
+(506, 4, 1, '2025-12-09 13:00:52', 0, 'OC: 44/0 - Pendiente de Aprobación', 44),
+(515, 4, 3, '2025-12-09 15:12:50', 0, 'OC: 49/0 - Pendiente de Aprobación', 49),
+(516, 4, 1, '2025-12-09 15:12:53', 0, 'OC: 49/0 - Pendiente de Aprobación', 49),
+(517, 2, 3, '2025-12-09 15:28:56', 0, 'ID Compra: #49', 49),
+(518, 2, 1, '2025-12-09 15:28:59', 0, 'ID Compra: #49', 49),
+(519, 2, 3, '2025-12-09 15:48:25', 0, 'ID Compra: #49', 49),
+(520, 2, 1, '2025-12-09 15:48:28', 0, 'ID Compra: #49', 49);
 
 -- --------------------------------------------------------
 
@@ -21946,7 +22457,7 @@ CREATE TABLE `occ` (
   `activa` tinyint(4) NOT NULL,
   `monto_total_certificados` double NOT NULL,
   `monto_total_facturados` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `occ`
@@ -21974,7 +22485,7 @@ CREATE TABLE `occ_detalles` (
   `precio_unitario` double NOT NULL,
   `descuento` double NOT NULL,
   `subtotal` double NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `occ_detalles`
@@ -22028,7 +22539,7 @@ CREATE TABLE `occ_tipos_cobertura` (
   `id` int(11) NOT NULL,
   `id_occ` int(11) NOT NULL,
   `id_tipo_cobertura` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `occ_tipos_cobertura`
@@ -22052,7 +22563,7 @@ INSERT INTO `occ_tipos_cobertura` (`id`, `id_occ`, `id_tipo_cobertura`) VALUES
 
 CREATE TABLE `ordenes_trabajo` (
   `id` int(11) NOT NULL,
-  `id_orden_trabajo` int(11) DEFAULT NULL,
+  `nro_orden_trabajo` int(11) NOT NULL,
   `id_lista_corte` int(11) NOT NULL,
   `fecha` date NOT NULL,
   `id_usuario` int(11) NOT NULL,
@@ -22063,13 +22574,13 @@ CREATE TABLE `ordenes_trabajo` (
   `numero` varchar(99) NOT NULL,
   `descripcion` text NOT NULL,
   `notas` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Volcado de datos para la tabla `ordenes_trabajo`
 --
 
-INSERT INTO `ordenes_trabajo` (`id`, `id_orden_trabajo`, `id_lista_corte`, `fecha`, `id_usuario`, `id_estado_orden_trabajo`, `nro_revision`, `anulado`, `titulo`, `numero`, `descripcion`, `notas`) VALUES
+INSERT INTO `ordenes_trabajo` (`id`, `nro_orden_trabajo`, `id_lista_corte`, `fecha`, `id_usuario`, `id_estado_orden_trabajo`, `nro_revision`, `anulado`, `titulo`, `numero`, `descripcion`, `notas`) VALUES
 (1, 1, 72, '2024-10-03', 9, 1, 0, 0, 'hhhh', 'LC72-OT1', 'Emision original', 'jjj'),
 (2, 2, 63, '2024-10-08', 5, 1, 0, 0, 'completa', 'LC63-OT2', 'Emision original', ''),
 (3, 2, 63, '2024-10-08', 5, 1, 1, 0, 'completa', 'LC63-OT2', 'Emision original', ''),
@@ -22079,7 +22590,12 @@ INSERT INTO `ordenes_trabajo` (`id`, `id_orden_trabajo`, `id_lista_corte`, `fech
 (7, 7, 79, '2025-02-14', 9, 1, 0, 0, 'Zancas', 'LC79-OT7', 'Emision original', 'Fabricación de zancas'),
 (8, 5, 63, '2024-12-04', 3, 1, 1, 0, 'completa', 'LC63-OT5', 'Emision original', ''),
 (9, 9, 88, '2025-02-21', 5, 1, 0, 0, 'VIGAS', 'LC88-OT9', 'Emision original', 'PASO SOLO VIGAS'),
-(10, 9, 88, '2025-02-21', 5, 1, 1, 0, 'VIGAS', 'LC88-OT9', 'Emision original', 'PASO SOLO VIGAS');
+(10, 9, 88, '2025-02-21', 5, 1, 1, 0, 'VIGAS', 'LC88-OT9', 'Emision original', 'PASO SOLO VIGAS'),
+(16, 1, 109, '2025-08-07', 1, 5, 0, 0, '', '', 'Emision original', ''),
+(20, 1, 98, '2025-08-20', 1, 5, 0, 0, '', '', 'Emision original', ''),
+(21, 2, 98, '2025-08-26', 1, 4, 0, 0, '', '', 'Emision original', ''),
+(30, 3, 98, '2025-08-27', 1, 4, 0, 0, '', '', 'Emision original', ''),
+(31, 8, 79, '2025-10-15', 1, 1, 0, 0, '', '', 'Emision original', '');
 
 -- --------------------------------------------------------
 
@@ -22093,31 +22609,48 @@ CREATE TABLE `ordenes_trabajo_detalle` (
   `id_posicion` int(11) NOT NULL,
   `cantidad` int(11) NOT NULL,
   `cant_liberadas` int(11) NOT NULL,
-  `cant_proceso` int(11) NOT NULL,
+  `cant_reproceso` int(11) NOT NULL,
   `cant_rechazadas` int(11) NOT NULL,
   `id_estado_orden_trabajo_posicion` int(11) NOT NULL,
   `fecha` date DEFAULT NULL,
-  `id_usuario` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+  `id_usuario` int(11) DEFAULT NULL,
+  `fecha_hora_ultima_modificacion` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Volcado de datos para la tabla `ordenes_trabajo_detalle`
 --
 
-INSERT INTO `ordenes_trabajo_detalle` (`id`, `id_orden_trabajo`, `id_posicion`, `cantidad`, `cant_liberadas`, `cant_proceso`, `cant_rechazadas`, `id_estado_orden_trabajo_posicion`, `fecha`, `id_usuario`) VALUES
-(1, 3, 177, 10, 555, 0, 0, 1, '2024-12-26', 1),
-(2, 4, 177, 30, 25, 0, 5, 1, NULL, NULL),
-(3, 5, 177, 35, 18, 0, 2, 5, '2025-02-14', 3),
-(4, 6, 215, 4, 0, 0, 0, 1, NULL, NULL),
-(5, 6, 216, 2, 0, 0, 0, 1, NULL, NULL),
-(6, 7, 215, 4, 0, 0, 0, 1, NULL, NULL),
-(7, 7, 216, 3, 0, 0, 0, 1, NULL, NULL),
-(8, 8, 177, 35, 555, 0, 0, 1, NULL, NULL),
-(9, 8, 183, 25, 0, 0, 0, 1, NULL, NULL),
-(10, 9, 230, 4, 0, 4, 0, 1, '2025-02-21', 5),
-(11, 9, 232, 10, 10, 0, 0, 1, '2025-02-21', 5),
-(12, 10, 230, 4, 0, 0, 0, 1, NULL, NULL),
-(13, 10, 232, 2, 0, 0, 0, 1, NULL, NULL);
+INSERT INTO `ordenes_trabajo_detalle` (`id`, `id_orden_trabajo`, `id_posicion`, `cantidad`, `cant_liberadas`, `cant_reproceso`, `cant_rechazadas`, `id_estado_orden_trabajo_posicion`, `fecha`, `id_usuario`, `fecha_hora_ultima_modificacion`) VALUES
+(1, 3, 177, 10, 555, 0, 0, 1, '2024-12-26', 1, '2025-08-27 07:57:59'),
+(2, 4, 177, 30, 25, 0, 5, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(3, 5, 177, 35, 18, 0, 2, 5, '2025-02-14', 3, '2025-08-27 07:57:59'),
+(4, 6, 215, 4, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(5, 6, 216, 2, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(6, 7, 215, 4, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(7, 7, 216, 3, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(8, 8, 177, 35, 555, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(9, 8, 183, 25, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(10, 9, 230, 4, 0, 4, 0, 1, '2025-02-21', 5, '2025-08-27 07:57:59'),
+(11, 9, 232, 10, 10, 0, 0, 1, '2025-02-21', 5, '2025-08-27 07:57:59'),
+(12, 10, 230, 4, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(13, 10, 232, 2, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(26, 16, 289, 1, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(27, 16, 290, 1, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(28, 16, 292, 1, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(38, 20, 251, 1, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(40, 20, 242, 10, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(41, 20, 248, 5, 0, 0, 0, 1, NULL, NULL, '2025-08-27 07:57:59'),
+(43, 21, 242, 20, 20, 1, 0, 4, '2025-08-27', 1, '2025-08-27 12:04:44'),
+(44, 21, 248, 20, 0, 0, 20, 4, '2025-08-27', 1, '2025-08-27 10:21:26'),
+(45, 21, 249, 20, 18, 1, 2, 4, '2025-08-27', 1, '2025-08-27 12:05:42'),
+(58, 30, 250, 15, 15, 0, 0, 4, '2025-08-27', 1, '2025-08-27 17:51:19'),
+(59, 30, 251, 6, 6, 0, 0, 4, '2025-08-27', 1, '2025-08-27 17:51:33'),
+(60, 30, 242, 15, 15, 0, 0, 4, '2025-08-27', 1, '2025-08-27 17:46:56'),
+(61, 30, 248, 15, 13, 2, 2, 4, '2025-08-27', 1, '2025-08-27 17:50:10'),
+(62, 30, 249, 15, 15, 0, 0, 4, '2025-08-27', 1, '2025-08-27 17:50:54'),
+(63, 31, 215, 4, 0, 0, 0, 1, NULL, NULL, '2025-10-15 16:50:50'),
+(64, 31, 216, 3, 0, 0, 0, 1, NULL, NULL, '2025-10-15 16:50:50');
 
 -- --------------------------------------------------------
 
@@ -22133,20 +22666,37 @@ CREATE TABLE `ordenes_trabajo_detalle_log` (
   `cantidad_rechazada` int(11) NOT NULL,
   `motivo` text NOT NULL,
   `fecha` date NOT NULL,
-  `id_usuario` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `id_usuario` int(11) NOT NULL,
+  `fecha_hora_alta` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `ordenes_trabajo_detalle_log`
 --
 
-INSERT INTO `ordenes_trabajo_detalle_log` (`id`, `id_ordenes_trabajo_detalle`, `cantidad_liberada`, `cantidad_reproceso`, `cantidad_rechazada`, `motivo`, `fecha`, `id_usuario`) VALUES
-(1, 3, 10, 0, 0, '', '2025-02-14', 3),
-(2, 3, 18, 0, 2, '', '2025-02-14', 3),
-(3, 10, 4, 0, 0, '', '2025-02-21', 5),
-(4, 11, 0, 10, 0, 'MAL ARMADO. DESOLDAR Y VOLVER A ARMAR', '2025-02-21', 5),
-(5, 11, 10, 0, 0, 'YA ESTAN LIBERADOS', '2025-02-21', 5),
-(6, 10, 0, 4, 0, '', '2025-02-21', 5);
+INSERT INTO `ordenes_trabajo_detalle_log` (`id`, `id_ordenes_trabajo_detalle`, `cantidad_liberada`, `cantidad_reproceso`, `cantidad_rechazada`, `motivo`, `fecha`, `id_usuario`, `fecha_hora_alta`) VALUES
+(1, 3, 10, 0, 0, '', '2025-02-14', 3, '2025-08-27 07:56:29'),
+(2, 3, 18, 0, 2, '', '2025-02-14', 3, '2025-08-27 07:56:29'),
+(3, 10, 4, 0, 0, '', '2025-02-21', 5, '2025-08-27 07:56:29'),
+(4, 11, 0, 10, 0, 'MAL ARMADO. DESOLDAR Y VOLVER A ARMAR', '2025-02-21', 5, '2025-08-27 07:56:29'),
+(5, 11, 10, 0, 0, 'YA ESTAN LIBERADOS', '2025-02-21', 5, '2025-08-27 07:56:29'),
+(6, 10, 0, 4, 0, '', '2025-02-21', 5, '2025-08-27 07:56:29'),
+(17, 43, 5, 1, 0, '', '2025-08-27', 1, '2025-08-27 08:23:43'),
+(18, 44, 0, 0, 20, 'hubo un fallo en la maquina que arruinó todo', '2025-08-27', 1, '2025-08-27 10:21:26'),
+(19, 45, 18, 1, 1, 'se cortó muy mal', '2025-08-27', 1, '2025-08-27 10:25:10'),
+(20, 43, 10, 0, 0, '', '2025-08-27', 1, '2025-08-27 12:04:13'),
+(21, 43, 5, 0, 0, '', '2025-08-27', 1, '2025-08-27 12:04:44'),
+(22, 45, 0, 0, 1, 'salio mal tambien', '2025-08-27', 1, '2025-08-27 12:05:42'),
+(23, 60, 15, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:46:56'),
+(24, 61, 2, 2, 2, 'testing', '2025-08-27', 1, '2025-08-27 17:47:45'),
+(25, 61, 2, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:48:02'),
+(26, 61, 3, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:48:29'),
+(27, 61, 3, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:48:42'),
+(28, 61, 3, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:50:10'),
+(29, 62, 10, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:50:39'),
+(30, 62, 5, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:50:54'),
+(31, 58, 15, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:51:20'),
+(32, 59, 6, 0, 0, '', '2025-08-27', 1, '2025-08-27 17:51:33');
 
 -- --------------------------------------------------------
 
@@ -22163,7 +22713,7 @@ CREATE TABLE `ordenes_trabajo_detalle_old` (
   `cant_proceso` int(11) NOT NULL,
   `cant_rechazadas` int(11) NOT NULL,
   `id_estado_orden_trabajo_posicion` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- --------------------------------------------------------
 
@@ -22175,7 +22725,7 @@ CREATE TABLE `ordenes_trabajo_old` (
   `id` int(11) NOT NULL,
   `ultimo_nro_revision` int(11) NOT NULL,
   `anulado` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- --------------------------------------------------------
 
@@ -22196,7 +22746,7 @@ CREATE TABLE `ordenes_trabajo_revisiones` (
   `numero` varchar(99) NOT NULL,
   `descripcion` text NOT NULL,
   `notas` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- --------------------------------------------------------
 
@@ -22209,7 +22759,7 @@ CREATE TABLE `packing_lists` (
   `ultimo_nro_revision` int(11) NOT NULL,
   `anulado` tinyint(4) NOT NULL DEFAULT 0,
   `id_tarea` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Volcado de datos para la tabla `packing_lists`
@@ -22259,7 +22809,7 @@ CREATE TABLE `packing_lists_componentes` (
   `observaciones` text DEFAULT NULL,
   `id_estado_componente_packing_list` int(11) NOT NULL,
   `cantidad_despachada` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `packing_lists_componentes`
@@ -22321,7 +22871,7 @@ CREATE TABLE `packing_lists_revisiones` (
   `anulado` tinyint(4) NOT NULL,
   `nombre` varchar(99) NOT NULL,
   `numero` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `packing_lists_revisiones`
@@ -22371,7 +22921,7 @@ CREATE TABLE `packing_lists_revisiones_old` (
   `nro_revision` int(11) NOT NULL,
   `comentarios` text NOT NULL,
   `fecha_hora` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -22384,7 +22934,7 @@ CREATE TABLE `packing_lists_secciones` (
   `id_packing_list_revision` int(11) NOT NULL,
   `cantidad` int(11) NOT NULL,
   `observaciones` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `packing_lists_secciones`
@@ -22441,7 +22991,7 @@ CREATE TABLE `paises` (
   `id` int(11) NOT NULL,
   `iso` char(2) DEFAULT NULL,
   `nombre` varchar(80) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `paises`
@@ -22747,7 +23297,7 @@ CREATE TABLE `parametros` (
   `id` int(11) NOT NULL,
   `parametro` varchar(99) NOT NULL,
   `valor` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `parametros`
@@ -22760,8 +23310,10 @@ INSERT INTO `parametros` (`id`, `parametro`, `valor`) VALUES
 (4, 'E-Mail FromAddress', 'plataforma@clubdepescapuertorico.com.ar'),
 (5, 'E-Mail FromName', 'Pruebas Grupo NH'),
 (7, 'E-Mail Notificaciones', 'sistemas@gruponh.com.ar'),
-(8, 'Dirección NET', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires'),
-(9, 'Texto HTML cuerpo OC', '<p>*- Para el cobro de los materiales o servicios provistos, será requisito la presentación de la factura Original con sus remitos y certificados de calidad correspondientes, y el Nº de esta Nota de Pedido (NP) referenciado a vuestra factura.<br>*- Todo el material de fabricación deberá indicar su peso correspondiente por conjunto o unidad.<br>*- No se aceptan facturas parciales.<br>*- Lugar de pago: Av. N. Milazzo 3251 Parque Industrial Platanos - Berazategui - Bs. As.<br>*- Para la entrega de materiales en las instalaciones de NHNET SA, se deberá cumplir los siguientes requisitos:<br>1) Documentación: Presentar Certificado de ART, Seguro del vehículo y último pago, RUTA, Licencia del chofer. Enviar a<br><b>nadie@gruponh.com.ar</b><br>2) Condiciones Físicas:<br>* La carga debera estar en pallet y/o condiciones adecuadas para su manipulación.<br>* Capacidad de carga y dimensiones adecuadas del vehículo.<br>* Buen estado de mantenimiento. (Asegura condiciones de Seguridad y Medio Ambiente).<br>*- El horario de entrega de la mercadería es de L a V de 7 a 12 y de 12:30 a 15 hs.</p>');
+(8, 'Dirección de entrega', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires'),
+(9, 'Texto HTML cuerpo OC', '<p>*- Para el cobro de los materiales o servicios provistos, será requisito la presentación de la factura Original con sus remitos y certificados de calidad correspondientes, y el Nº de esta Nota de Pedido (NP) referenciado a vuestra factura.<br>*- Todo el material de fabricación deberá indicar su peso correspondiente por conjunto o unidad.<br>*- No se aceptan facturas parciales.<br>*- Lugar de pago: Av. N. Milazzo 3251 Parque Industrial Platanos - Berazategui - Bs. As.<br>*- Para la entrega de materiales en las instalaciones de NHNET SA, se deberá cumplir los siguientes requisitos:<br>1) Documentación: Presentar Certificado de ART, Seguro del vehículo y último pago, RUTA, Licencia del chofer. Enviar a<br><b>nadie@gruponh.com.ar</b><br>2) Condiciones Físicas:<br>* La carga debera estar en pallet y/o condiciones adecuadas para su manipulación.<br>* Capacidad de carga y dimensiones adecuadas del vehículo.<br>* Buen estado de mantenimiento. (Asegura condiciones de Seguridad y Medio Ambiente).<br>*- El horario de entrega de la mercadería es de L a V de 7 a 12 y de 12:30 a 15 hs.</p>'),
+(10, 'Monto mínimo ($) aprobacion OC', '200000'),
+(11, 'Monto mínimo (USD) aprobacion OC', '200');
 
 -- --------------------------------------------------------
 
@@ -22773,46 +23325,53 @@ CREATE TABLE `pedidos` (
   `id` int(11) NOT NULL,
   `id_computo` int(11) DEFAULT NULL,
   `fecha` date NOT NULL,
+  `id_cuenta_solicitante` int(11) DEFAULT NULL,
   `lugar_entrega` varchar(199) NOT NULL,
   `id_cuenta_recibe` int(11) NOT NULL,
   `aprobado` tinyint(4) NOT NULL,
   `id_proyecto` int(11) DEFAULT NULL,
   `id_estado` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `pedidos`
 --
 
-INSERT INTO `pedidos` (`id`, `id_computo`, `fecha`, `lugar_entrega`, `id_cuenta_recibe`, `aprobado`, `id_proyecto`, `id_estado`) VALUES
-(1, 1, '2024-07-24', 'Nicolas Milazzo 3251', 4000074, 1, 1, 1),
-(2, 1, '2024-07-24', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 1, 3),
-(3, 1, '2024-08-02', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 4, 1),
-(4, 10, '2024-08-21', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 1, 1),
-(5, 1, '2024-08-29', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 6, 3),
-(7, 1, '2024-08-30', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4001801, 1, 7, 1),
-(8, 1, '2024-09-05', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 1, 1),
-(9, 1, '2024-09-30', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 5000815, 1, 1, 4),
-(10, 3, '2024-10-02', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 1, 1),
-(15, 36, '2025-01-03', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, NULL, 1),
-(16, 36, '2025-01-03', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 0, NULL, 1),
-(17, NULL, '2025-01-14', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 1, 1),
-(18, 46, '2025-02-04', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(19, 50, '2025-02-12', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, NULL, 1),
-(20, 50, '2025-02-12', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 0, NULL, 1),
-(21, 54, '2025-02-20', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, NULL, 1),
-(22, 54, '2025-02-21', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, NULL, 1),
-(23, NULL, '2025-02-21', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 15, 1),
-(24, NULL, '2025-03-21', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 1, 1),
-(33, 90, '2025-05-16', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, NULL, 1),
-(34, 97, '2025-05-23', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(35, 91, '2025-05-23', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, NULL, 1),
-(36, 103, '2025-05-26', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(37, 102, '2025-05-26', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(38, 102, '2025-05-26', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, NULL, 1),
-(211, 99, '2025-06-04', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(222, 112, '2025-06-07', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(223, 113, '2025-06-12', 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 0, NULL, 1);
+INSERT INTO `pedidos` (`id`, `id_computo`, `fecha`, `id_cuenta_solicitante`, `lugar_entrega`, `id_cuenta_recibe`, `aprobado`, `id_proyecto`, `id_estado`) VALUES
+(1, 1, '2024-07-24', NULL, 'Nicolas Milazzo 3251', 4000074, 1, 1, 1),
+(2, 1, '2024-07-24', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 1, 3),
+(3, 1, '2024-08-02', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 4, 1),
+(4, 10, '2024-08-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 1, 1),
+(5, 1, '2024-08-29', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 6, 3),
+(7, 1, '2024-08-30', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4001801, 1, 7, 1),
+(8, 1, '2024-09-05', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 1, 1),
+(9, 1, '2024-09-30', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 5000815, 1, 1, 4),
+(10, 3, '2024-10-02', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 1, 1),
+(15, 36, '2025-01-03', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 10, 1),
+(16, 36, '2025-01-03', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 0, 10, 1),
+(17, NULL, '2025-01-14', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 1, 1),
+(18, 46, '2025-02-04', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 11, 1),
+(19, 50, '2025-02-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, 12, 1),
+(20, 50, '2025-02-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 0, 12, 2),
+(21, 54, '2025-02-20', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, 15, 1),
+(22, 54, '2025-02-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 15, 1),
+(23, NULL, '2025-02-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 15, 1),
+(24, NULL, '2025-03-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 1, 1),
+(33, 90, '2025-05-16', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, 24, 1),
+(34, 97, '2025-05-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(35, 91, '2025-05-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 24, 1),
+(36, 103, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(37, 102, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(38, 102, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 24, 1),
+(211, 99, '2025-06-04', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(222, 112, '2025-06-07', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 24, 2),
+(223, 113, '2025-06-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 24, 3),
+(224, NULL, '2025-09-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 24, 3),
+(225, NULL, '2025-10-15', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 12, 1),
+(226, NULL, '2025-10-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, 25, 1),
+(227, NULL, '2025-11-20', 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, 25, 1),
+(228, NULL, '2025-11-27', 4000017, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 0, 25, 1),
+(229, NULL, '2025-12-05', 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, 24, 1);
 
 -- --------------------------------------------------------
 
@@ -22828,76 +23387,83 @@ CREATE TABLE `pedidos_detalle` (
   `fecha_necesidad` date NOT NULL,
   `cantidad` double NOT NULL,
   `id_unidad_medida` int(11) NOT NULL,
+  `id_estado` int(11) DEFAULT NULL,
   `reservado` double NOT NULL,
   `comprado` double NOT NULL,
   `pendiente` tinyint(1) NOT NULL DEFAULT 1,
   `entregado` double DEFAULT 0,
   `cancelado` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `pedidos_detalle`
 --
 
-INSERT INTO `pedidos_detalle` (`id`, `id_pedido`, `id_computo_detalle`, `id_material`, `fecha_necesidad`, `cantidad`, `id_unidad_medida`, `reservado`, `comprado`, `pendiente`, `entregado`, `cancelado`) VALUES
-(1, 1, NULL, 30, '2024-07-26', 5, 4, 0, 5, 1, 0, 0),
-(2, 1, NULL, 454, '2024-07-26', 2, 1, 0, 2, 1, 0, 0),
-(3, 2, NULL, 1, '2024-07-26', 2, 2, 0, -2, 1, 0, 0),
-(4, 3, NULL, 367, '2024-08-09', 5, 1, 0, 5, 1, 0, 0),
-(5, 3, NULL, 373, '2024-08-16', 5, 1, 4, 0, 1, 0, 0),
-(6, 3, NULL, 497, '2024-08-23', 70, 1, 130, -60, 1, 0, 0),
-(7, 4, NULL, 56, '2024-09-05', 800, 4, 0, 800, 1, 0, 0),
-(8, 4, NULL, 497, '2024-08-28', 10, 1, 0, 10, 1, 0, 0),
-(9, 5, NULL, 9, '2024-09-05', 12, 1, 10, -4, 1, 0, 0),
-(12, 7, NULL, 13, '2024-09-04', 4, 1, 0, 4, 1, 0, 0),
-(13, 8, NULL, 499, '2024-09-26', 24, 1, 0, 24, 1, 0, 0),
-(14, 9, NULL, 15, '2024-10-07', 34, 1, 34, 0, 1, 0, 0),
-(15, 9, NULL, 11, '2024-10-07', 5, 1, 5, 0, 1, 0, 0),
-(16, 10, NULL, 17, '2024-08-27', 3, 1, -2, 3, 1, 0, 0),
-(17, 10, NULL, 65, '2024-08-30', 88, 4, 0, 0, 1, 0, 0),
-(18, 15, NULL, 105, '2024-11-27', 10, 4, 0, 10, 1, 0, 0),
-(19, 16, NULL, 105, '2024-11-27', 10, 4, 0, 0, 1, 0, 0),
-(20, 17, NULL, 33, '2025-01-16', 10, 4, 0, 10, 1, 0, 0),
-(21, 17, NULL, 31, '2025-01-16', 10, 4, 0, 10, 1, 0, 0),
-(22, 17, NULL, 34, '2025-01-16', 10, 4, 0, 10, 1, 0, 0),
-(23, 18, NULL, 1, '2025-02-20', 21, 2, 0, 0, 1, 0, 0),
-(24, 18, NULL, 148, '2025-02-11', 67, 4, 0, 0, 1, 0, 0),
-(25, 18, NULL, 462, '2025-02-07', 34, 1, 0, 0, 1, 0, 0),
-(26, 19, NULL, 11, '2025-02-26', 7, 1, 0, 0, 1, 0, 0),
-(27, 19, NULL, 13, '2025-02-19', 3, 1, 0, 0, 1, 0, 0),
-(28, 19, NULL, 48, '2025-02-19', 10, 4, 0, 0, 1, 0, 0),
-(29, 20, NULL, 11, '2025-02-26', 2, 1, 5, 0, 1, 0, 0),
-(30, 20, NULL, 13, '2025-02-19', 3, 1, 0, 0, 1, 0, 0),
-(31, 20, NULL, 48, '2025-02-19', 10, 4, 0, 0, 1, 0, 0),
-(32, 21, NULL, 31, '2025-02-27', 50, 4, 60, -10, 1, 0, 0),
-(33, 21, NULL, 33, '2025-02-27', 250, 4, 200, 0, 1, 0, 0),
-(34, 21, NULL, 53, '2025-02-27', 77, 4, 77, 0, 1, 0, 0),
-(35, 22, NULL, 13, '2025-02-27', 3, 1, 3, 0, 1, 0, 0),
-(36, 22, NULL, 22, '2025-02-27', 2, 1, 2, 0, 1, 0, 0),
-(37, 22, NULL, 31, '2025-02-27', 50, 4, 60, -10, 1, 0, 0),
-(38, 22, NULL, 33, '2025-02-27', 300, 4, 300, 0, 1, 0, 0),
-(39, 23, NULL, 11, '2025-02-21', 9.98, 1, 0, 9.98, 1, 0, 0),
-(40, 23, NULL, 17, '2025-02-21', 2, 1, 0, 2, 1, 0, 0),
-(41, 24, NULL, 12, '2025-03-21', 80, 1, 0, 0, 1, 0, 0),
-(42, 24, NULL, 10, '2025-03-22', 3, 1, 0, 0, 1, 0, 0),
-(49, 33, NULL, 1, '2025-05-23', 6, 2, 0, 0, 1, 0, 0),
-(50, 33, NULL, 17, '2025-05-23', 3, 1, 0, 0, 1, 0, 0),
-(51, 34, NULL, 20, '2025-05-29', 2, 1, 3, 0, 1, 0, 0),
-(52, 35, 442, 1, '2025-05-21', 1, 2, 0, 0, 1, 0, 0),
-(53, 35, 396, 10, '2025-05-20', 5, 1, 0, 5, 1, 0, 0),
-(54, 36, NULL, 33, '2025-06-02', 5, 4, 0, 0, 1, 0, 0),
-(55, 37, NULL, 9, '2025-06-02', 2, 1, 3, 0, 1, 0, 0),
-(56, 38, NULL, 9, '2025-06-02', 1, 1, 2, 1, 1, 0, 0),
-(60, 211, 436, 12, '2025-05-14', 6, 1, 0, 0, 1, 0, 0),
-(61, 211, 441, 17, '2025-05-30', 3, 1, 0, 0, 1, 0, 0),
-(62, 211, 434, 30, '2025-05-14', 50, 4, 0, 0, 1, 0, 0),
-(93, 222, 457, 1, '2025-06-28', 3, 2, 1, 0, 1, 0, 0),
-(94, 222, 458, 9, '2025-06-28', 2, 1, 1, 0, 1, 0, 0),
-(95, 223, 463, 19, '2025-06-26', 20, 1, 0, 0, 1, 0, 0),
-(96, 223, 465, 24, '2025-06-26', 6, 1, 0, 0, 1, 0, 0),
-(97, 223, 466, 25, '2025-06-26', 2, 1, 0, 0, 1, 0, 0),
-(98, 223, 467, 26, '2025-06-26', 1, 1, 0, 0, 1, 0, 0),
-(99, 223, 468, 30, '2025-06-26', 170, 4, 0, 0, 1, 0, 1);
+INSERT INTO `pedidos_detalle` (`id`, `id_pedido`, `id_computo_detalle`, `id_material`, `fecha_necesidad`, `cantidad`, `id_unidad_medida`, `id_estado`, `reservado`, `comprado`, `pendiente`, `entregado`, `cancelado`) VALUES
+(1, 1, NULL, 30, '2024-07-26', 5, 4, 1, 0, 5, 1, 0, 0),
+(2, 1, NULL, 454, '2024-07-26', 2, 1, 2, 0, 2, 1, 0, 0),
+(3, 2, NULL, 1, '2024-07-26', 2, 2, 7, 0, -2, 1, 0, 0),
+(4, 3, NULL, 367, '2024-08-09', 5, 1, 2, 0, 5, 1, 0, 0),
+(5, 3, NULL, 373, '2024-08-16', 5, 1, 4, 4, 0, 1, 0, 0),
+(6, 3, NULL, 497, '2024-08-23', 70, 1, 7, 130, -60, 1, 0, 0),
+(7, 4, NULL, 56, '2024-09-05', 800, 4, 2, 0, 800, 1, 0, 0),
+(8, 4, NULL, 497, '2024-08-28', 10, 1, 2, 0, 10, 1, 0, 0),
+(9, 5, NULL, 9, '2024-09-05', 12, 1, 4, 10, -4, 1, 0, 0),
+(12, 7, NULL, 13, '2024-09-04', 4, 1, 2, 0, 4, 1, 0, 0),
+(13, 8, NULL, 499, '2024-09-26', 24, 1, 2, 0, 24, 1, 0, 0),
+(14, 9, NULL, 15, '2024-10-07', 34, 1, 7, 34, 0, 1, 0, 0),
+(15, 9, NULL, 11, '2024-10-07', 5, 1, 7, 5, 0, 1, 0, 0),
+(16, 10, NULL, 17, '2024-08-27', 3, 1, 2, -2, 3, 1, 0, 0),
+(17, 10, NULL, 65, '2024-08-30', 88, 4, 1, 0, 0, 1, 0, 0),
+(18, 15, NULL, 105, '2024-11-27', 10, 4, 2, 0, 10, 1, 0, 0),
+(19, 16, NULL, 105, '2024-11-27', 10, 4, 1, 0, 0, 1, 0, 0),
+(20, 17, NULL, 33, '2025-01-16', 10, 4, 2, 0, 10, 1, 0, 0),
+(21, 17, NULL, 31, '2025-01-16', 10, 4, 2, 0, 10, 1, 0, 0),
+(22, 17, NULL, 34, '2025-01-16', 10, 4, 2, 0, 10, 1, 0, 0),
+(23, 18, NULL, 1, '2025-02-20', 21, 2, 1, 0, 0, 1, 0, 0),
+(24, 18, NULL, 148, '2025-02-11', 67, 4, 1, 0, 0, 1, 0, 0),
+(25, 18, NULL, 462, '2025-02-07', 34, 1, 1, 0, 0, 1, 0, 0),
+(26, 19, NULL, 11, '2025-02-26', 7, 1, 1, 0, 0, 1, 0, 0),
+(27, 19, NULL, 13, '2025-02-19', 3, 1, 1, 0, 0, 1, 0, 0),
+(28, 19, NULL, 48, '2025-02-19', 10, 4, 1, 0, 0, 1, 0, 0),
+(29, 20, NULL, 11, '2025-02-26', 2, 1, 1, 5, 0, 1, 0, 0),
+(30, 20, NULL, 13, '2025-02-19', 3, 1, 1, 0, 0, 1, 0, 0),
+(31, 20, NULL, 48, '2025-02-19', 10, 4, 1, 0, 0, 1, 0, 0),
+(32, 21, NULL, 31, '2025-02-27', 50, 4, 7, 60, -10, 1, 0, 0),
+(33, 21, NULL, 33, '2025-02-27', 250, 4, 4, 200, 0, 1, 0, 0),
+(34, 21, NULL, 53, '2025-02-27', 77, 4, 7, 77, 0, 1, 0, 0),
+(35, 22, NULL, 13, '2025-02-27', 3, 1, 7, 3, 0, 1, 0, 0),
+(36, 22, NULL, 22, '2025-02-27', 2, 1, 7, 2, 0, 1, 0, 0),
+(37, 22, NULL, 31, '2025-02-27', 50, 4, 1, 60, -10, 1, 0, 0),
+(38, 22, NULL, 33, '2025-02-27', 300, 4, 4, 300, 0, 1, 0, 0),
+(39, 23, NULL, 11, '2025-02-21', 9.98, 1, 2, 0, 9.98, 1, 0, 0),
+(40, 23, NULL, 17, '2025-02-21', 2, 1, 2, 0, 2, 1, 0, 0),
+(41, 24, NULL, 12, '2025-03-21', 80, 1, 1, 0, 0, 1, 0, 0),
+(42, 24, NULL, 10, '2025-03-22', 3, 1, 1, 0, 0, 1, 0, 0),
+(49, 33, NULL, 1, '2025-05-23', 6, 2, 1, 0, 0, 1, 0, 0),
+(50, 33, NULL, 17, '2025-05-23', 3, 1, 1, 0, 0, 1, 0, 0),
+(51, 34, NULL, 20, '2025-05-29', 2, 1, 1, 3, 0, 1, 0, 0),
+(52, 35, 442, 1, '2025-05-21', 1, 2, 1, 0, 0, 1, 0, 0),
+(53, 35, 396, 10, '2025-05-20', 5, 1, 2, 0, 5, 1, 0, 0),
+(54, 36, NULL, 33, '2025-06-02', 5, 4, 1, 0, 0, 1, 0, 0),
+(55, 37, NULL, 9, '2025-06-02', 2, 1, 1, 3, 0, 1, 0, 0),
+(56, 38, NULL, 9, '2025-06-02', 1, 1, 2, 2, 1, 1, 0, 0),
+(60, 211, 436, 12, '2025-05-14', 6, 1, 1, 0, 0, 1, 0, 0),
+(61, 211, 441, 17, '2025-05-30', 3, 1, 1, 0, 0, 1, 0, 0),
+(62, 211, 434, 30, '2025-05-14', 50, 4, 1, 0, 0, 1, 0, 0),
+(93, 222, 457, 1, '2025-06-28', 3, 2, 1, 1, 0, 1, 0, 0),
+(94, 222, 458, 9, '2025-06-28', 2, 1, 1, 1, 0, 1, 0, 0),
+(95, 223, 463, 19, '2025-06-26', 20, 1, 7, 10, 20, 1, 0, 0),
+(96, 223, 465, 24, '2025-06-26', 6, 1, 7, 5, 3, 1, 0, 0),
+(97, 223, 466, 25, '2025-06-26', 2, 1, 7, 1, 1, 1, 0, 0),
+(98, 223, 467, 26, '2025-06-26', 1, 1, 7, 0, 1, 1, 0, 0),
+(99, 223, 468, 30, '2025-06-26', 170, 4, 8, 0, 100, 1, 0, 1),
+(100, 224, NULL, 1, '2025-10-29', 5, 2, 2, 0, 5, 1, 0, 0),
+(101, 225, NULL, 9, '2025-10-29', 5, 1, 1, 0, 0, 1, 0, 0),
+(102, 226, NULL, 1, '2025-10-30', 10, 2, 1, 0, 0, 1, 0, 0),
+(103, 224, NULL, 9, '2025-10-30', 10, 1, 3, 0, 1, 1, 0, 0),
+(104, 226, NULL, 12, '2025-10-30', 10, 1, 1, 0, 0, 1, 0, 0),
+(105, 227, NULL, 1, '2025-11-27', 8, 2, 1, 0, 0, 1, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -22909,7 +23475,7 @@ CREATE TABLE `perfiles` (
   `id` int(11) NOT NULL,
   `perfil` varchar(99) NOT NULL,
   `anulado` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `perfiles`
@@ -22939,7 +23505,7 @@ CREATE TABLE `permisos` (
   `id` int(11) NOT NULL,
   `permiso` varchar(99) NOT NULL,
   `anulado` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `permisos`
@@ -22976,7 +23542,7 @@ CREATE TABLE `permisos_perfil` (
   `id` int(11) NOT NULL,
   `id_permiso` int(11) NOT NULL,
   `id_perfil` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `permisos_perfil`
@@ -23020,7 +23586,7 @@ CREATE TABLE `polizas` (
   `adjunto` varchar(99) NOT NULL,
   `fecha_renovacion` date DEFAULT NULL,
   `id_empresa` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `polizas`
@@ -23061,7 +23627,7 @@ CREATE TABLE `presupuestos` (
   `fecha_hora_alta` datetime NOT NULL DEFAULT current_timestamp(),
   `comentarios_revision` varchar(99) DEFAULT NULL,
   `fecha_hora_revision` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `presupuestos`
@@ -23105,7 +23671,7 @@ CREATE TABLE `presupuestos_detalle` (
   `id_unidad_medida` int(11) NOT NULL,
   `costo` double(12,2) NOT NULL,
   `precio` double(12,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `presupuestos_detalle`
@@ -23232,7 +23798,7 @@ CREATE TABLE `presupuestos_detalle_old` (
   `id_unidad_medida` int(11) NOT NULL,
   `costo` double(12,2) NOT NULL,
   `precio` double(12,2) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `presupuestos_detalle_old`
@@ -23264,7 +23830,7 @@ CREATE TABLE `presupuestos_old` (
   `id` int(11) NOT NULL,
   `ultimo_nro_revision` int(11) NOT NULL,
   `anulado` tinyint(4) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `presupuestos_old`
@@ -23303,7 +23869,7 @@ CREATE TABLE `presupuestos_revisiones` (
   `es_marco` tinyint(4) NOT NULL,
   `id_linea_negocio` int(11) NOT NULL,
   `fecha_hora_alta` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `presupuestos_revisiones`
@@ -23329,7 +23895,7 @@ CREATE TABLE `presupuestos_revisiones_old` (
   `nro_revision` int(11) NOT NULL,
   `comentarios` text NOT NULL,
   `fecha_hora` datetime NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -23340,7 +23906,7 @@ CREATE TABLE `presupuestos_revisiones_old` (
 CREATE TABLE `provincias` (
   `id` int(11) NOT NULL,
   `provincia` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `provincias`
@@ -23406,7 +23972,7 @@ CREATE TABLE `proyectos` (
   `nombre` varchar(99) NOT NULL,
   `tags` varchar(299) NOT NULL,
   `nro` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `proyectos`
@@ -23449,7 +24015,7 @@ CREATE TABLE `proyectos_presupuestos` (
   `id` int(11) NOT NULL,
   `id_proyecto` int(11) NOT NULL,
   `id_presupuesto` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `proyectos_presupuestos`
@@ -23468,7 +24034,7 @@ INSERT INTO `proyectos_presupuestos` (`id`, `id_proyecto`, `id_presupuesto`) VAL
 CREATE TABLE `puestos` (
   `id` int(11) NOT NULL,
   `puesto` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `puestos`
@@ -23489,7 +24055,7 @@ CREATE TABLE `regimenes_facturacion` (
   `regimen` varchar(99) NOT NULL,
   `porcentaje` double NOT NULL,
   `anulado` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `regimenes_facturacion`
@@ -23608,7 +24174,7 @@ CREATE TABLE `relevancias` (
   `id` int(11) NOT NULL,
   `relevancia` varchar(99) NOT NULL,
   `color` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `relevancias`
@@ -23628,7 +24194,7 @@ INSERT INTO `relevancias` (`id`, `relevancia`, `color`) VALUES
 CREATE TABLE `sectores` (
   `id` int(11) NOT NULL,
   `sector` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `sectores`
@@ -23674,7 +24240,7 @@ CREATE TABLE `sitios` (
   `nro_subsitio` int(11) NOT NULL,
   `nro_sitio` int(11) NOT NULL,
   `id_empresa` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `sitios`
@@ -30189,7 +30755,7 @@ CREATE TABLE `stock2` (
   `disponible` int(11) NOT NULL,
   `reservado` int(11) NOT NULL,
   `comprando` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -30206,7 +30772,45 @@ CREATE TABLE `subcuentas` (
   `id_usuario` int(11) NOT NULL,
   `fecha_alta` date NOT NULL,
   `observaciones` text NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sucesos`
+--
+
+CREATE TABLE `sucesos` (
+  `id` int(11) NOT NULL,
+  `id_proyecto` int(11) DEFAULT NULL,
+  `entidad_tipo` varchar(50) NOT NULL,
+  `entidad_id` int(11) NOT NULL,
+  `id_tipo_suceso` int(11) NOT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `fecha_hora` datetime NOT NULL,
+  `titulo` varchar(99) NOT NULL,
+  `suceso` text NOT NULL,
+  `fecha_creacion` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `sucesos`
+--
+
+INSERT INTO `sucesos` (`id`, `id_proyecto`, `entidad_tipo`, `entidad_id`, `id_tipo_suceso`, `id_usuario`, `fecha_hora`, `titulo`, `suceso`, `fecha_creacion`) VALUES
+(1, 1, 'pedidos', 9, 1, NULL, '2024-10-03 08:20:00', 'Prueba de suceso informativo', 'Hoy se prueba el sistema', '2025-11-27 09:48:30'),
+(2, 1, 'pedidos', 1, 1, NULL, '2024-11-21 16:35:00', 'Color', 'Pedimos color verde. proveedor avisa que entrega en NHC', '2025-11-27 09:48:30'),
+(3, 1, 'pedidos', 1, 1, NULL, '2024-12-05 08:52:00', 'Cambio de Cantidad', 'Cambiamos la cantidad por ser venta por bulto', '2025-11-27 09:48:30'),
+(4, 1, 'pedidos', 1, 1, NULL, '2024-12-05 09:06:00', 'Cambio de Cantidad', 'Faltan 2 Unidades, informado a obra', '2025-11-27 09:48:30'),
+(5, 1, 'pedidos', 1, 1, NULL, '2024-12-05 09:08:00', 'Color', 'Verde', '2025-11-27 09:48:30'),
+(6, 1, 'pedidos', 1, 1, NULL, '2024-12-05 09:09:00', 'Color', 'azul', '2025-11-27 09:48:30'),
+(7, 1, 'pedidos', 1, 1, NULL, '2025-01-08 12:41:00', 'Cambio', 'Se pide cortado en 2 mitades', '2025-11-27 09:48:30'),
+(8, 10, 'pedidos', 15, 1, NULL, '2025-02-20 10:58:00', 'Falta detalle de calidad', 'Falta calidad en los bulones ', '2025-11-27 09:48:30'),
+(9, 25, 'pedidos', 227, 1, NULL, '2025-03-22 10:20:00', 'Cantidad', 'Se compra una caja', '2025-11-27 09:48:30'),
+(16, 1, 'compras', 7, 1, NULL, '2025-01-14 12:27:00', 'Luz', 'Amarillo', '2025-11-27 09:49:52'),
+(17, 25, 'pedidos', 227, 1, 1, '2025-11-27 09:43:00', 'testing', 'probando los nuevos sucesos', '2025-11-27 09:51:13'),
+(18, 14, 'proyectos', 14, 1, 1, '2025-12-03 19:07:00', 'probando sucesos generales desde proyectos', 'asdasd', '2025-12-03 19:08:21'),
+(19, 24, 'compras', 34, 1, 1, '2025-12-03 19:13:00', 'suceso informatico a la compra 34 del pedido 38', 'asdasdasd', '2025-12-03 19:13:42');
 
 -- --------------------------------------------------------
 
@@ -30221,7 +30825,7 @@ CREATE TABLE `sucesos_proyecto` (
   `suceso` text NOT NULL,
   `id_tipo_suceso` int(11) NOT NULL,
   `titulo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `sucesos_proyecto`
@@ -30258,7 +30862,7 @@ CREATE TABLE `tareas` (
   `fecha_inicio_real` date DEFAULT NULL,
   `fecha_fin_real` date DEFAULT NULL,
   `anulado` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tareas`
@@ -30377,7 +30981,7 @@ INSERT INTO `tareas` (`id`, `id_proyecto`, `estructura`, `id_sector`, `id_tipo_t
 (111, 24, 'Portones', 2, 5, 5002023, 'Material base', 4000014, '2025-05-07', '2025-05-07', '2025-05-07', '2025-05-07', 0),
 (112, 24, 'Portones', 2, 5, 5002023, '', 4000014, '2025-05-07', '2025-05-07', '2025-05-16', '2025-05-16', 0),
 (113, 24, 'Portones', 2, 12, 5002023, '', 4000014, '2025-05-07', '2025-05-07', '2025-07-16', '2025-07-16', 0),
-(114, 24, 'Portones', 2, 12, 5002023, '', 4000014, '2025-05-07', '2025-05-07', '2025-07-23', '2025-07-23', 0),
+(114, 24, 'Portones', 2, 12, 5002023, '', 4000014, '2025-05-07', '2025-05-07', '2025-07-25', '2025-07-25', 0),
 (115, 24, 'Portones', 3, 5, 2000002, 'asd', 4000001, '0000-00-00', '0000-00-00', '2025-05-20', '2025-05-20', 0),
 (116, 24, 'Portones', 3, 5, 2000002, 'asd', 4000001, '0000-00-00', '0000-00-00', '2025-05-20', '2025-05-20', 0),
 (117, 24, 'Portones', 3, 5, 2000001, '', NULL, '0000-00-00', '0000-00-00', '2025-05-22', '2025-05-22', 0),
@@ -30398,7 +31002,7 @@ INSERT INTO `tareas` (`id`, `id_proyecto`, `estructura`, `id_sector`, `id_tipo_t
 CREATE TABLE `terminaciones_lista_corte` (
   `id` int(11) NOT NULL,
   `terminacion` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -30409,7 +31013,7 @@ CREATE TABLE `terminaciones_lista_corte` (
 CREATE TABLE `tipos_bulto` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_bulto`
@@ -30428,7 +31032,7 @@ INSERT INTO `tipos_bulto` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_cobertura_polizas` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_cobertura_polizas`
@@ -30450,7 +31054,7 @@ INSERT INTO `tipos_cobertura_polizas` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_comprobante` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_comprobante`
@@ -30473,7 +31077,7 @@ INSERT INTO `tipos_comprobante` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_cuenta` (
   `id` int(11) NOT NULL,
   `tipo_cuenta` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_cuenta`
@@ -30495,7 +31099,7 @@ INSERT INTO `tipos_cuenta` (`id`, `tipo_cuenta`) VALUES
 CREATE TABLE `tipos_egreso` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_egreso`
@@ -30514,7 +31118,7 @@ INSERT INTO `tipos_egreso` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_estructura` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_estructura`
@@ -30537,7 +31141,7 @@ INSERT INTO `tipos_estructura` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_ingreso` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_ingreso`
@@ -30556,7 +31160,7 @@ INSERT INTO `tipos_ingreso` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_item_certificado` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_item_certificado`
@@ -30578,7 +31182,7 @@ INSERT INTO `tipos_item_certificado` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_montaje` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_montaje`
@@ -30599,7 +31203,7 @@ CREATE TABLE `tipos_notificacion` (
   `tipo` varchar(99) NOT NULL,
   `mensaje` text NOT NULL,
   `redirect` varchar(199) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_notificacion`
@@ -30623,7 +31227,10 @@ INSERT INTO `tipos_notificacion` (`id`, `tipo`, `mensaje`, `redirect`) VALUES
 (15, 'Aprobación de Cómputo', 'El cómputo ha sido aprobado en el sistema', 'verComputo.php?id='),
 (16, 'Aprobación de Revisión', 'La revisión del cómputo ha sido aprobada en el sistema', 'verComputo.php?id='),
 (17, 'Modificación de Pedido', 'El pedido ha sido modificado en el sistema', 'verPedidoDirecto.php?id='),
-(18, 'Cancelación de Pedido', 'El pedido ha sido cancelado en el sistema', 'verPedidoDirecto.php?id=');
+(18, 'Cancelación de Pedido', 'El pedido ha sido cancelado en el sistema', 'verPedidoDirecto.php?id='),
+(19, 'Nueva Orden de Trabajo', 'Nueva orden de trabajo dada de alta en el sistema', 'verOrdenTrabajo.php?id='),
+(20, 'Aprobación de lista de corte', 'La lista de corte ha sido aprobada en el sistema', 'imprimirListaCorte.php?id='),
+(21, 'Aprobación de Orden de Trabajo', 'La orden de trabajo ha sido aprobada en el sistema', 'verOrdenTrabajo.php?id=');
 
 -- --------------------------------------------------------
 
@@ -30634,7 +31241,7 @@ INSERT INTO `tipos_notificacion` (`id`, `tipo`, `mensaje`, `redirect`) VALUES
 CREATE TABLE `tipos_procesos` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_procesos`
@@ -30662,7 +31269,7 @@ INSERT INTO `tipos_procesos` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_proyecto` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_proyecto`
@@ -30688,7 +31295,7 @@ INSERT INTO `tipos_proyecto` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_suceso` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_suceso`
@@ -30708,7 +31315,7 @@ INSERT INTO `tipos_suceso` (`id`, `tipo`) VALUES
 CREATE TABLE `tipos_tarea` (
   `id` int(11) NOT NULL,
   `tipo` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `tipos_tarea`
@@ -30750,7 +31357,7 @@ INSERT INTO `tipos_tarea` (`id`, `tipo`) VALUES
 CREATE TABLE `unidades_medida` (
   `id` int(11) NOT NULL,
   `unidad_medida` varchar(99) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `unidades_medida`
@@ -30782,7 +31389,7 @@ CREATE TABLE `usuarios` (
   `fecha_alta` date NOT NULL,
   `activo` tinyint(4) NOT NULL,
   `anulado` tinyint(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `usuarios`
@@ -30827,7 +31434,7 @@ CREATE TABLE `usuarios_tipos_notificacion` (
   `id` int(11) NOT NULL,
   `id_usuario` int(11) NOT NULL,
   `id_tipo_notificacion` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `usuarios_tipos_notificacion`
@@ -30855,24 +31462,27 @@ INSERT INTO `usuarios_tipos_notificacion` (`id`, `id_usuario`, `id_tipo_notifica
 (34, 9, 8),
 (35, 9, 9),
 (36, 9, 11),
-(38, 1, 1),
-(39, 1, 2),
-(40, 1, 3),
-(41, 1, 4),
-(42, 1, 5),
-(43, 1, 6),
-(44, 1, 7),
-(45, 1, 8),
-(46, 1, 9),
-(47, 1, 10),
-(48, 1, 11),
-(49, 1, 12),
-(50, 1, 13),
-(51, 1, 14),
-(52, 1, 15),
-(53, 1, 16),
-(54, 1, 17),
-(55, 1, 18);
+(56, 1, 1),
+(57, 1, 2),
+(58, 1, 3),
+(59, 1, 4),
+(60, 1, 5),
+(61, 1, 6),
+(62, 1, 7),
+(63, 1, 8),
+(64, 1, 9),
+(65, 1, 10),
+(66, 1, 11),
+(67, 1, 12),
+(68, 1, 13),
+(69, 1, 14),
+(70, 1, 15),
+(71, 1, 16),
+(72, 1, 17),
+(73, 1, 18),
+(74, 1, 19),
+(75, 1, 20),
+(76, 1, 21);
 
 --
 -- Índices para tablas volcadas
@@ -31236,6 +31846,12 @@ ALTER TABLE `estados_pedidos`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indices de la tabla `estados_pedidos_detalle`
+--
+ALTER TABLE `estados_pedidos_detalle`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indices de la tabla `estados_proyecto`
 --
 ALTER TABLE `estados_proyecto`
@@ -31383,7 +31999,14 @@ ALTER TABLE `lineas_negocio`
 --
 ALTER TABLE `listas_corte`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `listas_corte_ibfk_1` (`id_tarea`);
+  ADD KEY `listas_corte_revisiones_ibfk_1` (`id_cuenta_realizo`),
+  ADD KEY `listas_corte_revisiones_ibfk_2` (`id_cuenta_reviso`),
+  ADD KEY `listas_corte_revisiones_ibfk_3` (`id_cuenta_valido`),
+  ADD KEY `listas_corte_revisiones_ibfk_4` (`id_lista_corteX`),
+  ADD KEY `listas_corte_revisiones_ibfk_5` (`id_proyecto`),
+  ADD KEY `listas_corte_revisiones_ibfk_6` (`id_usuario`),
+  ADD KEY `listas_corte_revisiones_ibfk_7` (`id_estado_lista_corte`),
+  ADD KEY `id_tarea` (`id_tarea`);
 
 --
 -- Indices de la tabla `listas_corte_conjuntos`
@@ -31394,9 +32017,22 @@ ALTER TABLE `listas_corte_conjuntos`
   ADD KEY `listas_corte_conjuntos_ibfk_2` (`id_lista_corte`);
 
 --
--- Indices de la tabla `listas_corte_revisiones`
+-- Indices de la tabla `listas_corte_old2`
 --
-ALTER TABLE `listas_corte_revisiones`
+ALTER TABLE `listas_corte_old2`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `listas_corte_ibfk_1` (`id_tarea`);
+
+--
+-- Indices de la tabla `listas_corte_revisiones_old`
+--
+ALTER TABLE `listas_corte_revisiones_old`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `listas_corte_revisiones_old2`
+--
+ALTER TABLE `listas_corte_revisiones_old2`
   ADD PRIMARY KEY (`id`),
   ADD KEY `listas_corte_revisiones_ibfk_1` (`id_cuenta_realizo`),
   ADD KEY `listas_corte_revisiones_ibfk_2` (`id_cuenta_reviso`),
@@ -31407,18 +32043,13 @@ ALTER TABLE `listas_corte_revisiones`
   ADD KEY `listas_corte_revisiones_ibfk_7` (`id_estado_lista_corte`);
 
 --
--- Indices de la tabla `listas_corte_revisiones_old`
---
-ALTER TABLE `listas_corte_revisiones_old`
-  ADD PRIMARY KEY (`id`);
-
---
 -- Indices de la tabla `lista_corte_posiciones`
 --
 ALTER TABLE `lista_corte_posiciones`
   ADD PRIMARY KEY (`id`),
   ADD KEY `lista_corte_posiciones_ibfk_1` (`id_colada`),
-  ADD KEY `id_material` (`id_material`);
+  ADD KEY `id_material` (`id_material`),
+  ADD KEY `id_lista_corte_conjunto` (`id_lista_corte_conjunto`);
 
 --
 -- Indices de la tabla `lista_corte_procesos`
@@ -31496,17 +32127,18 @@ ALTER TABLE `ordenes_trabajo`
   ADD PRIMARY KEY (`id`),
   ADD KEY `ordenes_trabajo_ibfk_1` (`id_estado_orden_trabajo`),
   ADD KEY `ordenes_trabajo_ibfk_2` (`id_lista_corte`),
-  ADD KEY `ordenes_trabajo_ibfk_3` (`id_usuario`),
-  ADD KEY `ordenes_trabajo_ibfk_4` (`id_orden_trabajo`);
+  ADD KEY `ordenes_trabajo_ibfk_3` (`id_usuario`);
 
 --
 -- Indices de la tabla `ordenes_trabajo_detalle`
 --
 ALTER TABLE `ordenes_trabajo_detalle`
   ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `id_posicion_2` (`id_posicion`,`id_orden_trabajo`),
   ADD KEY `ordenes_trabajo_detalle_ibfk_1` (`id_orden_trabajo`),
   ADD KEY `ordenes_trabajo_detalle_ibfk_2` (`id_estado_orden_trabajo_posicion`),
-  ADD KEY `id_usuario` (`id_usuario`);
+  ADD KEY `id_usuario` (`id_usuario`),
+  ADD KEY `id_posicion` (`id_posicion`);
 
 --
 -- Indices de la tabla `ordenes_trabajo_detalle_log`
@@ -31602,7 +32234,8 @@ ALTER TABLE `pedidos`
   ADD KEY `pedidos_ibfk_1` (`id_cuenta_recibe`),
   ADD KEY `pedidos_ibfk_2` (`id_proyecto`),
   ADD KEY `pedidos_ibfk_3` (`id_computo`),
-  ADD KEY `id_estado` (`id_estado`);
+  ADD KEY `id_estado` (`id_estado`),
+  ADD KEY `id_cuenta_solicitante` (`id_cuenta_solicitante`);
 
 --
 -- Indices de la tabla `pedidos_detalle`
@@ -31612,7 +32245,8 @@ ALTER TABLE `pedidos_detalle`
   ADD KEY `pedidos_detalle_ibfk_1` (`id_material`),
   ADD KEY `pedidos_detalle_ibfk_2` (`id_pedido`),
   ADD KEY `pedidos_detalle_ibfk_3` (`id_unidad_medida`),
-  ADD KEY `id_computo_detalle` (`id_computo_detalle`);
+  ADD KEY `id_computo_detalle` (`id_computo_detalle`),
+  ADD KEY `id_estado` (`id_estado`);
 
 --
 -- Indices de la tabla `perfiles`
@@ -31773,6 +32407,14 @@ ALTER TABLE `subcuentas`
   ADD PRIMARY KEY (`id`),
   ADD KEY `subcuentas_ibfk_1` (`id_cuenta`),
   ADD KEY `subcuentas_ibfk_2` (`id_usuario`);
+
+--
+-- Indices de la tabla `sucesos`
+--
+ALTER TABLE `sucesos`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_entidad` (`entidad_tipo`,`entidad_id`),
+  ADD KEY `idx_sucesos_proyecto` (`id_proyecto`);
 
 --
 -- Indices de la tabla `sucesos_proyecto`
@@ -31996,13 +32638,13 @@ ALTER TABLE `coladas`
 -- AUTO_INCREMENT de la tabla `compras`
 --
 ALTER TABLE `compras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT de la tabla `compras_detalle`
 --
 ALTER TABLE `compras_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=48;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT de la tabla `compras_pagos`
@@ -32026,13 +32668,13 @@ ALTER TABLE `compras_sucesos`
 -- AUTO_INCREMENT de la tabla `computos`
 --
 ALTER TABLE `computos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=118;
 
 --
 -- AUTO_INCREMENT de la tabla `computos_detalle`
 --
 ALTER TABLE `computos_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=479;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=484;
 
 --
 -- AUTO_INCREMENT de la tabla `computos_old`
@@ -32062,13 +32704,13 @@ ALTER TABLE `condiciones_iva`
 -- AUTO_INCREMENT de la tabla `consumos`
 --
 ALTER TABLE `consumos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT de la tabla `consumos_detalle`
 --
 ALTER TABLE `consumos_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=42;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `cuentas`
@@ -32098,13 +32740,13 @@ ALTER TABLE `devoluciones_detalle`
 -- AUTO_INCREMENT de la tabla `egresos`
 --
 ALTER TABLE `egresos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `egresos_detalle`
 --
 ALTER TABLE `egresos_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `empresas`
@@ -32128,19 +32770,19 @@ ALTER TABLE `estados_componentes_packing_list`
 -- AUTO_INCREMENT de la tabla `estados_compra`
 --
 ALTER TABLE `estados_compra`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_computos`
 --
 ALTER TABLE `estados_computos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_despacho`
 --
 ALTER TABLE `estados_despacho`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_factura`
@@ -32152,7 +32794,7 @@ ALTER TABLE `estados_factura`
 -- AUTO_INCREMENT de la tabla `estados_lista_corte`
 --
 ALTER TABLE `estados_lista_corte`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_lista_corte_conjuntos`
@@ -32189,6 +32831,12 @@ ALTER TABLE `estados_packing_list`
 --
 ALTER TABLE `estados_pedidos`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT de la tabla `estados_pedidos_detalle`
+--
+ALTER TABLE `estados_pedidos_detalle`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT de la tabla `estados_proyecto`
@@ -32266,13 +32914,13 @@ ALTER TABLE `formas_pago`
 -- AUTO_INCREMENT de la tabla `ingresos`
 --
 ALTER TABLE `ingresos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT de la tabla `ingresos_detalle`
 --
 ALTER TABLE `ingresos_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
 -- AUTO_INCREMENT de la tabla `letras_comprobante`
@@ -32290,37 +32938,43 @@ ALTER TABLE `lineas_negocio`
 -- AUTO_INCREMENT de la tabla `listas_corte`
 --
 ALTER TABLE `listas_corte`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
 
 --
 -- AUTO_INCREMENT de la tabla `listas_corte_conjuntos`
 --
 ALTER TABLE `listas_corte_conjuntos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=147;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
 
 --
--- AUTO_INCREMENT de la tabla `listas_corte_revisiones`
+-- AUTO_INCREMENT de la tabla `listas_corte_old2`
 --
-ALTER TABLE `listas_corte_revisiones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=97;
+ALTER TABLE `listas_corte_old2`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
 
 --
 -- AUTO_INCREMENT de la tabla `listas_corte_revisiones_old`
 --
 ALTER TABLE `listas_corte_revisiones_old`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `listas_corte_revisiones_old2`
+--
+ALTER TABLE `listas_corte_revisiones_old2`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=98;
 
 --
 -- AUTO_INCREMENT de la tabla `lista_corte_posiciones`
 --
 ALTER TABLE `lista_corte_posiciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=242;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=315;
 
 --
 -- AUTO_INCREMENT de la tabla `lista_corte_procesos`
 --
 ALTER TABLE `lista_corte_procesos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=867;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1080;
 
 --
 -- AUTO_INCREMENT de la tabla `localidades`
@@ -32332,13 +32986,13 @@ ALTER TABLE `localidades`
 -- AUTO_INCREMENT de la tabla `logs`
 --
 ALTER TABLE `logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2470;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2638;
 
 --
 -- AUTO_INCREMENT de la tabla `materiales`
 --
 ALTER TABLE `materiales`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=500;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=501;
 
 --
 -- AUTO_INCREMENT de la tabla `monedas`
@@ -32350,7 +33004,7 @@ ALTER TABLE `monedas`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=442;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=521;
 
 --
 -- AUTO_INCREMENT de la tabla `occ`
@@ -32374,19 +33028,19 @@ ALTER TABLE `occ_tipos_cobertura`
 -- AUTO_INCREMENT de la tabla `ordenes_trabajo`
 --
 ALTER TABLE `ordenes_trabajo`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_trabajo_detalle`
 --
 ALTER TABLE `ordenes_trabajo_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=65;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_trabajo_detalle_log`
 --
 ALTER TABLE `ordenes_trabajo_detalle_log`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT de la tabla `ordenes_trabajo_detalle_old`
@@ -32446,19 +33100,19 @@ ALTER TABLE `paises`
 -- AUTO_INCREMENT de la tabla `parametros`
 --
 ALTER TABLE `parametros`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos`
 --
 ALTER TABLE `pedidos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=224;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=230;
 
 --
 -- AUTO_INCREMENT de la tabla `pedidos_detalle`
 --
 ALTER TABLE `pedidos_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=100;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
 
 --
 -- AUTO_INCREMENT de la tabla `perfiles`
@@ -32581,6 +33235,12 @@ ALTER TABLE `subcuentas`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT de la tabla `sucesos`
+--
+ALTER TABLE `sucesos`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
 -- AUTO_INCREMENT de la tabla `sucesos_proyecto`
 --
 ALTER TABLE `sucesos_proyecto`
@@ -32656,7 +33316,7 @@ ALTER TABLE `tipos_montaje`
 -- AUTO_INCREMENT de la tabla `tipos_notificacion`
 --
 ALTER TABLE `tipos_notificacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT de la tabla `tipos_procesos`
@@ -32692,13 +33352,13 @@ ALTER TABLE `unidades_medida`
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios_tipos_notificacion`
 --
 ALTER TABLE `usuarios_tipos_notificacion`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=77;
 
 --
 -- Restricciones para tablas volcadas
@@ -33024,33 +33684,47 @@ ALTER TABLE `ingresos_detalle`
 -- Filtros para la tabla `listas_corte`
 --
 ALTER TABLE `listas_corte`
-  ADD CONSTRAINT `listas_corte_ibfk_1` FOREIGN KEY (`id_tarea`) REFERENCES `tareas` (`id`);
+  ADD CONSTRAINT `listas_corte_ibfk_1` FOREIGN KEY (`id_cuenta_realizo`) REFERENCES `cuentas` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_2` FOREIGN KEY (`id_cuenta_reviso`) REFERENCES `cuentas` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_3` FOREIGN KEY (`id_cuenta_valido`) REFERENCES `cuentas` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_4` FOREIGN KEY (`id_lista_corteX`) REFERENCES `listas_corte_old2` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_5` FOREIGN KEY (`id_proyecto`) REFERENCES `proyectos` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_6` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_7` FOREIGN KEY (`id_estado_lista_corte`) REFERENCES `estados_lista_corte` (`id`),
+  ADD CONSTRAINT `listas_corte_ibfk_8` FOREIGN KEY (`id_tarea`) REFERENCES `tareas` (`id`);
 
 --
 -- Filtros para la tabla `listas_corte_conjuntos`
 --
 ALTER TABLE `listas_corte_conjuntos`
   ADD CONSTRAINT `listas_corte_conjuntos_ibfk_1` FOREIGN KEY (`id_estado_lista_corte_conjuntos`) REFERENCES `estados_lista_corte_conjuntos` (`id`),
-  ADD CONSTRAINT `listas_corte_conjuntos_ibfk_2` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte_revisiones` (`id`);
+  ADD CONSTRAINT `listas_corte_conjuntos_ibfk_2` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte` (`id`);
 
 --
--- Filtros para la tabla `listas_corte_revisiones`
+-- Filtros para la tabla `listas_corte_old2`
 --
-ALTER TABLE `listas_corte_revisiones`
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_1` FOREIGN KEY (`id_cuenta_realizo`) REFERENCES `cuentas` (`id`),
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_2` FOREIGN KEY (`id_cuenta_reviso`) REFERENCES `cuentas` (`id`),
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_3` FOREIGN KEY (`id_cuenta_valido`) REFERENCES `cuentas` (`id`),
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_4` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte` (`id`),
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_5` FOREIGN KEY (`id_proyecto`) REFERENCES `proyectos` (`id`),
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_6` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`),
-  ADD CONSTRAINT `listas_corte_revisiones_ibfk_7` FOREIGN KEY (`id_estado_lista_corte`) REFERENCES `estados_lista_corte` (`id`);
+ALTER TABLE `listas_corte_old2`
+  ADD CONSTRAINT `listas_corte_old2_ibfk_1` FOREIGN KEY (`id_tarea`) REFERENCES `tareas` (`id`);
+
+--
+-- Filtros para la tabla `listas_corte_revisiones_old2`
+--
+ALTER TABLE `listas_corte_revisiones_old2`
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_1` FOREIGN KEY (`id_cuenta_realizo`) REFERENCES `cuentas` (`id`),
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_2` FOREIGN KEY (`id_cuenta_reviso`) REFERENCES `cuentas` (`id`),
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_3` FOREIGN KEY (`id_cuenta_valido`) REFERENCES `cuentas` (`id`),
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_4` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte_old2` (`id`),
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_5` FOREIGN KEY (`id_proyecto`) REFERENCES `proyectos` (`id`),
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_6` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`),
+  ADD CONSTRAINT `listas_corte_revisiones_old2_ibfk_7` FOREIGN KEY (`id_estado_lista_corte`) REFERENCES `estados_lista_corte` (`id`);
 
 --
 -- Filtros para la tabla `lista_corte_posiciones`
 --
 ALTER TABLE `lista_corte_posiciones`
   ADD CONSTRAINT `lista_corte_posiciones_ibfk_1` FOREIGN KEY (`id_colada`) REFERENCES `coladas` (`id`),
-  ADD CONSTRAINT `lista_corte_posiciones_ibfk_2` FOREIGN KEY (`id_material`) REFERENCES `materiales` (`id`);
+  ADD CONSTRAINT `lista_corte_posiciones_ibfk_2` FOREIGN KEY (`id_material`) REFERENCES `materiales` (`id`),
+  ADD CONSTRAINT `lista_corte_posiciones_ibfk_3` FOREIGN KEY (`id_lista_corte_conjunto`) REFERENCES `listas_corte_conjuntos` (`id`);
 
 --
 -- Filtros para la tabla `lista_corte_procesos`
@@ -33107,9 +33781,8 @@ ALTER TABLE `occ_tipos_cobertura`
 --
 ALTER TABLE `ordenes_trabajo`
   ADD CONSTRAINT `ordenes_trabajo_ibfk_1` FOREIGN KEY (`id_estado_orden_trabajo`) REFERENCES `estados_orden_trabajo` (`id`),
-  ADD CONSTRAINT `ordenes_trabajo_ibfk_2` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte_revisiones` (`id`),
-  ADD CONSTRAINT `ordenes_trabajo_ibfk_3` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`),
-  ADD CONSTRAINT `ordenes_trabajo_ibfk_4` FOREIGN KEY (`id_orden_trabajo`) REFERENCES `ordenes_trabajo` (`id`);
+  ADD CONSTRAINT `ordenes_trabajo_ibfk_2` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte` (`id`),
+  ADD CONSTRAINT `ordenes_trabajo_ibfk_3` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`);
 
 --
 -- Filtros para la tabla `ordenes_trabajo_detalle`
@@ -33117,7 +33790,8 @@ ALTER TABLE `ordenes_trabajo`
 ALTER TABLE `ordenes_trabajo_detalle`
   ADD CONSTRAINT `ordenes_trabajo_detalle_ibfk_1` FOREIGN KEY (`id_orden_trabajo`) REFERENCES `ordenes_trabajo` (`id`),
   ADD CONSTRAINT `ordenes_trabajo_detalle_ibfk_2` FOREIGN KEY (`id_estado_orden_trabajo_posicion`) REFERENCES `estados_orden_trabajo_posicion` (`id`),
-  ADD CONSTRAINT `ordenes_trabajo_detalle_ibfk_3` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`);
+  ADD CONSTRAINT `ordenes_trabajo_detalle_ibfk_3` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`),
+  ADD CONSTRAINT `ordenes_trabajo_detalle_ibfk_4` FOREIGN KEY (`id_posicion`) REFERENCES `lista_corte_posiciones` (`id`);
 
 --
 -- Filtros para la tabla `ordenes_trabajo_detalle_log`
@@ -33131,7 +33805,7 @@ ALTER TABLE `ordenes_trabajo_detalle_log`
 --
 ALTER TABLE `ordenes_trabajo_revisiones`
   ADD CONSTRAINT `ordenes_trabajo_revisiones_ibfk_1` FOREIGN KEY (`id_estado_orden_trabajo`) REFERENCES `estados_orden_trabajo` (`id`),
-  ADD CONSTRAINT `ordenes_trabajo_revisiones_ibfk_2` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte_revisiones` (`id`),
+  ADD CONSTRAINT `ordenes_trabajo_revisiones_ibfk_2` FOREIGN KEY (`id_lista_corte`) REFERENCES `listas_corte_revisiones_old2` (`id`),
   ADD CONSTRAINT `ordenes_trabajo_revisiones_ibfk_3` FOREIGN KEY (`id_orden_trabajo`) REFERENCES `ordenes_trabajo` (`id`),
   ADD CONSTRAINT `ordenes_trabajo_revisiones_ibfk_4` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`);
 
@@ -33176,7 +33850,8 @@ ALTER TABLE `pedidos`
   ADD CONSTRAINT `pedidos_ibfk_1` FOREIGN KEY (`id_cuenta_recibe`) REFERENCES `cuentas` (`id`),
   ADD CONSTRAINT `pedidos_ibfk_2` FOREIGN KEY (`id_proyecto`) REFERENCES `proyectos` (`id`),
   ADD CONSTRAINT `pedidos_ibfk_3` FOREIGN KEY (`id_computo`) REFERENCES `computos` (`id`),
-  ADD CONSTRAINT `pedidos_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estados_pedidos` (`id`);
+  ADD CONSTRAINT `pedidos_ibfk_4` FOREIGN KEY (`id_estado`) REFERENCES `estados_pedidos` (`id`),
+  ADD CONSTRAINT `pedidos_ibfk_5` FOREIGN KEY (`id_cuenta_solicitante`) REFERENCES `cuentas` (`id`);
 
 --
 -- Filtros para la tabla `pedidos_detalle`
@@ -33185,7 +33860,8 @@ ALTER TABLE `pedidos_detalle`
   ADD CONSTRAINT `pedidos_detalle_ibfk_1` FOREIGN KEY (`id_material`) REFERENCES `materiales` (`id`),
   ADD CONSTRAINT `pedidos_detalle_ibfk_2` FOREIGN KEY (`id_pedido`) REFERENCES `pedidos` (`id`),
   ADD CONSTRAINT `pedidos_detalle_ibfk_3` FOREIGN KEY (`id_unidad_medida`) REFERENCES `unidades_medida` (`id`),
-  ADD CONSTRAINT `pedidos_detalle_ibfk_4` FOREIGN KEY (`id_computo_detalle`) REFERENCES `computos_detalle` (`id`);
+  ADD CONSTRAINT `pedidos_detalle_ibfk_4` FOREIGN KEY (`id_computo_detalle`) REFERENCES `computos_detalle` (`id`),
+  ADD CONSTRAINT `pedidos_detalle_ibfk_5` FOREIGN KEY (`id_estado`) REFERENCES `estados_pedidos_detalle` (`id`);
 
 --
 -- Filtros para la tabla `permisos_perfil`
@@ -33276,6 +33952,12 @@ ALTER TABLE `stock2`
 ALTER TABLE `subcuentas`
   ADD CONSTRAINT `subcuentas_ibfk_1` FOREIGN KEY (`id_cuenta`) REFERENCES `cuentas` (`id`),
   ADD CONSTRAINT `subcuentas_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id`);
+
+--
+-- Filtros para la tabla `sucesos`
+--
+ALTER TABLE `sucesos`
+  ADD CONSTRAINT `sucesos_ibfk_1` FOREIGN KEY (`id_proyecto`) REFERENCES `proyectos` (`id`);
 
 --
 -- Filtros para la tabla `sucesos_proyecto`

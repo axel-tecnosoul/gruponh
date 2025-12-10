@@ -16,22 +16,22 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		
-		$sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?)";
+		$nro_revision = 0; // Revisión inicial
+		$sql = "INSERT INTO `compras`(`id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`,comentarios_revision, `descuento`, `nro_revision`) VALUES (?,?,?,?,?,1,?,0,?,?,?,'Revisión Original',?,?)";
 		$q = $pdo->prepare($sql);		   
-		$q->execute([$_GET['idPedido'],$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento']]);
+		$q->execute([$_GET['idPedido'],$_POST['id_cuenta_proveedor'],$_POST['fecha_emision'],$_POST['fecha_entrega'],$_POST['id_forma_pago'],'',$_POST['comentarios'],$_POST['id_moneda'],$_POST['tipo_cambio_dia'],$_POST['descuento'],$nro_revision]);
         
 		$id = $pdo->lastInsertId();
 		
-		$nroOC = $_GET['idPedido'] .'/'. $id;
-		$sql = "update `compras` set `nro_oc` = ? where id = ?";
-		$q = $pdo->prepare($sql);		   
-		$q->execute([$nroOC,$id]);
+		// No necesitamos actualizar nro_oc, se maneja por separado del formato ID/revision que se muestra
         
 		
 		$sql = " SELECT d.`id`, d.`id_material`, m.`concepto`, d.`cantidad`, d.`id_unidad_medida`,m.peso_metro FROM `pedidos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = m.id_unidad_medida WHERE d.id in (".$_GET['conceptos'].")";
 		
 		$total = 0;
+		$count = 0;
 		foreach ($pdo->query($sql) as $row) {
+			$count++;
 			
 			if ($_POST['preciokg_'.$row[0]] != 0) {
 				$_POST['precio_'.$row[0]] = $_POST['preciokg_'.$row[0]] * $row[5];
@@ -45,9 +45,16 @@
 			
 			$comprando = $_POST['cantidad_'.$row[0]];
 			
-			$sql = "UPDATE `pedidos_detalle` SET `comprado`=? WHERE `id_pedido`=? AND `id_material`=?";
+				$sql = "UPDATE `pedidos_detalle` SET `comprado`=? WHERE `id_pedido`=? AND `id_material`=?";
 			$q = $pdo->prepare($sql);
 			$q->execute([$comprando,$_GET['idPedido'],$row[1]]);
+			
+			// Actualizar estado del pedido a "Gestionando" (id 4) al crear la primera OC
+			if ($count == 1) {
+				$sqlUpdatePedido = "UPDATE pedidos SET id_estado = 4 WHERE id = ?";
+				$qUpdatePedido = $pdo->prepare($sqlUpdatePedido);
+				$qUpdatePedido->execute([$_GET['idPedido']]);
+			}
 			
 			$sql3 = "SELECT cd.id id from computos_detalle cd inner join computos c on c.id = cd.id_computo inner join pedidos p on p.id_computo = c.id where p.id = ? and cd.cancelado = 0 and cd.id_material = ? ";
 			$q3 = $pdo->prepare($sql3);
@@ -105,12 +112,12 @@
 			
 			$sql = "INSERT INTO `notificaciones`(`id_tipo_notificacion`, `id_usuario`, `fecha_hora`, `leida`,detalle,id_entidad) VALUES (4,?,now(),0,?,?)";
 			$q = $pdo->prepare($sql);
-			$q->execute([$row[0],'ID Orden de Compra: #'.$id,$id]);
+			$q->execute([$row[0],'OC: ' . $id . '/' . $nro_revision . ' creada',$id]);
 			
 			$address = $row[1];
 			
 			$titulo = "ERP Notificaciones - Módulo Compras - Nueva Compra";
-			$mensaje="Nueva compra dada de alta en el sistema: #".$id;
+			$mensaje="Nueva compra dada de alta en el sistema: " . $id . "/" . $nro_revision;
 			
 			$mail = new PHPMailer();
 			$mail->IsSMTP();

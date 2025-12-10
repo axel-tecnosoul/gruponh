@@ -374,24 +374,18 @@ include 'database.php';
     // Setup - add a text input to each footer cell
     
 	$('#dataTables-example666').DataTable({
-       stateSave: false,
-		<?php
-		if (!empty($_POST)) {
-		?>
-		'ajax': 'listarProyectosAjax.php?nro=<?php echo $_POST['nro'];?>&nombre=<?php echo $_POST['nombre'];?>&cliente=<?php echo $_POST['cliente'];?>&linea=<?php echo $_POST['id_linea_negocio'];?>&estado=<?php if (!empty($_POST['id_estado'])) echo implode(",",$_POST['id_estado']);?>',	
-		<?php
-		} else {
-		?>
-		'ajax': 'listarProyectosAjax.php?nro=252525&nombre=252525&cliente=252525&linea=252525&estado=252525',	
-		<?php
-		}
-		?>
+       stateSave: false,<?php
+        if (!empty($_POST)) {?>
+          'ajax': 'listarProyectosAjax.php?nro=<?php echo $_POST['nro'];?>&nombre=<?php echo $_POST['nombre'];?>&cliente=<?php echo $_POST['cliente'];?>&linea=<?php echo $_POST['id_linea_negocio'];?>&estado=<?php if (!empty($_POST['id_estado'])) echo implode(",",$_POST['id_estado']);?>',<?php
+        } else {?>
+          'ajax': 'listarProyectosAjax.php?nro=252525&nombre=252525&cliente=252525&linea=252525&estado=252525',<?php
+        }?>
         responsive: false,
-		serverSide: true,
-		searching: false,
+        serverSide: true,
+        searching: false,
 		
         processing: true,
-		"createdRow": function(row, data, dataIndex) {
+		    "createdRow": function(row, data, dataIndex) {
             // Limitar el texto de la columna 0 (Name)
             var maxLength = 20; // Número máximo de caracteres
             var cell = $('td', row).eq(4); // Obtener la celda de la primera columna
@@ -546,7 +540,7 @@ include 'database.php';
           $("#link_nueva_tarea").attr("href","nuevaTarea.php?id="+id_proyecto);
           $("#link_modificar_proyecto").attr("href","modificarProyecto.php?id="+id_proyecto);
           $("#link_adjuntar_proyecto").attr("href","adjuntarProyecto.php?id="+id_proyecto);
-          $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?id="+id_proyecto);
+          $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?entidad_tipo=proyectos&entidad_id="+id_proyecto);
           $("#link_agregar_presupuesto").attr("href","agregarPresupuestoProyecto.php?id="+id_proyecto);
 		  $("#link_nueva_lc").attr("href","nuevaListaCorte.php?idProyecto="+id_proyecto);
 		  $("#link_nuevo_packing").attr("href","nuevaPackingList.php?idProyecto="+id_proyecto);

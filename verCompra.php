@@ -1,50 +1,88 @@
 <?php
-    require("config.php");
-    if (empty($_SESSION['user'])) {
-        header("Location: index.php");
-        die("Redirecting to index.php");
-    }
-    
-    require 'database.php';
+require("config.php");
+if (empty($_SESSION['user'])) {
+  header("Location: index.php");
+  die("Redirecting to index.php");
+}
+require 'database.php';
 
-    $id = null;
-    if (!empty($_GET['id'])) {
-        $id = $_REQUEST['id'];
-    }
+$id = null;
+if (!empty($_GET['id'])) {
+  $id = $_REQUEST['id'];
+}
+
+if (null==$id) {
+  header("Location: listarCompras.php");
+}
     
-    if (null==$id) {
-        header("Location: listarCompras.php");
-    }
-    
-    if (!empty($_POST)) {
-    } else {
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT c.`id`, c.`id_pedido`, c.`id_cuenta_proveedor`, c.`fecha_emision`, c.`fecha_entrega`, c.`id_forma_pago`, c.`id_estado_compra`, c.`nro_oc`, c.`total`, c.`comentarios`, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.`iva`, c.`descuento` FROM `compras` c inner join pedidos pe on pe.id = c.id_pedido WHERE c.id = ? ";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id]);
-        $data = $q->fetch(PDO::FETCH_ASSOC);
+$moneda="$";
+if (!empty($_POST)) {
+} else {
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
+          FROM compras c 
+          INNER JOIN pedidos pe ON pe.id = c.id_pedido 
+          LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
+          LEFT JOIN formas_pago fp ON fp.id = c.id_forma_pago 
+          LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra 
+          LEFT JOIN monedas m ON m.id = c.id_moneda
+          LEFT JOIN computos co ON co.id = pe.id_computo 
+          LEFT JOIN tareas t ON t.id = co.id_tarea 
+          LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
+          LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
+          LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
+          LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
+          WHERE c.id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
         
-        Database::disconnect();
-    }
+  // Construir información del proyecto
+  $proyectoDisplay = '';
+  $codigoObra = '';
+        
+  if ($data) {
+
+    $moneda=$data['moneda'];
+
+    $codigoObraPartes = array_filter([
+      $data['nro_sitio'] ?? null,
+      $data['nro_subsitio'] ?? null,
+      $data['proyecto_nro'] ?? null
+    ], function ($valor) {
+      return $valor !== null && $valor !== '';
+    });
+    $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
     
-?>
+    if (!empty($data['proyecto_id'])) {
+      if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
+        $proyectoDisplay = $codigoObra . ': ' . $data['proyecto_nombre'];
+      } elseif (!empty($codigoObra)) {
+        $proyectoDisplay = $codigoObra;
+      } elseif (!empty($data['proyecto_nombre'])) {
+        $proyectoDisplay = $data['proyecto_nombre'];
+      }
+    }
+  }
+  
+  Database::disconnect();
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
-	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+    <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
   </head>
   <body>
     <!-- Loader ends-->
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
     <?php include('header.php');?>
-    
       <!-- Page Header Start-->
       <div class="page-body-wrapper">
-    <?php include('menu.php');?>
+        <?php include('menu.php');?>
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
@@ -55,299 +93,285 @@
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
+                  <div class="card-header compra-summary">
+                    <h5>
+                      <?=$ubicacion." N° ".$data["id"]."/".$data["nro_revision"]?> - Pedido N° <?=$data["id_pedido"]?>
+                      <a href="imprimirCompra.php?id=<?=$data['id'];?>" target="_blank"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir O.C." title="Imprimir O.C."></a>
+                    </h5>
                   </div>
-					<form class="form theme-form" role="form" method="post" action="#">
+                  <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
                     <div class="card-body">
                       <div class="row">
-                        <div class="col">
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Nro OC(*)</label>
-							<div class="col-sm-9"><input name="nro_oc" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['nro_oc'];?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Proveedor(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_cuenta_proveedor']) {
-									echo " selected ";
-								}
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-							<div class="col-sm-9"><input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha_emision'];?>" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Entrega Estimada</label>
-							<div class="col-sm-9"><input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?php echo $data['fecha_entrega'];?>" class="form-control"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Moneda</label>
-							<div class="col-sm-9">
-							<select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `moneda` FROM `monedas` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_moneda']) {
-									echo " selected ";
-								}
-								echo ">".$fila['moneda']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Tipo de Cambio</label>
-							<div class="col-sm-9"><input name="tipo_cambio_dia" type="number" step="0.01" class="form-control" value="<?php echo $data['tipo_cambio_dia'];?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Forma de Pago</label>
-							<div class="col-sm-9">
-							<select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `forma_pago` FROM `formas_pago` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_forma_pago']) {
-									echo " selected ";
-								}
-								echo ">".$fila['forma_pago']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Estado</label>
-							<div class="col-sm-9">
-							<select name="id_estado_compra" id="id_estado_compra" class="js-example-basic-single col-sm-12">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `estado` FROM `estados_compra` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_estado_compra']) {
-									echo " selected ";
-								}
-								echo ">".$fila['estado']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Lugar de Entrega</label>
-							<div class="col-sm-9"><input name="lugar_entrega" type="text" maxlength="299" class="form-control" required="required" value="<?php echo $data['lugar_entrega'];?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Subtotal</label>
-							<div class="col-sm-9"><input name="total" type="number" step="0.01" class="form-control" value="<?php echo $data['total'];?>" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">IVA</label>
-							<div class="col-sm-9"><input name="iva" type="number" step="0.01" class="form-control" value="<?php echo $data['iva'];?>" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Descuento</label>
-							<div class="col-sm-9"><input name="descuento" type="number" step="0.01" class="form-control" value="<?php echo $data['descuento'];?>" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Total</label>
-							<div class="col-sm-9"><input name="total_totales" type="number" step="0.01" class="form-control" value="<?php echo $data['total']+$data['iva']-$data['descuento'];?>" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Comentarios</label>
-							<div class="col-sm-9"><textarea name="comentarios" class="form-control"><?php echo $data['comentarios'];?></textarea></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-12 col-form-label">Conceptos O.C</label>
-							</div>
-							<div class="form-group row">
-							<div class="col-sm-12">
-							<table class="display" id="dataTables-example667">
-								<thead>
-									<tr>
-										<th>Concepto</th>
-										<th>Cantidad</th>
-										<th>Unidad</th>
-										<th>Peso Total (Kg)</th>
-										<th>P/Unitario</th>
-										<th>P/Kilo</th>
-										<th>P/Total</th>
-										<th>Entregado</th>
-								  	</tr>
-								</thead>
-								<tbody>
-									<?php
-										$pdo = Database::connect();
-										$sql = " SELECT d.`id`, m.`concepto`, d.`cantidad`, u.`unidad_medida`,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo FROM `compras_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
-										foreach ($pdo->query($sql) as $row) {
-											
-											$precio_unitario_formateado = number_format($row[5], 2);
-											$precio_kg_formateado = number_format($row[7], 2);
-											
-											$peso_por_unidad = $row[8] * ($row[9] / 1000);
-											
-											$peso_total_linea = $peso_por_unidad * $row[2];
-											
-											$subtotal_calculado = 0;
-											if ($row[7] > 0) {
-												$subtotal_calculado = $peso_total_linea * $row[7];
-											} else {
-												$subtotal_calculado = $row[5] * $row[2];
-											}
+                        <div class="col-md-12">
+                          <h6 class="mb-3 font-weight-bold">Datos de la Orden de Compra</h6>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Nro O.C.</label>
+                            <div class="col-sm-4"><?=$data['id']."/".$data['nro_revision'];?></div>
+                            <label class="col-sm-2 font-weight-bold">Proveedor</label>
+                            <div class="col-sm-4"><?=$data['proveedor_nombre'];?></div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Fecha Emisión</label>
+                            <div class="col-sm-4"><?=$data['fecha_emision_formatted'];?></div>
+                            <label class="col-sm-2 font-weight-bold">Fecha Entrega</label>
+                            <div class="col-sm-4"><?=$data['fecha_entrega_formatted'];?></div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Proyecto</label>
+                            <div class="col-sm-4"><?=$proyectoDisplay;?></div>
+                            <label class="col-sm-2 font-weight-bold">Pedido N°</label>
+                            <div class="col-sm-4">
+                              <a href="verPedido.php?id=<?=$data['id_pedido']?>" target="_blank">
+                                <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$data['id_pedido']?>
+                              </a>
+                            </div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Estado</label>
+                            <div class="col-sm-4"><?=$data['estado_compra'];?></div>
+                            <label class="col-sm-2 font-weight-bold">Forma de Pago</label>
+                            <div class="col-sm-4"><?=$data['forma_pago'];?></div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Lugar de Entrega</label>
+                            <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
+                            <label class="col-sm-2 font-weight-bold">Moneda</label>
+                            <div class="col-sm-4"><?=$moneda;?><?= $data['tipo_cambio_dia'] ? ' (TC: '.$data['tipo_cambio_dia'].')' : '' ?></div>
+                          </div><?php
+                          if (!empty($data['comentarios'])) { ?>
+                            <div class="form-group row mt-1">
+                              <label class="col-sm-2 font-weight-bold">Comentarios</label>
+                              <div class="col-sm-10"><?=$data['comentarios'];?></div>
+                            </div><?php
+                          } ?>
+                        </div>
+                      </div>
+                      <hr class="mt-4 mb-4">
+                      <div class="form-group row mt-1">
+                        <div class="col-sm-12">
+                          <table class="display" id="dataTables-example667">
+                            <thead>
+                              <tr>
+                                <th>Concepto</th>
+                                <th>Cantidad</th>
+                                <th>F. Entrega</th>
+                                <th>Peso Total (Kg)</th>
+                                <th>P/Unitario</th>
+                                <th>P/Kilo</th>
+                                <th>Subtotal</th>
+                                <th>% Desc.</th>
+                                <th>Total c/Desc</th>
+                                <th>Entregado</th>
+                                </tr>
+                            </thead>
+                            <tbody><?php
+                              $sumaSubtotal = 0;
+                              $sumaDescuento = 0;
+                              $pdo = Database::connect();
+                              $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,d.subtotal,d.descuento,d.fecha_entrega,m.peso_metro,m.largo FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
+                              foreach ($pdo->query($sql) as $row) {
+                                $cantidad = (float) $row["cantidad"];
+                                $precio_unitario = (float) $row["precio"];
+                                $precio_kg = (float) $row["precio_kg"];
+                                $porcentajeDescuento = (float) $row["descuento"];
+                                $fechaEntrega = $row["fecha_entrega"];
+                                $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
+                                
+                                $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
+                                $peso_total_linea = $peso_por_unidad * $cantidad;
+                                
+                                // Usar subtotal guardado si existe, sino calcularlo
+                                if ($subtotalGuardado > 0) {
+                                  $subtotalSinDescuento = $subtotalGuardado;
+                                } else {
+                                  if ($precio_kg > 0) {
+                                    $subtotalSinDescuento = $peso_total_linea * $precio_kg;
+                                  } else {
+                                    $subtotalSinDescuento = $precio_unitario * $cantidad;
+                                  }
+                                }
 
-											$peso_total_formateado = number_format($peso_total_linea, 2);
-											$subtotal_formateado = number_format($subtotal_calculado, 2);
+                                // Calcular descuento
+                                $descuento = 0;
+                                if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+                                  $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                }
+                                
+                                // Aplicar descuento al subtotal
+                                $subtotalConDescuento = $subtotalSinDescuento - $descuento;
 
-											echo '<tr>';
-											echo '<td>'. $row[1] . '</td>';
-											echo '<td>'. $row[2] . '</td>';
-											echo '<td>'. $row[3] . '</td>';
-											echo '<td>'. $peso_total_formateado . '</td>';
-											echo '<td>'. $precio_unitario_formateado . '</td>';
-											echo '<td>'. $precio_kg_formateado . '</td>';
-											echo '<td>'. $subtotal_formateado . '</td>';
-											echo '<td>'. $row[6] . '</td>';
-											echo '</tr>';
-										}
-										Database::disconnect();
-									?>
-								</tbody>
-								</table>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-12 col-form-label">Conceptos Cómputo</label>
-							</div>
-							<div class="form-group row">
-							<div class="col-sm-12">
-							<table class="display" id="dataTables-example668">
-								<thead>
-								  <tr>
-									  <th>Concepto</th>
-									  <th>Cantidad</th>
-								  </tr>
-								</thead>
-								<tbody>
-								  <?php
-									$pdo = Database::connect();
-									$sql = " select m.concepto,cd.cantidad from computos_detalle cd inner join computos co on co.id = cd.id_computo inner join pedidos p on p.id_computo = co.id inner join compras c on c.id_pedido = p.id inner join materiales m on m.id = cd.id_material where c.id = ".$_GET['id'];
-									foreach ($pdo->query($sql) as $row) {
-										echo '<tr>';
-										echo '<td>'. $row[0] . '</td>';
-										echo '<td>'. $row[1] . '</td>';
-										echo '</tr>';
-									}
-								   Database::disconnect();
-								  ?>
-								</tbody>
-							  </table>
-							</div>
-							</div>
-							<hr>
-							<h5 class='mb-5'>Sucesos de la Compra</h5>
-							<div class="form-group row">
-								<div class="col-sm-12">
-								<div class="timeline-small">
-								  <?php 
-									$sql_sucesos = "
-										SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, u.usuario AS nombre_usuario
-										FROM sucesos s 
-										INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
-										LEFT JOIN usuarios u ON u.id = s.id_usuario
-										WHERE s.entidad_tipo = 'compras' AND s.entidad_id = ?
-										ORDER BY s.fecha_hora DESC, s.id DESC";
-									
-									$q_sucesos = $pdo->prepare($sql_sucesos);
-									$q_sucesos->execute([$id]);
+                                $sumaSubtotal += $subtotalSinDescuento;
+                                $sumaDescuento += $descuento;
 
-														if ($q_sucesos->rowCount() > 0) {
-										foreach ($q_sucesos as $row_suceso) {
-											$usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';
-											echo '<div class="media">';
-											echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
-											echo '<div class="media-body">';
-											echo '<h6>'.htmlspecialchars($row_suceso['titulo']).' <span class="pull-right f-14">'.$row_suceso['fecha_formateada'].'hs</span></h6>';
-											echo '<p><strong>'.htmlspecialchars($row_suceso['tipo']).':</strong> '.htmlspecialchars($row_suceso['suceso']).' <small class="text-muted">'.$usuario_suceso.'</small></p>';
-											echo '</div></div>';
-										}
-									} else {
-										echo '<p>No hay sucesos registrados para esta compra.</p>';
-									}
-								  ?>
-								</div>
-								</div>
-							</div>
-							<hr class='mt-5'>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Comprobante</label>
-							<div class="col-sm-9"><a target="_blank" href="<?php echo $data['adjunto_factura'];?>"><i>Descargar</i></a></div>
-							</div>
-							<div class="form-group row">
-								<label class="col-sm-3 col-form-label">Pagos / Comentarios Realizados</label>
-								<div class="col-sm-9">
-								<div class="timeline-small">
-								  <?php 
-									$pdo = Database::connect();
-									$sql = " SELECT cp.`id`, date_format(cp.`fecha`,'%d/%m/%y'), cp.`monto`, cp.`comentarios`, u.usuario FROM `compras_pagos` cp left join usuarios u on u.id = cp.`id_usuario` WHERE cp.`id_compra` = ".$_GET['id'];
-									
-									foreach ($pdo->query($sql) as $row) {
-										echo '<div class="media">';
-										echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
-										echo '<div class="media-body">';
-										echo '<h6>Monto: $'.number_format($row[2],2).' <span class="pull-right f-14">'.$row[1].'hs</span></h6>';
-										echo '<h6><span class="pull-right f-14">Usuario: '.$row[4].'</span></h6>';
-										echo '<p>Observaciones: '.$row[3].'</p>';
-										echo '</div></div>';
-								   }
-								   Database::disconnect();
-								  ?>
-								</div>
-								</div>
-							</div>
+                                $subtotalConDescuento = $moneda.number_format($subtotalConDescuento,2,',','.');
+                                $subtotalSinDescuento = $moneda.number_format($subtotalSinDescuento,2,',','.');
+                                $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
+                                
+                                // Formatear valores
+                                $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
+
+                                $precio_unitario = number_format($precio_unitario, 2,",",".");
+                                $precio_kg = number_format($precio_kg, 2,",",".");
+                                $peso_total = number_format($peso_total_linea, 2,",",".");?>
+                                <tr>
+                                  <td><?=$row["concepto"]?></td>
+                                  <td><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
+                                  <td><?=$fechaEntregaFormateada?></td>
+                                  <td class="text-right"><?=$peso_total?></td>
+                                  <td class="text-right"><?=$precio_unitario?></td>
+                                  <td class="text-right"><?=$precio_kg?></td>
+                                  <td class="text-right"><?=$subtotalConDescuento?></td>
+                                  <td class="text-right"><?=$porcentajeDescuento?></td>
+                                  <td class="text-right"><?=$subtotalConDescuento?></td>
+                                  <td><?=$row["entregado"]?></td>
+                                </tr><?php
+                              }
+                              // Calcular total final
+                              $totalFinal = $sumaSubtotal + $data['iva'] - $sumaDescuento;
+                              Database::disconnect();?>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <hr class="mt-4 mb-4">
+                      <div class="row">
+                        <div class="col-md-8">
+                          <h6 class="mb-3 font-weight-bold">Resumen Financiero</h6>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-3 font-weight-bold">Subtotal</label>
+                            <div class="col-sm-3"><?=$moneda.number_format($sumaSubtotal, 2,",",".");?></div>
+                            <label class="col-sm-3 font-weight-bold">IVA</label>
+                            <div class="col-sm-3"><?=$moneda.number_format($data['iva'], 2,",",".");?></div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-3 font-weight-bold">Descuento</label>
+                            <div class="col-sm-3"><?=$moneda.number_format($sumaDescuento, 2,",",".");?></div>
+                            <label class="col-sm-3 font-weight-bold text-success">TOTAL</label>
+                            <div class="col-sm-3 text-success font-weight-bold"><?=$moneda.number_format($totalFinal, 2,",",".");?></div>
+                          </div>
+                        </div>
+                      </div>
+                      <hr class="mt-4 mb-4">
+                      <div class="form-group row mt-1">
+                        <label class="col-sm-12">
+                          <h6 class="mb-3 font-weight-bold">Conceptos Cómputo</h6>
+                        </label>
+                      </div>
+                      <div class="form-group row mt-1">
+                        <div class="col-sm-12">
+                          <table class="display" id="dataTables-example668">
+                            <thead>
+                              <tr>
+                                <th>Concepto</th>
+                                <th>Cantidad</th>
+                              </tr>
+                            </thead>
+                            <tbody><?php
+                              $pdo = Database::connect();
+                              $sql = "SELECT m.concepto,cd.cantidad from computos_detalle cd inner join computos co on co.id = cd.id_computo inner join pedidos p on p.id_computo = co.id inner join compras c on c.id_pedido = p.id inner join materiales m on m.id = cd.id_material where c.id = ".$_GET['id'];
+                              foreach ($pdo->query($sql) as $row) {?>
+                                <tr>
+                                  <td><?= $row["concepto"] ?></td>
+                                  <td><?= $row["cantidad"] ?></td>
+                                </tr><?php
+                              }
+                              Database::disconnect();?>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <hr class="mt-4 mb-4">
+                      <h5 class='mb-3 font-weight-bold'>Sucesos de la Compra</h5>
+                      <div class="form-group row mt-1">
+                        <div class="col-sm-12">
+                          <div class="timeline-small"><?php 
+                            $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, u.usuario AS nombre_usuario FROM sucesos s INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso LEFT JOIN usuarios u ON u.id = s.id_usuario WHERE s.entidad_tipo = 'compras' AND s.entidad_id = ? ORDER BY s.fecha_hora DESC, s.id DESC";
+                            
+                            $q_sucesos = $pdo->prepare($sql_sucesos);
+                            $q_sucesos->execute([$id]);
+
+                            if ($q_sucesos->rowCount() > 0) {
+                              foreach ($q_sucesos as $row_suceso) {
+                                //$usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';
+                                $usuario_suceso = '';
+                                if(!empty($row_suceso['nombre_usuario'])) {
+                                  $usuario_suceso = ' por ' . htmlspecialchars($row_suceso['nombre_usuario']);
+                                }?>
+                                <div class="media">
+                                  <div class="timeline-round m-r-30 timeline-line-1 bg-primary">
+                                    <i data-feather="message-circle"></i>
+                                  </div>
+                                  <div class="media-body">
+                                    <h6>
+                                      <?=htmlspecialchars($row_suceso['titulo'])?> <span class="pull-right f-14"><?=$row_suceso['fecha_formateada']?>hs</span>
+                                    </h6>
+                                    <p>
+                                      <strong><?=htmlspecialchars($row_suceso['tipo'])?>:</strong> 
+                                      <?=htmlspecialchars($row_suceso['suceso'])?> 
+                                      <small class="text-muted"><?=$usuario_suceso?></small>
+                                    </p>
+                                  </div>
+                                </div><?php
+                              }
+                            } else {
+                              echo '<p>No hay sucesos registrados para esta compra.</p>';
+                            }?>
+                          </div>
+                        </div>
+                      </div><?php
+                      if (!empty($data['adjunto_factura'])) { ?>
+                        <hr class="mt-4 mb-4">
+                        <div class="row">
+                          <div class="col-sm-12">
+                            <h6 class="mb-3 font-weight-bold">Comprobante</h6>
+                            <div class="form-group row mt-1">
+                              <div class="col-sm-12">
+                                <a target="_blank" href="<?php echo $data['adjunto_factura'];?>" class="btn btn-outline-primary">
+                                  <i class="fa fa-download"></i> Descargar Comprobante
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div><?php
+                      }?>
+                      <hr class="mt-4 mb-4">
+                      <div class="row">
+                        <div class="col-sm-12">
+                          <h6 class="mb-3 font-weight-bold">Pagos / Comentarios Realizados</h6>
+                          <div class="timeline-small"><?php 
+                            $pdo = Database::connect();
+                            $sql = " SELECT cp.id, date_format(cp.fecha,'%d/%m/%y'), cp.monto, cp.comentarios, u.usuario FROM compras_pagos cp left join usuarios u on u.id = cp.id_usuario WHERE cp.id_compra = ".$_GET['id'];
+                              
+                            $hasPagos = false;
+                            foreach ($pdo->query($sql) as $row) {
+                              $hasPagos = true;?>
+                              <div class="media">
+                                <div class="timeline-round m-r-30 timeline-line-1 bg-primary">
+                                  <i data-feather="message-circle"></i>
+                                </div>
+                                <div class="media-body">
+                                  <h6>
+                                    Monto: $<?=number_format($row["monto"],2)?> <span class="pull-right f-14"><?=$row[1]?></span>
+                                  </h6>
+                                  <p>Usuario: <?=$row["usuario"]?></p>
+                                  <p>Observaciones: <?=$row["comentarios"]?></p>
+                                </div>
+                              </div><?php
+                            }
+                            if (!$hasPagos) {
+                              echo '<p>No hay pagos registrados para esta compra.</p>';
+                            }
+                            Database::disconnect();?>
+                          </div>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3">
-						<a class="btn btn-primary" target="_blank" href="imprimirCompra.php?id=<?php echo $data['id']; ?>">Imprimir</a>
-                        <a href="#" onclick="document.location.href='listarCompras.php'" class="btn btn-light">Volver</a>
+                      <div class="col-sm-12 text-center"><?php
+                        if ($data['id_estado_compra'] == 1 && function_exists('tienePermiso') && tienePermiso(298)){?>
+                          <button type="button" class="btn btn-primary mt-2 mt-sm-0" data-toggle="modal" data-target="#approvalModal">Enviar a aprobación</button><?php
+                        }?>
+                        <a href="listarCompras.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -358,9 +382,56 @@
           <!-- Container-fluid Ends-->
         </div>
         <!-- footer start-->
-    <?php include("footer.php"); ?>
+        <?php include("footer.php"); ?>
       </div>
     </div>
+
+    <!-- Modal Enviar a aprobación -->
+    <div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Confirmar envío a aprobación</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <p>¿Desea enviar esta compra a aprobación?</p>
+            <div id="estado-error" class="alert alert-danger d-none" role="alert"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="confirmApproval">Confirmar</button>
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de resultado de envío -->
+    <div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="resultModalTitle">Resultado</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div id="resultModalIcon" class="text-center mb-3">
+              <!-- Icono se agregará dinámicamente -->
+            </div>
+            <p id="resultModalMessage" class="text-center"></p>
+          </div>
+          <div class="modal-footer">
+            <a class="btn btn-primary" href="listarCompras.php">Ir a Lista de Compras</a>
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -382,11 +453,11 @@
     <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
-   <script src="assets/js/script.js"></script>
+    <script src="assets/js/script.js"></script>
     <!-- Plugin used-->
-	<script src="assets/js/select2/select2.full.min.js"></script>
+	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-	<script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+	  <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
@@ -409,17 +480,18 @@
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
-	<script>
-	$(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example667 tfoot th').each( function () {
+    <script>
+    $(document).ready(function() {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example667 tfoot th').each( function () {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example667').DataTable({
+      });
+
+	    $('#dataTables-example667').DataTable({
         stateSave: false,
         responsive: false,
-		"dom": 'rtip',
+		    "dom": 'rtip',
         language: {
          "decimal": "",
         "emptyTable": "No hay información",
@@ -441,33 +513,32 @@
         }}
       });
  
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
+      // DataTable
+      var table = $('#dataTables-example667').DataTable();
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
- 
+
         $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+      });
+
+    });
 	
-	$(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example668 tfoot th').each( function () {
+    $(document).ready(function() {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example668 tfoot th').each( function () {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example668').DataTable({
+      });
+	    
+      $('#dataTables-example668').DataTable({
         stateSave: false,
         responsive: false,
-		"dom": 'rtip',
+		    "dom": 'rtip',
         language: {
          "decimal": "",
         "emptyTable": "No hay información",
@@ -489,33 +560,31 @@
         }}
       });
  
-    // DataTable
-    var table = $('#dataTables-example668').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
+      // DataTable
+      var table = $('#dataTables-example668').DataTable();
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
- 
         $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+      });
+
+    });
 	
-	$(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example669 tfoot th').each( function () {
+    $(document).ready(function() {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example669 tfoot th').each( function () {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example669').DataTable({
+      });
+
+	    $('#dataTables-example669').DataTable({
         stateSave: false,
         responsive: false,
-		"dom": 'rtip',
+		    "dom": 'rtip',
         language: {
          "decimal": "",
         "emptyTable": "No hay información",
@@ -537,26 +606,85 @@
         }}
       });
  
-    // DataTable
-    var table = $('#dataTables-example669').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
+      // DataTable
+      var table = $('#dataTables-example669').DataTable();
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
+        $('input', this.footer() ).on( 'keyup change', function () {
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+      });
+
+      // Funcionalidad para enviar compra a aprobación
+      $('#confirmApproval').on('click', function() {
+        var compraId = <?= $id ?>;
+        
+        $.ajax({
+          url: 'modificarEstadoCompra.php',
+          type: 'POST',
+          data: {
+            id_compra: compraId,
+            nuevo_estado: 2
+          },
+          dataType: 'json',
+          success: function(response) {
+            $('#approvalModal').modal('hide');
+            
+            if(response.success) {
+              // Ocultar botón de envío a aprobación
+              $('button[data-target="#approvalModal"]').hide();
+              
+              // Mostrar modal de éxito
+              showResultModal(
+                '¡Éxito!', 
+                'La compra ha sido enviada para aprobación correctamente.',
+                'success'
+              );
+            } else {
+              // Mostrar modal de error
+              showResultModal(
+                'Error', 
+                'Error al enviar la compra para aprobación: ' + (response.message || 'Error desconocido'),
+                'error'
+              );
             }
-        } );
-		} );
-	} );
+          },
+          error: function(xhr, status, error) {
+            $('#approvalModal').modal('hide');
+            console.error('Error AJAX:', error);
+            // Mostrar modal de error de conexión
+            showResultModal(
+              'Error de Conexión', 
+              'No se pudo conectar con el servidor. Intente nuevamente.',
+              'error'
+            );
+          }
+        });
+      });
+
+      // Función para mostrar modal de resultado
+      function showResultModal(title, message, type) {
+        $('#resultModalTitle').text(title);
+        $('#resultModalMessage').text(message);
+        
+        var iconHtml = '';
+        if (type === 'success') {
+          iconHtml = '<i class="fa fa-check-circle fa-3x text-success"></i>';
+        } else if (type === 'error') {
+          iconHtml = '<i class="fa fa-times-circle fa-3x text-danger"></i>';
+        }
+        
+        $('#resultModalIcon').html(iconHtml);
+        $('#resultModal').modal('show');
+      }
+
+    });
 		
 		</script>
 		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
-
   </body>
 </html>

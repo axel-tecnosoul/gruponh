@@ -137,7 +137,7 @@ $tests = [
       deleteTables($pdo);
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (40,1,0,120,4,4001866)");
       execLog($pdo, "INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (4,40,80,6,3,0,0,0,0,'2025-01-01','')");
-      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_cuenta_recibe,id_estado) VALUES (201,40,4000074,1)");
+      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_proyecto,id_cuenta_recibe,id_estado) VALUES (201,40,100,4000074,1)");
       execLog($pdo, "INSERT INTO pedidos_detalle (id,id_pedido,id_computo_detalle ,id_material,fecha_necesidad,cantidad,id_unidad_medida,reservado,comprado) VALUES (4,201,4,80,'2025-01-01',3,1,0,0)");
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (41,1,1,120,3,4001866)");
     },
@@ -158,7 +158,7 @@ $tests = [
       deleteTables($pdo);
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (50,1,0,120,4,4001866)");
       execLog($pdo, "INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (5,50,90,7,3,0,0,0,4,'2025-01-01','')");
-      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_cuenta_recibe,id_estado) VALUES (202,50,4000074,1)");
+      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_proyecto,id_cuenta_recibe,id_estado) VALUES (202,50,100,4000074,1)");
       execLog($pdo, "INSERT INTO pedidos_detalle (id,id_pedido,id_computo_detalle ,id_material,fecha_necesidad,cantidad,id_unidad_medida,reservado,comprado) VALUES (5,202,5,90,'2025-01-01',4,1,0,1)"); // comprado=1
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (51,1,1,120,3,4001866)");
     },
@@ -234,7 +234,7 @@ $tests = [
       // rev0
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (80,1,0,120,4,4001866)");
       execLog($pdo, "INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (9,80,120,3,1,0,0,0,0,'2025-01-01','')");
-      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_cuenta_recibe,id_estado) VALUES (203,80,4000074,1)");
+      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_proyecto,id_cuenta_recibe,id_estado) VALUES (203,80,100,4000074,1)");
       execLog($pdo, "INSERT INTO pedidos_detalle (id,id_pedido,id_computo_detalle ,id_material,fecha_necesidad,cantidad,id_unidad_medida,reservado,comprado) VALUES (9,203,9,120,'2025-01-01',2,1,0,0)");
       // rev1 con cantidad_actual > prev: 5 > 3
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (81,1,1,120,3,4001866)");
@@ -258,7 +258,7 @@ $tests = [
       // rev0: cantidad=5, reservado=2, pedido 2 -> saldo 1
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (90,1,0,120,4,4001866)");
       execLog($pdo, "INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,cancelado,aprobado,comprado,fecha_necesidad,comentarios) VALUES (11,90,130,4,0,2,0,0,0,'2025-01-01','')");
-      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_cuenta_recibe,id_estado) VALUES (204,90,4000074,1)");
+      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_proyecto,id_cuenta_recibe,id_estado) VALUES (204,90,100,4000074,1)");
       execLog($pdo, "INSERT INTO pedidos_detalle (id,id_pedido,id_computo_detalle ,id_material,fecha_necesidad,cantidad,id_unidad_medida) VALUES (11,204,11,130,'2025-01-01',2,1)");
       // rev1: cantidad_actual=3, reservado=2, cantAPedir = 1, saldo=0
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (91,1,1,120,3,4001866)");
@@ -282,7 +282,7 @@ $tests = [
       // rev0: cantidad=8, reservado=4 → pedido cantidad 4
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (100,1,0,12,4,4001866)");
       execLog($pdo, "INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado) VALUES (13,100,140,8,0,4)");
-      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_cuenta_recibe,id_estado) VALUES (205,100,4000074,1)");
+      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_proyecto,id_cuenta_recibe,id_estado) VALUES (205,100,100,4000074,1)");
       execLog($pdo, "INSERT INTO pedidos_detalle (id,id_pedido,id_computo_detalle ,id_material,fecha_necesidad,cantidad,id_unidad_medida) VALUES (13,205,13,140,'2025-01-01',4,1)");
       // rev1: cantidad_actual=6 → cantAPedir = 2 - 2 = 4 >0
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (101,1,1,12,3,4001866)");
@@ -308,7 +308,7 @@ $tests = [
       // rev0: cantidad=5, any reserved
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (110,1,0,12,4,4001866)");
       execLog($pdo, "INSERT INTO computos_detalle (id,id_computo,id_material,cantidad,saldo,reservado,comprado) VALUES (15,110,150,5,1,1,3)");
-      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_cuenta_recibe,id_estado) VALUES (206,110,4000074,1)");
+      execLog($pdo, "INSERT INTO pedidos (id,id_computo,id_proyecto,id_cuenta_recibe,id_estado) VALUES (206,110,100,4000074,1)");
       execLog($pdo, "INSERT INTO pedidos_detalle (id,id_pedido,id_computo_detalle ,id_material,fecha_necesidad,cantidad,comprado,id_unidad_medida) VALUES (15,206,15,150,'2025-01-01',3,3,1)");
       // rev1: cantidad_actual different e.g. 2
       execLog($pdo, "INSERT INTO computos (id,nro,nro_revision,id_tarea,id_estado,id_cuenta_solicitante) VALUES (111,1,1,12,3,4001866)");

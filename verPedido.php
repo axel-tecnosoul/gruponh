@@ -28,12 +28,32 @@ if (!empty($_POST)) {
 }else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
+  
+  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante_computo, cu2.nombre AS cuenta_solicitante_pedido, cu3.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido 
+  FROM pedidos pe 
+  LEFT JOIN computos c ON c.id = pe.id_computo 
+  LEFT JOIN tareas t ON t.id = c.id_tarea 
+  LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
+  LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
+  LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
+  LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
+  LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante 
+  LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_solicitante 
+  LEFT JOIN cuentas cu3 ON cu3.id = pe.id_cuenta_recibe 
+  LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado 
+  WHERE pe.id = ?";
+  
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
   if ($data) {
+    if (!empty($data['cuenta_solicitante_computo'])) {
+        $solicitante_mostrar = $data['cuenta_solicitante_computo'];
+    } else {
+        $solicitante_mostrar = $data['cuenta_solicitante_pedido'];
+    }
+
     $codigoObraPartes = array_filter([
       $data['nro_sitio'] ?? null,
       $data['nro_subsitio'] ?? null,
@@ -44,9 +64,9 @@ if (!empty($_POST)) {
     $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
 
     $tieneComputo = !empty($data['id_computo']);
-    $tipoPedido = "Pedido Directo";
+    $tipoPedido = "Directo";
     if($tieneComputo){
-      $tipoPedido = 'Pedido de Cómputo';
+      $tipoPedido = 'de Cómputo';
     }
 
     $proyectoDisplay = '';
@@ -99,36 +119,31 @@ if (!empty($_POST)) {
                     </h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" action="#" id="form-unificado">
-                    <div class="card-body"><?php
-                      if (isset($error)){?>
-                        <div class="alert alert-danger"><?=$error;?></div><?php
-                      }?>
+                    <div class="card-body">
                       <div class="row">
                         <div class="col-md-12">
                           <h6 class="mb-3 font-weight-bold">Datos del Pedido</h6>
-                          <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Fecha Pedido</label>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Fecha Pedido</label>
                             <div class="col-sm-4"><?=$data['fecha'];?></div>
-                            <label class="col-sm-2 col-form-label font-weight-bold">Proyecto</label>
+                            <label class="col-sm-2 font-weight-bold">Proyecto</label>
                             <div class="col-sm-4"><?=$proyectoDisplay;?></div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Lugar de Entrega</label>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Lugar de Entrega</label>
                             <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
-                            <label class="col-sm-2 col-form-label font-weight-bold">Recibe</label>
+                            <label class="col-sm-2 font-weight-bold">Recibe</label>
                             <div class="col-sm-4"><?=$data['cuenta_recibe']?></div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-2 col-form-label font-weight-bold">Estado</label>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Estado</label>
                             <div class="col-sm-4"><?=$data['estado_pedido'];?></div>
-                            <label class="col-sm-2 col-form-label font-weight-bold">Solicitante</label>
-                            <div class="col-sm-4"><?=$data['cuenta_solicitante']?></div>
+                            <label class="col-sm-2 font-weight-bold">Solicitante</label>
+                            <div class="col-sm-4"><?=$solicitante_mostrar?></div>
                           </div>
                         </div>
                       </div>
-                      
                       <hr class="mt-4 mb-4">
-                      
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3 font-weight-bold">Detalle de Conceptos</h6>
@@ -194,41 +209,67 @@ if (!empty($_POST)) {
                           </div>
                         </div>
                       </div>
-
                       <hr class="mt-4 mb-4">
                       <div class="row">
-                        <div class="col-sm-12">
-                          <h6 class="mb-3 font-weight-bold">Sucesos del Proyecto Asociado</h6>
-                            <div class="timeline-small">
-                              <?php 
-                                if (!empty($data['proyecto_id'])) {
-                                    $pdo = Database::connect();
-                                    $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i'), s.suceso, s.titulo, t.tipo 
-                                                    FROM sucesos_proyecto s 
-                                                    INNER JOIN tipos_suceso t ON t.id = s.id_tipo_suceso 
-                                                    WHERE s.id_proyecto = ? 
-                                                    ORDER BY s.id DESC";
-                                    $q_sucesos = $pdo->prepare($sql_sucesos);
-                                    $q_sucesos->execute([$data['proyecto_id']]);
-                                    
-                                    if ($q_sucesos->rowCount() > 0) {
-                                        foreach ($q_sucesos as $row_suceso) {
-                                            echo '<div class="media">';
-                                            echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
-                                            echo '<div class="media-body">';
-                                            echo '<h6>'.htmlspecialchars($row_suceso['titulo']).' <span class="pull-right f-14">'.$row_suceso[1].'hs</span></h6>';
-                                            echo '<p>'.htmlspecialchars($row_suceso['tipo']).': '.htmlspecialchars($row_suceso['suceso']).'</p>';
-                                            echo '</div></div>';
-                                       }
-                                    } else {
-                                        echo '<p>No hay sucesos registrados para el proyecto asociado.</p>';
-                                    }
-                                   Database::disconnect();
-                                } else {
-                                    echo '<p>Este pedido no está asociado a un proyecto para mostrar sucesos.</p>';
+                        <div class="col-sm-4">
+                          <h6 class="mb-5 font-weight-bold">Historial y Sucesos del Pedido</h6>
+                          <div class="timeline-small"><?php
+                            $pdo = Database::connect();
+                            $id_pedido_actual = $data['id'];
+                            $id_proyecto_asociado = $data['proyecto_id'] ?? null;
+
+                            $conditions = [];
+                            $params = [];
+
+                            $conditions[] = "(s.entidad_tipo = 'pedidos' AND s.entidad_id = :id_pedido)";
+                            $params[':id_pedido'] = $id_pedido_actual;
+
+                            $conditions[] = "(s.entidad_tipo = 'compras' AND s.entidad_id IN (SELECT id FROM compras WHERE id_pedido = " . intval($id_pedido_actual) . "))";
+                            
+                            /*if ($id_proyecto_asociado) {
+                              $conditions[] = "(s.entidad_tipo = 'proyectos' AND s.entidad_id = :id_proyecto)";
+                              $params[':id_proyecto'] = $id_proyecto_asociado;
+                            }*/
+
+                            $where_clause = implode(' OR ', $conditions);
+
+                            $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, s.entidad_tipo, s.entidad_id, u.usuario AS nombre_usuario FROM sucesos s  INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso LEFT JOIN usuarios u ON u.id = s.id_usuario  WHERE $where_clause ORDER BY s.fecha_hora DESC, s.id DESC";
+                            
+                            $q_sucesos = $pdo->prepare($sql_sucesos);
+                            $q_sucesos->execute($params);
+                            
+                            if ($q_sucesos->rowCount() > 0) {
+                              foreach ($q_sucesos as $row_suceso) {
+                                $origen = '';
+                                if ($row_suceso['entidad_tipo'] == 'compras') {
+                                  $origen = " (Compra N° " . htmlspecialchars($row_suceso['entidad_id']) . ")";
+                                } elseif ($row_suceso['entidad_tipo'] == 'proyectos') {
+                                  $origen = " (Proyecto N° " . htmlspecialchars($row_suceso['entidad_id']) . ")";
                                 }
-                              ?>
-                            </div>
+
+                                $usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';?>
+
+                                <div class="media">
+                                  <div class="timeline-round m-r-30 timeline-line-1 bg-primary">
+                                    <i data-feather="message-circle"></i>
+                                  </div>
+                                  <div class="media-body">
+                                    <h6>
+                                      <?=htmlspecialchars($row_suceso['titulo']).$origen?> <span class="pull-right f-14"><?=$row_suceso['fecha_formateada']?>hs</span>
+                                    </h6>
+                                    <p>
+                                      <strong><?=htmlspecialchars($row_suceso['tipo'])?>:</strong> 
+                                      <?=htmlspecialchars($row_suceso['suceso'])?> 
+                                      <small class="text-muted"><?=$usuario_suceso?></small>
+                                    </p>
+                                  </div>
+                                </div><?php
+                              }
+                            } else {
+                              echo '<p>No hay sucesos registrados para este pedido, sus compras o su proyecto asociado.</p>';
+                            }
+                            Database::disconnect();?>
+                          </div>
                         </div>
                       </div>
 
@@ -269,6 +310,30 @@ if (!empty($_POST)) {
           <div class="modal-footer">
             <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
             <button type="button" class="btn btn-primary" id="confirmEnviarAprobacion">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de resultado de envío -->
+    <div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="resultModalTitle">Resultado</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div id="resultModalIcon" class="text-center mb-3">
+              <!-- Icono se agregará dinámicamente -->
+            </div>
+            <p id="resultModalMessage" class="text-center"></p>
+          </div>
+          <div class="modal-footer">
+            <a class="btn btn-primary" href="listarPedidos.php">Ir a Lista de Pedidos</a>
+            <button type="button" class="btn btn-light" data-dismiss="modal">Cerrar</button>
           </div>
         </div>
       </div>
@@ -379,16 +444,37 @@ if (!empty($_POST)) {
             url: 'modificarEstadoPedido.php',
             data: { idEstado: 2, idPosicion: pedidoId },
             success: function (response) {
+              $('#modalEnviarAprobacion').modal('hide');
               var trimmed = $.trim(response || '');
               var pattern = new RegExp('^2\\s*-\\s*' + pedidoId + '$');
+              
               if (pattern.test(trimmed)) {
-                window.location.href = 'listarPedidos.php';
+                // Ocultar botón de envío a aprobación
+                $('#btnEnviarAprobacion').hide();
+                
+                // Mostrar modal de éxito
+                showResultModal(
+                  '¡Éxito!', 
+                  'El pedido ha sido enviado para aprobación correctamente.',
+                  'success'
+                );
               } else {
-                mostrarErrorEstado('No se pudo actualizar el estado. Respuesta inesperada del servidor.');
+                // Mostrar modal de error
+                showResultModal(
+                  'Error', 
+                  'No se pudo actualizar el estado. Respuesta inesperada del servidor.',
+                  'error'
+                );
               }
             },
             error: function () {
-              mostrarErrorEstado('No se pudo actualizar el estado. Intente nuevamente.');
+              $('#modalEnviarAprobacion').modal('hide');
+              // Mostrar modal de error
+              showResultModal(
+                'Error de Conexión', 
+                'No se pudo actualizar el estado. Intente nuevamente.',
+                'error'
+              );
             },
             complete: function () {
               $button.prop('disabled', false);
@@ -396,10 +482,20 @@ if (!empty($_POST)) {
           });
         });
 
-        function mostrarErrorEstado(mensaje) {
-          $('#modalEnviarAprobacion').modal('hide');
-          var $error = $('#estado-error');
-          $error.text(mensaje).removeClass('d-none');
+        // Función para mostrar modal de resultado
+        function showResultModal(title, message, type) {
+          $('#resultModalTitle').text(title);
+          $('#resultModalMessage').text(message);
+          
+          var iconHtml = '';
+          if (type === 'success') {
+            iconHtml = '<i class="fa fa-check-circle fa-3x text-success"></i>';
+          } else if (type === 'error') {
+            iconHtml = '<i class="fa fa-times-circle fa-3x text-danger"></i>';
+          }
+          
+          $('#resultModalIcon').html(iconHtml);
+          $('#resultModal').modal('show');
         }
       });
 
