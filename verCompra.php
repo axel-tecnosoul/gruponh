@@ -15,7 +15,7 @@ if (null==$id) {
   header("Location: listarCompras.php");
 }
     
-
+$moneda="$";
 if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
@@ -43,6 +43,9 @@ if (!empty($_POST)) {
   $codigoObra = '';
         
   if ($data) {
+
+    $moneda=$data['moneda'];
+
     $codigoObraPartes = array_filter([
       $data['nro_sitio'] ?? null,
       $data['nro_subsitio'] ?? null,
@@ -133,7 +136,7 @@ if (!empty($_POST)) {
                             <label class="col-sm-2 font-weight-bold">Lugar de Entrega</label>
                             <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
                             <label class="col-sm-2 font-weight-bold">Moneda</label>
-                            <div class="col-sm-4"><?=$data['moneda'];?><?= $data['tipo_cambio_dia'] ? ' (TC: '.$data['tipo_cambio_dia'].')' : '' ?></div>
+                            <div class="col-sm-4"><?=$moneda;?><?= $data['tipo_cambio_dia'] ? ' (TC: '.$data['tipo_cambio_dia'].')' : '' ?></div>
                           </div><?php
                           if (!empty($data['comentarios'])) { ?>
                             <div class="form-group row mt-1">
@@ -200,8 +203,8 @@ if (!empty($_POST)) {
                                 $sumaSubtotal += $subtotalSinDescuento;
                                 $sumaDescuento += $descuento;
 
-                                $subtotalConDescuento = "$".number_format($subtotalConDescuento,2,',','.');
-                                $subtotalSinDescuento = "$".number_format($subtotalSinDescuento,2,',','.');
+                                $subtotalConDescuento = $moneda.number_format($subtotalConDescuento,2,',','.');
+                                $subtotalSinDescuento = $moneda.number_format($subtotalSinDescuento,2,',','.');
                                 $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
                                 
                                 // Formatear valores
@@ -236,15 +239,15 @@ if (!empty($_POST)) {
                           <h6 class="mb-3 font-weight-bold">Resumen Financiero</h6>
                           <div class="form-group row mt-1">
                             <label class="col-sm-3 font-weight-bold">Subtotal</label>
-                            <div class="col-sm-3">$<?=number_format($sumaSubtotal, 2,",",".");?></div>
+                            <div class="col-sm-3"><?=$moneda.number_format($sumaSubtotal, 2,",",".");?></div>
                             <label class="col-sm-3 font-weight-bold">IVA</label>
-                            <div class="col-sm-3">$<?=number_format($data['iva'], 2,",",".");?></div>
+                            <div class="col-sm-3"><?=$moneda.number_format($data['iva'], 2,",",".");?></div>
                           </div>
                           <div class="form-group row mt-1">
                             <label class="col-sm-3 font-weight-bold">Descuento</label>
-                            <div class="col-sm-3">$<?=number_format($sumaDescuento, 2,",",".");?></div>
+                            <div class="col-sm-3"><?=$moneda.number_format($sumaDescuento, 2,",",".");?></div>
                             <label class="col-sm-3 font-weight-bold text-success">TOTAL</label>
-                            <div class="col-sm-3 text-success font-weight-bold">$<?=number_format($totalFinal, 2,",",".");?></div>
+                            <div class="col-sm-3 text-success font-weight-bold"><?=$moneda.number_format($totalFinal, 2,",",".");?></div>
                           </div>
                         </div>
                       </div>

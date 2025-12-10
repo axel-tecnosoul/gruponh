@@ -218,7 +218,7 @@ if (!empty($_POST)) {
 
                               <div class="form-group row">
                                 <label class="col-sm-3 font-weight-bold">Total</label>
-                                <div class="col-sm-9">$<?=number_format($data['total'], 2);?> <?=$data['moneda'] ?: '';?></div>
+                                <div class="col-sm-9"><?=$data['moneda'] ?: '$'?><?=number_format($data['total'], 2);?></div>
                               </div><?php
 
                               if (!empty($data['lugar_entrega'])) { ?>

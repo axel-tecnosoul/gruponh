@@ -16,19 +16,18 @@ if (null==$id) {
   header("Location: listarCompras.php");
 }
 
+$moneda="$";
 if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.id_moneda, c.tipo_cambio_dia, pe.id_proyecto, pe.id_computo, cu.nombre, cu.direccion, cu.telefono, cu.cuit, fp.forma_pago,cu.contacto, c.iva, c.descuento FROM compras c inner join pedidos pe on pe.id = c.id_pedido inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join formas_pago fp on fp.id = c.id_forma_pago WHERE c.id = ? ";
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.id_moneda, c.tipo_cambio_dia, pe.id_proyecto, pe.id_computo, cu.nombre, cu.direccion, cu.telefono, cu.cuit, fp.forma_pago,cu.contacto, c.iva, c.descuento, m.moneda FROM compras c inner join pedidos pe on pe.id = c.id_pedido inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join formas_pago fp on fp.id = c.id_forma_pago LEFT JOIN monedas m ON m.id = c.id_moneda WHERE c.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   
-  $signo = '$';
-  if ($data['id_moneda'] == 1) {
-    $signo = 'u$s';	
-  }
+  //$signo = $data['moneda'] ?: '$';
+  $moneda = $data['moneda'];
 		
   if (empty($data['id_computo'])) {
     $sql2 = "SELECT pro.nombre, pro.solicitante cuenta_solicitante, pro.nro nro_proyecto, s.nro_sitio, s.id id_sitio, s.nro_subsitio,pro.observaciones FROM pedidos pe inner join proyectos pro on pro.id = pe.id_proyecto inner join sitios s on s.id = pro.id_sitio WHERE pe.id = ? ";
@@ -200,8 +199,8 @@ if (!empty($_POST)) {
                                   $sumaSubtotal += $subtotalSinDescuento;
                                   $sumaDescuento += $descuento;
 
-                                  $subtotalConDescuento = "$".number_format($subtotalConDescuento,2,',','.');
-                                  $subtotalSinDescuento = "$".number_format($subtotalSinDescuento,2,',','.');
+                                  $subtotalConDescuento = $moneda.number_format($subtotalConDescuento,2,',','.');
+                                  $subtotalSinDescuento = $moneda.number_format($subtotalSinDescuento,2,',','.');
                                   $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
                                   
                                   // Formatear valores
@@ -215,8 +214,8 @@ if (!empty($_POST)) {
                                     <td><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
                                     <td><?=$fechaEntregaFormateada?></td>
                                     <td class="text-right"><?=$peso_total_formateado?></td>
-                                    <td class="text-right">$<?=$precio_unitario?></td>
-                                    <td class="text-right">$<?=$precio_kg?></td>
+                                    <td class="text-right"><?=$moneda.$precio_unitario?></td>
+                                    <td class="text-right"><?=$moneda.$precio_kg?></td>
                                     <td class="text-right"><?=$subtotalSinDescuento?></td>
                                     <td class="text-right"><?=$porcentajeDescuento?></td>
                                     <td class="text-right"><?=$subtotalConDescuento?></td>
@@ -240,10 +239,10 @@ if (!empty($_POST)) {
                         </div>
                         <div class="form-group row">
                           <div class="col-sm-11 bordered-div-thin">
-                            <b>Subtotal:</b> <?=$signo.number_format($sumaSubtotal,2,",",".");?><br>
-                            <b>Iva:</b> <?=$signo.number_format($data['iva'],2,",",".");?><br>
-                            <b>Descuento:</b> <?=$signo.number_format($sumaDescuento,2,",",".");?><br>
-                            <b>Total:</b> <?=$signo.number_format($totalFinal,2,",",".");?><br>
+                            <b>Subtotal:</b> <?=$moneda.number_format($sumaSubtotal,2,",",".");?><br>
+                            <b>Iva:</b> <?=$moneda.number_format($data['iva'],2,",",".");?><br>
+                            <b>Descuento:</b> <?=$moneda.number_format($sumaDescuento,2,",",".");?><br>
+                            <b>Total:</b> <?=$moneda.number_format($totalFinal,2,",",".");?><br>
                           </div>
                         </div>
                         <div class="form-group row">

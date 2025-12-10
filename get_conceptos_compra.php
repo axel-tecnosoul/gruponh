@@ -7,6 +7,12 @@ $id_compra = $_POST['id_compra'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+// Obtener símbolo de moneda de la OC
+$sqlMoneda = "SELECT mo.moneda FROM compras c LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE c.id = ?";
+$qMoneda = $pdo->prepare($sqlMoneda);
+$qMoneda->execute([$id_compra]);
+$simboloMoneda = $qMoneda->fetchColumn() ?: '$';
+
 $sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, cd.subtotal, cd.descuento, cd.fecha_entrega, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
 $aConceptos=[];
 
@@ -63,8 +69,8 @@ foreach ($pdo->query($sql) as $row) {
   // Aplicar descuento al subtotal
   $subtotalConDescuento = $subtotalSinDescuento - $descuento;
 
-  $subtotalConDescuento = "$".number_format($subtotalConDescuento,2,',','.');
-  $subtotalSinDescuento = "$".number_format($subtotalSinDescuento,2,',','.');
+  $subtotalConDescuento = $simboloMoneda.number_format($subtotalConDescuento,2,',','.');
+  $subtotalSinDescuento = $simboloMoneda.number_format($subtotalSinDescuento,2,',','.');
   $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
 
   //$porcentajeDescuentoFormateado = $porcentajeDescuento > 0 ? number_format($porcentajeDescuento,1,",",".") . '%' : '-';

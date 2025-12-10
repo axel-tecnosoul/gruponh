@@ -923,34 +923,62 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
       echo "</table><br>";
     }
     
-    // Verificar que no se puedan crear más OC (todos los items activos del pedido están comprados)
-    $sqlVerificarComprado = "SELECT count(*) cant_sin_comprar FROM pedidos_detalle pd WHERE pd.id_pedido = ? AND pd.cancelado = 0 AND pd.cantidad > pd.comprado";
+    // Verificar que no se puedan crear más OC (calculando directamente desde compras_detalle)
+    $sqlVerificarComprado = "SELECT COUNT(*) as cant_sin_comprar FROM pedidos_detalle pd 
+      INNER JOIN materiales m ON m.id = pd.id_material
+    WHERE pd.id_pedido = ? 
+      AND pd.cancelado = 0 
+      AND pd.cantidad > COALESCE((
+        SELECT SUM(cd.cantidad) 
+        FROM compras_detalle cd 
+        INNER JOIN compras c ON c.id = cd.id_compra 
+        WHERE c.id_pedido = pd.id_pedido 
+        AND cd.id_material = pd.id_material 
+        AND c.id_estado_compra >= 3
+      ), 0)";
     $qVerificarComprado = $pdo->prepare($sqlVerificarComprado);
     $qVerificarComprado->execute([$idPedido]);
     $dataComprado = $qVerificarComprado->fetch(PDO::FETCH_ASSOC);
     
     if ($modoDebug) {
-      echo "<b>Items sin comprar (cantidad > comprado y no cancelados):</b> " . $dataComprado['cant_sin_comprar'] . "<br>";
+      echo "<b>Items sin comprar (cantidad > comprado real desde OC y no cancelados):</b> " . $dataComprado['cant_sin_comprar'] . "<br>";
       
-      // Mostrar detalle de items sin comprar
+      // Mostrar detalle de items sin comprar con cálculo real
       if ($dataComprado['cant_sin_comprar'] > 0) {
-        $sqlDebugItems = "SELECT pd.id, pd.id_material, m.concepto, pd.cantidad, pd.comprado, pd.cancelado 
-                          FROM pedidos_detalle pd 
-                          INNER JOIN materiales m ON m.id = pd.id_material
-                          WHERE pd.id_pedido = ? AND pd.cancelado = 0 AND pd.cantidad > pd.comprado";
+        $sqlDebugItems = "SELECT pd.id, pd.id_material, m.concepto, pd.cantidad, pd.comprado as comprado_campo,COALESCE((
+            SELECT SUM(cd.cantidad) 
+            FROM compras_detalle cd 
+            INNER JOIN compras c ON c.id = cd.id_compra 
+            WHERE c.id_pedido = pd.id_pedido 
+            AND cd.id_material = pd.id_material 
+            AND c.id_estado_compra >= 3
+          ), 0) as comprado_real,
+          pd.cancelado
+        FROM pedidos_detalle pd 
+          INNER JOIN materiales m ON m.id = pd.id_material
+        WHERE pd.id_pedido = ? AND pd.cancelado = 0 
+          AND pd.cantidad > COALESCE((
+            SELECT SUM(cd.cantidad) 
+            FROM compras_detalle cd 
+            INNER JOIN compras c ON c.id = cd.id_compra 
+            WHERE c.id_pedido = pd.id_pedido 
+            AND cd.id_material = pd.id_material 
+            AND c.id_estado_compra >= 3
+          ), 0)";
         $qDebugItems = $pdo->prepare($sqlDebugItems);
         $qDebugItems->execute([$idPedido]);
-        echo "<b>🔍 ITEMS SIN COMPRAR COMPLETAMENTE:</b> " . count($qDebugItems->fetchAll()) . "<br>";
-        $qDebugItems->execute([$idPedido]); // Re-ejecutar para mostrar tabla
-        echo "<table border='1'><tr><th>ID</th><th>Material</th><th>Concepto</th><th>Cantidad</th><th>Comprado</th><th>Faltante</th></tr>";
-        while ($itemDebug = $qDebugItems->fetch(PDO::FETCH_ASSOC)) {
-          $faltante = $itemDebug['cantidad'] - $itemDebug['comprado'];
+        $itemsDebug = $qDebugItems->fetchAll(PDO::FETCH_ASSOC);
+        echo "<b>🔍 ITEMS SIN COMPRAR COMPLETAMENTE:</b> " . count($itemsDebug) . "<br>";
+        echo "<table border='1'><tr><th>ID</th><th>Material</th><th>Concepto</th><th>Cantidad</th><th>Comprado Campo</th><th>Comprado Real</th><th>Faltante</th></tr>";
+        foreach ($itemsDebug as $itemDebug) {
+          $faltante = $itemDebug['cantidad'] - $itemDebug['comprado_real'];
           echo "<tr>";
           echo "<td>" . $itemDebug['id'] . "</td>";
           echo "<td>" . $itemDebug['id_material'] . "</td>";
           echo "<td>" . htmlspecialchars($itemDebug['concepto']) . "</td>";
           echo "<td>" . $itemDebug['cantidad'] . "</td>";
-          echo "<td>" . $itemDebug['comprado'] . "</td>";
+          echo "<td>" . $itemDebug['comprado_campo'] . "</td>";
+          echo "<td>" . $itemDebug['comprado_real'] . "</td>";
           echo "<td>" . $faltante . "</td>";
           echo "</tr>";
         }

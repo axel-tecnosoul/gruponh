@@ -258,6 +258,29 @@ if (!empty($_POST)) {
         echo "<b>Filas afectadas:</b> " . $q_log->rowCount() . "<br><br>";
       }
       
+      // Verificar si es la primera OC del pedido y cambiar estado a "Gestionando"
+      $sqlContarOC = "SELECT COUNT(*) as total_oc FROM compras WHERE id_pedido = ?";
+      $qContarOC = $pdo->prepare($sqlContarOC);
+      $qContarOC->execute([$id]);
+      $dataContarOC = $qContarOC->fetch(PDO::FETCH_ASSOC);
+      
+      if ($modoDebug == 1) {
+        echo "<b>✅ SQL 8 - Verificar cantidad de OC del pedido:</b><br>" . debugQuery($pdo, $sqlContarOC, [$id]) . "<br>";
+        echo "<b>Total OC del pedido:</b> " . $dataContarOC['total_oc'] . "<br><br>";
+      }
+      
+      // Si es la primera OC (total_oc = 1), cambiar el pedido a estado 4 (Gestionando)
+      if ($dataContarOC['total_oc'] == 1) {
+        $sqlActualizarEstadoPedido = "UPDATE pedidos SET id_estado = 4 WHERE id = ?";
+        $qActualizarEstadoPedido = $pdo->prepare($sqlActualizarEstadoPedido);
+        $qActualizarEstadoPedido->execute([$id]);
+        
+        if ($modoDebug == 1) {
+          echo "<b>✅ SQL 9 - Actualizar estado pedido a 'Gestionando' (primera OC):</b><br>" . debugQuery($pdo, $sqlActualizarEstadoPedido, [$id]) . "<br>";
+          echo "<b>Filas afectadas:</b> " . $qActualizarEstadoPedido->rowCount() . "<br><br>";
+        }
+      }
+
       // Enviar notificaciones usando la función crearNotificacion
       $estado_texto = ($id_estado_compra == 3) ? "Aprobada automáticamente" : "Pendiente de Aprobación";
       $detalleNotificacion = "OC: " . $idCompra . "/" . $nro_revision . " - " . $estado_texto;
@@ -268,7 +291,7 @@ if (!empty($_POST)) {
       $cuerpoEmail .= "Monto Total: $" . number_format($total, 2);
       
       if ($modoDebug == 1) {
-        echo "<b>✅ SQL 8 - Crear notificaciones con crearNotificacion():</b><br>";
+        echo "<b>✅ SQL 10 - Crear notificaciones con crearNotificacion():</b><br>";
         echo "<b>Tipo Notificación:</b> 4<br>";
         echo "<b>ID Entidad:</b> " . $idCompra . "<br>";
         echo "<b>Detalle:</b> " . htmlspecialchars($detalleNotificacion) . "<br>";
@@ -929,7 +952,7 @@ Database::disconnect();?>
                                 foreach ($pdo->query($sql) as $row) {
                                   $id_material=(int)$row["id_material"];
 
-                                  $cantidadComparar = $row["cantidad"] - $row["reservado"] - $row["comprado"];
+                                  $cantidadComparar = $row["cantidad"] - $row["comprado"];
 
                                   $sql2 = "SELECT d.precio,date_format(c.fecha_emision,'%d/%m/%y') fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = $id_material ORDER BY c.id DESC LIMIT 0,1 ";
                                   $q2 = $pdo->prepare($sql2);
