@@ -768,10 +768,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
               { "width": "auto", "targets": 0, "className": "truncate-concepto" }, // Concepto - Ancho flexible
               { "width": "70px", "targets": 1 }, // Cantidad
               { "width": "60px", "targets": 2 }, // Unidad
-              { "width": "80px", "targets": 3 }, // Peso Total kg
-              { "width": "60px", "targets": 4 }, // $/Kg
-              { "width": "80px", "targets": 5 }, // $/Unitario
-              { "width": "80px", "targets": 6 }, // $/Total
+              { "width": "80px", "targets": 3 , "className": "text-right"}, // Peso Total kg
+              { "width": "60px", "targets": 4 , "className": "text-right"}, // $/Kg
+              { "width": "80px", "targets": 5 , "className": "text-right"}, // $/Unitario
+              { "width": "80px", "targets": 6 , "className": "text-right"}, // $/Total
               { "width": "80px", "targets": 7 }, // Entregado
               { "width": "70px", "targets": 8 }, // Remitos
               { "width": "70px", "targets": 9 }  // Facturas

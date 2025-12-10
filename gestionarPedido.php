@@ -1,6 +1,6 @@
 <?php
 // Modo Debug habilitado para ver consultas y resultados
-$modoDebug = 1;
+$modoDebug = 0;
 
 require("config.php");
 require_once("PHPMailer/class.phpmailer.php");

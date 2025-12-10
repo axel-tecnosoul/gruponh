@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 06-12-2025 a las 18:52:04
+-- Tiempo de generación: 09-12-2025 a las 20:00:48
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -911,10 +911,11 @@ INSERT INTO `compras` (`id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`
 (33, 15, 5000539, '2025-03-21', '2025-01-03', 5, 1, '15/33', 1000, '', NULL, 2, 0, 0, 1, 'Revisión Original', 210, 10),
 (34, 38, 1000001, '2025-05-26', '2025-05-26', 2, 1, '38/34', 1500, '', NULL, 2, 0, 0, 0, 'Revisión Original', 315, 0),
 (36, 35, 1000001, '2025-05-26', '2025-05-23', 2, 1, '35/36', 0, '', NULL, 2, 0, 0, 0, 'Revisión Original', 0, 0),
-(39, 223, 1000001, '2025-10-23', '2025-06-12', 2, 1, '223/39', 10500, '', NULL, 2, 0, 0, 0, 'Revisión Original', 2205, 0),
+(39, 223, 1000001, '2025-10-23', '2025-06-12', 2, 7, '223/39', 10500, '', NULL, 2, 0, 0, 1, 'Revisión Original', 2205, 0),
 (40, 224, 1000004, '2025-12-05', '2025-09-30', 3, 1, '224/40', 34025, 'comments', NULL, 2, 0, 0, 0, 'Revisión Original', 7145.25, 0),
 (41, 224, 1000001, '2025-12-05', '2025-09-26', 2, 1, '224/41', 800, 'asd', NULL, 2, 0, 0, 0, 'Revisión Original', 168, 0),
-(42, 224, 1000001, '2025-12-05', '2025-09-26', 3, 3, '224/42', 950, '', NULL, 2, 0, 0, 0, 'Revisión Original', 199.5, 0);
+(42, 224, 1000001, '2025-12-05', '2025-09-26', 3, 3, '224/42', 950, '', NULL, 2, 0, 0, 0, 'Revisión Original', 199.5, 0),
+(49, 223, 1000003, '2025-12-09', '2025-06-12', 2, 7, '223/49', 202380, '', NULL, 1, 1450, 0, 1, 'Revisión Original', 42499.8, 10);
 
 -- --------------------------------------------------------
 
@@ -929,60 +930,63 @@ CREATE TABLE `compras_detalle` (
   `cantidad` double NOT NULL,
   `id_unidad_medida` int(11) NOT NULL,
   `precio` double NOT NULL,
-  `entregado` double NOT NULL,
   `precio_kg` double NOT NULL,
+  `subtotal` double NOT NULL DEFAULT 0,
   `descuento` double NOT NULL,
-  `fecha_entrega` date DEFAULT NULL
+  `fecha_entrega` date DEFAULT NULL,
+  `entregado` double NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `compras_detalle`
 --
 
-INSERT INTO `compras_detalle` (`id`, `id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `entregado`, `precio_kg`, `descuento`, `fecha_entrega`) VALUES
-(12, 7, 1, 2, 2, 15.56, 2, 1, 0, '2024-08-08'),
-(14, 9, 454, 2, 1, 0, 0, 2.3, 0, '2024-08-29'),
-(15, 10, 30, 5, 4, 5, 0, 1.2, 0, '2024-08-23'),
-(16, 11, 367, 5, 1, 100, 0, 500, 0, '2024-08-09'),
-(17, 12, 373, 4, 1, 2, 0, 1200, 0, '2024-08-31'),
-(18, 13, 9, 6, 1, 5, 10, 0, 0, '2024-09-21'),
-(19, 14, 497, 10, 1, 274.5, 0, 1.22, 0, '2024-09-20'),
-(20, 15, 373, 1, 1, 12000, 0, 1200, 0, '2024-08-02'),
-(21, 16, 56, 800, 4, 10, 0, 0, 0, '2024-10-04'),
-(22, 17, 17, 3, 1, 4083799.16, 0, 122563, 0, '2024-10-02'),
-(23, 18, 373, 4, 1, 35, 4, 0, 0, '2024-08-02'),
-(24, 18, 497, 70, 1, 115, 130, 0, 0, '2024-08-02'),
-(25, 19, 9, 6, 1, 0, 0, 0, 0, '2024-09-07'),
-(26, 20, 13, 4, 1, 75.9, 0, 3, 0, '2024-08-30'),
-(27, 21, 1, 2, 2, 15.56, 2, 1, 0, '2024-11-23'),
-(28, 22, 499, 24, 1, 500, 0, 0, 0, '2024-09-05'),
-(29, 23, 17, 2, 1, 44982, 0, 1350, 0, '2024-12-06'),
-(30, 24, 17, 3, 1, 45315.2, 0, 1360, 0, '2024-10-02'),
-(31, 25, 15, 34, 1, 10.374, 34, 1.14, 0, '2025-01-24'),
-(32, 25, 11, 5, 1, 840.375, 5, 1.5, 0, '2025-01-24'),
-(33, 26, 33, 10, 4, 6, 0, 0, 0, '2025-02-08'),
-(34, 26, 31, 10, 4, 15, 0, 0, 0, '2025-02-08'),
-(35, 26, 34, 10, 4, 32, 0, 0, 0, '2025-02-08'),
-(36, 27, 31, 45, 4, 30, 60, 0, 0, '2025-02-27'),
-(37, 27, 33, 200, 4, 40, 200, 0, 0, '2025-02-27'),
-(38, 28, 53, 77, 4, 10, 77, 0, 0, '2025-02-20'),
-(39, 29, 13, 3, 1, 12, 3, 0, 0, '2025-02-21'),
-(40, 29, 22, 2, 1, 120, 2, 0, 0, '2025-02-21'),
-(41, 29, 33, 100, 4, 10, 100, 0, 0, '2025-02-21'),
-(42, 30, 11, 9.98, 1, 5, 0, 0, 0, '2025-02-21'),
-(43, 30, 17, 2, 1, 12, 0, 0, 0, '2025-02-21'),
-(44, 32, 454, 2, 1, 0, 0, 2.3, 0, '2024-08-29'),
-(45, 33, 105, 10, 4, 100, 0, 0, 0, '2025-01-03'),
-(46, 34, 9, 1, 1, 1500, 0, 0, 0, '2025-05-26'),
-(47, 36, 10, 5, 1, 0, 0, 0, 0, '2025-05-23'),
-(48, 39, 24, 3, 1, 1000, 0, 0, 0, '2025-06-12'),
-(49, 39, 25, 2, 1, 3500, 0, 0, 0, '2025-06-12'),
-(50, 39, 26, 1, 1, 500, 0, 0, 0, '2025-06-12'),
-(51, 39, 30, 100, 4, 0, 0, 2.5, 0, '2025-06-12'),
-(52, 40, 1, 5, 2, 2205, 0, 3500, 0, '2025-09-30'),
-(53, 40, 9, 5, 1, 4600, 0, 0, 0, '2025-09-30'),
-(54, 41, 9, 1, 1, 800, 0, 0, 0, '2025-09-26'),
-(55, 42, 9, 1, 1, 950, 0, 0, 0, '2025-09-26');
+INSERT INTO `compras_detalle` (`id`, `id_compra`, `id_material`, `cantidad`, `id_unidad_medida`, `precio`, `precio_kg`, `subtotal`, `descuento`, `fecha_entrega`, `entregado`) VALUES
+(12, 7, 1, 2, 2, 15.56, 1, 31.12, 0, '2024-08-08', 2),
+(14, 9, 454, 2, 1, 0, 2.3, 13.9104, 0, '2024-08-29', 0),
+(15, 10, 30, 5, 4, 5, 1.2, 25, 0, '2024-08-23', 0),
+(16, 11, 367, 5, 1, 100, 500, 500, 0, '2024-08-09', 0),
+(17, 12, 373, 4, 1, 2, 1200, 8, 0, '2024-08-31', 0),
+(18, 13, 9, 6, 1, 5, 0, 30, 0, '2024-09-21', 10),
+(19, 14, 497, 10, 1, 274.5, 1.22, 2745, 0, '2024-09-20', 0),
+(20, 15, 373, 1, 1, 12000, 1200, 12000, 0, '2024-08-02', 0),
+(21, 16, 56, 800, 4, 10, 0, 8000, 0, '2024-10-04', 0),
+(22, 17, 17, 3, 1, 4083799.16, 122563, 12251397.48, 0, '2024-10-02', 0),
+(23, 18, 373, 4, 1, 35, 0, 140, 0, '2024-08-02', 4),
+(24, 18, 497, 70, 1, 115, 0, 8050, 0, '2024-08-02', 130),
+(25, 19, 9, 6, 1, 0, 0, 0, 0, '2024-09-07', 0),
+(26, 20, 13, 4, 1, 75.9, 3, 303.6, 0, '2024-08-30', 0),
+(27, 21, 1, 2, 2, 15.56, 1, 31.12, 0, '2024-11-23', 2),
+(28, 22, 499, 24, 1, 500, 0, 12000, 0, '2024-09-05', 0),
+(29, 23, 17, 2, 1, 44982, 1350, 89964, 0, '2024-12-06', 0),
+(30, 24, 17, 3, 1, 45315.2, 1360, 135945.59999999998, 0, '2024-10-02', 0),
+(31, 25, 15, 34, 1, 10.374, 1.14, 352.716, 0, '2025-01-24', 34),
+(32, 25, 11, 5, 1, 840.375, 1.5, 4201.875, 0, '2025-01-24', 5),
+(33, 26, 33, 10, 4, 6, 0, 60, 0, '2025-02-08', 0),
+(34, 26, 31, 10, 4, 15, 0, 150, 0, '2025-02-08', 0),
+(35, 26, 34, 10, 4, 32, 0, 320, 0, '2025-02-08', 0),
+(36, 27, 31, 45, 4, 30, 0, 1350, 0, '2025-02-27', 60),
+(37, 27, 33, 200, 4, 40, 0, 8000, 0, '2025-02-27', 200),
+(38, 28, 53, 77, 4, 10, 0, 770, 0, '2025-02-20', 77),
+(39, 29, 13, 3, 1, 12, 0, 36, 0, '2025-02-21', 3),
+(40, 29, 22, 2, 1, 120, 0, 240, 0, '2025-02-21', 2),
+(41, 29, 33, 100, 4, 10, 0, 1000, 0, '2025-02-21', 100),
+(42, 30, 11, 9.98, 1, 5, 0, 49.900000000000006, 0, '2025-02-21', 0),
+(43, 30, 17, 2, 1, 12, 0, 24, 0, '2025-02-21', 0),
+(44, 32, 454, 2, 1, 0, 2.3, 13.9104, 0, '2024-08-29', 0),
+(45, 33, 105, 10, 4, 100, 0, 1000, 0, '2025-01-03', 0),
+(46, 34, 9, 1, 1, 1500, 0, 1500, 0, '2025-05-26', 0),
+(47, 36, 10, 5, 1, 0, 0, 0, 0, '2025-05-23', 0),
+(48, 39, 24, 3, 1, 1000, 0, 3000, 0, '2025-06-12', 3),
+(49, 39, 25, 2, 1, 3500, 0, 7000, 0, '2025-06-12', 2),
+(50, 39, 26, 1, 1, 500, 0, 500, 0, '2025-06-12', 1),
+(51, 39, 30, 100, 4, 0, 2.5, 0, 0, '2025-06-12', 0),
+(52, 40, 1, 5, 2, 2205, 3500, 11025, 0, '2025-09-30', 0),
+(53, 40, 9, 5, 1, 4600, 0, 23000, 0, '2025-09-30', 0),
+(54, 41, 9, 1, 1, 800, 0, 800, 0, '2025-09-26', 0),
+(55, 42, 9, 1, 1, 950, 0, 950, 0, '2025-09-26', 0),
+(68, 49, 19, 20, 1, 0, 300, 199080, 10, '2025-06-12', 20),
+(69, 49, 24, 3, 1, 1100, 0, 3300, 10, '2025-06-12', 3);
 
 -- --------------------------------------------------------
 
@@ -1553,11 +1557,11 @@ INSERT INTO `computos_detalle` (`id`, `id_computo`, `id_material`, `cantidad`, `
 (460, 113, 1, 5, '2025-06-26', 1, 5, 0, 0, 0, ''),
 (461, 113, 9, 10, '2025-06-26', 1, 10, 0, 0, 0, ''),
 (462, 113, 14, 8, '2025-06-12', 1, 7, 1, 0, 0, ''),
-(463, 113, 19, 20, '2025-06-26', 1, 0, 0, 0, 0, ''),
+(463, 113, 19, 20, '2025-06-26', 1, 10, 0, 0, 0, ''),
 (464, 113, 20, 40, '2025-06-26', 1, 40, 0, 0, 0, ''),
-(465, 113, 24, 6, '2025-06-26', 1, -6, 0, 3, 0, ''),
-(466, 113, 25, 2, '2025-06-26', 1, 0, 0, 2, 0, ''),
-(467, 113, 26, 1, '2025-06-26', 1, -5, 0, 1, 0, ''),
+(465, 113, 24, 6, '2025-06-26', 1, -1, 0, -1, 0, ''),
+(466, 113, 25, 2, '2025-06-26', 1, 1, 0, 0, 0, ''),
+(467, 113, 26, 1, '2025-06-26', 1, -5, 0, 0, 0, ''),
 (468, 113, 30, 170, '2025-06-26', 1, 0, 0, 100, 0, ''),
 (469, 114, 1, 5, '2025-06-26', 0, 0, 0, 0, 0, ''),
 (470, 114, 9, 10, '2025-06-26', 0, 0, 0, 0, 0, ''),
@@ -13464,22 +13468,23 @@ INSERT INTO `estados_pedidos` (`id`, `estado`) VALUES
 
 CREATE TABLE `estados_pedidos_detalle` (
   `id` int(11) NOT NULL,
-  `estado` varchar(99) NOT NULL
+  `estado` varchar(99) NOT NULL,
+  `descripcion` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 --
 -- Volcado de datos para la tabla `estados_pedidos_detalle`
 --
 
-INSERT INTO `estados_pedidos_detalle` (`id`, `estado`) VALUES
-(1, 'Pendiente'),
-(2, 'Comprando'),
-(3, 'Comprando Parcial'),
-(4, 'Comprando y Entregando'),
-(5, 'Comprando Total'),
-(6, 'Entregado Parcial'),
-(7, 'Entregado'),
-(8, 'Cancelado');
+INSERT INTO `estados_pedidos_detalle` (`id`, `estado`, `descripcion`) VALUES
+(1, 'Pendiente', 'El ítem no tiene ninguna Orden de Compra asociada, ni en elaboración ni aprobada. El proceso de compra aún no inició.'),
+(2, 'Comprando', 'Todavía no hay OCs aprobadas para este ítem, pero tiene al menos una Orden de Compra en estado \"Elaboración\" o \"Para Aprobar\".'),
+(3, 'Comprando Parcial', 'El ítem tiene una o más OCs aprobadas por una cantidad menor a la cantidad pedida y aún no registra entregas. Se empezó a comprar, pero todavía no se compró todo ni llegó nada.'),
+(4, 'Comprando y Entregando', 'El ítem tiene OCs aprobadas por una cantidad menor a la cantidad pedida y ya registra entregas parciales. Es decir, una parte del ítem ya fue entregada mientras otra parte aún no fue comprada.'),
+(5, 'Comprando Total', 'Las OCs aprobadas cubren la totalidad de la cantidad pedida, pero todavía no se registran entregas. Ya se compró todo lo necesario y se encuentra en espera de recepción.'),
+(6, 'Entregado Parcial', 'Las OCs aprobadas cubren la totalidad de la cantidad pedida y ya se registran entregas, pero la cantidad entregada es menor que la cantidad pedida. El ítem está totalmente comprado, pero aún no se entregó todo.'),
+(7, 'Entregado', 'La cantidad entregada alcanza la cantidad pedida. El ítem se considera totalmente recibido.'),
+(8, 'Cancelado', 'El ítem fue cancelado en su totalidad. No se espera que se realicen nuevas compras ni entregas para este ítem.');
 
 -- --------------------------------------------------------
 
@@ -13850,7 +13855,13 @@ INSERT INTO `ingresos` (`id`, `fecha_hora`, `id_tipo_ingreso`, `nro`, `id_cuenta
 (25, '2025-02-21 14:57:50', 1, 22, 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 1, '2025-02-21'),
 (26, '2025-03-16 19:07:19', 1, 9, 5000815, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 0, '2025-03-16'),
 (27, '2025-03-21 10:57:14', 1, 5, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 0, '2025-03-21'),
-(28, '2025-03-21 11:17:22', 1, 2, 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 'Pintados de Azul', 1234, '2025-03-21');
+(28, '2025-03-21 11:17:22', 1, 2, 4000014, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 'Pintados de Azul', 1234, '2025-03-21'),
+(29, '2025-12-09 09:28:02', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 123, '2025-12-09'),
+(30, '2025-12-09 09:36:31', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 123, '2025-12-09'),
+(32, '2025-12-09 11:31:20', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 456, '2025-12-09'),
+(33, '2025-12-09 15:17:16', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 789, '2025-12-09'),
+(34, '2025-12-09 15:49:45', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 741, '2025-12-09'),
+(35, '2025-12-09 15:59:35', 1, 223, 4000020, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', '', 951, '2025-12-09');
 
 -- --------------------------------------------------------
 
@@ -13910,7 +13921,16 @@ INSERT INTO `ingresos_detalle` (`id`, `id_ingreso`, `id_material`, `id_unidad_me
 (39, 26, 15, 1, 34, 0, 34, NULL, 25, 5001184, '6462/0/0-1'),
 (40, 26, 11, 1, 5, 0, 5, NULL, 25, 5001184, '6462/0/0-2'),
 (41, 27, 9, 1, 10, 0, 10, NULL, 13, 4000159, '6465/0/1-1'),
-(42, 28, 1, 2, 2, 0, 2, NULL, 21, 1000006, '6462/0/0-1');
+(42, 28, 1, 2, 2, 0, 2, NULL, 21, 1000006, '6462/0/0-1'),
+(43, 29, 24, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(44, 30, 24, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(46, 32, 25, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(47, 33, 26, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-1'),
+(48, 33, 24, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-2'),
+(49, 33, 25, 1, 1, 0, 1, NULL, 39, 1000001, '7337/0/1-3'),
+(50, 34, 24, 1, 3, 0, 3, NULL, 49, 1000003, '7337/0/1-1'),
+(51, 34, 19, 1, 10, 0, 10, NULL, 49, 1000003, '7337/0/1-2'),
+(52, 35, 19, 1, 10, 0, 10, NULL, 49, 1000003, '7337/0/1-1');
 
 -- --------------------------------------------------------
 
@@ -21316,7 +21336,25 @@ INSERT INTO `logs` (`id`, `fecha_hora`, `id_usuario`, `detalle_accion`, `modulo`
 (2611, '2025-12-05 14:16:13', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=42'),
 (2612, '2025-12-05 18:56:44', 1, 'Modificación de parámetro del sistema ID #10', 'Parámetros', ''),
 (2613, '2025-12-05 18:56:52', 1, 'Modificación de parámetro del sistema ID #11', 'Parámetros', ''),
-(2614, '2025-12-05 18:57:07', 1, 'Modificación de parámetro del sistema ID #11', 'Parámetros', '');
+(2614, '2025-12-05 18:57:07', 1, 'Modificación de parámetro del sistema ID #11', 'Parámetros', ''),
+(2615, '2025-12-08 15:59:52', 1, 'Modificacion de Estado de Pedido', 'Pedidos', ''),
+(2616, '2025-12-08 16:02:07', 1, 'Modificación de Estado de Compra', 'Compras', 'verCompra.php?id=39'),
+(2617, '2025-12-08 16:04:04', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=39'),
+(2618, '2025-12-08 16:35:00', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=39'),
+(2619, '2025-12-08 20:16:09', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2620, '2025-12-08 20:21:49', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2621, '2025-12-08 23:01:33', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2622, '2025-12-09 09:28:02', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2623, '2025-12-09 09:36:32', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2625, '2025-12-09 11:31:20', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2626, '2025-12-09 11:37:26', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=43'),
+(2627, '2025-12-09 13:00:50', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=44'),
+(2632, '2025-12-09 15:12:50', 1, 'Nueva orden de compra', 'Compras', 'verCompra.php?id=49'),
+(2633, '2025-12-09 15:17:16', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=39'),
+(2634, '2025-12-09 15:28:56', 1, 'Modificación de Estado de Compra', 'Compras', 'verCompra.php?id=49'),
+(2635, '2025-12-09 15:48:25', 1, 'Aprobación de compra', 'Compras', 'verCompra.php?id=49'),
+(2636, '2025-12-09 15:49:45', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=49'),
+(2637, '2025-12-09 15:59:35', 1, 'Recepción de items de orden de compra', 'Compras', 'verCompra.php?id=49');
 
 -- --------------------------------------------------------
 
@@ -21352,8 +21390,8 @@ INSERT INTO `materiales` (`id`, `codigo`, `concepto`, `descripcion`, `largo`, `p
 (7, 'A7', 'Concepto7', '', 1, 1, 1, 1, 1, 1, 1, NULL),
 (8, 'A8', 'Concepto8', '', 1, 1, 1, 1, 1, 1, 1, NULL),
 (9, 'tDgWji', 'Pintura Esmalte sintetico secado rápido rojo', '', 1, 1, 17, 1, 1, 20, 0, NULL),
-(10, 'CHA0001', 'Chapa 7,9 x 2500 x 12000', '', 1000, 1867.5, 12, 1, 1, 5, 0, 'F26/A36'),
-(11, 'CHA0002', 'Chapa 7,9 x 1500 x 6000 Calidad F24', '', 1000, 560.25, 12, 1, 1, 5, 0, NULL),
+(10, 'CHA0001', 'Chapa 7,9 x 2500 x 12000', '', 1000, 18.675, 12, 1, 1, 5, 0, 'F26/A36'),
+(11, 'CHA0002', 'Chapa 7,9 x 1500 x 6000 Calidad F24', '', 1000, 5.6025, 12, 1, 1, 5, 0, NULL),
 (12, 'HEB0001', 'Perfil HEB 200 x 12000 Cal F36', '', 12000, 61.3, 16, 1, 1, 3, 0, NULL),
 (13, 'UPN00001', 'Perfil UPN 200 x 12000 Calidad F26', '', 12000, 25.3, 16, 1, 1, 3, 0, NULL),
 (14, 'ANG0001', 'Angulo 4 x 5/16 x 12000 Calidad F36', '', 12000, 12.2, 16, 1, 1, 3, 0, NULL),
@@ -21363,9 +21401,9 @@ INSERT INTO `materiales` (`id`, `codigo`, `concepto`, `descripcion`, `largo`, `p
 (18, 'PLA0001', 'Planchuela 3 x 3/16 x 6000 Calidad F-24', '', 6000, 2.85, 16, 1, 1, 2, 0, NULL),
 (19, 'PLA0002', 'Planchuela 2 x 1/4 x 6000 Calidad F24', '', 6000, 5.53, 16, 1, 1, 2, 0, NULL),
 (20, 'HIE0001', 'Hierro Redondo laminado  15.9 x 6000 mm Calidad SAE 1010', '', 6000, 1.6, 16, 1, 1, 2, 0, NULL),
-(21, 'CHA0003', 'Chapa 22,2 x 2500 x 6000 Calidad F36', '', 1000, 2616.45, 12, 1, 1, 2, 0, NULL),
-(22, 'CHA0004', 'Chapa 15,9 x 2500 x 6000 Calidad F36', '', 1000, 1868.7, 12, 1, 1, 2, 0, NULL),
-(23, 'CHA0005', 'Chapa 12,7 x 2500 x 6000 Calidad F36', '', 1000, 1495.5, 12, 1, 1, 2, 0, NULL),
+(21, 'CHA0003', 'Chapa 22,2 x 2500 x 6000 Calidad F36', '', 1000, 26.1645, 12, 1, 1, 2, 0, NULL),
+(22, 'CHA0004', 'Chapa 15,9 x 2500 x 6000 Calidad F36', '', 1000, 18.687, 12, 1, 1, 2, 0, NULL),
+(23, 'CHA0005', 'Chapa 12,7 x 2500 x 6000 Calidad F36', '', 1000, 14.955, 12, 1, 1, 2, 0, NULL),
 (24, 'CAB0001', 'Cable de Acero Ø10  (6x19)', '', 250, 0, 10, 1, 1, 2, 0, NULL),
 (25, 'Fer0001', 'Candado verde claro', '', 1, 1, 14, 1, 1, 1, 0, NULL),
 (26, 'Bal6578', 'Baliza verde ', 'Plastica ', 1, 1, 3, 1, 1, 1, 0, NULL),
@@ -22375,7 +22413,21 @@ INSERT INTO `notificaciones` (`id`, `id_tipo_notificacion`, `id_usuario`, `fecha
 (495, 4, 3, '2025-12-05 14:08:28', 0, 'OC: 41/ - Pendiente de Aprobación', 41),
 (496, 4, 1, '2025-12-05 14:08:30', 0, 'OC: 41/ - Pendiente de Aprobación', 41),
 (497, 4, 3, '2025-12-05 14:16:13', 0, 'OC: 42/0 - APROBADA (Automática)', 42),
-(498, 4, 1, '2025-12-05 14:16:15', 0, 'OC: 42/0 - APROBADA (Automática)', 42);
+(498, 4, 1, '2025-12-05 14:16:15', 0, 'OC: 42/0 - APROBADA (Automática)', 42),
+(499, 2, 3, '2025-12-08 16:04:04', 0, 'ID Compra: #39', 39),
+(500, 2, 1, '2025-12-08 16:04:15', 0, 'ID Compra: #39', 39),
+(501, 2, 3, '2025-12-08 16:35:00', 0, 'ID Compra: #39', 39),
+(502, 2, 1, '2025-12-08 16:35:10', 0, 'ID Compra: #39', 39),
+(503, 4, 3, '2025-12-09 11:37:26', 0, 'OC: 43/0 - Pendiente de Aprobación', 43),
+(504, 4, 1, '2025-12-09 11:37:29', 0, 'OC: 43/0 - Pendiente de Aprobación', 43),
+(505, 4, 3, '2025-12-09 13:00:50', 0, 'OC: 44/0 - Pendiente de Aprobación', 44),
+(506, 4, 1, '2025-12-09 13:00:52', 0, 'OC: 44/0 - Pendiente de Aprobación', 44),
+(515, 4, 3, '2025-12-09 15:12:50', 0, 'OC: 49/0 - Pendiente de Aprobación', 49),
+(516, 4, 1, '2025-12-09 15:12:53', 0, 'OC: 49/0 - Pendiente de Aprobación', 49),
+(517, 2, 3, '2025-12-09 15:28:56', 0, 'ID Compra: #49', 49),
+(518, 2, 1, '2025-12-09 15:28:59', 0, 'ID Compra: #49', 49),
+(519, 2, 3, '2025-12-09 15:48:25', 0, 'ID Compra: #49', 49),
+(520, 2, 1, '2025-12-09 15:48:28', 0, 'ID Compra: #49', 49);
 
 -- --------------------------------------------------------
 
@@ -23295,25 +23347,25 @@ INSERT INTO `pedidos` (`id`, `id_computo`, `fecha`, `id_cuenta_solicitante`, `lu
 (8, 1, '2024-09-05', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 1, 1),
 (9, 1, '2024-09-30', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 5000815, 1, 1, 4),
 (10, 3, '2024-10-02', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 1, 1),
-(15, 36, '2025-01-03', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, NULL, 1),
-(16, 36, '2025-01-03', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 0, NULL, 1),
+(15, 36, '2025-01-03', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 10, 1),
+(16, 36, '2025-01-03', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 0, 10, 1),
 (17, NULL, '2025-01-14', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 1, 1),
-(18, 46, '2025-02-04', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(19, 50, '2025-02-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, NULL, 1),
-(20, 50, '2025-02-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 0, NULL, 2),
-(21, 54, '2025-02-20', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, NULL, 1),
-(22, 54, '2025-02-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, NULL, 1),
+(18, 46, '2025-02-04', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 11, 1),
+(19, 50, '2025-02-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, 12, 1),
+(20, 50, '2025-02-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 0, 12, 2),
+(21, 54, '2025-02-20', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000367, 1, 15, 1),
+(22, 54, '2025-02-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 15, 1),
 (23, NULL, '2025-02-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 15, 1),
 (24, NULL, '2025-03-21', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 1, 1),
-(33, 90, '2025-05-16', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, NULL, 1),
-(34, 97, '2025-05-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(35, 91, '2025-05-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, NULL, 1),
-(36, 103, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(37, 102, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(38, 102, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, NULL, 1),
-(211, 99, '2025-06-04', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, NULL, 1),
-(222, 112, '2025-06-07', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, NULL, 1),
-(223, 113, '2025-06-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, NULL, 3),
+(33, 90, '2025-05-16', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, 24, 1),
+(34, 97, '2025-05-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(35, 91, '2025-05-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 24, 1),
+(36, 103, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(37, 102, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(38, 102, '2025-05-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000017, 1, 24, 1),
+(211, 99, '2025-06-04', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 24, 1),
+(222, 112, '2025-06-07', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 1, 24, 2),
+(223, 113, '2025-06-12', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000020, 1, 24, 3),
 (224, NULL, '2025-09-26', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 1, 24, 3),
 (225, NULL, '2025-10-15', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000014, 0, 12, 1),
 (226, NULL, '2025-10-23', NULL, 'Ricardo Gutiérrez 2874, C1417 EBL, Buenos Aires', 4000001, 0, 25, 1),
@@ -23348,70 +23400,70 @@ CREATE TABLE `pedidos_detalle` (
 --
 
 INSERT INTO `pedidos_detalle` (`id`, `id_pedido`, `id_computo_detalle`, `id_material`, `fecha_necesidad`, `cantidad`, `id_unidad_medida`, `id_estado`, `reservado`, `comprado`, `pendiente`, `entregado`, `cancelado`) VALUES
-(1, 1, NULL, 30, '2024-07-26', 5, 4, NULL, 0, 5, 1, 0, 0),
-(2, 1, NULL, 454, '2024-07-26', 2, 1, NULL, 0, 2, 1, 0, 0),
-(3, 2, NULL, 1, '2024-07-26', 2, 2, NULL, 0, -2, 1, 0, 0),
-(4, 3, NULL, 367, '2024-08-09', 5, 1, NULL, 0, 5, 1, 0, 0),
-(5, 3, NULL, 373, '2024-08-16', 5, 1, NULL, 4, 0, 1, 0, 0),
-(6, 3, NULL, 497, '2024-08-23', 70, 1, NULL, 130, -60, 1, 0, 0),
-(7, 4, NULL, 56, '2024-09-05', 800, 4, NULL, 0, 800, 1, 0, 0),
-(8, 4, NULL, 497, '2024-08-28', 10, 1, NULL, 0, 10, 1, 0, 0),
-(9, 5, NULL, 9, '2024-09-05', 12, 1, NULL, 10, -4, 1, 0, 0),
-(12, 7, NULL, 13, '2024-09-04', 4, 1, NULL, 0, 4, 1, 0, 0),
-(13, 8, NULL, 499, '2024-09-26', 24, 1, NULL, 0, 24, 1, 0, 0),
-(14, 9, NULL, 15, '2024-10-07', 34, 1, NULL, 34, 0, 1, 0, 0),
-(15, 9, NULL, 11, '2024-10-07', 5, 1, NULL, 5, 0, 1, 0, 0),
-(16, 10, NULL, 17, '2024-08-27', 3, 1, NULL, -2, 3, 1, 0, 0),
-(17, 10, NULL, 65, '2024-08-30', 88, 4, NULL, 0, 0, 1, 0, 0),
-(18, 15, NULL, 105, '2024-11-27', 10, 4, NULL, 0, 10, 1, 0, 0),
-(19, 16, NULL, 105, '2024-11-27', 10, 4, NULL, 0, 0, 1, 0, 0),
-(20, 17, NULL, 33, '2025-01-16', 10, 4, NULL, 0, 10, 1, 0, 0),
-(21, 17, NULL, 31, '2025-01-16', 10, 4, NULL, 0, 10, 1, 0, 0),
-(22, 17, NULL, 34, '2025-01-16', 10, 4, NULL, 0, 10, 1, 0, 0),
-(23, 18, NULL, 1, '2025-02-20', 21, 2, NULL, 0, 0, 1, 0, 0),
-(24, 18, NULL, 148, '2025-02-11', 67, 4, NULL, 0, 0, 1, 0, 0),
-(25, 18, NULL, 462, '2025-02-07', 34, 1, NULL, 0, 0, 1, 0, 0),
-(26, 19, NULL, 11, '2025-02-26', 7, 1, NULL, 0, 0, 1, 0, 0),
-(27, 19, NULL, 13, '2025-02-19', 3, 1, NULL, 0, 0, 1, 0, 0),
-(28, 19, NULL, 48, '2025-02-19', 10, 4, NULL, 0, 0, 1, 0, 0),
-(29, 20, NULL, 11, '2025-02-26', 2, 1, NULL, 5, 0, 1, 0, 0),
-(30, 20, NULL, 13, '2025-02-19', 3, 1, NULL, 0, 0, 1, 0, 0),
-(31, 20, NULL, 48, '2025-02-19', 10, 4, NULL, 0, 0, 1, 0, 0),
-(32, 21, NULL, 31, '2025-02-27', 50, 4, NULL, 60, -10, 1, 0, 0),
-(33, 21, NULL, 33, '2025-02-27', 250, 4, NULL, 200, 0, 1, 0, 0),
-(34, 21, NULL, 53, '2025-02-27', 77, 4, NULL, 77, 0, 1, 0, 0),
-(35, 22, NULL, 13, '2025-02-27', 3, 1, NULL, 3, 0, 1, 0, 0),
-(36, 22, NULL, 22, '2025-02-27', 2, 1, NULL, 2, 0, 1, 0, 0),
-(37, 22, NULL, 31, '2025-02-27', 50, 4, NULL, 60, -10, 1, 0, 0),
-(38, 22, NULL, 33, '2025-02-27', 300, 4, NULL, 300, 0, 1, 0, 0),
-(39, 23, NULL, 11, '2025-02-21', 9.98, 1, NULL, 0, 9.98, 1, 0, 0),
-(40, 23, NULL, 17, '2025-02-21', 2, 1, NULL, 0, 2, 1, 0, 0),
-(41, 24, NULL, 12, '2025-03-21', 80, 1, NULL, 0, 0, 1, 0, 0),
-(42, 24, NULL, 10, '2025-03-22', 3, 1, NULL, 0, 0, 1, 0, 0),
-(49, 33, NULL, 1, '2025-05-23', 6, 2, NULL, 0, 0, 1, 0, 0),
-(50, 33, NULL, 17, '2025-05-23', 3, 1, NULL, 0, 0, 1, 0, 0),
-(51, 34, NULL, 20, '2025-05-29', 2, 1, NULL, 3, 0, 1, 0, 0),
-(52, 35, 442, 1, '2025-05-21', 1, 2, NULL, 0, 0, 1, 0, 0),
-(53, 35, 396, 10, '2025-05-20', 5, 1, NULL, 0, 5, 1, 0, 0),
-(54, 36, NULL, 33, '2025-06-02', 5, 4, NULL, 0, 0, 1, 0, 0),
-(55, 37, NULL, 9, '2025-06-02', 2, 1, NULL, 3, 0, 1, 0, 0),
-(56, 38, NULL, 9, '2025-06-02', 1, 1, NULL, 2, 1, 1, 0, 0),
-(60, 211, 436, 12, '2025-05-14', 6, 1, NULL, 0, 0, 1, 0, 0),
-(61, 211, 441, 17, '2025-05-30', 3, 1, NULL, 0, 0, 1, 0, 0),
-(62, 211, 434, 30, '2025-05-14', 50, 4, NULL, 0, 0, 1, 0, 0),
-(93, 222, 457, 1, '2025-06-28', 3, 2, NULL, 1, 0, 1, 0, 0),
-(94, 222, 458, 9, '2025-06-28', 2, 1, NULL, 1, 0, 1, 0, 0),
-(95, 223, 463, 19, '2025-06-26', 20, 1, NULL, 0, 0, 1, 0, 0),
-(96, 223, 465, 24, '2025-06-26', 6, 1, NULL, 0, 3, 1, 0, 0),
-(97, 223, 466, 25, '2025-06-26', 2, 1, NULL, 0, 2, 1, 0, 0),
-(98, 223, 467, 26, '2025-06-26', 1, 1, NULL, 0, 1, 1, 0, 0),
-(99, 223, 468, 30, '2025-06-26', 170, 4, NULL, 0, 100, 1, 0, 1),
-(100, 224, NULL, 1, '2025-10-29', 5, 2, NULL, 0, 5, 1, 0, 0),
-(101, 225, NULL, 9, '2025-10-29', 5, 1, NULL, 0, 0, 1, 0, 0),
-(102, 226, NULL, 1, '2025-10-30', 10, 2, NULL, 0, 0, 1, 0, 0),
-(103, 224, NULL, 9, '2025-10-30', 10, 1, NULL, 0, 1, 1, 0, 0),
-(104, 226, NULL, 12, '2025-10-30', 10, 1, NULL, 0, 0, 1, 0, 0),
-(105, 227, NULL, 1, '2025-11-27', 8, 2, NULL, 0, 0, 1, 0, 0);
+(1, 1, NULL, 30, '2024-07-26', 5, 4, 1, 0, 5, 1, 0, 0),
+(2, 1, NULL, 454, '2024-07-26', 2, 1, 2, 0, 2, 1, 0, 0),
+(3, 2, NULL, 1, '2024-07-26', 2, 2, 7, 0, -2, 1, 0, 0),
+(4, 3, NULL, 367, '2024-08-09', 5, 1, 2, 0, 5, 1, 0, 0),
+(5, 3, NULL, 373, '2024-08-16', 5, 1, 4, 4, 0, 1, 0, 0),
+(6, 3, NULL, 497, '2024-08-23', 70, 1, 7, 130, -60, 1, 0, 0),
+(7, 4, NULL, 56, '2024-09-05', 800, 4, 2, 0, 800, 1, 0, 0),
+(8, 4, NULL, 497, '2024-08-28', 10, 1, 2, 0, 10, 1, 0, 0),
+(9, 5, NULL, 9, '2024-09-05', 12, 1, 4, 10, -4, 1, 0, 0),
+(12, 7, NULL, 13, '2024-09-04', 4, 1, 2, 0, 4, 1, 0, 0),
+(13, 8, NULL, 499, '2024-09-26', 24, 1, 2, 0, 24, 1, 0, 0),
+(14, 9, NULL, 15, '2024-10-07', 34, 1, 7, 34, 0, 1, 0, 0),
+(15, 9, NULL, 11, '2024-10-07', 5, 1, 7, 5, 0, 1, 0, 0),
+(16, 10, NULL, 17, '2024-08-27', 3, 1, 2, -2, 3, 1, 0, 0),
+(17, 10, NULL, 65, '2024-08-30', 88, 4, 1, 0, 0, 1, 0, 0),
+(18, 15, NULL, 105, '2024-11-27', 10, 4, 2, 0, 10, 1, 0, 0),
+(19, 16, NULL, 105, '2024-11-27', 10, 4, 1, 0, 0, 1, 0, 0),
+(20, 17, NULL, 33, '2025-01-16', 10, 4, 2, 0, 10, 1, 0, 0),
+(21, 17, NULL, 31, '2025-01-16', 10, 4, 2, 0, 10, 1, 0, 0),
+(22, 17, NULL, 34, '2025-01-16', 10, 4, 2, 0, 10, 1, 0, 0),
+(23, 18, NULL, 1, '2025-02-20', 21, 2, 1, 0, 0, 1, 0, 0),
+(24, 18, NULL, 148, '2025-02-11', 67, 4, 1, 0, 0, 1, 0, 0),
+(25, 18, NULL, 462, '2025-02-07', 34, 1, 1, 0, 0, 1, 0, 0),
+(26, 19, NULL, 11, '2025-02-26', 7, 1, 1, 0, 0, 1, 0, 0),
+(27, 19, NULL, 13, '2025-02-19', 3, 1, 1, 0, 0, 1, 0, 0),
+(28, 19, NULL, 48, '2025-02-19', 10, 4, 1, 0, 0, 1, 0, 0),
+(29, 20, NULL, 11, '2025-02-26', 2, 1, 1, 5, 0, 1, 0, 0),
+(30, 20, NULL, 13, '2025-02-19', 3, 1, 1, 0, 0, 1, 0, 0),
+(31, 20, NULL, 48, '2025-02-19', 10, 4, 1, 0, 0, 1, 0, 0),
+(32, 21, NULL, 31, '2025-02-27', 50, 4, 7, 60, -10, 1, 0, 0),
+(33, 21, NULL, 33, '2025-02-27', 250, 4, 4, 200, 0, 1, 0, 0),
+(34, 21, NULL, 53, '2025-02-27', 77, 4, 7, 77, 0, 1, 0, 0),
+(35, 22, NULL, 13, '2025-02-27', 3, 1, 7, 3, 0, 1, 0, 0),
+(36, 22, NULL, 22, '2025-02-27', 2, 1, 7, 2, 0, 1, 0, 0),
+(37, 22, NULL, 31, '2025-02-27', 50, 4, 1, 60, -10, 1, 0, 0),
+(38, 22, NULL, 33, '2025-02-27', 300, 4, 4, 300, 0, 1, 0, 0),
+(39, 23, NULL, 11, '2025-02-21', 9.98, 1, 2, 0, 9.98, 1, 0, 0),
+(40, 23, NULL, 17, '2025-02-21', 2, 1, 2, 0, 2, 1, 0, 0),
+(41, 24, NULL, 12, '2025-03-21', 80, 1, 1, 0, 0, 1, 0, 0),
+(42, 24, NULL, 10, '2025-03-22', 3, 1, 1, 0, 0, 1, 0, 0),
+(49, 33, NULL, 1, '2025-05-23', 6, 2, 1, 0, 0, 1, 0, 0),
+(50, 33, NULL, 17, '2025-05-23', 3, 1, 1, 0, 0, 1, 0, 0),
+(51, 34, NULL, 20, '2025-05-29', 2, 1, 1, 3, 0, 1, 0, 0),
+(52, 35, 442, 1, '2025-05-21', 1, 2, 1, 0, 0, 1, 0, 0),
+(53, 35, 396, 10, '2025-05-20', 5, 1, 2, 0, 5, 1, 0, 0),
+(54, 36, NULL, 33, '2025-06-02', 5, 4, 1, 0, 0, 1, 0, 0),
+(55, 37, NULL, 9, '2025-06-02', 2, 1, 1, 3, 0, 1, 0, 0),
+(56, 38, NULL, 9, '2025-06-02', 1, 1, 2, 2, 1, 1, 0, 0),
+(60, 211, 436, 12, '2025-05-14', 6, 1, 1, 0, 0, 1, 0, 0),
+(61, 211, 441, 17, '2025-05-30', 3, 1, 1, 0, 0, 1, 0, 0),
+(62, 211, 434, 30, '2025-05-14', 50, 4, 1, 0, 0, 1, 0, 0),
+(93, 222, 457, 1, '2025-06-28', 3, 2, 1, 1, 0, 1, 0, 0),
+(94, 222, 458, 9, '2025-06-28', 2, 1, 1, 1, 0, 1, 0, 0),
+(95, 223, 463, 19, '2025-06-26', 20, 1, 7, 10, 20, 1, 0, 0),
+(96, 223, 465, 24, '2025-06-26', 6, 1, 7, 5, 3, 1, 0, 0),
+(97, 223, 466, 25, '2025-06-26', 2, 1, 7, 1, 1, 1, 0, 0),
+(98, 223, 467, 26, '2025-06-26', 1, 1, 7, 0, 1, 1, 0, 0),
+(99, 223, 468, 30, '2025-06-26', 170, 4, 8, 0, 100, 1, 0, 1),
+(100, 224, NULL, 1, '2025-10-29', 5, 2, 2, 0, 5, 1, 0, 0),
+(101, 225, NULL, 9, '2025-10-29', 5, 1, 1, 0, 0, 1, 0, 0),
+(102, 226, NULL, 1, '2025-10-30', 10, 2, 1, 0, 0, 1, 0, 0),
+(103, 224, NULL, 9, '2025-10-30', 10, 1, 3, 0, 1, 1, 0, 0),
+(104, 226, NULL, 12, '2025-10-30', 10, 1, 1, 0, 0, 1, 0, 0),
+(105, 227, NULL, 1, '2025-11-27', 8, 2, 1, 0, 0, 1, 0, 0);
 
 -- --------------------------------------------------------
 
@@ -32586,13 +32638,13 @@ ALTER TABLE `coladas`
 -- AUTO_INCREMENT de la tabla `compras`
 --
 ALTER TABLE `compras`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
 
 --
 -- AUTO_INCREMENT de la tabla `compras_detalle`
 --
 ALTER TABLE `compras_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
 
 --
 -- AUTO_INCREMENT de la tabla `compras_pagos`
@@ -32862,13 +32914,13 @@ ALTER TABLE `formas_pago`
 -- AUTO_INCREMENT de la tabla `ingresos`
 --
 ALTER TABLE `ingresos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT de la tabla `ingresos_detalle`
 --
 ALTER TABLE `ingresos_detalle`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
 -- AUTO_INCREMENT de la tabla `letras_comprobante`
@@ -32934,7 +32986,7 @@ ALTER TABLE `localidades`
 -- AUTO_INCREMENT de la tabla `logs`
 --
 ALTER TABLE `logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2615;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2638;
 
 --
 -- AUTO_INCREMENT de la tabla `materiales`
@@ -32952,7 +33004,7 @@ ALTER TABLE `monedas`
 -- AUTO_INCREMENT de la tabla `notificaciones`
 --
 ALTER TABLE `notificaciones`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=499;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=521;
 
 --
 -- AUTO_INCREMENT de la tabla `occ`

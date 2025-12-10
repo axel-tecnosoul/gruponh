@@ -16,6 +16,33 @@ if (null==$id) {
   header("Location: listarCompras.php");
 }
 
+// Validar que la compra esté en un estado que permita ingreso
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sqlEstado = "SELECT id_estado_compra, ec.estado FROM compras c LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra WHERE c.id = ?";
+$qEstado = $pdo->prepare($sqlEstado);
+$qEstado->execute([$id]);
+$estadoData = $qEstado->fetch(PDO::FETCH_ASSOC);
+
+if (!$estadoData) {
+  Database::disconnect();
+  header("Location: listarCompras.php");
+  exit();
+}
+
+// Estados permitidos para ingreso: 3 (Enviada), 6 (Entrega parcial)
+$estadosPermitidos = [3, 6];
+if (!in_array((int)$estadoData['id_estado_compra'], $estadosPermitidos)) {
+  Database::disconnect();
+  $_SESSION['flash_message'] = [
+    'type' => 'error', 
+    'message' => 'No se puede ingresar material para esta orden de compra. Estado actual: ' . $estadoData['estado'] . '. Estados permitidos: Enviada, Entrega parcial.'
+  ];
+  header("Location: listarCompras.php");
+  exit();
+}
+Database::disconnect();
+
 if (!empty($_POST)) {
   // insert data
   /*$pdo = Database::connect();

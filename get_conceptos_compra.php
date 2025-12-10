@@ -18,8 +18,8 @@ foreach ($pdo->query($sql) as $row) {
   $largo = (float) $row["largo"];
   $id_material = $row["id_material"];
 
-  $precio = number_format($precioUnitario,2);
-  $preciokg = number_format($precioKgRaw,2);
+  $precio = number_format($precioUnitario,2,",",".");
+  $preciokg = number_format($precioKgRaw,2,",",".");
 
   $pesoMetroKg = $pesoMetro / 1000;
   $largoMetros = $largo / 1000;
@@ -31,7 +31,7 @@ foreach ($pdo->query($sql) as $row) {
   }
 
   $pesoTotalRaw = $pesoUnitario * (float) $cantidad;
-  $peso = number_format($pesoTotalRaw,2);
+  $peso = number_format($pesoTotalRaw,2,",",".");
   
   // Usar subtotal guardado si existe, sino calcularlo (compatibilidad con registros antiguos)
   $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
@@ -46,7 +46,7 @@ foreach ($pdo->query($sql) as $row) {
       $subtotalValue = $precioUnitario * (float) $cantidad;
     }
   }
-  $subtotal = number_format($subtotalValue,2);
+  $subtotal = number_format($subtotalValue,2,',','.');
 	
 	$remitos = "";
 	$sql2 = " SELECT i.nro_remito FROM ingresos_detalle id inner join ingresos i on i.id = id.id_ingreso WHERE id.id_material = $id_material and id.id_compra = ".$id_compra;

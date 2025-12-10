@@ -603,7 +603,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     $mensaje = $cuerpoEmail; // Usar el cuerpo del email pasado como parámetro
 
     $mail = new PHPMailer();
-    $mail->SMTPDebug = 3;//Habilitamos solo para debugguear
+    //$mail->SMTPDebug = 3;//Habilitamos solo para debugguear
     $mail->IsSMTP();
     $mail->Host       = $smtpHost;
     $mail->Username   = $smtpUsuario;
@@ -785,8 +785,8 @@ function calcularEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): ?int {
       return 1; // ID del estado "Pendiente"
     }
     
-    // 3) Calcular cantidadComprada (solo compras con id_estado_compra = 3 "Enviada")
-    $sqlComprada = "SELECT COALESCE(SUM(cd.cantidad), 0) as cantidad_comprada FROM compras_detalle cd INNER JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra = 3";
+    // 3) Calcular cantidadComprada (OC enviadas y superiores: estados 3, 4, 5, 6, 7, 8)
+    $sqlComprada = "SELECT COALESCE(SUM(cd.cantidad), 0) as cantidad_comprada FROM compras_detalle cd INNER JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra >= 3";
     $stmtComprada = $db->prepare($sqlComprada);
     $stmtComprada->execute([$idPedido, $idMaterial]);
     $cantidadComprada = (float)$stmtComprada->fetchColumn();
@@ -879,6 +879,115 @@ function actualizarEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): void {
   } catch (Exception $e) {
     // En caso de error, loguear el problema
     error_log("Error en actualizarEstadoPedidoDetalle: " . $e->getMessage());
+  }
+}
+
+/**
+ * Verifica si un pedido debe cambiar al estado "Terminado" (5) 
+ * cuando todas sus OC están terminadas y todos los items están comprados.
+ * 
+ * @param PDO $pdo Conexión a la base de datos
+ * @param int $idPedido ID del pedido a verificar
+ * @param bool $modoDebug Si está en modo debug para mostrar información
+ * @return bool True si el pedido cambió de estado, false si no
+ */
+function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDebug = false): bool {
+  try {
+    if ($modoDebug) {
+      echo "<h3>🔍 Verificando estado del pedido ID: $idPedido</h3>";
+    }
+    
+    // Verificar si TODAS las OC del pedido están terminadas (estado 7 u 8)
+    $sqlVerificarPedido = "SELECT count(*) cant_pendientes FROM compras WHERE id_pedido = ? AND id_estado_compra NOT IN (7, 8)";
+    $qVerificarPedido = $pdo->prepare($sqlVerificarPedido);
+    $qVerificarPedido->execute([$idPedido]);
+    $dataPedido = $qVerificarPedido->fetch(PDO::FETCH_ASSOC);
+    
+    if ($modoDebug) {
+      echo "<b>OC pendientes (no en estado 7 u 8):</b> " . $dataPedido['cant_pendientes'] . "<br>";
+      
+      // Mostrar todas las OC del pedido
+      $sqlDebugOC = "SELECT c.id, c.id_estado_compra, ec.estado FROM compras c LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra WHERE id_pedido = ?";
+      $qDebugOC = $pdo->prepare($sqlDebugOC);
+      $qDebugOC->execute([$idPedido]);
+      echo "<b>🔍 TODAS LAS OC DEL PEDIDO:</b><br>";
+      echo "<table border='1'><tr><th>ID OC</th><th>Estado ID</th><th>Estado</th></tr>";
+      while ($ocDebug = $qDebugOC->fetch(PDO::FETCH_ASSOC)) {
+        $color = in_array($ocDebug['id_estado_compra'], [7, 8]) ? '#ccffcc' : '#ffcccc';
+        echo "<tr style='background-color: $color'>";
+        echo "<td>" . $ocDebug['id'] . "</td>";
+        echo "<td>" . $ocDebug['id_estado_compra'] . "</td>";
+        echo "<td>" . $ocDebug['estado'] . "</td>";
+        echo "</tr>";
+      }
+      echo "</table><br>";
+    }
+    
+    // Verificar que no se puedan crear más OC (todos los items activos del pedido están comprados)
+    $sqlVerificarComprado = "SELECT count(*) cant_sin_comprar FROM pedidos_detalle pd WHERE pd.id_pedido = ? AND pd.cancelado = 0 AND pd.cantidad > pd.comprado";
+    $qVerificarComprado = $pdo->prepare($sqlVerificarComprado);
+    $qVerificarComprado->execute([$idPedido]);
+    $dataComprado = $qVerificarComprado->fetch(PDO::FETCH_ASSOC);
+    
+    if ($modoDebug) {
+      echo "<b>Items sin comprar (cantidad > comprado y no cancelados):</b> " . $dataComprado['cant_sin_comprar'] . "<br>";
+      
+      // Mostrar detalle de items sin comprar
+      if ($dataComprado['cant_sin_comprar'] > 0) {
+        $sqlDebugItems = "SELECT pd.id, pd.id_material, m.concepto, pd.cantidad, pd.comprado, pd.cancelado 
+                          FROM pedidos_detalle pd 
+                          INNER JOIN materiales m ON m.id = pd.id_material
+                          WHERE pd.id_pedido = ? AND pd.cancelado = 0 AND pd.cantidad > pd.comprado";
+        $qDebugItems = $pdo->prepare($sqlDebugItems);
+        $qDebugItems->execute([$idPedido]);
+        echo "<b>🔍 ITEMS SIN COMPRAR COMPLETAMENTE:</b> " . count($qDebugItems->fetchAll()) . "<br>";
+        $qDebugItems->execute([$idPedido]); // Re-ejecutar para mostrar tabla
+        echo "<table border='1'><tr><th>ID</th><th>Material</th><th>Concepto</th><th>Cantidad</th><th>Comprado</th><th>Faltante</th></tr>";
+        while ($itemDebug = $qDebugItems->fetch(PDO::FETCH_ASSOC)) {
+          $faltante = $itemDebug['cantidad'] - $itemDebug['comprado'];
+          echo "<tr>";
+          echo "<td>" . $itemDebug['id'] . "</td>";
+          echo "<td>" . $itemDebug['id_material'] . "</td>";
+          echo "<td>" . htmlspecialchars($itemDebug['concepto']) . "</td>";
+          echo "<td>" . $itemDebug['cantidad'] . "</td>";
+          echo "<td>" . $itemDebug['comprado'] . "</td>";
+          echo "<td>" . $faltante . "</td>";
+          echo "</tr>";
+        }
+        echo "</table><br>";
+      }
+    }
+    
+    // Si no hay OC pendientes Y no se pueden crear más OC, el pedido pasa a "Terminado"
+    if ($dataPedido['cant_pendientes'] == 0 && $dataComprado['cant_sin_comprar'] == 0) {
+      if ($modoDebug) {
+        echo "<b>🎉 PEDIDO COMPLETAMENTE TERMINADO - Cambiando a estado 5</b><br>";
+      }
+      
+      $sql = "UPDATE pedidos set id_estado = 5 where id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$idPedido]);
+      
+      if ($modoDebug) {
+        echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br>";
+      }
+      
+      return true;
+    } else {
+      if ($modoDebug) {
+        echo "<b>⏳ Pedido AÚN NO completamente terminado</b><br>";
+        echo "<b>- OC pendientes:</b> " . $dataPedido['cant_pendientes'] . "<br>";
+        echo "<b>- Items sin comprar:</b> " . $dataComprado['cant_sin_comprar'] . "<br>";
+      }
+      return false;
+    }
+    
+  } catch (Exception $e) {
+    if ($modoDebug) {
+      echo "<b>❌ Error al verificar estado del pedido:</b> " . $e->getMessage() . "<br>";
+    }
+    error_log("Error en verificarYActualizarEstadoPedido: " . $e->getMessage());
+    return false;
   }
 }
 
