@@ -144,34 +144,86 @@ if (!empty($_POST)) {
                                   <th align="center">Item</th>
                                   <th align="center">Concepto</th>
                                   <th align="center">Cantidad</th>
-                                  <th align="center">Unidad</th>
+                                  <th align="center">F. Entrega</th>
                                   <th align="center">Peso Total Kg</th>
                                   <th align="center">P/Unitario</th>
-                                  <th align="center">P/Total</th>
+                                  <th align="center">P/Kg</th>
+                                  <th align="center">Subtotal</th>
+                                  <th align="center">% Desc.</th>
+                                  <th align="center">Total c/Desc</th>
                                 </tr>
                               </thead>
                               <tbody><?php
                                 $pdo = Database::connect();
-                                $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
+                                $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo, d.descuento, d.subtotal, d.fecha_entrega FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
                                 $b=1;
+                                $sumaSubtotal = 0;
+                                $sumaDescuento = 0;
                                 foreach ($pdo->query($sql) as $row) {
+                                  $cantidad = (float) $row["cantidad"];
+                                  $precio_unitario = (float) $row["precio"];
+                                  $precio_kg = (float) $row["precio_kg"];
+                                  $porcentajeDescuento = (float) $row["descuento"];
+                                  $fechaEntrega = $row["fecha_entrega"];
+                                  $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
                                   
-                                  $precio = number_format($row["precio"],2);
-                                  $preciokg = number_format($row["precio_kg"],2);
-                                  $subtotal = number_format($row["precio"]*$row["cantidad"],2);
+                                  $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
+                                  $peso_total_linea = $peso_por_unidad * $cantidad;
                                   
-                                  $peso = $row["peso_metro"]*($row["largo"]/1000);?>
+                                  // Usar subtotal guardado si existe, sino calcularlo
+                                  if ($subtotalGuardado > 0) {
+                                    $subtotalSinDescuento = $subtotalGuardado;
+                                  } else {
+                                    if ($precio_kg > 0) {
+                                      $subtotalSinDescuento = $peso_total_linea * $precio_kg;
+                                    } else {
+                                      $subtotalSinDescuento = $precio_unitario * $cantidad;
+                                    }
+                                  }
+                                  
+                                  // Calcular % de descuento y total con descuento
+                                  /*$porcentajeDescuento = 0;
+                                  if ($subtotal_bruto > 0 && $descuento > 0) {
+                                    $porcentajeDescuento = ($descuento / $subtotal_bruto) * 100;
+                                  }
+                                  $subtotal_neto = $subtotal_bruto - $descuento;*/
+
+                                  // Calcular descuento
+                                  $descuento = 0;
+                                  if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+                                    $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                  }
+                                  
+                                  // Aplicar descuento al subtotal
+                                  $subtotalConDescuento = $subtotalSinDescuento - $descuento;
+
+                                  $sumaSubtotal += $subtotalSinDescuento;
+                                  $sumaDescuento += $descuento;
+
+                                  $subtotalConDescuento = "$".number_format($subtotalConDescuento,2,',','.');
+                                  $subtotalSinDescuento = "$".number_format($subtotalSinDescuento,2,',','.');
+                                  $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
+                                  
+                                  // Formatear valores
+                                  $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
+                                  $precio_unitario = number_format($precio_unitario, 2,",",".");
+                                  $precio_kg = number_format($precio_kg, 2,",",".");
+                                  $peso_total_formateado = number_format($peso_total_linea, 2,",",".");?>
                                   <tr>
                                     <td><?=$b?></td>
                                     <td><?=$row["concepto"]?></td>
-                                    <td><?=$row["cantidad"]?></td>
-                                    <td><?=$row["unidad_medida"]?></td>
-                                    <td><?=number_format($peso,2)?></td>
-                                    <td>$<?=$precio?></td>
-                                    <td>$<?=$subtotal?></td>
+                                    <td><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
+                                    <td><?=$fechaEntregaFormateada?></td>
+                                    <td class="text-right"><?=$peso_total_formateado?></td>
+                                    <td class="text-right">$<?=$precio_unitario?></td>
+                                    <td class="text-right">$<?=$precio_kg?></td>
+                                    <td class="text-right"><?=$subtotalSinDescuento?></td>
+                                    <td class="text-right"><?=$porcentajeDescuento?></td>
+                                    <td class="text-right"><?=$subtotalConDescuento?></td>
                                   </tr><?php
                                   $b++;
                                 }
+                                $totalFinal = $sumaSubtotal + $data['iva'] - $sumaDescuento;
                                 Database::disconnect();?>
                               </tbody>
                             </table>
@@ -188,10 +240,10 @@ if (!empty($_POST)) {
                         </div>
                         <div class="form-group row">
                           <div class="col-sm-11 bordered-div-thin">
-                            <b>Subtotal:</b> <?=$signo.number_format($data['total'],2);?><br>
-                            <b>Iva:</b> <?=$signo.number_format($data['iva'],2);?><br>
-                            <b>Descuento:</b> <?=$signo.number_format($data['descuento'],2);?><br>
-                            <b>Total:</b> <?=$signo.number_format($data['total']+$data['iva']-$data['descuento'],2);?><br>
+                            <b>Subtotal:</b> <?=$signo.number_format($sumaSubtotal,2,",",".");?><br>
+                            <b>Iva:</b> <?=$signo.number_format($data['iva'],2,",",".");?><br>
+                            <b>Descuento:</b> <?=$signo.number_format($sumaDescuento,2,",",".");?><br>
+                            <b>Total:</b> <?=$signo.number_format($totalFinal,2,",",".");?><br>
                           </div>
                         </div>
                         <div class="form-group row">

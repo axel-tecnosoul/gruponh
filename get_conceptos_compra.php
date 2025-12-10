@@ -7,21 +7,27 @@ $id_compra = $_POST['id_compra'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, cd.subtotal, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
+$sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, cd.subtotal, cd.descuento, cd.fecha_entrega, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
 $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {
   $cantidad = (float) $row["cantidad"];
   $precioUnitario = (float) $row["precio"];
   $precioKgRaw = (float) $row["precio_kg"];
+  $porcentajeDescuento = (float) $row["descuento"];
+  $fechaEntrega = $row["fecha_entrega"];
   $pesoMetro = (float) $row["peso_metro"];
   $largo = (float) $row["largo"];
   $id_material = $row["id_material"];
 
   $precio = number_format($precioUnitario,2,",",".");
   $preciokg = number_format($precioKgRaw,2,",",".");
+  
+  // Formatear fecha de entrega
+  $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
 
-  $pesoMetroKg = $pesoMetro / 1000;
+  //$pesoMetroKg = $pesoMetro / 1000;
+  $pesoMetroKg = $pesoMetro;
   $largoMetros = $largo / 1000;
 
   if ($largoMetros > 0) {
@@ -37,16 +43,31 @@ foreach ($pdo->query($sql) as $row) {
   $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
   
   if ($subtotalGuardado > 0) {
-    $subtotalValue = $subtotalGuardado;
+    $subtotalSinDescuento = $subtotalGuardado;
   } else {
     // Fallback: calcular como antes para registros antiguos
     if ($precioUnitario == 0) {
-      $subtotalValue = $precioKgRaw * $pesoTotalRaw;
+      $subtotalSinDescuento = $precioKgRaw * $pesoTotalRaw;
     } else {
-      $subtotalValue = $precioUnitario * (float) $cantidad;
+      $subtotalSinDescuento = $precioUnitario * (float) $cantidad;
     }
   }
-  $subtotal = number_format($subtotalValue,2,',','.');
+  
+  // Calcular % de descuento
+  $descuento = 0;
+  if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+    $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+    //$descuento = ($subtotalSinDescuento * 100) / $porcentajeDescuento;
+  }
+  
+  // Aplicar descuento al subtotal
+  $subtotalConDescuento = $subtotalSinDescuento - $descuento;
+
+  $subtotalConDescuento = "$".number_format($subtotalConDescuento,2,',','.');
+  $subtotalSinDescuento = "$".number_format($subtotalSinDescuento,2,',','.');
+  $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
+
+  //$porcentajeDescuentoFormateado = $porcentajeDescuento > 0 ? number_format($porcentajeDescuento,1,",",".") . '%' : '-';
 	
 	$remitos = "";
 	$sql2 = " SELECT i.nro_remito FROM ingresos_detalle id inner join ingresos i on i.id = id.id_ingreso WHERE id.id_material = $id_material and id.id_compra = ".$id_compra;
@@ -62,15 +83,18 @@ foreach ($pdo->query($sql) as $row) {
 	
 	$aConceptos[]=[
     0 => $row["concepto"],
-    1 => $cantidad,
-	  2 => $row["unidad_medida"],
+    1 => $cantidad . ' ' . $row["unidad_medida"], // Cantidad + Unidad unificada
+    2 => $fechaEntregaFormateada, // Fecha de entrega
     3 => $peso,
     4 => $preciokg,
     5 => $precio,
-    6 => $subtotal,
-    7 => $row["entregado"],
-    8 => $remitos,
-    9 => $facturas
+    6 => $subtotalSinDescuento, // Subtotal sin descuento
+    //7 => $porcentajeDescuento. " (".$descuento.")", // % Descuento
+    7 => $porcentajeDescuento, // % Descuento
+    8 => $subtotalConDescuento, // Total con descuento
+    9 => $row["entregado"],
+    10 => $remitos,
+    11 => $facturas
   ];
 }
 

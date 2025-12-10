@@ -353,13 +353,15 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <thead>
                           <tr>
                             <th class="truncate-concepto">Concepto</th>
-                            <th style="width: 70px;">Cantidad</th>
-                            <th style="width: 60px;">Unidad</th>
-                            <th style="width: 80px;">Kg Totales</th>
+                            <th style="width: 90px;">Cantidad</th>
+                            <th style="width: 80px;">F. Entrega</th>
+                            <th style="width: 70px;">Kg Totales</th>
                             <th style="width: 60px;">$/Kg</th>
-                            <th style="width: 80px;">$/Unitario</th>
-                            <th style="width: 80px;">$/Total</th>
-                            <th style="width: 80px;">Entregado</th>
+                            <th style="width: 70px;">$/Unitario</th>
+                            <th style="width: 80px;">Subtotal</th>
+                            <th style="width: 60px;">% Desc.</th>
+                            <th style="width: 80px;">Total c/Desc</th>
+                            <th style="width: 70px;">Entregado</th>
                             <th style="width: 70px;">Remitos</th>
                             <th style="width: 70px;">Facturas</th>
                           </tr>
@@ -368,13 +370,15 @@ $id_estado = $filters['id_estado'] ?? [];?>
 						            <tfoot>
                           <tr>
                             <th class="truncate-concepto">Concepto</th>
-                            <th style="width: 70px;">Cantidad</th>
-                            <th style="width: 60px;">Unidad</th>
-                            <th style="width: 80px;">Kg Totales</th>
+                            <th style="width: 90px;">Cantidad</th>
+                            <th style="width: 80px;">F. Entrega</th>
+                            <th style="width: 70px;">Kg Totales</th>
                             <th style="width: 60px;">$/Kg</th>
-                            <th style="width: 80px;">$/Unitario</th>
-                            <th style="width: 80px;">$/Total</th>
-                            <th style="width: 80px;">Entregado</th>
+                            <th style="width: 70px;">$/Unitario</th>
+                            <th style="width: 80px;">Subtotal</th>
+                            <th style="width: 60px;">% Desc.</th>
+                            <th style="width: 80px;">Total c/Desc</th>
+                            <th style="width: 70px;">Entregado</th>
                             <th style="width: 70px;">Remitos</th>
                             <th style="width: 70px;">Facturas</th>
                           </tr>
@@ -391,8 +395,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
           <!-- Container-fluid Ends-->
         </div>
         <!-- footer start-->
+        <?php include("footer.php"); ?>
       </div>
-      <?php include("footer.php"); ?>
     </div>
 
     <!-- Modales únicos -->
@@ -654,7 +658,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
 		
         if(t.hasClass('selected')){
           deselectRow(t);
-		      get_conceptos(id_compra)
+		      //get_conceptos(id_compra)
+          $('#dataTables-example667').DataTable().clear().draw();
           $("#link_ver_compra").attr("href","#");
           $("#link_modificar_compra").attr("href","#");
 		      $("#link_ingresar_compra").attr("href","#");
@@ -766,15 +771,17 @@ $id_estado = $filters['id_estado'] ?? [];?>
             data: data,
             columnDefs: [
               { "width": "auto", "targets": 0, "className": "truncate-concepto" }, // Concepto - Ancho flexible
-              { "width": "70px", "targets": 1 }, // Cantidad
-              { "width": "60px", "targets": 2 }, // Unidad
-              { "width": "80px", "targets": 3 , "className": "text-right"}, // Peso Total kg
+              { "width": "90px", "targets": 1 }, // Cantidad + Unidad
+              { "width": "80px", "targets": 2 }, // Fecha Entrega
+              { "width": "70px", "targets": 3 , "className": "text-right"}, // Peso Total kg
               { "width": "60px", "targets": 4 , "className": "text-right"}, // $/Kg
-              { "width": "80px", "targets": 5 , "className": "text-right"}, // $/Unitario
-              { "width": "80px", "targets": 6 , "className": "text-right"}, // $/Total
-              { "width": "80px", "targets": 7 }, // Entregado
-              { "width": "70px", "targets": 8 }, // Remitos
-              { "width": "70px", "targets": 9 }  // Facturas
+              { "width": "70px", "targets": 5 , "className": "text-right"}, // $/Unitario
+              { "width": "80px", "targets": 6 , "className": "text-right"}, // Subtotal Bruto
+              { "width": "60px", "targets": 7 , "className": "text-right"}, // % Descuento
+              { "width": "80px", "targets": 8 , "className": "text-right"}, // Total c/Desc
+              { "width": "70px", "targets": 9 }, // Entregado
+              { "width": "70px", "targets": 10 }, // Remitos
+              { "width": "70px", "targets": 11 }  // Facturas
             ],
             drawCallback: function() {
               setTimeout(function() {

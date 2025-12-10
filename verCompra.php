@@ -61,9 +61,6 @@ if (!empty($_POST)) {
         $proyectoDisplay = $data['proyecto_nombre'];
       }
     }
-    
-    // Calcular total final
-    $totalFinal = $data['total'] + $data['iva'] - $data['descuento'];
   }
   
   Database::disconnect();
@@ -147,24 +144,6 @@ if (!empty($_POST)) {
                         </div>
                       </div>
                       <hr class="mt-4 mb-4">
-                      <div class="row">
-                        <div class="col-md-8">
-                          <h6 class="mb-3 font-weight-bold">Resumen Financiero</h6>
-                          <div class="form-group row mt-1">
-                            <label class="col-sm-3 font-weight-bold">Subtotal</label>
-                            <div class="col-sm-3">$<?=number_format($data['total'], 2);?></div>
-                            <label class="col-sm-3 font-weight-bold">IVA</label>
-                            <div class="col-sm-3">$<?=number_format($data['iva'], 2);?></div>
-                          </div>
-                          <div class="form-group row mt-1">
-                            <label class="col-sm-3 font-weight-bold">Descuento</label>
-                            <div class="col-sm-3">$<?=number_format($data['descuento'], 2);?></div>
-                            <label class="col-sm-3 font-weight-bold text-success">TOTAL</label>
-                            <div class="col-sm-3 text-success font-weight-bold">$<?=number_format($totalFinal, 2);?></div>
-                          </div>
-                        </div>
-                      </div>
-                      <hr class="mt-4 mb-4">
                       <div class="form-group row mt-1">
                         <div class="col-sm-12">
                           <table class="display" id="dataTables-example667">
@@ -172,55 +151,108 @@ if (!empty($_POST)) {
                               <tr>
                                 <th>Concepto</th>
                                 <th>Cantidad</th>
-                                <th>Unidad</th>
+                                <th>F. Entrega</th>
                                 <th>Peso Total (Kg)</th>
                                 <th>P/Unitario</th>
                                 <th>P/Kilo</th>
-                                <th>P/Total</th>
+                                <th>Subtotal</th>
+                                <th>% Desc.</th>
+                                <th>Total c/Desc</th>
                                 <th>Entregado</th>
                                 </tr>
                             </thead>
                             <tbody><?php
+                              $sumaSubtotal = 0;
+                              $sumaDescuento = 0;
                               $pdo = Database::connect();
-                              $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
+                              $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,d.subtotal,d.descuento,d.fecha_entrega,m.peso_metro,m.largo FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
                               foreach ($pdo->query($sql) as $row) {
-                                $cantidad=$row["cantidad"];
-                                $precio=$row["precio"];
-                                $precio_kg=$row["precio_kg"];
+                                $cantidad = (float) $row["cantidad"];
+                                $precio_unitario = (float) $row["precio"];
+                                $precio_kg = (float) $row["precio_kg"];
+                                $porcentajeDescuento = (float) $row["descuento"];
+                                $fechaEntrega = $row["fecha_entrega"];
+                                $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
                                 
                                 $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
-                                
                                 $peso_total_linea = $peso_por_unidad * $cantidad;
                                 
-                                $subtotal_calculado = 0;
-                                if ($precio_kg > 0) {
-                                  $subtotal_calculado = $peso_total_linea * $precio_kg;
+                                // Usar subtotal guardado si existe, sino calcularlo
+                                if ($subtotalGuardado > 0) {
+                                  $subtotalSinDescuento = $subtotalGuardado;
                                 } else {
-                                  $subtotal_calculado = $precio * $cantidad;
+                                  if ($precio_kg > 0) {
+                                    $subtotalSinDescuento = $peso_total_linea * $precio_kg;
+                                  } else {
+                                    $subtotalSinDescuento = $precio_unitario * $cantidad;
+                                  }
                                 }
 
-                                $precio_unitario_formateado = number_format($precio, 2);
-                                $precio_kg_formateado = number_format($precio_kg, 2);
-                                $peso_total_formateado = number_format($peso_total_linea, 2);
-                                $subtotal_formateado = number_format($subtotal_calculado, 2);?>
+                                // Calcular descuento
+                                $descuento = 0;
+                                if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+                                  $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                }
+                                
+                                // Aplicar descuento al subtotal
+                                $subtotalConDescuento = $subtotalSinDescuento - $descuento;
+
+                                $sumaSubtotal += $subtotalSinDescuento;
+                                $sumaDescuento += $descuento;
+
+                                $subtotalConDescuento = "$".number_format($subtotalConDescuento,2,',','.');
+                                $subtotalSinDescuento = "$".number_format($subtotalSinDescuento,2,',','.');
+                                $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
+                                
+                                // Formatear valores
+                                $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
+
+                                $precio_unitario = number_format($precio_unitario, 2,",",".");
+                                $precio_kg = number_format($precio_kg, 2,",",".");
+                                $peso_total = number_format($peso_total_linea, 2,",",".");?>
                                 <tr>
                                   <td><?=$row["concepto"]?></td>
-                                  <td><?=$row["cantidad"]?></td>
-                                  <td><?=$row["unidad_medida"]?></td>
-                                  <td><?=$peso_total_formateado?></td>
-                                  <td><?=$precio_unitario_formateado?></td>
-                                  <td><?=$precio_kg_formateado?></td>
-                                  <td><?=$subtotal_formateado?></td>
+                                  <td><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
+                                  <td><?=$fechaEntregaFormateada?></td>
+                                  <td class="text-right"><?=$peso_total?></td>
+                                  <td class="text-right"><?=$precio_unitario?></td>
+                                  <td class="text-right"><?=$precio_kg?></td>
+                                  <td class="text-right"><?=$subtotalConDescuento?></td>
+                                  <td class="text-right"><?=$porcentajeDescuento?></td>
+                                  <td class="text-right"><?=$subtotalConDescuento?></td>
                                   <td><?=$row["entregado"]?></td>
                                 </tr><?php
                               }
+                              // Calcular total final
+                              $totalFinal = $sumaSubtotal + $data['iva'] - $sumaDescuento;
                               Database::disconnect();?>
                             </tbody>
                           </table>
                         </div>
                       </div>
+                      <hr class="mt-4 mb-4">
+                      <div class="row">
+                        <div class="col-md-8">
+                          <h6 class="mb-3 font-weight-bold">Resumen Financiero</h6>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-3 font-weight-bold">Subtotal</label>
+                            <div class="col-sm-3">$<?=number_format($sumaSubtotal, 2,",",".");?></div>
+                            <label class="col-sm-3 font-weight-bold">IVA</label>
+                            <div class="col-sm-3">$<?=number_format($data['iva'], 2,",",".");?></div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-3 font-weight-bold">Descuento</label>
+                            <div class="col-sm-3">$<?=number_format($sumaDescuento, 2,",",".");?></div>
+                            <label class="col-sm-3 font-weight-bold text-success">TOTAL</label>
+                            <div class="col-sm-3 text-success font-weight-bold">$<?=number_format($totalFinal, 2,",",".");?></div>
+                          </div>
+                        </div>
+                      </div>
+                      <hr class="mt-4 mb-4">
                       <div class="form-group row mt-1">
-                        <label class="col-sm-12">Conceptos Cómputo</label>
+                        <label class="col-sm-12">
+                          <h6 class="mb-3 font-weight-bold">Conceptos Cómputo</h6>
+                        </label>
                       </div>
                       <div class="form-group row mt-1">
                         <div class="col-sm-12">
@@ -245,8 +277,8 @@ if (!empty($_POST)) {
                           </table>
                         </div>
                       </div>
-                      <hr>
-                      <h5 class='mb-5'>Sucesos de la Compra</h5>
+                      <hr class="mt-4 mb-4">
+                      <h5 class='mb-3 font-weight-bold'>Sucesos de la Compra</h5>
                       <div class="form-group row mt-1">
                         <div class="col-sm-12">
                           <div class="timeline-small"><?php 

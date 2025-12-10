@@ -237,7 +237,7 @@ $id_estado = $filters['id_estado'] ?? [];
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                          $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.descripcion AS nombre_proyecto
+                          $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.descripcion AS nombre_proyecto, pe.id_computo
                           FROM pedidos pe 
                             INNER JOIN computos c ON c.id = pe.id_computo 
                             INNER JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante
@@ -254,7 +254,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
 
                             $nombre_proyecto = htmlspecialchars($row['nombre_proyecto']);
-                            $nombre_proyecto_mostrar=$nombre_proyecto;
+                            //$nombre_proyecto_mostrar=$nombre_proyecto;
                             
                             /*if (strlen($nombre_proyecto) > $limite_chars) {
                               $nombre_proyecto_mostrar='<span class="proyecto-truncado" title="'.$nombre_proyecto.'">'.substr($nombre_proyecto, 0, $limite_chars).'...</span>';
@@ -262,7 +262,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             <tr>
                               <td><?=htmlspecialchars($row['id'])?></td>
                               <td><?=$obra?></td>
-                              <td class="truncate-project"><?=$nombre_proyecto_mostrar?></td>
+                              <td class="truncate-project"><?=$nombre_proyecto?></td>
                               <td>
                                 <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                                 <?=date('d/m/Y', strtotime($row['fecha']))?></td>
@@ -277,7 +277,15 @@ $id_estado = $filters['id_estado'] ?? [];
                               <td><?=htmlspecialchars($row['estado']) ?></td>
                               <td class="truncate-solicitante"><?=htmlspecialchars($row['solicitante'] ?? '') ?></td>
                               <!-- <td><?=($row['aprobado'] == 1 ? 'Si' : 'No') ?></td> -->
-                              <td>Computo</td>
+                              <td><?php
+                                if($row['id_computo']>0){ ?>
+                                  <a href="imprimirComputo.php?id=<?=$row['id_computo']?>" target="_blank" title="Ver Computo">
+                                    <i class="fa fa-file-text-o" style="margin-right: 5px;"></i>Computo <?=$row['id_computo']?>
+                                  </a><?php
+                                } else {
+                                  echo "Computo";
+                                } ?>
+                              </td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_proyecto']) ?></td>
                               <td style="display: none;"><?=htmlspecialchars($row['id_estado']) ?></td>
                             </tr><?php
@@ -310,7 +318,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             <tr>
                             <td><?=htmlspecialchars($row['id'])?></td>
                             <td><?=$obra?></td>
-                            <td class="truncate-project"><?=$nombre_proyecto_mostrar?></td>
+                            <td class="truncate-project"><?=$nombre_proyecto?></td>
                             <td>
                               <span style="display: none;"><?=date('Ymd', strtotime($row['fecha']))?></span>
                               <?=date('d/m/Y', strtotime($row['fecha'])) ?>

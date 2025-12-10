@@ -891,7 +891,7 @@ Database::disconnect();?>
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3">Detalle de Conceptos</h6>
-                          <div id="custom-controls" class="row mb-3" style="display: none; text-align-last: center;">
+                          <div id="custom-controls" class="row mb-3" style="display: none; text-align: center;">
                             <div class="col-md-6" style="text-align: center;">
                               <label class="">Fecha Entrega General:</label>
                               <input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$data["fecha"]?>" class="form-control d-inline-block" style="font-size: 12px;">

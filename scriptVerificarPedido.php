@@ -4,7 +4,7 @@ require 'database.php';
 require_once('funciones.php');
 
 // ID del pedido a verificar
-$idPedido = 224;
+$idPedido = 230;
 
 echo "<h2>🔍 Verificación del Pedido ID: $idPedido</h2>";
 
