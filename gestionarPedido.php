@@ -158,10 +158,10 @@ if (!empty($_POST)) {
             $_POST['fecha_emision'], 
             $_POST['fecha_entrega'], 
             $_POST['id_forma_pago'], 
-            $id_tipo_iva, // Nuevo campo
+            $id_tipo_iva,
             $id_estado_compra, 
             '', 
-            $totalNeto, // En base de datos 'total' suele ser el Neto o Subtotal en muchos sistemas, pero si tu sistema considera total = final, ajusta aquí. Asumiré total = neto gravado para consistencia con IVA aparte.
+            $totalNeto,
             $monto_iva, 
             $_POST['comentarios'], 
             $_POST['id_moneda'], 
@@ -281,19 +281,170 @@ Database::disconnect();
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
+    <!-- Agregados estilos de select2 y datatables como en el archivo original -->
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
     <style>
-      .form-control:disabled, .form-control[readonly] { background-color: #e9ecef; opacity: 1; }
-      #dataTables-example667 { width: 100% !important; font-size: 0.75rem; table-layout: fixed !important; }
-      #dataTables-example667 th, #dataTables-example667 td { padding: 5px 4px !important; vertical-align: middle; }
-      #dataTables-example667 thead th { background-color: #f8f9fa; white-space: nowrap; }
-      #dataTables-example667 input.form-control { font-size: 0.75rem; height: 28px; }
-      .table-secondary { background-color: #f8f9fa !important; opacity: 0.8; }
-      .table-secondary td { text-decoration: line-through; color: #6c757d; }
-      .cancelado-badge { display: inline-block; min-width: 120px; }
+      .form-control:disabled, 
+      .form-control[readonly] {
+        background-color: #e9ecef;
+        opacity: 1;
+      }
       
-      /* Estilos para el contenedor de totales */
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      
+      .card-body {
+        padding: 1.5rem;
+      }
+      
+      #dataTables-example667 {
+        width: 100% !important;
+        font-size: 0.75rem;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+      
+      #dataTables-example667 th,
+      #dataTables-example667 td {
+        padding: 5px 4px !important;
+        vertical-align: middle;
+        font-size: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        box-sizing: border-box !important;
+      }
+      
+      #dataTables-example667 thead th {
+        white-space: nowrap !important;
+        padding: 6px 4px !important;
+        font-size: 0.7rem;
+        font-weight: 600;
+        line-height: 1.2;
+        background-color: #f8f9fa;
+      }
+      
+      #dataTables-example667 th:nth-child(1),
+      #dataTables-example667 td:nth-child(1) {
+        width: 180px !important;
+        min-width: 180px !important;
+        max-width: 180px !important;
+        white-space: normal;
+        word-wrap: break-word;
+      }
+      
+      #dataTables-example667 th:nth-child(2),
+      #dataTables-example667 td:nth-child(2),
+      #dataTables-example667 th:nth-child(3),
+      #dataTables-example667 td:nth-child(3),
+      #dataTables-example667 th:nth-child(4),
+      #dataTables-example667 td:nth-child(4) {
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+        text-align: center;
+      }
+      
+      #dataTables-example667 th:nth-child(5),
+      #dataTables-example667 td:nth-child(5),
+      #dataTables-example667 th:nth-child(6),
+      #dataTables-example667 td:nth-child(6),
+      #dataTables-example667 th:nth-child(7),
+      #dataTables-example667 td:nth-child(7) {
+        width: 80px !important;
+        min-width: 80px !important;
+        max-width: 80px !important;
+      }
+      
+      #dataTables-example667 th:nth-child(8),
+      #dataTables-example667 td:nth-child(8) {
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 60px !important;
+      }
+      
+      #dataTables-example667 th:nth-child(9),
+      #dataTables-example667 td:nth-child(9) {
+        width: 90px !important;
+        min-width: 90px !important;
+        max-width: 90px !important;
+        text-align: right;
+      }
+      
+      #dataTables-example667 th:nth-child(10),
+      #dataTables-example667 td:nth-child(10) {
+        width: 100px !important;
+        min-width: 100px !important;
+        max-width: 100px !important;
+      }
+      
+      #dataTables-example667 tbody td {
+        white-space: nowrap;
+      }
+      
+      #dataTables-example667 tbody td:nth-child(1) {
+        white-space: normal;
+      }
+      
+      #dataTables-example667 input.form-control {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.35rem;
+        height: 28px;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      
+      .dataTables_wrapper .dataTables_scrollHead,
+      .dataTables_wrapper .dataTables_scrollBody {
+        overflow: visible !important;
+      }
+      
+      .dataTables_wrapper {
+        overflow-x: auto;
+      }
+      
+      .dataTables_scrollBody {
+        overflow: visible !important;
+      }
+      
+      .dataTables_scrollHead table,
+      .dataTables_scrollBody table {
+        width: 100% !important;
+      }
+      
+      .dataTables_length select,
+      .dataTables_filter input {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+      }
+      
+      .dataTables_info,
+      .dataTables_length,
+      .dataTables_filter {
+        font-size: 0.8rem;
+      }
+      
+      h6 {
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+      
+      .dataTables_wrapper .dataTables_paginate .paginate_button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+      }
+      
+      .table-secondary { 
+        background-color: #f8f9fa !important; 
+        opacity: 0.8; 
+      }
+      .table-secondary td { 
+        text-decoration: line-through; 
+        color: #6c757d; 
+      }
+      
       .total-container {
         background-color: #f8f9fa;
         border: 1px solid #dee2e6;
@@ -326,72 +477,124 @@ Database::disconnect();
     </style>
   </head>
   <body>
+    <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <?php include('header.php');?>
+      <!-- Page Body Wrapper Start-->
       <div class="page-body-wrapper">
+        <!-- Agregado include del menu para la barra lateral -->
         <?php include('menu.php');?>
+        <!-- Page Sidebar End-->
+        <!-- Page Body Start-->
         <div class="page-body">
-          <?php $ubicacion="Gestión de Pedido"; include_once("head_page.php")?>
+          <?php
+          $ubicacion="Gestión de Pedido y Nueva Orden de Compra";
+          include_once("head_page.php");?>
+          <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
                     <h5>Información del Pedido <?=$tipoPedido." N° ".$id;?></h5>
-                    <?php if (isset($error)){ echo '<div class="alert alert-danger">'.$error.'</div>'; }?>
+                    <?php if (isset($error)){ ?>
+                      <div class="alert alert-danger"><?=$error;?></div>
+                    <?php } ?>
                   </div>
-                  <form class="form theme-form" method="post" id="form-unificado" onsubmit="return validarFormularioCompra();">
+                  <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
                     <div class="card-body">
                       <div class="row">
                         <div class="col-md-6">
                           <h6 class="mb-3">Datos del Pedido</h6>
-                          <!-- Datos informativos -->
-                          <div class="form-group row mb-1"><label class="col-sm-4 font-weight-bold">Fecha Pedido</label><div class="col-sm-8"><?=$data['fecha_formatted'];?></div></div>
-                          <div class="form-group row mb-1"><label class="col-sm-4 font-weight-bold">Proyecto</label><div class="col-sm-8"><?=$proyectoDisplay;?></div></div>
-                          <div class="form-group row mb-1"><label class="col-sm-4 font-weight-bold">Solicitante</label><div class="col-sm-8"><?=$data['cuenta_solicitante']?></div></div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Fecha Pedido</label>
+                            <div class="col-sm-8"><?=$data['fecha_formatted'];?></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Proyecto</label>
+                            <div class="col-sm-8"><?=$proyectoDisplay;?></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Lugar de Entrega</label>
+                            <div class="col-sm-8"><?=$data['lugar_entrega'];?></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Recibe</label>
+                            <div class="col-sm-8"><?=$data['cuenta_recibe']?></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Estado</label>
+                            <div class="col-sm-8"><?=$data['estado_pedido'];?></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label font-weight-bold">Solicitante</label>
+                            <div class="col-sm-8"><?=$data['cuenta_solicitante']?></div>
+                          </div>
                         </div>
                         <?php if ($data['aprobado']==1 && tienePermiso(298)){?>
                           <div class="col-md-6">
                             <h6 class="mb-3">Datos de la Orden de Compra</h6>
-                            <div class="form-group row mb-2">
+                            <div class="form-group row">
                               <label class="col-sm-4 col-form-label">Proveedor(*)</label>
                               <div class="col-sm-8">
-                                <select name="id_cuenta_proveedor" class="js-example-basic-single w-100" required>
+                                <select name="id_cuenta_proveedor" id="id_cuenta_proveedor" class="js-example-basic-single w-100" required>
                                   <option value="">Seleccione...</option>
                                   <?php
                                   $pdo = Database::connect();
-                                  $q = $pdo->query("SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta = 5 and activo = 1 order by nombre");
-                                  while ($f = $q->fetch()) { echo "<option value='".$f['id']."'>".$f['nombre']."</option>"; }
-                                  ?>
+                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                  $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
+                                  $q = $pdo->prepare($sqlZon);
+                                  $q->execute();
+                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
+                                    <option value='<?=$fila['id']?>'><?=$fila['nombre']?></option>
+                                  <?php }
+                                  Database::disconnect();?>
                                 </select>
                               </div>
                             </div>
-                            <div class="form-group row mb-2">
+                            <div class="form-group row">
                               <label class="col-sm-4 col-form-label">Fecha Emisión(*)</label>
-                              <div class="col-sm-8"><input name="fecha_emision" type="date" class="form-control" value="<?=date('Y-m-d');?>" required></div>
+                              <div class="col-sm-8">
+                                <input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?=date('Y-m-d');?>" class="form-control" required>
+                              </div>
                             </div>
-                            <div class="form-group row mb-2">
+                            <div class="form-group row">
+                              <label class="col-sm-4 col-form-label">Fecha Entrega</label>
+                              <div class="col-sm-8">
+                                <input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$data["fecha"]?>" class="form-control">
+                              </div>
+                            </div>
+                            <div class="form-group row">
                               <label class="col-sm-4 col-form-label">Moneda(*)</label>
                               <div class="col-sm-8">
                                 <select name="id_moneda" id="id_moneda" class="js-example-basic-single w-100" required>
+                                  <option value="">Seleccione...</option>
                                   <?php
-                                  $q = $pdo->query("SELECT id, moneda FROM monedas");
-                                  while ($f = $q->fetch()) { echo "<option value='".$f['id']."'>".$f['moneda']."</option>"; }
-                                  ?>
+                                  $pdo = Database::connect();
+                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                  $sqlZon = "SELECT id, moneda FROM monedas WHERE 1";
+                                  $q = $pdo->prepare($sqlZon);
+                                  $q->execute();
+                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
+                                    <option value='<?=$fila['id']?>'><?=$fila['moneda']?></option>
+                                  <?php }
+                                  Database::disconnect();?>
                                 </select>
                               </div>
                             </div>
-                            <div class="form-group row mb-2">
-                              <label class="col-sm-4 col-form-label">Tipo Cambio <span id="tc_required" style="display:none; color:red">*</span></label>
-                              <div class="col-sm-8"><input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number" step="0.01" class="form-control"></div>
+                            <div class="form-group row">
+                              <label class="col-sm-4 col-form-label">Tipo de Cambio <span id="tc_required_star" style="color:red; display: none;">(*)</span></label>
+                              <div class="col-sm-8">
+                                <input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number" step="0.01" class="form-control">
+                              </div>
                             </div>
-                            <!-- NUEVO CAMPO IVA -->
-                            <div class="form-group row mb-2">
+                            <!-- IVA -->
+                            <div class="form-group row">
                               <label class="col-sm-4 col-form-label">IVA(*)</label>
                               <div class="col-sm-8">
                                 <select name="id_tipo_iva" id="id_tipo_iva" class="form-control" required>
                                   <?php
-                                  // Verificar si existe la tabla, sino simular opciones básicas para que no rompa visualmente
+                                  $pdo = Database::connect();
                                   try {
                                       $q = $pdo->query("SELECT id, tasa FROM tipos_iva ORDER BY tasa");
                                       while ($f = $q->fetch()) { 
@@ -401,63 +604,70 @@ Database::disconnect();
                                   } catch (Exception $e) {
                                       echo "<option value='0' data-tasa='0'>ERROR: Cree tabla tipos_iva</option>";
                                   }
+                                  Database::disconnect();
                                   ?>
                                 </select>
                               </div>
                             </div>
-                            <div class="form-group row mb-2">
-                              <label class="col-sm-4 col-form-label">Forma Pago(*)</label>
+                            <div class="form-group row">
+                              <label class="col-sm-4 col-form-label">Descuento General</label>
                               <div class="col-sm-8">
-                                <select name="id_forma_pago" class="js-example-basic-single w-100" required>
+                                <input name="descuento" type="number" step="0.01" class="form-control">
+                              </div>
+                            </div>
+                            <div class="form-group row">
+                              <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
+                              <div class="col-sm-8">
+                                <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single w-100" required>
                                   <option value="">Seleccione...</option>
                                   <?php
-                                  $q = $pdo->query("SELECT id, forma_pago FROM formas_pago");
-                                  while ($f = $q->fetch()) { echo "<option value='".$f['id']."'>".$f['forma_pago']."</option>"; }
-                                  ?>
+                                  $pdo = Database::connect();
+                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                  $sqlZon = "SELECT `id`, `forma_pago` FROM `formas_pago` WHERE 1";
+                                  $q = $pdo->prepare($sqlZon);
+                                  $q->execute();
+                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {?>
+                                    <option value='<?=$fila['id']?>'><?=$fila['forma_pago']?></option>
+                                  <?php }
+                                  Database::disconnect();?>
                                 </select>
                               </div>
                             </div>
-                            <div class="form-group row mb-2">
+                            <div class="form-group row">
                               <label class="col-sm-4 col-form-label">Comentarios</label>
-                              <div class="col-sm-8"><textarea name="comentarios" class="form-control" rows="1"></textarea></div>
+                              <div class="col-sm-8">
+                                <textarea name="comentarios" class="form-control" rows="2"></textarea>
+                              </div>
                             </div>
                           </div>
                         <?php } ?>
                       </div>
-                      <hr>
-                      
-                      <!-- Tabla de Conceptos -->
+                      <hr class="mt-4 mb-4">
                       <div class="row">
                         <div class="col-sm-12">
-                          <h6 class="mb-2">Detalle de Conceptos</h6>
-                          <?php if ($data['aprobado']==1 && tienePermiso(298)){ ?>
-                            <div class="row mb-3 justify-content-center">
-                              <div class="col-auto"><label>F. Entrega Gral:</label> <input name="fecha_entrega" type="date" class="form-control form-control-sm d-inline-block w-auto" value="<?=$data['fecha']?>"></div>
-                              <div class="col-auto"><label>Desc. Gral (%):</label> <input name="descuento" type="number" step="0.1" class="form-control form-control-sm d-inline-block w-auto" style="width: 80px;"></div>
-                            </div>
-                          <?php } ?>
-                          
+                          <h6 class="mb-3">Detalle de Conceptos</h6>
                           <div class="table-responsive">
-                            <table class="display table-bordered" id="dataTables-example667">
+                            <table class="display" id="dataTables-example667" style="width:100%">
                               <thead>
                                 <tr>
-                                  <th style="width:25%">Concepto</th>
-                                  <th style="width:8%">Requerido</th>
-                                  <th style="width:8%">Comprado</th>
-                                  <th style="width:8%">Pendiente</th> <!-- Cant. Solic -->
-                                  <?php if ($data['aprobado']==1 && tienePermiso(298)){ ?>
-                                    <th style="width:8%">A Comprar</th>
-                                    <th style="width:10%">P. Unit.</th>
-                                    <th style="width:10%">P. x Kg</th>
-                                    <th style="width:7%">Desc %</th>
-                                    <th style="width:10%">Subtotal</th>
-                                    <th style="width:10%">F. Entrega</th>
+                                  <th>Concepto</th>
+                                  <th>Requerido</th>
+                                  <th>Comprado</th>
+                                  <th>Pendiente</th>
+                                  <?php if ($data['aprobado']==1 && tienePermiso(298)){?>
+                                    <th>A Comprar</th>
+                                    <th>P. Unit.</th>
+                                    <th>P. x Kg</th>
+                                    <th>Desc %</th>
+                                    <th>Subtotal</th>
+                                    <th>F. Entrega</th>
                                   <?php } ?>
                                 </tr>
                               </thead>
                               <tbody>
                                 <?php
-                                $sql = "SELECT pd.id, m.concepto, pd.cantidad, u.unidad_medida, pd.comprado, pd.cancelado, m.peso_metro, m.largo 
+                                $pdo = Database::connect();
+                                $sql = "SELECT pd.id, m.concepto, pd.cantidad, u.unidad_medida, pd.comprado, pd.cancelado, m.peso_metro, m.largo, pd.id_material
                                         FROM pedidos_detalle pd 
                                         INNER JOIN materiales m on m.id = pd.id_material 
                                         INNER JOIN unidades_medida u on u.id = pd.id_unidad_medida 
@@ -479,28 +689,23 @@ Database::disconnect();
                                     <?php if ($data['aprobado']==1 && tienePermiso(298)) { ?>
                                       <?php if ($row["cancelado"] != 1 && $pendiente > 0) { ?>
                                         <td><input name="cantidad_<?=$row["id"]?>" type="number" step="0.01" class="form-control cantidad-input" value="<?=$pendiente?>" max="<?=$pendiente?>"></td>
-                                        
                                         <td><input name="precio_<?=$row["id"]?>" type="number" step="0.0001" class="form-control precio-input" value="0"></td>
-                                        
                                         <td><input name="preciokg_<?=$row["id"]?>" type="number" step="0.0001" class="form-control preciokg-input" value="0"></td>
-                                        
                                         <td><input name="descuento_<?=$row["id"]?>" type="number" step="0.1" class="form-control descuento-input" value="0"></td>
-                                        
                                         <td class="text-right"><span class="subtotal-cell">0.00</span></td>
-                                        
                                         <td><input name="fecha_entrega_<?=$row["id"]?>" type="date" class="form-control fecha-entrega-input" value="<?=$data['fecha']?>"></td>
                                       <?php } else { ?>
                                         <td colspan="6" class="text-center"><span class="badge badge-secondary"><?=($row["cancelado"]==1?'Cancelado':'Completo')?></span></td>
                                       <?php } ?>
                                     <?php } ?>
                                   </tr>
-                                <?php } ?>
+                                <?php }
+                                Database::disconnect();?>
                               </tbody>
                             </table>
                           </div>
-                          
-                          <!-- Sección de Totales -->
-                          <?php if ($data['aprobado']==1 && tienePermiso(298)){ ?>
+                          <?php if ($data['aprobado']==1 && tienePermiso(298)){?>
+                            <!-- Sección de Totales -->
                             <div class="row justify-content-end">
                               <div class="col-md-4">
                                 <div class="total-container">
@@ -509,7 +714,7 @@ Database::disconnect();
                                     <span class="total-value" id="lbl_neto">$ 0.00</span>
                                   </div>
                                   <div class="total-row">
-                                    <span class="total-label">IVA (<span id="lbl_tasa_iva">0</span>%):</span>
+                                    <span class="total-label">IVA (<span id="lbl_tasa_iva">21</span>%):</span>
                                     <span class="total-value" id="lbl_iva">$ 0.00</span>
                                   </div>
                                   <div class="total-row final">
@@ -519,159 +724,231 @@ Database::disconnect();
                                 </div>
                               </div>
                             </div>
-                            
-                            <div class="mt-3 text-muted small">
-                              * El precio unitario se calcula automáticamente si ingresa Precio x Kg.<br>
-                              * Fórmula Kg: (PrecioKg / 1000) * (PesoMetro * LargoMetros).
+                            <div class="mt-3">
+                              <i><strong>NOTA:</strong> Si ingresa Precio x KG > 0, el precio se calculará como: (Precio x KG) * (Peso por Metro * Largo). Si el largo no está definido para el material, se usará solo el Peso por Metro.</i><br/>
+                              <i>Para guardar una compra, debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Unitario o x Kg).</i>
                             </div>
                           <?php } ?>
                         </div>
                       </div>
                     </div>
-                    <div class="card-footer text-center">
-                      <?php if ($data['aprobado']==1 && tienePermiso(298)){ ?>
-                        <button class="btn btn-primary" type="submit">Generar Orden de Compra</button>
-                      <?php } ?>
-                      <a href='listarPedidos.php' class="btn btn-light">Volver</a>
+
+                    <div class="card-footer">
+                      <div class="col-sm-12 text-center">
+                        <?php if ($data['aprobado']==1 && tienePermiso(298)){?>
+                          <button class="btn btn-success" type="submit">Crear Orden de Compra</button>
+                        <?php } ?>
+                        <a href='listarPedidos.php' class="btn btn-light">Volver</a>
+                      </div>
                     </div>
                   </form>
                 </div>
               </div>
             </div>
           </div>
+          <!-- Container-fluid Ends-->
         </div>
+        <!-- footer start-->
         <?php include("footer.php"); ?>
       </div>
     </div>
-
-    <!-- Scripts -->
+    <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
+    <!-- Bootstrap js-->
+    <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <!-- feather icon js-->
+    <script src="assets/js/icons/feather-icon/feather.min.js"></script>
+    <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
+    <!-- Sidebar jquery-->
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/config.js"></script>
+    <!-- Plugins JS start-->
+    <script src="assets/js/chat-menu.js"></script>
+    <script src="assets/js/tooltip-init.js"></script>
+    <!-- Theme js-->
+    <script src="assets/js/script.js"></script>
+    <!-- Plugin used-->
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    <script src="assets/js/script.js"></script>
-    
+    <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
     <script>
-    $(document).ready(function() {
+      $(document).ready(function() {
+        // Inicialización de DataTables con configuración del archivo original
+        $('#dataTables-example667').DataTable({
+          stateSave: false,
+          responsive: false,
+          scrollX: false,
+          scrollCollapse: false,
+          autoWidth: false,
+          paging: true,
+          pageLength: 10,
+          language: {
+            "decimal": "",
+            "emptyTable": "No hay información",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+            "infoFiltered": "(Filtrado de _MAX_ total registros)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "Mostrar _MENU_ Registros",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar:",
+            "zeroRecords": "No hay resultados",
+            "paginate": {
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
+            }
+          }
+        });
+
         // Moneda y Tipo de Cambio
         $("#id_moneda").on("change", function() {
-            if($(this).val() == 1) { // USD
-                $('#tipo_cambio_dia').prop('required', true);
-                $('#tc_required').show();
-            } else {
-                $('#tipo_cambio_dia').prop('required', false);
-                $('#tc_required').hide();
-            }
+          var esUSD = $(this).val() == 1; 
+          if (esUSD) {
+            $('#tipo_cambio_dia').prop('required', true);
+            $('#tc_required_star').show();
+          } else {
+            $('#tipo_cambio_dia').prop('required', false);
+            $('#tc_required_star').hide();
+          }
         }).trigger('change');
 
-        // Propagación masiva
-        $('input[name="descuento"]').on('input', function() { $('.descuento-input').val($(this).val()).trigger('input'); });
-        $('input[name="fecha_entrega"]').on('change', function() { $('.fecha-entrega-input').val($(this).val()); });
+        // Propagación masiva del descuento general
+        $('input[name="descuento"]').on('input', function() { 
+          $('.descuento-input').val($(this).val()).trigger('input'); 
+        });
+        
+        // Propagación masiva de fecha de entrega
+        $('input[name="fecha_entrega"]').on('change', function() { 
+          $('.fecha-entrega-input').val($(this).val()); 
+        });
 
         // CÁLCULOS EN TIEMPO REAL
-        // ------------------------------------------
         function calcularFila(row) {
-            let cantidad = parseFloat(row.find('.cantidad-input').val()) || 0;
-            let precioUnit = parseFloat(row.find('.precio-input').val()) || 0;
-            let precioKg = parseFloat(row.find('.preciokg-input').val()) || 0;
-            let descuento = parseFloat(row.find('.descuento-input').val()) || 0;
-            
-            // Datos del material desde atributos data
-            let pesoMetro = parseFloat(row.data('peso')) || 0;
-            let largoMm = parseFloat(row.data('largo')) || 0;
-            
-            // Si hay precio por kilo, tiene prioridad para calcular el unitario
-            if (precioKg > 0) {
-                let largoMetros = (largoMm > 0) ? largoMm / 1000 : 1;
-                // Si largo es 0, asumimos que el peso es por unidad o metro lineal directo sin largo
-                let pesoUnitario = pesoMetro * largoMetros; 
-                
-                // Calculamos unitario
-                precioUnit = precioKg * pesoUnitario;
-                
-                // Actualizamos visualmente el input unitario (opcional, para que el usuario vea)
-                // Usamos toFixed(4) para mostrar 4 decimales
-                row.find('.precio-input').val(precioUnit.toFixed(4));
-            }
-            
-            let subtotalBruto = cantidad * precioUnit;
-            let montoDescuento = subtotalBruto * (descuento / 100);
-            let subtotalNeto = subtotalBruto - montoDescuento;
-            
-            row.find('.subtotal-cell').text(subtotalNeto.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 4}));
-            row.data('subtotal', subtotalNeto); // Guardamos valor numérico para sumar
-            
-            calcularTotalesGenerales();
+          let cantidad = parseFloat(row.find('.cantidad-input').val()) || 0;
+          let precioUnit = parseFloat(row.find('.precio-input').val()) || 0;
+          let precioKg = parseFloat(row.find('.preciokg-input').val()) || 0;
+          let descuento = parseFloat(row.find('.descuento-input').val()) || 0;
+          
+          let pesoMetro = parseFloat(row.data('peso')) || 0;
+          let largoMm = parseFloat(row.data('largo')) || 0;
+          
+          if (precioKg > 0) {
+            let largoMetros = (largoMm > 0) ? largoMm / 1000 : 1;
+            let pesoUnitario = pesoMetro * largoMetros; 
+            precioUnit = precioKg * pesoUnitario;
+            row.find('.precio-input').val(precioUnit.toFixed(4));
+          }
+          
+          let subtotalBruto = cantidad * precioUnit;
+          let montoDescuento = subtotalBruto * (descuento / 100);
+          let subtotalNeto = subtotalBruto - montoDescuento;
+          
+          row.find('.subtotal-cell').text(subtotalNeto.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 4}));
+          row.data('subtotal', subtotalNeto);
+          
+          calcularTotalesGenerales();
         }
 
         function calcularTotalesGenerales() {
-            let totalNeto = 0;
-            
-            // Sumar todas las filas activas
-            $('#dataTables-example667 tbody tr').each(function() {
-                let sub = $(this).data('subtotal') || 0;
-                totalNeto += sub;
-            });
-            
-            // Calcular IVA
-            let opcionIva = $('#id_tipo_iva').find(':selected');
-            let tasaIva = parseFloat(opcionIva.data('tasa')) || 0;
-            let montoIva = totalNeto * (tasaIva / 100);
-            let totalFinal = totalNeto + montoIva;
-            
-            // Actualizar etiquetas
-            $('#lbl_neto').text('$ ' + totalNeto.toLocaleString('es-AR', {minimumFractionDigits: 2}));
-            $('#lbl_tasa_iva').text(tasaIva);
-            $('#lbl_iva').text('$ ' + montoIva.toLocaleString('es-AR', {minimumFractionDigits: 2}));
-            $('#lbl_total').text('$ ' + totalFinal.toLocaleString('es-AR', {minimumFractionDigits: 2}));
+          let totalNeto = 0;
+          
+          $('#dataTables-example667 tbody tr').each(function() {
+            let sub = $(this).data('subtotal') || 0;
+            totalNeto += sub;
+          });
+          
+          let opcionIva = $('#id_tipo_iva').find(':selected');
+          let tasaIva = parseFloat(opcionIva.data('tasa')) || 0;
+          let montoIva = totalNeto * (tasaIva / 100);
+          let totalFinal = totalNeto + montoIva;
+          
+          $('#lbl_neto').text('$ ' + totalNeto.toLocaleString('es-AR', {minimumFractionDigits: 2}));
+          $('#lbl_tasa_iva').text(tasaIva);
+          $('#lbl_iva').text('$ ' + montoIva.toLocaleString('es-AR', {minimumFractionDigits: 2}));
+          $('#lbl_total').text('$ ' + totalFinal.toLocaleString('es-AR', {minimumFractionDigits: 2}));
         }
 
         // Event Listeners para inputs de tabla
         $(document).on('input', '.cantidad-input, .precio-input, .preciokg-input, .descuento-input', function() {
-            let row = $(this).closest('tr');
-            
-            // Si editamos precio unitario manual, borramos precio kg para evitar recalculo inverso confuso
-            if ($(this).hasClass('precio-input')) {
-                row.find('.preciokg-input').val(0);
-            }
-            
-            calcularFila(row);
+          let row = $(this).closest('tr');
+          
+          if ($(this).hasClass('precio-input')) {
+            row.find('.preciokg-input').val(0);
+          }
+          
+          calcularFila(row);
         });
         
         // Cambio de tasa de IVA recalculate totales
         $('#id_tipo_iva').on('change', function() {
-            calcularTotalesGenerales();
+          calcularTotalesGenerales();
         });
 
-    });
+      });
 
-    function validarFormularioCompra() {
-        let hayItem = false;
-        let valid = true;
+      function validarFormularioCompra() {
+        var idMoneda = $("#id_moneda").val();
+        var tipoCambio = $("#tipo_cambio_dia").val();
+
+        if (idMoneda == 1 && (tipoCambio == "" || parseFloat(tipoCambio) <= 0)) {
+          alert('Debe ingresar un Tipo de Cambio válido para la moneda USD.');
+          $("#tipo_cambio_dia").focus();
+          return false;
+        }
+
+        var hayConceptoValido = false;
+        var valid = true;
         
         $('.cantidad-input').each(function() {
-            let qty = parseFloat($(this).val());
-            let row = $(this).closest('tr');
-            let prc = parseFloat(row.find('.precio-input').val());
-            
-            if (qty > 0) {
-                if (prc <= 0) {
-                    alert('Hay items con cantidad pero sin precio.');
-                    $(this).focus();
-                    valid = false;
-                    return false;
-                }
-                hayItem = true;
+          var qty = parseFloat($(this).val()) || 0;
+          var row = $(this).closest('tr');
+          var prc = parseFloat(row.find('.precio-input').val()) || 0;
+          
+          if (qty > 0) {
+            if (prc <= 0) {
+              alert('Hay items con cantidad pero sin precio.');
+              $(this).focus();
+              valid = false;
+              return false;
             }
+            hayConceptoValido = true;
+          }
         });
         
-        if (valid && !hayItem) {
-            alert('Debe ingresar al menos un ítem.');
-            return false;
+        if (!valid) return false;
+        
+        if (!hayConceptoValido) {
+          alert('Debe ingresar al menos un concepto con cantidad mayor a 0 y al menos uno de los dos precios (Precio Unitario o Precio x Kg)');
+          return false;
         }
         
-        return valid;
-    }
+        return true;
+      }
     </script>
+    <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>
 </html>

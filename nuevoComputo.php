@@ -53,9 +53,8 @@ if (!empty($_POST)) {
   $nro_revision = 0;
   $comentarios_revision = "Emision orignial";
 
-  $sql = "INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, comentarios_revision, nro, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?)";
-  $q = $pdo->prepare($sql);
-  $q->execute([$nro_revision,$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,2,$comentarios_revision, $nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
+$sql = "INSERT INTO computos (nro_revision, id_tarea, fecha, id_cuenta_solicitante, id_estado, comentarios_revision, nro, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?)";  $q = $pdo->prepare($sql);
+  $q->execute([$nro_revision,$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,$_POST['id_estado'],$comentarios_revision, $nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
   
   $id_computo = $pdo->lastInsertId();
   

@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
           FROM compras c 
           INNER JOIN pedidos pe ON pe.id = c.id_pedido 
           LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
@@ -45,6 +45,19 @@ if (!empty($_POST)) {
   if ($data) {
 
     $moneda=$data['moneda'];
+
+    $porcentaje_iva = "0%";
+    switch ($data['id_tipo_iva']) {
+        case 2:
+            $porcentaje_iva = "10.5%";
+            break;
+        case 3:
+            $porcentaje_iva = "21%";
+            break;
+        default:
+            $porcentaje_iva = "0%";
+            break;
+    }
 
     $codigoObraPartes = array_filter([
       $data['nro_sitio'] ?? null,
@@ -137,6 +150,10 @@ if (!empty($_POST)) {
                             <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
                             <label class="col-sm-2 font-weight-bold">Moneda</label>
                             <div class="col-sm-4"><?=$moneda;?><?= $data['tipo_cambio_dia'] ? ' (TC: '.$data['tipo_cambio_dia'].')' : '' ?></div>
+                          </div>
+                          <div class="form-group row mt-1">
+                            <label class="col-sm-2 font-weight-bold">Tipo de IVA</label>
+                            <div class="col-sm-4"><?=$porcentaje_iva;?></div>
                           </div><?php
                           if (!empty($data['comentarios'])) { ?>
                             <div class="form-group row mt-1">
@@ -242,7 +259,7 @@ if (!empty($_POST)) {
                           <div class="form-group row mt-1">
                             <label class="col-sm-3 font-weight-bold">Subtotal</label>
                             <div class="col-sm-3"><?=$moneda.number_format($sumaSubtotal, 2,",",".");?></div>
-                            <label class="col-sm-3 font-weight-bold">IVA</label>
+                            <label class="col-sm-3 font-weight-bold">IVA (<?=$porcentaje_iva?>)</label>
                             <div class="col-sm-3"><?=$moneda.number_format($data['iva'], 2,",",".");?></div>
                           </div>
                           <div class="form-group row mt-1">
