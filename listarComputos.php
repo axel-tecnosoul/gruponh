@@ -817,7 +817,6 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           $(this).addClass("fila-activa");
         });
 
-        // Manejo de clic en botones de acción
         $(document).on("click", ".accion-computo", function (e) {
           e.preventDefault();
 
@@ -827,15 +826,16 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 
           let mensaje = "";
 
-          const filaActiva = $("#dataTables-example666 tbody tr.fila-activa");
+          const filaActiva = $("#dataTables-example666 tbody tr.selected"); 
+          
           if (filaActiva.length === 0) {
             alert("Debe seleccionar un cómputo de la tabla primero.");
             return;
           }
 
-          idComputoPendiente = filaActiva.data("id-computo");
+          idComputoPendiente = filaActiva.data("id"); 
 
-          let quiereAprobar=false;
+          let quiereAprobar = false;
           switch (accion) {
             case "cancelar_computo":
               mensaje = "¿Está seguro que desea <strong>cancelar</strong> este cómputo?";
@@ -857,19 +857,18 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           }
 
           if(quiereAprobar){
-            let id_estado=getIdEstadoComputoSeleccionado();
-            if (id_estado != 2) {
+            let id_estado = filaActiva.data("estado-id");
+            
+            if (id_estado != 2) { 
               alert("No se puede aprobar el cómputo en este estado.");
               return;
             }
           }
 
-          // Mostrar modal de confirmación
           $("#textoConfirmacion").html(mensaje);
           $("#modalConfirmacion").modal("show");
         });
 
-        // Confirmar acción desde el modal
         $("#formConfirmacion").on("submit", function (e) {
           e.preventDefault();
 

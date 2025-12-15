@@ -15,7 +15,8 @@ $nro = $filters['nro'] ?? "";
 $proveedor = $filters['proveedor'] ?? "";
 $fecha = $filters['fecha'] ?? "";
 $fechah = $filters['fechah'] ?? "";
-$id_estado = $filters['id_estado'] ?? [];?>
+$id_estado = $filters['id_estado'] ?? [];
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -79,11 +80,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .truncate-header {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
       .proyecto-truncado {
         cursor: help;
         border-bottom: 1px dotted #999;
@@ -128,11 +124,11 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <div class='form-group mb-12' style='width: 100%;'>
                         <div class="form-group mb-0">
                           N.OC/Rev:&nbsp;
-                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_ocnp)?>", name="nro_ocnp" placeholder="ej: 123, 123/A" title="Buscar por ID de OC o ID/Revisión">
+                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_ocnp)?>" name="nro_ocnp" placeholder="ej: 123, 123/A" title="Buscar por ID de OC o ID/Revisión">
                         </div>
                         <div class="form-group mb-0">
                           N.Ped.:&nbsp;
-                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_pedido)?>", name="nro_pedido" placeholder="ej: 456" title="Buscar por Número de Pedido">
+                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_pedido)?>" name="nro_pedido" placeholder="ej: 456" title="Buscar por Número de Pedido">
                         </div>
                         <div class="form-group mb-0">
                           N.Sitio/N.Proy:&nbsp;
@@ -177,6 +173,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
                   <div class="card-header">
                     <h5><?php echo $ubicacion; ?>&nbsp;&nbsp;
                       <a href="#" id="link_ver_compra"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>&nbsp;&nbsp;
+                      <!-- Botón Imprimir Agregado -->
+                      <a href="#" id="link_imprimir_compra"><img src="img/print.png" width="24" height="25" border="0" alt="Imprimir OC" title="Imprimir OC"></a>&nbsp;&nbsp;
                       <a href="exportCompras.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(299))) {?>
                         <a href="#" id="link_modificar_compra"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificación/Revisión O.C" title="Modificación/Revisión O.C"></a>&nbsp;&nbsp;
@@ -197,21 +195,22 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <thead>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th style="width: 80px;">Nro.OC / Rev</th>
-                            <th style="width: 80px;">Nro Pedido</th>
-                            <th style="width: 100px;">Sitio/Sub/Proy</th>
-                            <th class="truncate-project">Nombre Proyecto</th>
-                            <th class="truncate-provider">Proveedor</th>
-                            <th style="width: 80px;">Estado</th>
-                            <th style="width: 85px;">F. Emisión</th>
-                            <th style="width: 85px;">F. Entrega</th>
+                            <th>Nro.OC / Rev</th>
+                            <th>Proyecto</th>
+                            <th>Proveedor</th>
+                            <th>Estado</th>
+                            <th>F.Emisión</th>
+                            <th>F.Entrega</th>
+                            <!-- Columna Total Agregada -->
+                            <th>Total</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
                           $pdo = Database::connect();
-                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, pe.id AS id_pedido, p.descripcion AS nombre_proyecto FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido LEFT JOIN computos co ON co.id = pe.id_computo LEFT JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = pe.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
+                          // Aseguramos que mo.moneda y c.total estén en la consulta
+                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre AS nombre_proyecto, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido INNER JOIN computos co ON co.id = pe.id_computo INNER JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
                           $params = [];
                           if (!empty($nro)) {
                             $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
@@ -220,35 +219,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
                           }
                           if (!empty($nro_ocnp)) {
                             $nro_ocnp_trimmed = trim($nro_ocnp);
-                            
-                            // Detectar si contiene barra "/" para busqueda id_oc/nro_revision
-                            /*if (strpos($nro_ocnp_trimmed, '/') !== false) {
-                              $parts = explode('/', $nro_ocnp_trimmed);
-                              if (count($parts) == 2 && is_numeric($parts[0]) && !empty($parts[1])) {
-                                // Búsqueda por id_oc/nro_revision exacto
-                                $sql .= " AND (c.id = ? AND c.nro_revision = ?)";
-                                $params[] = $parts[0];
-                                $params[] = $parts[1];
-                              } else {
-                                // Si el formato con / no es válido, buscar como string general
-                                $sql .= " AND (CONCAT(c.id, '/', c.nro_revision) LIKE ? OR c.id = ? OR c.nro_revision LIKE ?)";
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                                $params[] = $nro_ocnp_trimmed;
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                              }
-                            } else {
-                              // Búsqueda sin barra: por ID de OC o nro_revision
-                              if (is_numeric($nro_ocnp_trimmed)) {
-                                // Si es numérico, buscar por ID exacto de OC y por nro_revision
-                                $sql .= " AND (c.id = ? OR c.nro_revision LIKE ?)";
-                                $params[] = $nro_ocnp_trimmed;
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                              } else {
-                                // Si no es numérico, buscar solo por nro_revision
-                                $sql .= " AND c.nro_revision LIKE ?";
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                              }
-                            }*/
                             $ex=explode("/", $nro_ocnp_trimmed);
                             if(count($ex)>1){
                               $id_oc = $ex[0];
@@ -285,7 +255,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $sql .= " AND cu.nombre LIKE ?";
                             $params[] = '%' . $proveedor . '%';
                           }
-                          //echo $sql;
                           $q = $pdo->prepare($sql);
                           $q->execute($params);
 
@@ -299,18 +268,14 @@ $id_estado = $filters['id_estado'] ?? [];?>
 
                             <tr>
                               <td class="d-none"><?=$row['id']?></td>
-                              <td><?=$row['id']?> / <?=$row['nro_revision']?></td>
-                              <td>
-                                <a href="verPedido.php?id=<?=$row['id_pedido']?>" target="_blank" title="Ver Pedido">
-                                  <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>
-                                </a>
-                              </td>
-                              <td><?=$row['nro_sitio'].'/'.$row['nro_subsitio'].'/'.$row['nro']?></td>
-                              <td class="truncate-project"><?=htmlspecialchars($row['nombre_proyecto'])?></td>
-                              <td class="truncate-provider"><?=$row['nombre']?></td>
+                              <td><?=$row['nro_oc']?> / <?=$row['nro_revision']?></td>
+                              <td><?=$row['nombre_proyecto']?></td>
+                              <td><?=$row['nombre']?></td>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_entrega"]?></span><?=$row["fecha_entrega_formatted"]?></td>
+                              <!-- Valor Total Agregado -->
+                              <td><?=$row['moneda'] . ' ' . number_format($row['total'], 2, ',', '.')?></td>
                               <td style="display: none;"><?=$row['id_proyecto']?></td>
                               <td style="display: none;"><?=$row['id_estado_compra']?></td>
                             </tr><?php
@@ -320,14 +285,13 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th style="width: 80px;">Nro.OC / Rev</th>
-                            <th style="width: 80px;">Nro Pedido</th>
-                            <th style="width: 100px;">Sitio/Sub/Proy</th>
-                            <th class="truncate-project">Nombre Proyecto</th>
-                            <th class="truncate-provider">Proveedor</th>
-                            <th style="width: 80px;">Estado</th>
-                            <th style="width: 85px;">F. Emisión</th>
-                            <th style="width: 85px;">F. Entrega</th>
+                            <th>Nro.OC / Rev</th>
+                            <th>Proyecto</th>
+                            <th>Proveedor</th>
+                            <th>Estado</th>
+                            <th>F.Emisión</th>
+                            <th>F.Entrega</th>
+                            <th>Total</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -438,7 +402,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
     <script>
-      // Configuración global para tooltips - previene parpadeo en bordes del viewport
+      // Configuración global para tooltips
       if (typeof $ !== 'undefined' && $.fn.tooltip && $.fn.tooltip.Constructor) {
         $.fn.tooltip.Constructor.Default = $.extend({}, $.fn.tooltip.Constructor.Default, {
           placement: 'top',
@@ -489,25 +453,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
 
       let selectedCompraInfo = null;
       
-      // Función para obtener el ID del estado de la fila seleccionada
-      function getSelectedCompraEstadoId() {
-        return selectedCompraInfo ? selectedCompraInfo.id_estado : null;
-      }
-      
-      // Funciones para verificar estados válidos por tipo de acción
-      function canIngresarStock() {
-        return selectedCompraInfo && [3, 5, 6].includes(parseInt(selectedCompraInfo.id_estado));
-      }
-      
-      function canAdjuntarFacturaOPago() {
-        return selectedCompraInfo && [3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado));
-      }
-      
-      // Función legacy mantenida por compatibilidad
-      function isCompraEnviada() {
-        return selectedCompraInfo && selectedCompraInfo.id_estado == 3; // Estado "Enviada"
-      }
-      
       // Setup - add a text input to each footer cell
       $('#dataTables-example666 tfoot th').each( function () {
         var title = $(this).text();
@@ -516,7 +461,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
 	    
       $('#dataTables-example666').DataTable({
         stateSave: false,
-		    //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
         autoWidth: false,
 		    dom: 'Bfrtp<"bottom"l>',
@@ -524,8 +468,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
           'excel'
         ],
         lengthMenu: [
-          [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-          [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
+          [10, 25, 50, 100, 500, 1000],
+          [10, 25, 50, 100, 500, 1000]
         ],
         language: {
           "decimal": "",
@@ -549,12 +493,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
         }
       });
  
-      // DataTable
       var table = $('#dataTables-example666').DataTable();
       
-      // Añadir tooltips dinámicos después de inicializar
       setTimeout(addTitleToTruncated, 100);
-      // Apply the search
+
       table.columns().every( function () {
         var that = this;
         $( 'input', this.footer() ).on( 'keyup change', function () {
@@ -569,25 +511,52 @@ $id_estado = $filters['id_estado'] ?? [];?>
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione una compra para ver detalle")
         }
-      })
-	    $("#link_modificar_compra").on("click",function(){
+      });
+
+      // Acción Imprimir
+	    $("#link_imprimir_compra").on("click",function(e){
+        e.preventDefault();
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para modificar/revisar")
+          alert("Por favor seleccione una compra para imprimir");
+          return false;
         }
-      })
+        window.open(this.href, '_blank');
+      });
+
+      // Acción Modificar (Revisada)
+	    $("#link_modificar_compra").on("click",function(e){
+        let l=document.location.href;
+        // Validación de selección
+        if(this.href==l || this.href==l+"#" || !selectedCompraInfo){
+          e.preventDefault();
+          alert("Por favor seleccione una compra para modificar/revisar");
+          return false;
+        }
+        // Aquí podrías agregar validaciones de estado extra si es necesario
+      });
+
+      // Acción Ingresar Stock (Revisada)
 	    $("#link_ingresar_compra").on("click",function(e){
         let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if(!selectedCompraInfo){
-            alert("Por favor seleccione una compra para ingresar stock");
-          } else if(![3, 5, 6].includes(parseInt(selectedCompraInfo.id_estado))){
-            e.preventDefault();
-            alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
-            return false;
-          }
+        // Validación combinada: selección + estado
+        if(this.href==l || this.href==l+"#" || !selectedCompraInfo){
+          e.preventDefault();
+          alert("Por favor seleccione una compra para ingresar stock");
+          return false;
+        } 
+        
+        // Verificación estricta del estado
+        const estadoActual = parseInt(selectedCompraInfo.id_estado);
+        const estadosValidos = [3, 5, 6]; // 3: Enviada/Aprobada, 5: Pendiente, 6: Pendiente Parcial
+
+        if(!estadosValidos.includes(estadoActual)){
+          e.preventDefault();
+          alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
+          return false;
         }
-      })
+      });
+
 	    $("#link_adjuntar_factura").on("click",function(e){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
@@ -595,105 +564,67 @@ $id_estado = $filters['id_estado'] ?? [];?>
             alert("Por favor seleccione una compra para adjuntar factura");
           } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
             e.preventDefault();
-            alert("Solo se pueden adjuntar facturas en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
+            alert("Solo se pueden adjuntar facturas en compras con estados válidos");
             return false;
           }
         }
-      })
-	    $("#link_aprobar_compra").on("click",function(e){
-        if(!selectedCompraInfo){
-          e.preventDefault();
-          alert("Por favor seleccione una orden de compra para aprobar");
-          return false;
-        }
-        
-        // Validar estado: solo se puede aprobar si está en estado "Para aprobar" (id=2)
-        if(selectedCompraInfo.id_estado != 2){
-          e.preventDefault();
-          alert('Solo se pueden aprobar órdenes de compra en estado "Para aprobar"');
-          return false;
-        }
-      })
-	   $("#link_rechazar_compra").on("click",function(e){
-        if(!selectedCompraInfo){
-          e.preventDefault();
-          alert("Por favor seleccione una orden de compra para rechazar");
-          return false;
-        }
-        
-        // Validar estado: solo se puede rechazar si está en estado "Para aprobar" (id=2)
-        if(selectedCompraInfo.id_estado != 2){
-          e.preventDefault();
-          alert('Solo se pueden rechazar órdenes de compra en estado "Para aprobar"');
-          return false;
-        }
-      })
-	    $("#link_nuevo_suceso").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para añadir un nuevo suceso")
-        }
-      })
-	  
-	    $("#link_nuevo_pago").on("click",function(e){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if(!selectedCompraInfo){
-            alert("Por favor seleccione una compra para añadir pago");
-          } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
-            e.preventDefault();
-            alert("Solo se pueden añadir pagos en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
-            return false;
-          }
-        }
-      })
-      //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
+      });
+
+      // Manejo de clicks en filas
       $(document).on("click","#dataTables-example666 tbody tr td", function(){
         var t=$(this).parent();
 		
+        // Recuperar datos de la fila con los índices actualizados (Total agregado en col 8)
         let id_compra=t.find("td:first-child").html();
-        let estado = t.find("td:nth-child(7)").html(); // Estado está en columna 7
-        let id_proyecto=t.find("td:nth-child(10)").html(); // Proyecto está en columna 10 (oculta)
-        let id_estado_compra=t.find("td:nth-child(11)").html(); // Estado ID está en columna 11 (oculta)
+        let estado = t.find("td:nth-child(5)").html(); 
+        // Indices actualizados debido a la nueva columna Total
+        let id_proyecto=t.find("td:nth-child(9)").html(); // Antes 10 (con total es 9 si total es col 8, espera...)
+        // Estructura actual:
+        // 1: ID (none)
+        // 2: Nro OC
+        // 3: Proyecto
+        // 4: Proveedor
+        // 5: Estado
+        // 6: F Emision
+        // 7: F Entrega
+        // 8: Total (NUEVO)
+        // 9: Proy ID (none)
+        // 10: Estado ID (none)
+
+        id_proyecto=t.find("td:nth-child(9)").html(); 
+        let id_estado_compra=t.find("td:nth-child(10)").html(); 
 		
         if(t.hasClass('selected')){
           deselectRow(t);
-		      //get_conceptos(id_compra)
           $('#dataTables-example667').DataTable().clear().draw();
           $("#link_ver_compra").attr("href","#");
+          $("#link_imprimir_compra").attr("href","#"); // Reset Imprimir
           $("#link_modificar_compra").attr("href","#");
 		      $("#link_ingresar_compra").attr("href","#");
           $("#link_adjuntar_factura").attr("href","#");
 		      $("#link_nuevo_suceso").attr("href","#");
           $("#link_nuevo_pago").attr("href","#");
-          $("#link_aprobar_compra").removeAttr("data-toggle");
-          $("#link_aprobar_compra").removeAttr("data-target");
-          $("#link_aprobar_compra").attr("href","#");
-          $("#link_rechazar_compra").removeAttr("data-toggle");
-          $("#link_rechazar_compra").removeAttr("data-target");
-          $("#link_rechazar_compra").attr("href","#");
+          $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
+          $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
           
-          // Limpiar información de compra seleccionada
           selectedCompraInfo = null;
         }else{
-          //t.parent().find("tr").removeClass("selected");
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
 		      get_conceptos(id_compra)
           $("#link_ver_compra").attr("href","verCompra.php?id="+id_compra);
+          $("#link_imprimir_compra").attr("href","imprimirCompra.php?id="+id_compra); // Set Imprimir
           $("#link_modificar_compra").attr("href","modificarCompra.php?id="+id_compra);
-          // Validaciones específicas por tipo de acción según estado
           
-          // Ingresar stock: estados 3, 5, 6
+          // Lógica visual para Ingresar Stock
           if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
             $("#link_ingresar_compra").attr("href","ingresarCompra.php?id="+id_compra);
           } else {
-            $("#link_ingresar_compra").attr("href","#");
+            $("#link_ingresar_compra").attr("href","#"); // Deshabilitar visualmente el link
           }
           
-          // Adjuntar factura y nuevo pago: estados 3, 5, 6, 7, 8, 9
           if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
             $("#link_adjuntar_factura").attr("href","adjuntarFactura.php?id="+id_compra);
             $("#link_nuevo_pago").attr("href","nuevoPago.php?id="+id_compra);
@@ -701,29 +632,21 @@ $id_estado = $filters['id_estado'] ?? [];?>
             $("#link_adjuntar_factura").attr("href","#");
             $("#link_nuevo_pago").attr("href","#");
           }
-        // Aprobar: solo en estado "Para aprobar" (id=2)
+        
         if (id_estado_compra == 2) {
-            $("#link_aprobar_compra").attr("data-toggle","modal");
-            $("#link_aprobar_compra").attr("data-target","#aprobarModal");
+            $("#link_aprobar_compra").attr("data-toggle","modal").attr("data-target","#aprobarModal");
             $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
         } else {
-            $("#link_aprobar_compra").removeAttr("data-toggle");
-            $("#link_aprobar_compra").removeAttr("data-target");
-            $("#link_aprobar_compra").attr("href","#");
+            $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
         }
         
-        // Rechazar: solo en estado "Para aprobar" (id=2)
         if (id_estado_compra == 2) {
-            $("#link_rechazar_compra").attr("data-toggle","modal");
-            $("#link_rechazar_compra").attr("data-target","#rechazarModal");
+            $("#link_rechazar_compra").attr("data-toggle","modal").attr("data-target","#rechazarModal");
             $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
         } else {
-            $("#link_rechazar_compra").removeAttr("data-toggle");
-            $("#link_rechazar_compra").removeAttr("data-target");
-            $("#link_rechazar_compra").attr("href","#");
+            $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
         }
             
-        // Actualizar información de compra seleccionada
         selectedCompraInfo = {
           id: id_compra,
           estado: estado,
@@ -758,11 +681,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
           data = JSON.parse(data);
           console.log(data);
 
-          /*$('#dataTables-example667 tfoot th').each( function () {
-            var title = $(this).text();
-            $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-          } );*/
-
           $('#dataTables-example667').DataTable().destroy();
           $('#dataTables-example667').DataTable({
             stateSave: false,
@@ -770,18 +688,18 @@ $id_estado = $filters['id_estado'] ?? [];?>
             autoWidth: false,
             data: data,
             columnDefs: [
-              { "width": "auto", "targets": 0, "className": "truncate-concepto" }, // Concepto - Ancho flexible
-              { "width": "90px", "targets": 1 }, // Cantidad + Unidad
-              { "width": "80px", "targets": 2 }, // Fecha Entrega
-              { "width": "70px", "targets": 3 , "className": "text-right"}, // Peso Total kg
-              { "width": "60px", "targets": 4 , "className": "text-right"}, // $/Kg
-              { "width": "70px", "targets": 5 , "className": "text-right"}, // $/Unitario
-              { "width": "80px", "targets": 6 , "className": "text-right"}, // Subtotal Bruto
-              { "width": "60px", "targets": 7 , "className": "text-right"}, // % Descuento
-              { "width": "80px", "targets": 8 , "className": "text-right"}, // Total c/Desc
-              { "width": "70px", "targets": 9 }, // Entregado
-              { "width": "70px", "targets": 10 }, // Remitos
-              { "width": "70px", "targets": 11 }  // Facturas
+              { "width": "auto", "targets": 0, "className": "truncate-concepto" },
+              { "width": "90px", "targets": 1 },
+              { "width": "80px", "targets": 2 },
+              { "width": "70px", "targets": 3 , "className": "text-right"},
+              { "width": "60px", "targets": 4 , "className": "text-right"},
+              { "width": "70px", "targets": 5 , "className": "text-right"},
+              { "width": "80px", "targets": 6 , "className": "text-right"},
+              { "width": "60px", "targets": 7 , "className": "text-right"},
+              { "width": "80px", "targets": 8 , "className": "text-right"},
+              { "width": "70px", "targets": 9 },
+              { "width": "70px", "targets": 10 },
+              { "width": "70px", "targets": 11 }
             ],
             drawCallback: function() {
               setTimeout(function() {
@@ -810,9 +728,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
             }
           });
       
-          // DataTable
           var table = $('#dataTables-example667').DataTable();
-          // Apply the search
           table.columns().every( function () {
             var that = this;
             $( 'input', this.footer() ).on( 'keyup change', function () {
@@ -822,7 +738,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
             });
           });
 
-          // Aplicar tooltips inmediatamente después de cargar los datos
           setTimeout(function() {
             addTitleToTruncated();
           }, 200);
@@ -831,23 +746,15 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
     }
 
-    // Función para añadir title solo a elementos truncados
     function addTitleToTruncated() {
-      // Primero limpiar todos los tooltips existentes
       $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
-      
       $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').each(function() {
         var element = $(this);
-        // Limpiar atributos de tooltip residuales
         element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
-        
-        // Verificar si el contenido se desborda (está truncado)
         if (this.scrollWidth > this.offsetWidth) {
           element.attr('title', element.text().trim());
         }
       });
-      
-      // Inicializar tooltips solo para elementos con title con configuración anti-parpadeo
       $('.truncate-project[title], .truncate-provider[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
         placement: 'top',
         trigger: 'hover',
@@ -858,12 +765,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
     }
 
-    // Llamar la función cuando se redimensiona la ventana o cambia el zoom
     $(window).on('resize', function() {
       setTimeout(addTitleToTruncated, 100);
     });
     
-    // Aplicar tooltips cuando se actualicen las tablas DataTables
     $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
       setTimeout(function() {
         addTitleToTruncated();
@@ -873,6 +778,5 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    <!-- Plugin used-->
   </body>
 </html>

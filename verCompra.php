@@ -203,26 +203,26 @@ if (!empty($_POST)) {
                                 $sumaSubtotal += $subtotalSinDescuento;
                                 $sumaDescuento += $descuento;
 
-                                $subtotalConDescuento = $moneda.number_format($subtotalConDescuento,2,',','.');
-                                $subtotalSinDescuento = $moneda.number_format($subtotalSinDescuento,2,',','.');
-                                $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
+                                $subtotalConDescuentoMostrar = $moneda.number_format($subtotalConDescuento,2,',','.');
+                                // $subtotalSinDescuentoMostrar = $moneda.number_format($subtotalSinDescuento,2,',','.');
+                                $porcentajeDescuentoMostrar = number_format($porcentajeDescuento,1,",",".") . '%';
                                 
                                 // Formatear valores
                                 $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
 
-                                $precio_unitario = number_format($precio_unitario, 2,",",".");
-                                $precio_kg = number_format($precio_kg, 2,",",".");
-                                $peso_total = number_format($peso_total_linea, 2,",",".");?>
+                                $precio_unitario_mostrar = number_format($precio_unitario, 2,",",".");
+                                $precio_kg_mostrar = number_format($precio_kg, 2,",",".");
+                                $peso_total_mostrar = number_format($peso_total_linea, 2,",",".");?>
                                 <tr>
                                   <td><?=$row["concepto"]?></td>
                                   <td><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
                                   <td><?=$fechaEntregaFormateada?></td>
-                                  <td class="text-right"><?=$peso_total?></td>
-                                  <td class="text-right"><?=$precio_unitario?></td>
-                                  <td class="text-right"><?=$precio_kg?></td>
-                                  <td class="text-right"><?=$subtotalConDescuento?></td>
-                                  <td class="text-right"><?=$porcentajeDescuento?></td>
-                                  <td class="text-right"><?=$subtotalConDescuento?></td>
+                                  <td class="text-right"><?=$peso_total_mostrar?></td>
+                                  <td class="text-right"><?=$precio_unitario_mostrar?></td>
+                                  <td class="text-right"><?=$precio_kg_mostrar?></td>
+                                  <td class="text-right"><?=$subtotalConDescuentoMostrar?></td>
+                                  <td class="text-right"><?=$porcentajeDescuentoMostrar?></td>
+                                  <td class="text-right"><?=$subtotalConDescuentoMostrar?></td>
                                   <td><?=$row["entregado"]?></td>
                                 </tr><?php
                               }
@@ -233,6 +233,8 @@ if (!empty($_POST)) {
                           </table>
                         </div>
                       </div>
+
+                      <!-- SECCION RESTAURADA: Resumen Financiero -->
                       <hr class="mt-4 mb-4">
                       <div class="row">
                         <div class="col-md-8">
@@ -251,6 +253,8 @@ if (!empty($_POST)) {
                           </div>
                         </div>
                       </div>
+
+                      <!-- SECCION RESTAURADA: Conceptos Computo -->
                       <hr class="mt-4 mb-4">
                       <div class="form-group row mt-1">
                         <label class="col-sm-12">
@@ -280,11 +284,15 @@ if (!empty($_POST)) {
                           </table>
                         </div>
                       </div>
+                      
+                      <!-- SECCION ARREGLADA: Sucesos -->
                       <hr class="mt-4 mb-4">
                       <h5 class='mb-3 font-weight-bold'>Sucesos de la Compra</h5>
                       <div class="form-group row mt-1">
                         <div class="col-sm-12">
                           <div class="timeline-small"><?php 
+                            // Aquí definimos la consulta que faltaba en el Archivo B
+                            $pdo = Database::connect();
                             $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, u.usuario AS nombre_usuario FROM sucesos s INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso LEFT JOIN usuarios u ON u.id = s.id_usuario WHERE s.entidad_tipo = 'compras' AND s.entidad_id = ? ORDER BY s.fecha_hora DESC, s.id DESC";
                             
                             $q_sucesos = $pdo->prepare($sql_sucesos);
@@ -292,11 +300,7 @@ if (!empty($_POST)) {
 
                             if ($q_sucesos->rowCount() > 0) {
                               foreach ($q_sucesos as $row_suceso) {
-                                //$usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';
-                                $usuario_suceso = '';
-                                if(!empty($row_suceso['nombre_usuario'])) {
-                                  $usuario_suceso = ' por ' . htmlspecialchars($row_suceso['nombre_usuario']);
-                                }?>
+                                $usuario_suceso = !empty($row_suceso['nombre_usuario']) ? ' por ' . htmlspecialchars($row_suceso['nombre_usuario']) : '';?>
                                 <div class="media">
                                   <div class="timeline-round m-r-30 timeline-line-1 bg-primary">
                                     <i data-feather="message-circle"></i>
@@ -315,11 +319,13 @@ if (!empty($_POST)) {
                               }
                             } else {
                               echo '<p>No hay sucesos registrados para esta compra.</p>';
-                            }?>
+                            }
+                            Database::disconnect();?>
                           </div>
                         </div>
-                      </div><?php
-                      if (!empty($data['adjunto_factura'])) { ?>
+                      </div>
+
+                      <?php if (!empty($data['adjunto_factura'])) { ?>
                         <hr class="mt-4 mb-4">
                         <div class="row">
                           <div class="col-sm-12">
@@ -332,8 +338,9 @@ if (!empty($_POST)) {
                               </div>
                             </div>
                           </div>
-                        </div><?php
-                      }?>
+                        </div>
+                      <?php } ?>
+
                       <hr class="mt-4 mb-4">
                       <div class="row">
                         <div class="col-sm-12">
@@ -341,7 +348,7 @@ if (!empty($_POST)) {
                           <div class="timeline-small"><?php 
                             $pdo = Database::connect();
                             $sql = " SELECT cp.id, date_format(cp.fecha,'%d/%m/%y'), cp.monto, cp.comentarios, u.usuario FROM compras_pagos cp left join usuarios u on u.id = cp.id_usuario WHERE cp.id_compra = ".$_GET['id'];
-                              
+                            
                             $hasPagos = false;
                             foreach ($pdo->query($sql) as $row) {
                               $hasPagos = true;?>
