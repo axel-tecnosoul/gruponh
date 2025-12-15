@@ -105,11 +105,13 @@ include 'database.php';
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if (isset($_POST['id_estado'])) {
-									if (in_array($fila['id'],$_POST['id_estado'])) {
-										echo " selected ";
-									}
-								}
+                if (isset($_POST['id_estado'])) {
+                    if (in_array($fila['id'],$_POST['id_estado'])) {
+                        echo " selected ";
+                    }
+                } elseif (empty($_POST) && $fila['id'] == 2) {
+                    echo " selected ";
+                }
 								echo ">".$fila['estado']."</option>";
 							}
 							Database::disconnect();
@@ -378,7 +380,7 @@ include 'database.php';
         if (!empty($_POST)) {?>
           'ajax': 'listarProyectosAjax.php?nro=<?php echo $_POST['nro'];?>&nombre=<?php echo $_POST['nombre'];?>&cliente=<?php echo $_POST['cliente'];?>&linea=<?php echo $_POST['id_linea_negocio'];?>&estado=<?php if (!empty($_POST['id_estado'])) echo implode(",",$_POST['id_estado']);?>',<?php
         } else {?>
-          'ajax': 'listarProyectosAjax.php?nro=252525&nombre=252525&cliente=252525&linea=252525&estado=252525',<?php
+          'ajax': 'listarProyectosAjax.php?nro=&nombre=&cliente=&linea=&estado=2',<?php
         }?>
         responsive: false,
         serverSide: true,
