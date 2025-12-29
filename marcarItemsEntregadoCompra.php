@@ -235,8 +235,11 @@ try {
       }
       
       if ($count == 1) {
-        $sql = "INSERT into ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones, fecha_remito, nro_remito) values (now(),1,?,?,?,?,?,?)";
-        $params = [$idPedido,$compraData["id_cuenta_recibe"],$compraData["lugar_entrega"],$compraData["comentarios"],$_POST['fecha_remito'],$_POST['nro_remito']];
+        $rutaDocumento = isset($_POST['ruta_documento']) && !empty($_POST['ruta_documento']) ? $_POST['ruta_documento'] : null;
+        
+        $sql = "INSERT into ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones, fecha_remito, nro_remito, ruta_documento) values (now(),1,?,?,?,?,?,?,?)";
+        $params = [$idPedido,$compraData["id_cuenta_recibe"],$compraData["lugar_entrega"],$compraData["comentarios"],$_POST['fecha_remito'],$_POST['nro_remito'],$rutaDocumento];
+
         if ($modoDebug == 1) {
           echo "<b>✅ SQL 5 - Insertar ingreso:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
         }

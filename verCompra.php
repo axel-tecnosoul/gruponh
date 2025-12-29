@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio), pe.id_computo
           FROM compras c 
           INNER JOIN pedidos pe ON pe.id = c.id_pedido 
           LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
@@ -38,7 +38,6 @@ if (!empty($_POST)) {
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
         
-  // Construir información del proyecto
   $proyectoDisplay = '';
   $codigoObra = '';
         
@@ -87,6 +86,71 @@ if (!empty($_POST)) {
     <?php include('head_forms.php');?>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      /* Estilos para la tabla de detalle de compra */
+      #dataTables-example667 {
+        width: 100% !important;
+      }
+      
+      #dataTables-example667 th,
+      #dataTables-example667 td {
+        padding: 8px 10px !important;
+        vertical-align: middle !important;
+        font-size: 0.85rem;
+      }
+      
+      /* Alineación de columnas numéricas */
+      #dataTables-example667 th:nth-child(4),
+      #dataTables-example667 th:nth-child(5),
+      #dataTables-example667 th:nth-child(6),
+      #dataTables-example667 th:nth-child(7),
+      #dataTables-example667 th:nth-child(8),
+      #dataTables-example667 th:nth-child(9) {
+        text-align: right !important;
+      }
+      
+      #dataTables-example667 td:nth-child(4),
+      #dataTables-example667 td:nth-child(5),
+      #dataTables-example667 td:nth-child(6),
+      #dataTables-example667 td:nth-child(7),
+      #dataTables-example667 td:nth-child(8),
+      #dataTables-example667 td:nth-child(9) {
+        text-align: right !important;
+      }
+      
+      /* Primera columna (Concepto) más ancha */
+      #dataTables-example667 th:nth-child(1),
+      #dataTables-example667 td:nth-child(1) {
+        min-width: 200px;
+        text-align: left !important;
+      }
+      
+      /* Columnas de cantidad y fecha */
+      #dataTables-example667 th:nth-child(2),
+      #dataTables-example667 td:nth-child(2),
+      #dataTables-example667 th:nth-child(3),
+      #dataTables-example667 td:nth-child(3),
+      #dataTables-example667 th:nth-child(10),
+      #dataTables-example667 td:nth-child(10) {
+        text-align: center !important;
+      }
+      
+      /* Header de la tabla */
+      #dataTables-example667 thead th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-bottom: 2px solid #dee2e6;
+      }
+      
+      /* Resumen financiero */
+      .resumen-financiero .font-weight-bold {
+        font-size: 0.9rem;
+      }
+      
+      .resumen-financiero .text-success {
+        font-size: 1.1rem;
+      }
+    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -137,6 +201,12 @@ if (!empty($_POST)) {
                               <a href="verPedido.php?id=<?=$data['id_pedido']?>" target="_blank">
                                 <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$data['id_pedido']?>
                               </a>
+                                <?php if (!empty($data['id_computo'])) { ?>
+                                <br>
+                                <a href="imprimirComputo.php?id=<?=$data['id_computo']?>" target="_blank" class="text-info">
+                                  <i class="fa fa-print"></i> Imprimir Cómputo
+                                </a>
+                              <?php } ?>
                             </div>
                           </div>
                           <div class="form-group row mt-1">
@@ -169,17 +239,17 @@ if (!empty($_POST)) {
                           <table class="display" id="dataTables-example667">
                             <thead>
                               <tr>
-                                <th>Concepto</th>
-                                <th>Cantidad</th>
-                                <th>F. Entrega</th>
-                                <th>Peso Total (Kg)</th>
-                                <th>P/Unitario</th>
-                                <th>P/Kilo</th>
-                                <th>Subtotal</th>
-                                <th>% Desc.</th>
-                                <th>Total c/Desc</th>
-                                <th>Entregado</th>
-                                </tr>
+                                <th class="text-left">Concepto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-center">F. Entrega</th>
+                                <th class="text-right">Peso Total (Kg)</th>
+                                <th class="text-right">P/Unitario</th>
+                                <th class="text-right">P/Kilo</th>
+                                <th class="text-right">Subtotal</th>
+                                <th class="text-right">% Desc.</th>
+                                <th class="text-right">Total c/Desc</th>
+                                <th class="text-center">Entregado</th>
+                              </tr>
                             </thead>
                             <tbody><?php
                               $sumaSubtotal = 0;
@@ -197,7 +267,6 @@ if (!empty($_POST)) {
                                 $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
                                 $peso_total_linea = $peso_por_unidad * $cantidad;
                                 
-                                // Usar subtotal guardado si existe, sino calcularlo
                                 if ($subtotalGuardado > 0) {
                                   $subtotalSinDescuento = $subtotalGuardado;
                                 } else {
@@ -208,42 +277,37 @@ if (!empty($_POST)) {
                                   }
                                 }
 
-                                // Calcular descuento
                                 $descuento = 0;
                                 if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
                                   $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
                                 }
                                 
-                                // Aplicar descuento al subtotal
                                 $subtotalConDescuento = $subtotalSinDescuento - $descuento;
 
                                 $sumaSubtotal += $subtotalSinDescuento;
                                 $sumaDescuento += $descuento;
 
                                 $subtotalConDescuentoMostrar = $moneda.number_format($subtotalConDescuento,2,',','.');
-                                // $subtotalSinDescuentoMostrar = $moneda.number_format($subtotalSinDescuento,2,',','.');
                                 $porcentajeDescuentoMostrar = number_format($porcentajeDescuento,1,",",".") . '%';
                                 
-                                // Formatear valores
                                 $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
 
                                 $precio_unitario_mostrar = number_format($precio_unitario, 2,",",".");
                                 $precio_kg_mostrar = number_format($precio_kg, 2,",",".");
                                 $peso_total_mostrar = number_format($peso_total_linea, 2,",",".");?>
                                 <tr>
-                                  <td><?=$row["concepto"]?></td>
-                                  <td><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
-                                  <td><?=$fechaEntregaFormateada?></td>
+                                  <td class="text-left"><?=$row["concepto"]?></td>
+                                  <td class="text-center"><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
+                                  <td class="text-center"><?=$fechaEntregaFormateada?></td>
                                   <td class="text-right"><?=$peso_total_mostrar?></td>
                                   <td class="text-right"><?=$precio_unitario_mostrar?></td>
                                   <td class="text-right"><?=$precio_kg_mostrar?></td>
                                   <td class="text-right"><?=$subtotalConDescuentoMostrar?></td>
                                   <td class="text-right"><?=$porcentajeDescuentoMostrar?></td>
                                   <td class="text-right"><?=$subtotalConDescuentoMostrar?></td>
-                                  <td><?=$row["entregado"]?></td>
+                                  <td class="text-center"><?=$row["entregado"]?></td>
                                 </tr><?php
                               }
-                              // Calcular total final
                               $totalFinal = $sumaSubtotal + $data['iva'] - $sumaDescuento;
                               Database::disconnect();?>
                             </tbody>
@@ -251,7 +315,6 @@ if (!empty($_POST)) {
                         </div>
                       </div>
 
-                      <!-- SECCION RESTAURADA: Resumen Financiero -->
                       <hr class="mt-4 mb-4">
                       <div class="row">
                         <div class="col-md-8">
@@ -271,8 +334,7 @@ if (!empty($_POST)) {
                         </div>
                       </div>
 
-                      <!-- SECCION RESTAURADA: Conceptos Computo -->
-                      <hr class="mt-4 mb-4">
+<!--                       <hr class="mt-4 mb-4">
                       <div class="form-group row mt-1">
                         <label class="col-sm-12">
                           <h6 class="mb-3 font-weight-bold">Conceptos Cómputo</h6>
@@ -300,15 +362,13 @@ if (!empty($_POST)) {
                             </tbody>
                           </table>
                         </div>
-                      </div>
+                      </div> -->
                       
-                      <!-- SECCION ARREGLADA: Sucesos -->
                       <hr class="mt-4 mb-4">
                       <h5 class='mb-3 font-weight-bold'>Sucesos de la Compra</h5>
                       <div class="form-group row mt-1">
                         <div class="col-sm-12">
                           <div class="timeline-small"><?php 
-                            // Aquí definimos la consulta que faltaba en el Archivo B
                             $pdo = Database::connect();
                             $sql_sucesos = "SELECT s.id, DATE_FORMAT(s.fecha_hora,'%d/%m/%y %H:%i') AS fecha_formateada, s.suceso, s.titulo, ts.tipo, u.usuario AS nombre_usuario FROM sucesos s INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso LEFT JOIN usuarios u ON u.id = s.id_usuario WHERE s.entidad_tipo = 'compras' AND s.entidad_id = ? ORDER BY s.fecha_hora DESC, s.id DESC";
                             
@@ -357,8 +417,60 @@ if (!empty($_POST)) {
                           </div>
                         </div>
                       <?php } ?>
-
                       <hr class="mt-4 mb-4">
+<!--                       <div class="row">
+                        <div class="col-sm-12">
+                          <h6 class="mb-3 font-weight-bold">Remitos Ingresados</h6>
+                          <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-sm">
+                              <thead>
+                                <tr>
+                                  <th>Nro Remito</th>
+                                  <th>Fecha</th>
+                                  <th>Usuario</th>
+                                  <th>Ver</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <?php /* 
+                                $pdo = Database::connect();
+                                
+                                $sql_remitos = "SELECT DISTINCT i.id, i.nro_remito, date_format(i.fecha_hora,'%d/%m/%Y') as fecha_formatted, u.usuario 
+                                                FROM ingresos i 
+                                                INNER JOIN ingresos_detalle id ON id.id_ingreso = i.id 
+                                                INNER JOIN compras_detalle cd ON cd.id = id.id_detalle_compra
+                                                LEFT JOIN usuarios u ON u.id = i.id_usuario 
+                                                WHERE cd.id_compra = ? 
+                                                ORDER BY i.fecha_hora DESC";
+                                
+                                $q_remitos = $pdo->prepare($sql_remitos);
+                                $q_remitos->execute([$id]);
+                                $remitos_encontrados = false;
+                                
+                                while ($row_rem = $q_remitos->fetch(PDO::FETCH_ASSOC)) { 
+                                  $remitos_encontrados = true;  */?>
+                                  <tr>
+                                    <td><?= $row_rem['nro_remito']; ?></td>
+                                    <td><?= $row_rem['fecha_formatted']; ?></td>
+                                    <td><?= $row_rem['usuario']; ?></td>
+                                    <td>
+                                      <a href="verIngreso.php?id=<?=$row_rem['id']?>" target="_blank" class="btn btn-xs btn-primary">
+                                        <i class="fa fa-eye"></i>
+                                      </a>
+                                    </td>
+                                  </tr>
+                                <?php/*  } 
+                                
+                                if (!$remitos_encontrados) {
+                                  echo "<tr><td colspan='4' class='text-center'>No hay remitos registrados para esta compra.</td></tr>";
+                                }
+                                Database::disconnect(); */
+                                ?>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div> -->
                       <div class="row">
                         <div class="col-sm-12">
                           <h6 class="mb-3 font-weight-bold">Pagos / Comentarios Realizados</h6>
@@ -390,14 +502,21 @@ if (!empty($_POST)) {
                         </div>
                       </div>
                     </div>
-                    <div class="card-footer">
-                      <div class="col-sm-12 text-center"><?php
-                        if ($data['id_estado_compra'] == 1 && function_exists('tienePermiso') && tienePermiso(298)){?>
-                          <button type="button" class="btn btn-primary mt-2 mt-sm-0" data-toggle="modal" data-target="#approvalModal">Enviar a aprobación</button><?php
-                        }?>
-                        <a href="listarCompras.php" class="btn btn-light">Volver</a>
+                      <div class="card-footer">
+                        <div class="col-sm-12 text-center">
+                          <?php
+                          if ($data['id_estado_compra'] == 1 && function_exists('tienePermiso') && tienePermiso(298)){?>
+                            <button type="button" class="btn btn-primary mt-2 mt-sm-0" data-toggle="modal" data-target="#approvalModal">Enviar a aprobación</button>
+                          <?php } ?>
+
+                          <?php 
+                          if ($data['id_estado_compra'] == 2 && function_exists('tienePermiso') && tienePermiso(384)){ ?>
+                            <a href="aprobarCompra.php?id=<?=$data['id']?>" class="btn btn-success mt-2 mt-sm-0" onclick="return confirm('¿Está seguro que desea APROBAR esta compra?');">Aprobar Compra</a>
+                          <?php } ?>
+
+                          <a href="listarCompras.php" class="btn btn-light">Volver</a>
+                        </div>
                       </div>
-                    </div>
                   </form>
                 </div>
               </div>
@@ -410,7 +529,6 @@ if (!empty($_POST)) {
       </div>
     </div>
 
-    <!-- Modal Enviar a aprobación -->
     <div class="modal fade" id="approvalModal" tabindex="-1" role="dialog" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -432,7 +550,6 @@ if (!empty($_POST)) {
       </div>
     </div>
 
-    <!-- Modal de resultado de envío -->
     <div class="modal fade" id="resultModal" tabindex="-1" role="dialog" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -444,7 +561,6 @@ if (!empty($_POST)) {
           </div>
           <div class="modal-body">
             <div id="resultModalIcon" class="text-center mb-3">
-              <!-- Icono se agregará dinámicamente -->
             </div>
             <p id="resultModalMessage" class="text-center"></p>
           </div>
@@ -642,7 +758,6 @@ if (!empty($_POST)) {
         });
       });
 
-      // Funcionalidad para enviar compra a aprobación
       $('#confirmApproval').on('click', function() {
         var compraId = <?= $id ?>;
         
@@ -658,17 +773,14 @@ if (!empty($_POST)) {
             $('#approvalModal').modal('hide');
             
             if(response.success) {
-              // Ocultar botón de envío a aprobación
               $('button[data-target="#approvalModal"]').hide();
               
-              // Mostrar modal de éxito
               showResultModal(
                 '¡Éxito!', 
                 'La compra ha sido enviada para aprobación correctamente.',
                 'success'
               );
             } else {
-              // Mostrar modal de error
               showResultModal(
                 'Error', 
                 'Error al enviar la compra para aprobación: ' + (response.message || 'Error desconocido'),
@@ -679,7 +791,6 @@ if (!empty($_POST)) {
           error: function(xhr, status, error) {
             $('#approvalModal').modal('hide');
             console.error('Error AJAX:', error);
-            // Mostrar modal de error de conexión
             showResultModal(
               'Error de Conexión', 
               'No se pudo conectar con el servidor. Intente nuevamente.',
@@ -689,7 +800,6 @@ if (!empty($_POST)) {
         });
       });
 
-      // Función para mostrar modal de resultado
       function showResultModal(title, message, type) {
         $('#resultModalTitle').text(title);
         $('#resultModalMessage').text(message);

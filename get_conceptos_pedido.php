@@ -124,7 +124,7 @@ while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
         $cantidadEntregada = 0;
     }
 
-    $acciones = '<a href="verHistorialPrecio.php?id_material='.$id_material.'" target="_blank" class="btn btn-sm btn-outline-primary" title="Ver Historial de Precios"><i class="fa fa-history"></i></a>';
+    $acciones = '<a href="verPreciosMaterial.php?id='.$id_material.'&origen=pedidos" target="_blank" title="Ver Histórico de Precios"><img src="img/dolar.png" width="24" height="25" border="0" alt="Histórico"></a>';
 
     $requerido = (float)$row["cantidad"] .' '.$row["unidad_medida"];
     $reservado = (float)$row["reservado"];

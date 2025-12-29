@@ -21,13 +21,26 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.id_moneda, c.tipo_cambio_dia, pe.id_proyecto, pe.id_computo, cu.nombre, cu.direccion, cu.telefono, cu.cuit, fp.forma_pago,cu.contacto, c.iva, c.descuento, m.moneda FROM compras c inner join pedidos pe on pe.id = c.id_pedido inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join formas_pago fp on fp.id = c.id_forma_pago LEFT JOIN monedas m ON m.id = c.id_moneda WHERE c.id = ? ";
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.id_moneda, c.tipo_cambio_dia, pe.id_proyecto, pe.id_computo, cu.nombre, cu.direccion, cu.telefono, cu.cuit, fp.forma_pago,cu.contacto, c.iva, c.id_tipo_iva, c.descuento, m.moneda FROM compras c inner join pedidos pe on pe.id = c.id_pedido inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join formas_pago fp on fp.id = c.id_forma_pago LEFT JOIN monedas m ON m.id = c.id_moneda WHERE c.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   
   //$signo = $data['moneda'] ?: '$';
   $moneda = $data['moneda'];
+
+  $porcentaje_iva = "0%";
+  switch ($data['id_tipo_iva']) {
+      case 2:
+          $porcentaje_iva = "10.5%";
+          break;
+      case 3:
+          $porcentaje_iva = "21%";
+          break;
+      default:
+          $porcentaje_iva = "0%";
+          break;
+  }
 		
   if (empty($data['id_computo'])) {
     $sql2 = "SELECT pro.nombre, pro.solicitante cuenta_solicitante, pro.nro nro_proyecto, s.nro_sitio, s.id id_sitio, s.nro_subsitio,pro.observaciones FROM pedidos pe inner join proyectos pro on pro.id = pe.id_proyecto inner join sitios s on s.id = pro.id_sitio WHERE pe.id = ? ";
@@ -169,7 +182,6 @@ if (!empty($_POST)) {
                                   $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
                                   $peso_total_linea = $peso_por_unidad * $cantidad;
                                   
-                                  // Usar subtotal guardado si existe, sino calcularlo
                                   if ($subtotalGuardado > 0) {
                                     $subtotalSinDescuento = $subtotalGuardado;
                                   } else {
@@ -180,20 +192,11 @@ if (!empty($_POST)) {
                                     }
                                   }
                                   
-                                  // Calcular % de descuento y total con descuento
-                                  /*$porcentajeDescuento = 0;
-                                  if ($subtotal_bruto > 0 && $descuento > 0) {
-                                    $porcentajeDescuento = ($descuento / $subtotal_bruto) * 100;
-                                  }
-                                  $subtotal_neto = $subtotal_bruto - $descuento;*/
-
-                                  // Calcular descuento
                                   $descuento = 0;
                                   if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
                                     $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
                                   }
                                   
-                                  // Aplicar descuento al subtotal
                                   $subtotalConDescuento = $subtotalSinDescuento - $descuento;
 
                                   $sumaSubtotal += $subtotalSinDescuento;
@@ -203,7 +206,6 @@ if (!empty($_POST)) {
                                   $subtotalSinDescuento = $moneda.number_format($subtotalSinDescuento,2,',','.');
                                   $porcentajeDescuento = number_format($porcentajeDescuento,1,",",".") . '%';
                                   
-                                  // Formatear valores
                                   $fechaEntregaFormateada = $fechaEntrega ? date('d/m/Y', strtotime($fechaEntrega)) : '';
                                   $precio_unitario = number_format($precio_unitario, 2,",",".");
                                   $precio_kg = number_format($precio_kg, 2,",",".");
@@ -240,7 +242,7 @@ if (!empty($_POST)) {
                         <div class="form-group row">
                           <div class="col-sm-11 bordered-div-thin">
                             <b>Subtotal:</b> <?=$moneda.number_format($sumaSubtotal,2,",",".");?><br>
-                            <b>Iva:</b> <?=$moneda.number_format($data['iva'],2,",",".");?><br>
+                            <b>Iva (<?=$porcentaje_iva?>):</b> <?=$moneda.number_format($data['iva'],2,",",".");?><br>
                             <b>Descuento:</b> <?=$moneda.number_format($sumaDescuento,2,",",".");?><br>
                             <b>Total:</b> <?=$moneda.number_format($totalFinal,2,",",".");?><br>
                           </div>

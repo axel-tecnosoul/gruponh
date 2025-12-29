@@ -449,24 +449,169 @@ $id_estado = $filters['id_estado'] ?? [];
     <script src="assets/js/script.js"></script>
     <script>
     $(document).ready(function() {
+      // Inicializar variable global para la selección
+      let selectedCompraInfo = null;
+
+      // -------------------------------------------------------------------------
+      // 1. LÓGICA DE BOTONES DE ACCIÓN (ALERTS)
+      // -------------------------------------------------------------------------
+
+      // Función auxiliar para verificar si hay selección
+      function checkSeleccion(e, btn) {
+        // Verificamos si el href es "#", está vacío, o es la misma página
+        let href = $(btn).attr("href");
+        if (!selectedCompraInfo || href === "#" || href === undefined || href === "") {
+          e.preventDefault();
+          return false;
+        }
+        return true;
+      }
+
+      $("#link_ver_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para ver detalle");
+        }
+      });
+
+      $("#link_imprimir_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para imprimir");
+        } else {
+          // Si es válido, abrir en nueva pestaña
+          e.preventDefault();
+          window.open($(this).attr("href"), '_blank');
+        }
+      });
+
+      $("#link_modificar_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para modificar/revisar");
+        }
+      });
+
+      // Lógica especial para INGRESAR STOCK
+      $("#link_ingresar_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para ingresar stock");
+          return;
+        }
+        
+        // Si hay selección, validamos el estado
+        const estadoActual = parseInt(selectedCompraInfo.id_estado);
+        const estadosValidos = [3, 5, 6]; // 3: Enviada, 5: Pendiente, 6: Pendiente Parcial
+
+        if (!estadosValidos.includes(estadoActual)) {
+          e.preventDefault();
+          alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
+        }
+      });
+
+      // Lógica especial para ADJUNTAR FACTURA / PAGO
+      $("#link_adjuntar_factura, #link_nuevo_pago").on("click", function(e) {
+        let accion = $(this).attr("id") === "link_nuevo_pago" ? "añadir pago" : "adjuntar factura";
+        
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para " + accion);
+          return;
+        }
+
+        // Validar estados para facturas/pagos (Aprobada, Enviada, Pendientes, etc)
+        const estadosValidos = [3, 5, 6, 7, 8, 9];
+        const estadoActual = parseInt(selectedCompraInfo.id_estado);
+        
+        if (!estadosValidos.includes(estadoActual)) {
+          e.preventDefault();
+          alert("Solo se puede " + accion + " en compras con estados válidos");
+        }
+      });
+      
+      $("#link_nuevo_suceso").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para añadir un nuevo suceso");
+        }
+      });
+
+      // Lógica especial para APROBAR / RECHAZAR
+      // Estos botones funcionan con Modales (data-target) o Alerts si no cumplen condición
+      $("#link_aprobar_compra").on("click", function(e) {
+        let target = $(this).attr("data-target");
+        if (!selectedCompraInfo) {
+          e.preventDefault();
+          alert("Por favor seleccione una orden de compra para aprobar");
+        } else if (!target || target === "#") {
+          e.preventDefault();
+          alert("La orden seleccionada no se encuentra en estado para ser Aprobada (Ya está aprobada o finalizada).");
+        }
+      });
+
+      $("#link_rechazar_compra").on("click", function(e) {
+        let target = $(this).attr("data-target");
+        if (!selectedCompraInfo) {
+          e.preventDefault();
+          alert("Por favor seleccione una orden de compra para rechazar");
+        } else if (!target || target === "#") {
+          e.preventDefault();
+          alert("La orden seleccionada no se encuentra en estado para ser Rechazada.");
+        }
+      });
+
+      // -------------------------------------------------------------------------
+      // 2. LOGICA DE DATATABLES Y SELECCIÓN DE FILAS
+      // -------------------------------------------------------------------------
+
+      // Modal de Remitos (Click en el ojito de la tabla de conceptos)
+      $(document).on('click', '.btn-ver-remitos-modal', function() {
+        let remitosStr = $(this).data('remitos');
+        let tbody = $('#cuerpoTablaRemitos');
+        tbody.empty();
+
+        if (remitosStr) {
+          let listaRemitos = remitosStr.toString().split(/,\s*/);
+          let hayDatos = false;
+
+          listaRemitos.forEach(function(item) {
+            if (item.trim() !== "") {
+              let partes = item.trim().split('#');
+              if (partes.length >= 3) {
+                hayDatos = true;
+                let nro = partes[0];
+                let fecha = partes[1];
+                let idIngreso = partes[2];
+
+                let fila = '<tr>';
+                fila += '<td>' + fecha + '</td>';
+                fila += '<td>' + nro + '</td>';
+                fila += '<td class="text-center">';
+                fila += '<a href="verIngreso.php?id=' + idIngreso + '" target="_blank" class="btn btn-xs btn-primary"><i class="fa fa-external-link"></i></a>';
+                fila += '</td>';
+                fila += '</tr>';
+                tbody.append(fila);
+              }
+            }
+          });
+          if (!hayDatos) tbody.append('<tr><td colspan="3" class="text-center">Error al procesar datos</td></tr>');
+        } else {
+          tbody.append('<tr><td colspan="3" class="text-center">No se encontraron remitos.</td></tr>');
+        }
+        $('#modalRemitosConcepto').modal('show');
+      });
+
+      // Carga inicial de conceptos vacía
       get_conceptos(0);
 
-      let selectedCompraInfo = null;
-      
-      // Setup - add a text input to each footer cell
-      $('#dataTables-example666 tfoot th').each( function () {
+      // Setup inputs footer
+      $('#dataTables-example666 tfoot th').each(function() {
         var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-      } );
-	    
-      $('#dataTables-example666').DataTable({
+        $(this).html('<input type="text" size="' + title.length + '" placeholder="' + title + '" />');
+      });
+
+      // Inicializar DataTable Principal
+      var table = $('#dataTables-example666').DataTable({
         stateSave: false,
         responsive: false,
         autoWidth: false,
-		    dom: 'Bfrtp<"bottom"l>',
-        buttons: [
-          'excel'
-        ],
+        dom: 'Bfrtp<"bottom"l>',
+        buttons: ['excel'],
         lengthMenu: [
           [10, 25, 50, 100, 500, 1000],
           [10, 25, 50, 100, 500, 1000]
@@ -485,179 +630,275 @@ $id_estado = $filters['id_estado'] ?? [];
           "search": "Buscar:",
           "zeroRecords": "No hay resultados",
           "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
+            "first": "Primero",
+            "last": "Ultimo",
+            "next": "Siguiente",
+            "previous": "Anterior"
           }
         }
       });
- 
-      var table = $('#dataTables-example666').DataTable();
-      
+
       setTimeout(addTitleToTruncated, 100);
 
-      table.columns().every( function () {
+      // Filtros en footer
+      table.columns().every(function() {
         var that = this;
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-          if ( that.search() !== this.value ) {
-            that.search( this.value ).draw();
+        $('input', this.footer()).on('keyup change', function() {
+          if (that.search() !== this.value) {
+            that.search(this.value).draw();
           }
         });
-		  });
-		
-	    $("#link_ver_compra").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para ver detalle")
-        }
       });
 
-      // Acción Imprimir
-	    $("#link_imprimir_compra").on("click",function(e){
-        e.preventDefault();
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para imprimir");
-          return false;
-        }
-        window.open(this.href, '_blank');
-      });
+      // SELECCIÓN DE FILA (CLICK)
+      $(document).on("click", "#dataTables-example666 tbody tr td", function() {
+        var t = $(this).parent();
 
-      // Acción Modificar (Revisada)
-	    $("#link_modificar_compra").on("click",function(e){
-        let l=document.location.href;
-        // Validación de selección
-        if(this.href==l || this.href==l+"#" || !selectedCompraInfo){
-          e.preventDefault();
-          alert("Por favor seleccione una compra para modificar/revisar");
-          return false;
-        }
-        // Aquí podrías agregar validaciones de estado extra si es necesario
-      });
+        // Índices de columnas (ajustar si agregas/quitas columnas en HTML)
+        // 0: ID (hidden), 1: OC, 2: Proy, 3: Prov, 4: Estado, 5: F.Emis, 6: F.Entr, 7: Total, 8: ID Proy, 9: ID Estado
+        let id_compra = t.find("td:eq(0)").html();
+        let estado = t.find("td:eq(4)").html();
+        let id_proyecto = t.find("td:eq(8)").html();
+        let id_estado_compra = t.find("td:eq(9)").html();
 
-      // Acción Ingresar Stock (Revisada)
-	    $("#link_ingresar_compra").on("click",function(e){
-        let l=document.location.href;
-        // Validación combinada: selección + estado
-        if(this.href==l || this.href==l+"#" || !selectedCompraInfo){
-          e.preventDefault();
-          alert("Por favor seleccione una compra para ingresar stock");
-          return false;
-        } 
-        
-        // Verificación estricta del estado
-        const estadoActual = parseInt(selectedCompraInfo.id_estado);
-        const estadosValidos = [3, 5, 6]; // 3: Enviada/Aprobada, 5: Pendiente, 6: Pendiente Parcial
-
-        if(!estadosValidos.includes(estadoActual)){
-          e.preventDefault();
-          alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
-          return false;
-        }
-      });
-
-	    $("#link_adjuntar_factura").on("click",function(e){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if(!selectedCompraInfo){
-            alert("Por favor seleccione una compra para adjuntar factura");
-          } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
-            e.preventDefault();
-            alert("Solo se pueden adjuntar facturas en compras con estados válidos");
-            return false;
-          }
-        }
-      });
-
-      // Manejo de clicks en filas
-      $(document).on("click","#dataTables-example666 tbody tr td", function(){
-        var t=$(this).parent();
-		
-        // Recuperar datos de la fila con los índices actualizados (Total agregado en col 8)
-        let id_compra=t.find("td:first-child").html();
-        let estado = t.find("td:nth-child(5)").html(); 
-        // Indices actualizados debido a la nueva columna Total
-        let id_proyecto=t.find("td:nth-child(9)").html(); // Antes 10 (con total es 9 si total es col 8, espera...)
-        // Estructura actual:
-        // 1: ID (none)
-        // 2: Nro OC
-        // 3: Proyecto
-        // 4: Proveedor
-        // 5: Estado
-        // 6: F Emision
-        // 7: F Entrega
-        // 8: Total (NUEVO)
-        // 9: Proy ID (none)
-        // 10: Estado ID (none)
-
-        id_proyecto=t.find("td:nth-child(9)").html(); 
-        let id_estado_compra=t.find("td:nth-child(10)").html(); 
-		
-        if(t.hasClass('selected')){
+        if (t.hasClass('selected')) {
+          // DESELECCIONAR
           deselectRow(t);
           $('#dataTables-example667').DataTable().clear().draw();
-          $("#link_ver_compra").attr("href","#");
-          $("#link_imprimir_compra").attr("href","#"); // Reset Imprimir
-          $("#link_modificar_compra").attr("href","#");
-		      $("#link_ingresar_compra").attr("href","#");
-          $("#link_adjuntar_factura").attr("href","#");
-		      $("#link_nuevo_suceso").attr("href","#");
-          $("#link_nuevo_pago").attr("href","#");
-          $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
-          $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
+          
+          // Resetear links a "#"
+          $("#link_ver_compra, #link_imprimir_compra, #link_modificar_compra, #link_ingresar_compra, #link_adjuntar_factura, #link_nuevo_suceso, #link_nuevo_pago").attr("href", "#");
+          
+          // Resetear Modales
+          $("#link_aprobar_compra, #link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
           
           selectedCompraInfo = null;
-        }else{
-          table.rows().nodes().each( function (rowNode, index) {
+        } else {
+          // SELECCIONAR
+          table.rows().nodes().each(function(rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
-		      get_conceptos(id_compra)
-          $("#link_ver_compra").attr("href","verCompra.php?id="+id_compra);
-          $("#link_imprimir_compra").attr("href","imprimirCompra.php?id="+id_compra); // Set Imprimir
-          $("#link_modificar_compra").attr("href","modificarCompra.php?id="+id_compra);
-          
-          // Lógica visual para Ingresar Stock
-          if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
-            $("#link_ingresar_compra").attr("href","ingresarCompra.php?id="+id_compra);
-          } else {
-            $("#link_ingresar_compra").attr("href","#"); // Deshabilitar visualmente el link
-          }
-          
-          if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
-            $("#link_adjuntar_factura").attr("href","adjuntarFactura.php?id="+id_compra);
-            $("#link_nuevo_pago").attr("href","nuevoPago.php?id="+id_compra);
-          } else {
-            $("#link_adjuntar_factura").attr("href","#");
-            $("#link_nuevo_pago").attr("href","#");
-          }
-        
-        if (id_estado_compra == 2) {
-            $("#link_aprobar_compra").attr("data-toggle","modal").attr("data-target","#aprobarModal");
-            $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
-        } else {
-            $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
-        }
-        
-        if (id_estado_compra == 2) {
-            $("#link_rechazar_compra").attr("data-toggle","modal").attr("data-target","#rechazarModal");
-            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
-        } else {
-            $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href","#");
-        }
-            
-        selectedCompraInfo = {
-          id: id_compra,
-          estado: estado,
-          id_proyecto: id_proyecto,
-          id_estado: id_estado_compra
-        };
+          get_conceptos(id_compra);
 
-		      $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?entidad_tipo=compras&entidad_id="+selectedCompraInfo.id);
+          // Asignar links básicos
+          $("#link_ver_compra").attr("href", "verCompra.php?id=" + id_compra);
+          $("#link_imprimir_compra").attr("href", "imprimirCompra.php?id=" + id_compra);
+          $("#link_modificar_compra").attr("href", "modificarCompra.php?id=" + id_compra);
+          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=compras&entidad_id=" + id_compra);
+
+          // Lógica Ingresar Stock
+          if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
+            $("#link_ingresar_compra").attr("href", "ingresarCompra.php?id=" + id_compra);
+          } else {
+            $("#link_ingresar_compra").attr("href", "#");
+          }
+
+          // Lógica Factura/Pago
+          if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
+            $("#link_adjuntar_factura").attr("href", "adjuntarFactura.php?id=" + id_compra);
+            $("#link_nuevo_pago").attr("href", "nuevoPago.php?id=" + id_compra);
+          } else {
+            $("#link_adjuntar_factura, #link_nuevo_pago").attr("href", "#");
+          }
+
+          // Lógica Aprobar (ID Estado 2 = Elaboracion/Pendiente Aprobacion)
+          if (id_estado_compra == 2) {
+            $("#link_aprobar_compra").attr("data-toggle", "modal").attr("data-target", "#aprobarModal");
+            $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
+          } else {
+            $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          }
+
+          // Lógica Rechazar
+          if (id_estado_compra == 2) {
+            $("#link_rechazar_compra").attr("data-toggle", "modal").attr("data-target", "#rechazarModal");
+            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
+          } else {
+            $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          }
+
+          // Guardar info en variable global
+          selectedCompraInfo = {
+            id: id_compra,
+            estado: estado,
+            id_proyecto: id_proyecto,
+            id_estado: id_estado_compra
+          };
         }
       });
-	  } );
+    });
+
+    function selectRow(t) {
+      t.addClass('selected');
+    }
+
+    function deselectRow(t) {
+      t.removeClass('selected');
+    }
+
+    function get_conceptos(id_compra) {
+      let datosUpdate = new FormData();
+      datosUpdate.append('id_compra', id_compra);
+      $.ajax({
+        data: datosUpdate,
+        url: 'get_conceptos_compra.php',
+        method: "post",
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function(data) {
+          // console.log(data); // Debug
+          try {
+             data = JSON.parse(data);
+          } catch(e) { console.error("Error parsing JSON", e); data=[]; }
+
+          $('#dataTables-example667').DataTable().destroy();
+          $('#dataTables-example667').DataTable({
+            stateSave: false,
+            responsive: false,
+            autoWidth: false,
+            data: data,
+            columnDefs: [{
+                "width": "auto",
+                "targets": 0,
+                "className": "truncate-concepto"
+              },
+              {
+                "width": "90px",
+                "targets": 1
+              },
+              {
+                "width": "80px",
+                "targets": 2
+              },
+              {
+                "width": "70px",
+                "targets": 3,
+                "className": "text-right"
+              },
+              {
+                "width": "60px",
+                "targets": 4,
+                "className": "text-right"
+              },
+              {
+                "width": "70px",
+                "targets": 5,
+                "className": "text-right"
+              },
+              {
+                "width": "80px",
+                "targets": 6,
+                "className": "text-right"
+              },
+              {
+                "width": "60px",
+                "targets": 7,
+                "className": "text-right"
+              },
+              {
+                "width": "80px",
+                "targets": 8,
+                "className": "text-right"
+              },
+              {
+                "width": "70px",
+                "targets": 9
+              },
+              {
+                "width": "70px",
+                "targets": 10,
+                "className": "text-center",
+                "render": function(data, type, row) {
+                  if (data && data.trim() !== '' && data.trim() !== '0') {
+                    let dataSafe = data.toString().replace(/"/g, '&quot;');
+                    return '<button type="button" class="btn btn-primary btn-xs btn-ver-remitos-modal" data-remitos="' + dataSafe + '" title="Ver remitos asociados"><i class="fa fa-eye"></i></button>';
+                  }
+                  return '-';
+                }
+              },
+              {
+                "width": "70px",
+                "targets": 11
+              }
+            ],
+            drawCallback: function() {
+              setTimeout(function() {
+                addTitleToTruncated();
+              }, 100);
+            },
+            language: {
+              "decimal": "",
+              "emptyTable": "No hay información",
+              "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+              "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+              "infoFiltered": "(Filtrado de _MAX_ total registros)",
+              "infoPostFix": "",
+              "thousands": ",",
+              "lengthMenu": "Mostrar _MENU_ Registros",
+              "loadingRecords": "Cargando...",
+              "processing": "Procesando...",
+              "search": "Buscar:",
+              "zeroRecords": "No hay resultados",
+              "paginate": {
+                "first": "Primero",
+                "last": "Ultimo",
+                "next": "Siguiente",
+                "previous": "Anterior"
+              }
+            }
+          });
+
+          var table = $('#dataTables-example667').DataTable();
+          table.columns().every(function() {
+            var that = this;
+            $('input', this.footer()).on('keyup change', function() {
+              if (that.search() !== this.value) {
+                that.search(this.value).draw();
+              }
+            });
+          });
+
+          setTimeout(function() {
+            addTitleToTruncated();
+          }, 200);
+
+        }
+      });
+    }
+
+    function addTitleToTruncated() {
+      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
+      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').each(function() {
+        var element = $(this);
+        element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
+        if (this.scrollWidth > this.offsetWidth) {
+          element.attr('title', element.text().trim());
+        }
+      });
+      $('.truncate-project[title], .truncate-provider[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
+        placement: 'top',
+        trigger: 'hover',
+        delay: {
+          show: 300,
+          hide: 100
+        },
+        boundary: 'viewport',
+        fallbackPlacement: ['top', 'bottom'],
+        flip: false
+      });
+    }
+
+    $(window).on('resize', function() {
+      setTimeout(addTitleToTruncated, 100);
+    });
+
+    $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
+      setTimeout(function() {
+        addTitleToTruncated();
+      }, 50);
+    });
 	
 	  function selectRow(t){
       t.addClass('selected');
@@ -698,7 +939,18 @@ $id_estado = $filters['id_estado'] ?? [];
               { "width": "60px", "targets": 7 , "className": "text-right"},
               { "width": "80px", "targets": 8 , "className": "text-right"},
               { "width": "70px", "targets": 9 },
-              { "width": "70px", "targets": 10 },
+              { 
+                "width": "70px", 
+                "targets": 10,
+                "className": "text-center",
+                "render": function ( data, type, row ) {
+                  if (data && data.trim() !== '' && data.trim() !== '0') {
+                    let dataSafe = data.toString().replace(/"/g, '&quot;');
+                    return '<button type="button" class="btn btn-primary btn-xs btn-ver-remitos-modal" data-remitos="'+dataSafe+'" title="Ver remitos asociados"><i class="fa fa-eye"></i></button>';
+                  }
+                  return '-';
+                }
+              },
               { "width": "70px", "targets": 11 }
             ],
             drawCallback: function() {
@@ -778,5 +1030,35 @@ $id_estado = $filters['id_estado'] ?? [];
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
+    <div class="modal fade" id="modalRemitosConcepto" tabindex="-1" role="dialog" aria-labelledby="modalRemitosLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalRemitosLabel">Remitos asociados</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered table-sm" id="tablaRemitosModal">
+                <thead>
+                  <tr>
+                    <th>Nro Remito</th>
+                    <th class="text-center">Ver</th>
+                  </tr>
+                </thead>
+                <tbody id="cuerpoTablaRemitos">
+                  <!-- Se llena con JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

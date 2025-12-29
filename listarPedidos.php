@@ -10,7 +10,6 @@ require_once 'manejarFiltros.php';
 $filters = gestionarFiltros('listarPedidos');
 
 $nro = $filters['nro'] ?? "";
-// --- NUEVO FILTRO ---
 $nro_pedido = $filters['nro_pedido'] ?? ""; 
 $fecha = $filters['fecha'] ?? "";
 $fechah = $filters['fechah'] ?? "";
@@ -719,7 +718,7 @@ $id_estado = $filters['id_estado'] ?? [];
               { targets: 6, width: '10%' },
               { targets: 7, width: '8%' },
               { targets: 8, width: '12%' },
-              { targets: 9, width: '8%', className: 'text-center' }
+              { targets: 9, width: '8%', className: 'text-center' } 
             ],
             language: {
               "decimal": "",
