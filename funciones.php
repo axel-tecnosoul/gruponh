@@ -614,8 +614,8 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
 
     $mail->SMTPAuth   = true;
     //EN LOCAL
-    $mail->Port = 587;
-    $mail->SMTPSecure = 'tls';
+    //$mail->Port = 587;
+    //$mail->SMTPSecure = 'tls';
 
     //EN PRODUCCION
     /*$mail->Port = 25; 

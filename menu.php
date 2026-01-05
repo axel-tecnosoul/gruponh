@@ -71,6 +71,10 @@ function abrirMenu($op) {
 		($current_page == "listarLogs.php")) {
 			echo 'class="active"';
 		}
+	} else if ($op == "11") {
+		if ($current_page == "informeCompras.php") {
+			echo 'class="active"';
+		}
 	}
 }
 
@@ -166,6 +170,12 @@ function abrirMenu($op) {
 					<?php
 					if (tienePermiso(13)) { ?><li><a href="listarParametros.php"><i class="fa fa-circle"></i>Parámetros</a></li><?php }
 					if (tienePermiso(326)){?><li><a href="listarLogs.php"><i class="fa fa-circle"></i>Auditoría</a></li><?php }?>
+				</ul>
+			</li>
+
+			<li <?php abrirMenu(11);?>><a class="sidebar-header" href="#"><i data-feather="bar-chart-2"></i><span>Informe</span><i class="fa fa-angle-right pull-right"></i></a>
+				<ul class="sidebar-submenu">
+					<?php if(tienePermiso(297)){?><li><a href="informeCompras.php"><i class="fa fa-circle"></i>Pendientes Compras</a></li><?php }?>
 				</ul>
 			</li>
 		</ul>
