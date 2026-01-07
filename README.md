@@ -24,7 +24,7 @@ return [
     'username' => 'user@example.local',
     'password' => 'secret',
     'from' => 'noreply@example.local',
-    'from_name' => 'GrupoNH Dev'
+    'from_name' => 'GrupoNH Dev',
     'port' => xxx,
     'smtpSecure' => 'tls'
 ];

@@ -1,107 +1,151 @@
 <?php
+ob_start();
+
 require("config.php");
 require 'database.php';
 require_once 'funciones.php';
+
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED);
+ini_set('display_errors', 0);
 
 $id_pedido = $_POST['id_pedido'];
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = " SELECT pd.id AS id_pedido_detalle, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad_formatted, u.unidad_medida, pd.id_material, pd.reservado, pd.comprado, date_format(pd.fecha_necesidad,'%y%m%d') AS fecha_necesidad, pd.id_estado, epd.estado, epd.descripcion FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado WHERE pd.id_pedido = ".$id_pedido;//." AND d.cancelado = 0";
-$aConceptos=[];
+$sql = "SELECT 
+          pd.id AS id_pedido_detalle, 
+          m.concepto, 
+          pd.cantidad, 
+          u.unidad_medida, 
+          pd.id_material, 
+          pd.reservado, 
+          pd.comprado, -- Este dato a veces falla, lo recalcularemos abajo
+          date_format(pd.fecha_necesidad,'%y%m%d') AS fecha_necesidad_iso,
+          date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad_formatted, 
+          pd.id_estado, 
+          epd.estado, 
+          epd.descripcion 
+        FROM pedidos_detalle pd 
+        INNER JOIN materiales m ON m.id = pd.id_material 
+        INNER JOIN unidades_medida u ON u.id = pd.id_unidad_medida 
+        LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado 
+        WHERE pd.id_pedido = ?";
 
-foreach ($pdo->query($sql) as $row) {
-  $id_pedido_detalle = $row["id_pedido_detalle"];
-  $id_estado = $row["id_estado"];
-  $estado = $row["estado"];
-  $descripcion_estado = $row["descripcion"];
-  $id_material = $row["id_material"];
+$q = $pdo->prepare($sql);
+$q->execute([$id_pedido]);
 
-	// Verificar y asignar estado al principio del bucle
-	if ($id_estado === null || empty($estado)) { // No tiene id_estado válido o nombre de estado
-		// Calcular y actualizar el estado
-		$nuevoEstadoId = calcularEstadoPedidoDetalle($pdo, $id_pedido_detalle);
-		if ($nuevoEstadoId) {
-			actualizarEstadoPedidoDetalle($pdo, $id_pedido_detalle);
-			// Actualizar los valores del row para usar el nuevo estado
-			$id_estado = $nuevoEstadoId;
-			// Obtener el nombre y descripción del estado calculado
-			$sqlEstado = "SELECT estado, descripcion FROM estados_pedidos_detalle WHERE id = ?";
-			$qEstado = $pdo->prepare($sqlEstado);
-			$qEstado->execute([$nuevoEstadoId]);
-			$dataEstado = $qEstado->fetch(PDO::FETCH_ASSOC);
-			if ($dataEstado) {
-				$estado = $dataEstado['estado'];
-				$descripcion_estado = $dataEstado['descripcion'];
-			}
-		}
-	}
-	
-	// Ya tenemos id_estado y nombre del estado válidos
-	$estadoTexto = $estado ?: '';
-	$descripcion_estado = $descripcion_estado ?: '';
-	$estadoColor = '';
-	if ($id_estado) {
-		switch ((int)$id_estado) {
-			case 1: $estadoColor = 'badge-secondary'; break; // Pendiente
-			case 2: $estadoColor = 'badge-warning'; break;   // Comprando
-			case 3: $estadoColor = 'badge-info'; break;      // Comprando Parcial
-			case 4: $estadoColor = 'badge-primary'; break;   // Comprando y Entregando
-			case 5: $estadoColor = 'badge-success'; break;   // Comprando Total
-			case 6: $estadoColor = 'badge-success'; break;   // Entregado Parcial
-			case 7: $estadoColor = 'badge-success'; break;   // Entregado
-			case 8: $estadoColor = 'badge-danger'; break;    // Cancelado
-			default: $estadoColor = 'badge-light';
-		}
-	}
+$aConceptos = [];
 
-	$sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = $id_material order by c.id desc limit 0,1 ";
-	$q2 = $pdo->prepare($sql2);
-	$q2->execute();
-	$data2 = $q2->fetch(PDO::FETCH_ASSOC);
+while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+    $id_pedido_detalle = $row["id_pedido_detalle"];
+    $id_material = $row["id_material"];
+    $id_estado = $row["id_estado"];
+    $estado = $row["estado"];
+    $descripcion_estado = $row["descripcion"];
 
-  $fechaEmision = "";
-	if (!empty($data2['fecha_emision'])) {
-		$fechaEmision = $data2['fecha_emision'];
-	}
+    if ($id_estado === null || empty($estado)) { 
+        $nuevoEstadoId = calcularEstadoPedidoDetalle($pdo, $id_pedido_detalle);
+        if ($nuevoEstadoId) {
+            actualizarEstadoPedidoDetalle($pdo, $id_pedido_detalle);
+            $id_estado = $nuevoEstadoId;
+            // Recargar info del estado
+            $sqlEstado = "SELECT estado, descripcion FROM estados_pedidos_detalle WHERE id = ?";
+            $qEstado = $pdo->prepare($sqlEstado);
+            $qEstado->execute([$nuevoEstadoId]);
+            $dataEstado = $qEstado->fetch(PDO::FETCH_ASSOC);
+            if ($dataEstado) {
+                $estado = $dataEstado['estado'];
+                $descripcion_estado = $dataEstado['descripcion'];
+            }
+        }
+    }
+    
+    $estadoTexto = $estado ?: '';
+    $descripcion_estado = $descripcion_estado ?: '';
+    $estadoColor = 'badge-light';
+    
+    if ($id_estado) {
+        switch ((int)$id_estado) {
+            case 1: $estadoColor = 'badge-secondary'; break;
+            case 2: $estadoColor = 'badge-warning'; break;
+            case 3: $estadoColor = 'badge-info'; break;
+            case 4: $estadoColor = 'badge-primary'; break;
+            case 5: $estadoColor = 'badge-success'; break;
+            case 6: $estadoColor = 'badge-success'; break;
+            case 7: $estadoColor = 'badge-success'; break;
+            case 8: $estadoColor = 'badge-danger'; break;
+            default: $estadoColor = 'badge-light';
+        }
+    }
 
-  $precio = "";
-	if (!empty($data2['precio'])) {
-		$precio = "$". number_format($data2['precio'],2);
-	}
+    $estadoHtml = '';
+    if ($estadoTexto) {
+        $badgeDescription = "";
+        if ($descripcion_estado) {
+            $badgeDescription = "data-toggle='tooltip' data-placement='top' title='".htmlspecialchars($descripcion_estado)."'";
+        }
+        $estadoHtml = "<span class='badge $estadoColor' $badgeDescription>$estadoTexto</span>";
+    }
 
-	$requerido = $row["cantidad"] .' '.$row["unidad_medida"];	
+    $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%Y') as fecha_emision 
+             FROM compras_detalle d 
+             INNER JOIN compras c ON c.id = d.id_compra 
+             WHERE d.id_material = ? 
+             ORDER BY c.fecha_emision DESC LIMIT 1";
+    $q2 = $pdo->prepare($sql2);
+    $q2->execute([$id_material]);
+    $data2 = $q2->fetch(PDO::FETCH_ASSOC);
+    $fechaEmision = $data2['fecha_emision'] ?? "";
+    $precio = !empty($data2['precio']) ? "$". number_format($data2['precio'], 2, ',', '.') : "";
 
-  $sql3 = "SELECT SUM(saldo) AS disponible FROM ingresos_detalle WHERE id_material = ? ";
-	$q3 = $pdo->prepare($sql3);
-	$q3->execute([$id_material]);
-	$data3 = $q3->fetch(PDO::FETCH_ASSOC);
+    $sqlComprado = "SELECT SUM(cd.cantidad) as total_comprado 
+                    FROM compras_detalle cd 
+                    INNER JOIN compras c ON c.id = cd.id_compra 
+                    WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra != 6";
+    $qComprado = $pdo->prepare($sqlComprado);
+    $qComprado->execute([$id_pedido, $id_material]);
+    $dataComprado = $qComprado->fetch(PDO::FETCH_ASSOC);
+    $compradoDisplay = $dataComprado['total_comprado'] ? (float)$dataComprado['total_comprado'] : 0;
 
-  $disponible = $data3['disponible'];
-	
-	$estadoHtml = '';
-	if ($estadoTexto) {
-    $badgeDescription="";
-		if ($descripcion_estado) {
-		  $badgeDescription = "data-toggle='tooltip' data-placement='top' title='".htmlspecialchars($descripcion_estado)."'";
-		}
-    $estadoHtml = "<span class='badge $estadoColor' $badgeDescription>$estadoTexto</span>";
-	}
-	
-	$aConceptos[]=[
-    0 => $row["concepto"],
-    1 => $requerido,
-    2 => $disponible,
-    3 => $row["reservado"],
-    4 => $row["comprado"],
-    5 => "<span style='display: none;'>". $row["fecha_necesidad"] . "</span>".$row["fecha_necesidad_formatted"],
-    6 => $fechaEmision,
-    7 => $precio,
-    8 => $estadoHtml
-  ];
+    $cantidadEntregada = 0;
+    try {
+        $sqlEntregado = "SELECT SUM(id.cantidad) as total_entregado
+                         FROM ingresos_detalle id
+                         INNER JOIN ingresos i ON i.id = id.id_ingreso
+                         INNER JOIN compras c ON c.id = i.id_oc
+                         WHERE c.id_pedido = ? AND id.id_material = ?";
+        $qEntregado = $pdo->prepare($sqlEntregado);
+        $qEntregado->execute([$id_pedido, $id_material]);
+        $dataEntregado = $qEntregado->fetch(PDO::FETCH_ASSOC);
+        $cantidadEntregada = $dataEntregado['total_entregado'] ? (float)$dataEntregado['total_entregado'] : 0;
+    } catch (PDOException $e) {
+        // Si la tabla ingresos o ingresos_detalle no existe, simplemente dejamos cantidadEntregada en 0
+        $cantidadEntregada = 0;
+    }
+
+    $acciones = '<a href="verPreciosMaterial.php?id='.$id_material.'&origen=pedidos" target="_blank" title="Ver Histórico de Precios"><img src="img/dolar.png" width="24" height="25" border="0" alt="Histórico"></a>';
+
+    $requerido = (float)$row["cantidad"] .' '.$row["unidad_medida"];
+    $reservado = (float)$row["reservado"];
+
+    $aConceptos[] = [
+        0 => $row["concepto"],
+        1 => $requerido,
+        2 => $reservado,
+        3 => $compradoDisplay,
+        4 => $cantidadEntregada,
+        5 => "<span style='display: none;'>". $row["fecha_necesidad_iso"] . "</span>" . $row["fecha_necesidad_formatted"],
+        6 => $fechaEmision,
+        7 => $precio,
+        8 => $estadoHtml,
+        9 => $acciones
+    ];
 }
 
 Database::disconnect();
+
+ob_end_clean();
+header('Content-Type: application/json');
 echo json_encode($aConceptos);
 ?>

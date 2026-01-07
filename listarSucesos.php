@@ -167,6 +167,7 @@ function pluralToSingular(string $word): string {
                           <tr>
                             <th>ID</th>
                             <th>Fecha/Hora</th>
+                            <th>Proyecto</th>
                             <!-- <th>Entidad</th>
                             <th>ID Entidad</th> -->
                             <th>Origen</th>
@@ -312,10 +313,12 @@ function pluralToSingular(string $word): string {
                                 s.titulo,
                                 s.suceso,
                                 u.usuario AS nombre_usuario,
-                                s.fecha_hora
+                                s.fecha_hora,
+                                p.nombre AS nombre_proyecto
                               FROM sucesos s
                               INNER JOIN tipos_suceso ts ON ts.id = s.id_tipo_suceso
                               LEFT JOIN usuarios u ON u.id = s.id_usuario
+                              LEFT JOIN proyectos p ON p.id = s.id_proyecto
                               $where_clause
                               ORDER BY s.fecha_hora DESC, s.id DESC";
                           //}
@@ -346,11 +349,7 @@ function pluralToSingular(string $word): string {
                             <tr data-entidad-tipo='<?=htmlspecialchars($row['entidad_tipo'])?>' data-entidad-id='<?=htmlspecialchars($row['entidad_id'])?>'>
                               <td><?=htmlspecialchars($row['id'])?></td>
                               <td><?=htmlspecialchars($row['fecha_formateada'])?></td>
-                              <!-- <td><?=ucfirst(htmlspecialchars($row['entidad_tipo']))?></td>
-                              <td>
-                                <a href='<?=$link_entidad?>' target='_blank'>
-                                  <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=htmlspecialchars($row['entidad_id'])?></a>
-                              </td> -->
+                              <td><?=htmlspecialchars($row['nombre_proyecto'] ?? '-')?></td>
                               <td>
                                 <a href='<?=$link_entidad?>' target='_blank'>
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$origen?>
@@ -368,6 +367,7 @@ function pluralToSingular(string $word): string {
                           <tr>
                             <th>ID</th>
                             <th>Fecha/Hora</th>
+                            <th>Proyecto</th>
                             <!-- <th>Entidad</th>
                             <th>ID Entidad</th> -->
                             <th>Origen</th>
@@ -456,7 +456,7 @@ function pluralToSingular(string $word): string {
           },
           columnDefs: [
             { 
-              targets: [6], // Columna de suceso
+              targets: [7], // Columna de suceso
               orderable: false 
             }
           ],

@@ -16,7 +16,6 @@
         header("Location: listarCompras.php");
     }
     
-    // Verificar que la compra esté en estado "Elaboración" (id=1)
     $pdo = Database::connect();
     $sql_estado = "SELECT id_estado_compra FROM compras WHERE id = ?";
     $q_estado = $pdo->prepare($sql_estado);
@@ -30,14 +29,21 @@
     }
     
     if (!empty($_POST)) {
-      // Calcular totales automáticamente
       $pdo_calc = Database::connect();
       $sql_calc = "SELECT SUM(precio * cantidad) AS subtotal FROM compras_detalle WHERE id_compra = ?";
       $q_calc = $pdo_calc->prepare($sql_calc);
       $q_calc->execute([$_GET['id']]);
       $calc_data = $q_calc->fetch(PDO::FETCH_ASSOC);
       $subtotal = $calc_data['subtotal'] ?? 0;
-      $iva = $subtotal * 0.21;
+
+      $porcentaje_iva = 0;
+      if ($_POST['id_tipo_iva'] == 2) {
+          $porcentaje_iva = 0.105;
+      } elseif ($_POST['id_tipo_iva'] == 3) {
+          $porcentaje_iva = 0.21;
+      }
+      
+      $iva = $subtotal * $porcentaje_iva;
       $descuento = floatval($_POST['descuento'] ?? 0);
       $total = $subtotal + $iva - $descuento;
       Database::disconnect();
@@ -46,7 +52,7 @@
       $pdo = Database::connect();
       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        $sql = "UPDATE compras SET id_cuenta_proveedor = ?, fecha_emision = ?, fecha_entrega = ?, id_moneda = ?, tipo_cambio_dia = ?, descuento = ?, id_forma_pago = ?, comentarios = ?, total = ?, iva = ? WHERE id = ?";
+        $sql = "UPDATE compras SET id_cuenta_proveedor = ?, fecha_emision = ?, fecha_entrega = ?, id_moneda = ?, tipo_cambio_dia = ?, descuento = ?, id_forma_pago = ?, comentarios = ?, total = ?, iva = ?, id_tipo_iva = ? WHERE id = ?";
         $q = $pdo->prepare($sql);
         $q->execute([
             $_POST['id_cuenta_proveedor'],
@@ -59,6 +65,7 @@
             $_POST['comentarios'],
             $total,
             $iva,
+            $_POST['id_tipo_iva'],
             $_GET['id']
         ]);
         
@@ -72,7 +79,7 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`, `iva`, `descuento`, `nro_revision` FROM `compras` WHERE id = ? ";
+        $sql = "SELECT `id`, `id_pedido`, `id_cuenta_proveedor`, `fecha_emision`, `fecha_entrega`, `id_forma_pago`, `id_estado_compra`, `nro_oc`, `total`, `comentarios`, `id_moneda`, `tipo_cambio_dia`, `iva`, `descuento`, `nro_revision`, `id_tipo_iva` FROM `compras` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -199,6 +206,16 @@
 							</select>
 							</div>
 							</div>
+                            <div class="form-group row">
+                                <label class="col-sm-3 col-form-label">Tipo de IVA</label>
+                                <div class="col-sm-9">
+                                    <select name="id_tipo_iva" id="id_tipo_iva" class="js-example-basic-single col-sm-12">
+                                        <option value="1" <?php if ($data['id_tipo_iva'] == 1) echo "selected"; ?>>Exento (0%)</option>
+                                        <option value="2" <?php if ($data['id_tipo_iva'] == 2) echo "selected"; ?>>10.5%</option>
+                                        <option value="3" <?php if ($data['id_tipo_iva'] == 3) echo "selected"; ?>>21%</option>
+                                    </select>
+                                </div>
+                            </div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label font-weight-bold">Estado</label>
 							<div class="col-sm-9 col-form-label"><?php
@@ -224,7 +241,7 @@
 							?></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label font-weight-bold">IVA (21%)</label>
+							<label class="col-sm-3 col-form-label font-weight-bold">IVA</label>
 							<div class="col-sm-9 col-form-label">$<span id="iva-calculado"><?php echo number_format($data['iva'], 2);?></span></div>
 							</div>
 							<div class="form-group row">
@@ -351,55 +368,69 @@
     <!-- Plugins JS Ends-->
 	<script>
 		$(document).ready(function() {
-	$('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
-    
-    // Calcular totales automáticamente cuando cambia el descuento
-    $('#descuento-input').on('input', function() {
-      // Obtener valores
-      var subtotal = <?php 
-        $pdo = Database::connect();
-        $sql_sub = "SELECT SUM(precio * cantidad) AS subtotal FROM compras_detalle WHERE id_compra = ?";
-        $q_sub = $pdo->prepare($sql_sub);
-        $q_sub->execute([$_GET['id']]);
-        $sub_data = $q_sub->fetch(PDO::FETCH_ASSOC);
-        echo $sub_data['subtotal'] ?? 0;
-        Database::disconnect();
-      ?>;
-      var iva = subtotal * 0.21;
-      var descuento = parseFloat($(this).val()) || 0;
-      var total = subtotal + iva - descuento;
-      
-      // Actualizar displays
-      $('#iva-calculado').text(iva.toFixed(2));
-      $('#total-calculado').text(total.toFixed(2));
-    });
-    
-	} );
+            $('#dataTables-example667').DataTable({
+                stateSave: false,
+                responsive: false,
+                language: {
+                "decimal": "",
+                "emptyTable": "No hay información",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+                "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ Registros",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No hay resultados",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Ultimo",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                }}
+            });
+        
+            // DataTable
+            var table = $('#dataTables-example667').DataTable();
+            
+            function calcularTotales() {
+                var subtotal = <?php 
+                    $pdo = Database::connect();
+                    $sql_sub = "SELECT SUM(precio * cantidad) AS subtotal FROM compras_detalle WHERE id_compra = ?";
+                    $q_sub = $pdo->prepare($sql_sub);
+                    $q_sub->execute([$_GET['id']]);
+                    $sub_data = $q_sub->fetch(PDO::FETCH_ASSOC);
+                    echo $sub_data['subtotal'] ?? 0;
+                    Database::disconnect();
+                ?>;
+                
+                var tipo_iva = $('#id_tipo_iva').val();
+                var porcentaje = 0;
+                
+                if (tipo_iva == 2) {
+                    porcentaje = 0.105;
+                } else if (tipo_iva == 3) {
+                    porcentaje = 0.21;
+                }
+                
+                var iva = subtotal * porcentaje;
+                var descuento = parseFloat($('#descuento-input').val()) || 0;
+                var total = subtotal + iva - descuento;
+                
+                $('#iva-calculado').text(iva.toFixed(2));
+                $('#total-calculado').text(total.toFixed(2));
+            }
+
+            $('#descuento-input, #id_tipo_iva').on('input change', function() {
+                calcularTotales();
+            });
+            
+            if ($(".js-example-basic-single").length) {
+                $(".js-example-basic-single").select2();
+            }
+        });
 		
 		</script>
 		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>

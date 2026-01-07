@@ -79,11 +79,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .truncate-header {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
       .proyecto-truncado {
         cursor: help;
         border-bottom: 1px dotted #999;
@@ -128,11 +123,11 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <div class='form-group mb-12' style='width: 100%;'>
                         <div class="form-group mb-0">
                           N.OC/Rev:&nbsp;
-                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_ocnp)?>", name="nro_ocnp" placeholder="ej: 123, 123/A" title="Buscar por ID de OC o ID/Revisión">
+                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_ocnp)?>" name="nro_ocnp" placeholder="ej: 123, 123/A" title="Buscar por ID de OC o ID/Revisión">
                         </div>
                         <div class="form-group mb-0">
                           N.Ped.:&nbsp;
-                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_pedido)?>", name="nro_pedido" placeholder="ej: 456" title="Buscar por Número de Pedido">
+                          <input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro_pedido)?>" name="nro_pedido" placeholder="ej: 456" title="Buscar por Número de Pedido">
                         </div>
                         <div class="form-group mb-0">
                           N.Sitio/N.Proy:&nbsp;
@@ -177,6 +172,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
                   <div class="card-header">
                     <h5><?php echo $ubicacion; ?>&nbsp;&nbsp;
                       <a href="#" id="link_ver_compra"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>&nbsp;&nbsp;
+                      <!-- Botón Imprimir Agregado -->
+                      <a href="#" id="link_imprimir_compra"><img src="img/print.png" width="24" height="25" border="0" alt="Imprimir OC" title="Imprimir OC"></a>&nbsp;&nbsp;
                       <a href="exportCompras.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(299))) {?>
                         <a href="#" id="link_modificar_compra"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificación/Revisión O.C" title="Modificación/Revisión O.C"></a>&nbsp;&nbsp;
@@ -199,19 +196,21 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             <th class="d-none">ID</th>
                             <th style="width: 80px;">Nro.OC / Rev</th>
                             <th style="width: 80px;">Nro Pedido</th>
-                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th style="width: 100px;">Proyecto</th>
                             <th class="truncate-project">Nombre Proyecto</th>
                             <th class="truncate-provider">Proveedor</th>
                             <th style="width: 80px;">Estado</th>
                             <th style="width: 85px;">F. Emisión</th>
                             <th style="width: 85px;">F. Entrega</th>
+                            <th>Total</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
                           $pdo = Database::connect();
-                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, pe.id AS id_pedido, p.descripcion AS nombre_proyecto FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido LEFT JOIN computos co ON co.id = pe.id_computo LEFT JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = pe.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
+                          // Aseguramos que mo.moneda y c.total estén en la consulta
+                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre AS nombre_proyecto, pe.id AS id_pedido, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido INNER JOIN computos co ON co.id = pe.id_computo LEFT JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = pe.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
                           $params = [];
                           if (!empty($nro)) {
                             $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
@@ -220,35 +219,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
                           }
                           if (!empty($nro_ocnp)) {
                             $nro_ocnp_trimmed = trim($nro_ocnp);
-                            
-                            // Detectar si contiene barra "/" para busqueda id_oc/nro_revision
-                            /*if (strpos($nro_ocnp_trimmed, '/') !== false) {
-                              $parts = explode('/', $nro_ocnp_trimmed);
-                              if (count($parts) == 2 && is_numeric($parts[0]) && !empty($parts[1])) {
-                                // Búsqueda por id_oc/nro_revision exacto
-                                $sql .= " AND (c.id = ? AND c.nro_revision = ?)";
-                                $params[] = $parts[0];
-                                $params[] = $parts[1];
-                              } else {
-                                // Si el formato con / no es válido, buscar como string general
-                                $sql .= " AND (CONCAT(c.id, '/', c.nro_revision) LIKE ? OR c.id = ? OR c.nro_revision LIKE ?)";
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                                $params[] = $nro_ocnp_trimmed;
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                              }
-                            } else {
-                              // Búsqueda sin barra: por ID de OC o nro_revision
-                              if (is_numeric($nro_ocnp_trimmed)) {
-                                // Si es numérico, buscar por ID exacto de OC y por nro_revision
-                                $sql .= " AND (c.id = ? OR c.nro_revision LIKE ?)";
-                                $params[] = $nro_ocnp_trimmed;
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                              } else {
-                                // Si no es numérico, buscar solo por nro_revision
-                                $sql .= " AND c.nro_revision LIKE ?";
-                                $params[] = '%' . $nro_ocnp_trimmed . '%';
-                              }
-                            }*/
                             $ex=explode("/", $nro_ocnp_trimmed);
                             if(count($ex)>1){
                               $id_oc = $ex[0];
@@ -285,7 +255,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $sql .= " AND cu.nombre LIKE ?";
                             $params[] = '%' . $proveedor . '%';
                           }
-                          //echo $sql;
                           $q = $pdo->prepare($sql);
                           $q->execute($params);
 
@@ -311,6 +280,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_entrega"]?></span><?=$row["fecha_entrega_formatted"]?></td>
+                              <!-- Valor Total Agregado -->
+                              <td><?=$row['moneda'] . ' ' . number_format($row['total'], 2, ',', '.')?></td>
                               <td style="display: none;"><?=$row['id_proyecto']?></td>
                               <td style="display: none;"><?=$row['id_estado_compra']?></td>
                             </tr><?php
@@ -322,12 +293,13 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             <th class="d-none">ID</th>
                             <th style="width: 80px;">Nro.OC / Rev</th>
                             <th style="width: 80px;">Nro Pedido</th>
-                            <th style="width: 100px;">Sitio/Sub/Proy</th>
+                            <th style="width: 100px;">Proyecto</th>
                             <th class="truncate-project">Nombre Proyecto</th>
                             <th class="truncate-provider">Proveedor</th>
                             <th style="width: 80px;">Estado</th>
                             <th style="width: 85px;">F. Emisión</th>
                             <th style="width: 85px;">F. Entrega</th>
+                            <th>Total</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -438,7 +410,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
     <script>
-      // Configuración global para tooltips - previene parpadeo en bordes del viewport
+      // Configuración global para tooltips
       if (typeof $ !== 'undefined' && $.fn.tooltip && $.fn.tooltip.Constructor) {
         $.fn.tooltip.Constructor.Default = $.extend({}, $.fn.tooltip.Constructor.Default, {
           placement: 'top',
@@ -485,10 +457,9 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <script src="assets/js/script.js"></script>
     <script>
     $(document).ready(function() {
-      get_conceptos(0);
-
+      // Inicializar variable global para la selección
       let selectedCompraInfo = null;
-      
+
       // Función para obtener el ID del estado de la fila seleccionada
       function getSelectedCompraEstadoId() {
         return selectedCompraInfo ? selectedCompraInfo.id_estado : null;
@@ -507,25 +478,170 @@ $id_estado = $filters['id_estado'] ?? [];?>
       function isCompraEnviada() {
         return selectedCompraInfo && selectedCompraInfo.id_estado == 3; // Estado "Enviada"
       }
+
+      // -------------------------------------------------------------------------
+      // 1. LÓGICA DE BOTONES DE ACCIÓN (ALERTS)
+      // -------------------------------------------------------------------------
+
+      // Función auxiliar para verificar si hay selección
+      function checkSeleccion(e, btn) {
+        // Verificamos si el href es "#", está vacío, o es la misma página
+        let href = $(btn).attr("href");
+        if (!selectedCompraInfo || href === "#" || href === undefined || href === "") {
+          e.preventDefault();
+          return false;
+        }
+        return true;
+      }
+
+      $("#link_ver_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para ver detalle");
+        }
+      });
+
+      $("#link_imprimir_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para imprimir");
+        } else {
+          // Si es válido, abrir en nueva pestaña
+          e.preventDefault();
+          window.open($(this).attr("href"), '_blank');
+        }
+      });
+
+      $("#link_modificar_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para modificar/revisar");
+        }
+      });
+
+      // Lógica especial para INGRESAR STOCK
+      $("#link_ingresar_compra").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para ingresar stock");
+          return;
+        }
+        
+        // Si hay selección, validamos el estado
+        const estadoActual = parseInt(selectedCompraInfo.id_estado);
+        const estadosValidos = [3, 5, 6]; // 3: Enviada, 5: Pendiente, 6: Pendiente Parcial
+
+        if (!estadosValidos.includes(estadoActual)) {
+          e.preventDefault();
+          alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
+        }
+      });
+
+      // Lógica especial para ADJUNTAR FACTURA / PAGO
+      $("#link_adjuntar_factura, #link_nuevo_pago").on("click", function(e) {
+        let accion = $(this).attr("id") === "link_nuevo_pago" ? "añadir pago" : "adjuntar factura";
+        
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para " + accion);
+          return;
+        }
+
+        // Validar estados para facturas/pagos (Aprobada, Enviada, Pendientes, etc)
+        const estadosValidos = [3, 5, 6, 7, 8, 9];
+        const estadoActual = parseInt(selectedCompraInfo.id_estado);
+        
+        if (!estadosValidos.includes(estadoActual)) {
+          e.preventDefault();
+          alert("Solo se puede " + accion + " en compras con estados válidos");
+        }
+      });
       
-      // Setup - add a text input to each footer cell
-      $('#dataTables-example666 tfoot th').each( function () {
+      $("#link_nuevo_suceso").on("click", function(e) {
+        if (!checkSeleccion(e, this)) {
+          alert("Por favor seleccione una compra para añadir un nuevo suceso");
+        }
+      });
+
+      // Lógica especial para APROBAR / RECHAZAR
+      // Estos botones funcionan con Modales (data-target) o Alerts si no cumplen condición
+      $("#link_aprobar_compra").on("click", function(e) {
+        let target = $(this).attr("data-target");
+        if (!selectedCompraInfo) {
+          e.preventDefault();
+          alert("Por favor seleccione una orden de compra para aprobar");
+        } else if (!target || target === "#") {
+          e.preventDefault();
+          alert("La orden seleccionada no se encuentra en estado para ser Aprobada (Ya está aprobada o finalizada).");
+        }
+      });
+
+      $("#link_rechazar_compra").on("click", function(e) {
+        let target = $(this).attr("data-target");
+        if (!selectedCompraInfo) {
+          e.preventDefault();
+          alert("Por favor seleccione una orden de compra para rechazar");
+        } else if (!target || target === "#") {
+          e.preventDefault();
+          alert("La orden seleccionada no se encuentra en estado para ser Rechazada.");
+        }
+      });
+
+      // -------------------------------------------------------------------------
+      // 2. LOGICA DE DATATABLES Y SELECCIÓN DE FILAS
+      // -------------------------------------------------------------------------
+
+      // Modal de Remitos (Click en el ojito de la tabla de conceptos)
+      $(document).on('click', '.btn-ver-remitos-modal', function() {
+        let remitosStr = $(this).data('remitos');
+        let tbody = $('#cuerpoTablaRemitos');
+        tbody.empty();
+
+        if (remitosStr) {
+          let listaRemitos = remitosStr.toString().split(/,\s*/);
+          let hayDatos = false;
+
+          listaRemitos.forEach(function(item) {
+            if (item.trim() !== "") {
+              let partes = item.trim().split('#');
+              if (partes.length >= 3) {
+                hayDatos = true;
+                let nro = partes[0];
+                let fecha = partes[1];
+                let idIngreso = partes[2];
+
+                let fila = '<tr>';
+                fila += '<td>' + fecha + '</td>';
+                fila += '<td>' + nro + '</td>';
+                fila += '<td class="text-center">';
+                fila += '<a href="verIngreso.php?id=' + idIngreso + '" target="_blank" class="btn btn-xs btn-primary"><i class="fa fa-external-link"></i></a>';
+                fila += '</td>';
+                fila += '</tr>';
+                tbody.append(fila);
+              }
+            }
+          });
+          if (!hayDatos) tbody.append('<tr><td colspan="3" class="text-center">Error al procesar datos</td></tr>');
+        } else {
+          tbody.append('<tr><td colspan="3" class="text-center">No se encontraron remitos.</td></tr>');
+        }
+        $('#modalRemitosConcepto').modal('show');
+      });
+
+      // Carga inicial de conceptos vacía
+      get_conceptos(0);
+
+      // Setup inputs footer
+      $('#dataTables-example666 tfoot th').each(function() {
         var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-      } );
-	    
-      $('#dataTables-example666').DataTable({
+        $(this).html('<input type="text" size="' + title.length + '" placeholder="' + title + '" />');
+      });
+
+      // Inicializar DataTable Principal
+      var table = $('#dataTables-example666').DataTable({
         stateSave: false,
-		    //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
         autoWidth: false,
-		    dom: 'Bfrtp<"bottom"l>',
-        buttons: [
-          'excel'
-        ],
+        dom: 'Bfrtp<"bottom"l>',
+        buttons: ['excel'],
         lengthMenu: [
-          [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-          [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
+          [10, 25, 50, 100, 500, 1000],
+          [10, 25, 50, 100, 500, 1000]
         ],
         language: {
           "decimal": "",
@@ -541,200 +657,275 @@ $id_estado = $filters['id_estado'] ?? [];?>
           "search": "Buscar:",
           "zeroRecords": "No hay resultados",
           "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
+            "first": "Primero",
+            "last": "Ultimo",
+            "next": "Siguiente",
+            "previous": "Anterior"
           }
         }
       });
- 
-      // DataTable
-      var table = $('#dataTables-example666').DataTable();
-      
-      // Añadir tooltips dinámicos después de inicializar
+
       setTimeout(addTitleToTruncated, 100);
-      // Apply the search
-      table.columns().every( function () {
+
+      // Filtros en footer
+      table.columns().every(function() {
         var that = this;
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-          if ( that.search() !== this.value ) {
-            that.search( this.value ).draw();
+        $('input', this.footer()).on('keyup change', function() {
+          if (that.search() !== this.value) {
+            that.search(this.value).draw();
           }
         });
-		  });
-		
-	    $("#link_ver_compra").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para ver detalle")
-        }
-      })
-	    $("#link_modificar_compra").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para modificar/revisar")
-        }
-      })
-	    $("#link_ingresar_compra").on("click",function(e){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if(!selectedCompraInfo){
-            alert("Por favor seleccione una compra para ingresar stock");
-          } else if(![3, 5, 6].includes(parseInt(selectedCompraInfo.id_estado))){
-            e.preventDefault();
-            alert("Solo se puede ingresar stock en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial)");
-            return false;
-          }
-        }
-      })
-	    $("#link_adjuntar_factura").on("click",function(e){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if(!selectedCompraInfo){
-            alert("Por favor seleccione una compra para adjuntar factura");
-          } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
-            e.preventDefault();
-            alert("Solo se pueden adjuntar facturas en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
-            return false;
-          }
-        }
-      })
-	    $("#link_aprobar_compra").on("click",function(e){
-        if(!selectedCompraInfo){
-          e.preventDefault();
-          alert("Por favor seleccione una orden de compra para aprobar");
-          return false;
-        }
-        
-        // Validar estado: solo se puede aprobar si está en estado "Para aprobar" (id=2)
-        if(selectedCompraInfo.id_estado != 2){
-          e.preventDefault();
-          alert('Solo se pueden aprobar órdenes de compra en estado "Para aprobar"');
-          return false;
-        }
-      })
-	   $("#link_rechazar_compra").on("click",function(e){
-        if(!selectedCompraInfo){
-          e.preventDefault();
-          alert("Por favor seleccione una orden de compra para rechazar");
-          return false;
-        }
-        
-        // Validar estado: solo se puede rechazar si está en estado "Para aprobar" (id=2)
-        if(selectedCompraInfo.id_estado != 2){
-          e.preventDefault();
-          alert('Solo se pueden rechazar órdenes de compra en estado "Para aprobar"');
-          return false;
-        }
-      })
-	    $("#link_nuevo_suceso").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una compra para añadir un nuevo suceso")
-        }
-      })
-	  
-	    $("#link_nuevo_pago").on("click",function(e){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if(!selectedCompraInfo){
-            alert("Por favor seleccione una compra para añadir pago");
-          } else if(![3, 5, 6, 7, 8, 9].includes(parseInt(selectedCompraInfo.id_estado))){
-            e.preventDefault();
-            alert("Solo se pueden añadir pagos en compras con estados válidos (Enviada, Pendiente, Pendiente Parcial, Terminada, Terminada Forzado, Facturada)");
-            return false;
-          }
-        }
-      })
-      //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
-      $(document).on("click","#dataTables-example666 tbody tr td", function(){
-        var t=$(this).parent();
-		
-        let id_compra=t.find("td:first-child").html();
-        let estado = t.find("td:nth-child(7)").html(); // Estado está en columna 7
-        let id_proyecto=t.find("td:nth-child(10)").html(); // Proyecto está en columna 10 (oculta)
-        let id_estado_compra=t.find("td:nth-child(11)").html(); // Estado ID está en columna 11 (oculta)
-		
-        if(t.hasClass('selected')){
+      });
+
+      // SELECCIÓN DE FILA (CLICK)
+      $(document).on("click", "#dataTables-example666 tbody tr td", function() {
+        var t = $(this).parent();
+
+        // Índices de columnas (ajustar si agregas/quitas columnas en HTML)
+        // 0: ID (hidden), 1: OC, 2: Proy, 3: Prov, 4: Estado, 5: F.Emis, 6: F.Entr, 7: Total, 8: ID Proy, 9: ID Estado
+        let id_compra = t.find("td:eq(0)").html();
+        let estado = t.find("td:eq(6)").html();
+        let id_proyecto = t.find("td:eq(10)").html();
+        let id_estado_compra = t.find("td:eq(11)").html();
+
+        if (t.hasClass('selected')) {
+          // DESELECCIONAR
           deselectRow(t);
-		      //get_conceptos(id_compra)
           $('#dataTables-example667').DataTable().clear().draw();
-          $("#link_ver_compra").attr("href","#");
-          $("#link_modificar_compra").attr("href","#");
-		      $("#link_ingresar_compra").attr("href","#");
-          $("#link_adjuntar_factura").attr("href","#");
-		      $("#link_nuevo_suceso").attr("href","#");
-          $("#link_nuevo_pago").attr("href","#");
-          $("#link_aprobar_compra").removeAttr("data-toggle");
-          $("#link_aprobar_compra").removeAttr("data-target");
-          $("#link_aprobar_compra").attr("href","#");
-          $("#link_rechazar_compra").removeAttr("data-toggle");
-          $("#link_rechazar_compra").removeAttr("data-target");
-          $("#link_rechazar_compra").attr("href","#");
           
-          // Limpiar información de compra seleccionada
+          // Resetear links a "#"
+          $("#link_ver_compra, #link_imprimir_compra, #link_modificar_compra, #link_ingresar_compra, #link_adjuntar_factura, #link_nuevo_suceso, #link_nuevo_pago").attr("href", "#");
+          
+          // Resetear Modales
+          $("#link_aprobar_compra, #link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          
           selectedCompraInfo = null;
-        }else{
-          //t.parent().find("tr").removeClass("selected");
-          table.rows().nodes().each( function (rowNode, index) {
+        } else {
+          // SELECCIONAR
+          table.rows().nodes().each(function(rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
-		      get_conceptos(id_compra)
-          $("#link_ver_compra").attr("href","verCompra.php?id="+id_compra);
-          $("#link_modificar_compra").attr("href","modificarCompra.php?id="+id_compra);
-          // Validaciones específicas por tipo de acción según estado
-          
-          // Ingresar stock: estados 3, 5, 6
-          if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
-            $("#link_ingresar_compra").attr("href","ingresarCompra.php?id="+id_compra);
-          } else {
-            $("#link_ingresar_compra").attr("href","#");
-          }
-          
-          // Adjuntar factura y nuevo pago: estados 3, 5, 6, 7, 8, 9
-          if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
-            $("#link_adjuntar_factura").attr("href","adjuntarFactura.php?id="+id_compra);
-            $("#link_nuevo_pago").attr("href","nuevoPago.php?id="+id_compra);
-          } else {
-            $("#link_adjuntar_factura").attr("href","#");
-            $("#link_nuevo_pago").attr("href","#");
-          }
-        // Aprobar: solo en estado "Para aprobar" (id=2)
-        if (id_estado_compra == 2) {
-            $("#link_aprobar_compra").attr("data-toggle","modal");
-            $("#link_aprobar_compra").attr("data-target","#aprobarModal");
-            $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
-        } else {
-            $("#link_aprobar_compra").removeAttr("data-toggle");
-            $("#link_aprobar_compra").removeAttr("data-target");
-            $("#link_aprobar_compra").attr("href","#");
-        }
-        
-        // Rechazar: solo en estado "Para aprobar" (id=2)
-        if (id_estado_compra == 2) {
-            $("#link_rechazar_compra").attr("data-toggle","modal");
-            $("#link_rechazar_compra").attr("data-target","#rechazarModal");
-            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
-        } else {
-            $("#link_rechazar_compra").removeAttr("data-toggle");
-            $("#link_rechazar_compra").removeAttr("data-target");
-            $("#link_rechazar_compra").attr("href","#");
-        }
-            
-        // Actualizar información de compra seleccionada
-        selectedCompraInfo = {
-          id: id_compra,
-          estado: estado,
-          id_proyecto: id_proyecto,
-          id_estado: id_estado_compra
-        };
+          get_conceptos(id_compra);
 
-		      $("#link_nuevo_suceso").attr("href","nuevoSuceso.php?entidad_tipo=compras&entidad_id="+selectedCompraInfo.id);
+          // Asignar links básicos
+          $("#link_ver_compra").attr("href", "verCompra.php?id=" + id_compra);
+          $("#link_imprimir_compra").attr("href", "imprimirCompra.php?id=" + id_compra);
+          $("#link_modificar_compra").attr("href", "modificarCompra.php?id=" + id_compra);
+          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=compras&entidad_id=" + id_compra);
+
+          // Lógica Ingresar Stock
+          if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
+            $("#link_ingresar_compra").attr("href", "ingresarCompra.php?id=" + id_compra);
+          } else {
+            $("#link_ingresar_compra").attr("href", "#");
+          }
+
+          // Lógica Factura/Pago
+          if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
+            $("#link_adjuntar_factura").attr("href", "adjuntarFactura.php?id=" + id_compra);
+            $("#link_nuevo_pago").attr("href", "nuevoPago.php?id=" + id_compra);
+          } else {
+            $("#link_adjuntar_factura, #link_nuevo_pago").attr("href", "#");
+          }
+
+          // Lógica Aprobar (ID Estado 2 = Elaboracion/Pendiente Aprobacion)
+          if (id_estado_compra == 2) {
+            $("#link_aprobar_compra").attr("data-toggle", "modal").attr("data-target", "#aprobarModal");
+            $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
+          } else {
+            $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          }
+
+          // Lógica Rechazar
+          if (id_estado_compra == 2) {
+            $("#link_rechazar_compra").attr("data-toggle", "modal").attr("data-target", "#rechazarModal");
+            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
+          } else {
+            $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+          }
+
+          // Guardar info en variable global
+          selectedCompraInfo = {
+            id: id_compra,
+            estado: estado,
+            id_proyecto: id_proyecto,
+            id_estado: id_estado_compra
+          };
         }
       });
-	  } );
+    });
+
+    function selectRow(t) {
+      t.addClass('selected');
+    }
+
+    function deselectRow(t) {
+      t.removeClass('selected');
+    }
+
+    function get_conceptos(id_compra) {
+      let datosUpdate = new FormData();
+      datosUpdate.append('id_compra', id_compra);
+      $.ajax({
+        data: datosUpdate,
+        url: 'get_conceptos_compra.php',
+        method: "post",
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function(data) {
+          // console.log(data); // Debug
+          try {
+             data = JSON.parse(data);
+          } catch(e) { console.error("Error parsing JSON", e); data=[]; }
+
+          $('#dataTables-example667').DataTable().destroy();
+          $('#dataTables-example667').DataTable({
+            stateSave: false,
+            responsive: false,
+            autoWidth: false,
+            data: data,
+            columnDefs: [{
+                "width": "auto",
+                "targets": 0,
+                "className": "truncate-concepto"
+              },
+              {
+                "width": "90px",
+                "targets": 1
+              },
+              {
+                "width": "80px",
+                "targets": 2
+              },
+              {
+                "width": "70px",
+                "targets": 3,
+                "className": "text-right"
+              },
+              {
+                "width": "60px",
+                "targets": 4,
+                "className": "text-right"
+              },
+              {
+                "width": "70px",
+                "targets": 5,
+                "className": "text-right"
+              },
+              {
+                "width": "80px",
+                "targets": 6,
+                "className": "text-right"
+              },
+              {
+                "width": "60px",
+                "targets": 7,
+                "className": "text-right"
+              },
+              {
+                "width": "80px",
+                "targets": 8,
+                "className": "text-right"
+              },
+              {
+                "width": "70px",
+                "targets": 9
+              },
+              {
+                "width": "70px",
+                "targets": 10,
+                "className": "text-center",
+                "render": function(data, type, row) {
+                  if (data && data.trim() !== '' && data.trim() !== '0') {
+                    let dataSafe = data.toString().replace(/"/g, '&quot;');
+                    return '<button type="button" class="btn btn-primary btn-xs btn-ver-remitos-modal" data-remitos="' + dataSafe + '" title="Ver remitos asociados"><i class="fa fa-eye"></i></button>';
+                  }
+                  return '-';
+                }
+              },
+              {
+                "width": "70px",
+                "targets": 11
+              }
+            ],
+            drawCallback: function() {
+              setTimeout(function() {
+                addTitleToTruncated();
+              }, 100);
+            },
+            language: {
+              "decimal": "",
+              "emptyTable": "No hay información",
+              "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+              "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+              "infoFiltered": "(Filtrado de _MAX_ total registros)",
+              "infoPostFix": "",
+              "thousands": ",",
+              "lengthMenu": "Mostrar _MENU_ Registros",
+              "loadingRecords": "Cargando...",
+              "processing": "Procesando...",
+              "search": "Buscar:",
+              "zeroRecords": "No hay resultados",
+              "paginate": {
+                "first": "Primero",
+                "last": "Ultimo",
+                "next": "Siguiente",
+                "previous": "Anterior"
+              }
+            }
+          });
+
+          var table = $('#dataTables-example667').DataTable();
+          table.columns().every(function() {
+            var that = this;
+            $('input', this.footer()).on('keyup change', function() {
+              if (that.search() !== this.value) {
+                that.search(this.value).draw();
+              }
+            });
+          });
+
+          setTimeout(function() {
+            addTitleToTruncated();
+          }, 200);
+
+        }
+      });
+    }
+
+    function addTitleToTruncated() {
+      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
+      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').each(function() {
+        var element = $(this);
+        element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
+        if (this.scrollWidth > this.offsetWidth) {
+          element.attr('title', element.text().trim());
+        }
+      });
+      $('.truncate-project[title], .truncate-provider[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
+        placement: 'top',
+        trigger: 'hover',
+        delay: {
+          show: 300,
+          hide: 100
+        },
+        boundary: 'viewport',
+        fallbackPlacement: ['top', 'bottom'],
+        flip: false
+      });
+    }
+
+    $(window).on('resize', function() {
+      setTimeout(addTitleToTruncated, 100);
+    });
+
+    $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
+      setTimeout(function() {
+        addTitleToTruncated();
+      }, 50);
+    });
 	
 	  function selectRow(t){
       t.addClass('selected');
@@ -758,11 +949,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
           data = JSON.parse(data);
           console.log(data);
 
-          /*$('#dataTables-example667 tfoot th').each( function () {
-            var title = $(this).text();
-            $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-          } );*/
-
           $('#dataTables-example667').DataTable().destroy();
           $('#dataTables-example667').DataTable({
             stateSave: false,
@@ -770,18 +956,29 @@ $id_estado = $filters['id_estado'] ?? [];?>
             autoWidth: false,
             data: data,
             columnDefs: [
-              { "width": "auto", "targets": 0, "className": "truncate-concepto" }, // Concepto - Ancho flexible
-              { "width": "90px", "targets": 1 }, // Cantidad + Unidad
-              { "width": "80px", "targets": 2 }, // Fecha Entrega
-              { "width": "70px", "targets": 3 , "className": "text-right"}, // Peso Total kg
-              { "width": "60px", "targets": 4 , "className": "text-right"}, // $/Kg
-              { "width": "70px", "targets": 5 , "className": "text-right"}, // $/Unitario
-              { "width": "80px", "targets": 6 , "className": "text-right"}, // Subtotal Bruto
-              { "width": "60px", "targets": 7 , "className": "text-right"}, // % Descuento
-              { "width": "80px", "targets": 8 , "className": "text-right"}, // Total c/Desc
-              { "width": "70px", "targets": 9 }, // Entregado
-              { "width": "70px", "targets": 10 }, // Remitos
-              { "width": "70px", "targets": 11 }  // Facturas
+              { "width": "auto", "targets": 0, "className": "truncate-concepto" },
+              { "width": "90px", "targets": 1 },
+              { "width": "80px", "targets": 2 },
+              { "width": "70px", "targets": 3 , "className": "text-right"},
+              { "width": "60px", "targets": 4 , "className": "text-right"},
+              { "width": "70px", "targets": 5 , "className": "text-right"},
+              { "width": "80px", "targets": 6 , "className": "text-right"},
+              { "width": "60px", "targets": 7 , "className": "text-right"},
+              { "width": "80px", "targets": 8 , "className": "text-right"},
+              { "width": "70px", "targets": 9 },
+              { 
+                "width": "70px", 
+                "targets": 10,
+                "className": "text-center",
+                "render": function ( data, type, row ) {
+                  if (data && data.trim() !== '' && data.trim() !== '0') {
+                    let dataSafe = data.toString().replace(/"/g, '&quot;');
+                    return '<button type="button" class="btn btn-primary btn-xs btn-ver-remitos-modal" data-remitos="'+dataSafe+'" title="Ver remitos asociados"><i class="fa fa-eye"></i></button>';
+                  }
+                  return '-';
+                }
+              },
+              { "width": "70px", "targets": 11 }
             ],
             drawCallback: function() {
               setTimeout(function() {
@@ -810,9 +1007,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
             }
           });
       
-          // DataTable
           var table = $('#dataTables-example667').DataTable();
-          // Apply the search
           table.columns().every( function () {
             var that = this;
             $( 'input', this.footer() ).on( 'keyup change', function () {
@@ -822,7 +1017,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
             });
           });
 
-          // Aplicar tooltips inmediatamente después de cargar los datos
           setTimeout(function() {
             addTitleToTruncated();
           }, 200);
@@ -831,23 +1025,15 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
     }
 
-    // Función para añadir title solo a elementos truncados
     function addTitleToTruncated() {
-      // Primero limpiar todos los tooltips existentes
       $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
-      
       $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').each(function() {
         var element = $(this);
-        // Limpiar atributos de tooltip residuales
         element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
-        
-        // Verificar si el contenido se desborda (está truncado)
         if (this.scrollWidth > this.offsetWidth) {
           element.attr('title', element.text().trim());
         }
       });
-      
-      // Inicializar tooltips solo para elementos con title con configuración anti-parpadeo
       $('.truncate-project[title], .truncate-provider[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
         placement: 'top',
         trigger: 'hover',
@@ -858,12 +1044,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
     }
 
-    // Llamar la función cuando se redimensiona la ventana o cambia el zoom
     $(window).on('resize', function() {
       setTimeout(addTitleToTruncated, 100);
     });
     
-    // Aplicar tooltips cuando se actualicen las tablas DataTables
     $('#dataTables-example666, #dataTables-example667').on('draw.dt', function() {
       setTimeout(function() {
         addTitleToTruncated();
@@ -873,6 +1057,35 @@ $id_estado = $filters['id_estado'] ?? [];?>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    <!-- Plugin used-->
+    <div class="modal fade" id="modalRemitosConcepto" tabindex="-1" role="dialog" aria-labelledby="modalRemitosLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalRemitosLabel">Remitos asociados</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered table-sm" id="tablaRemitosModal">
+                <thead>
+                  <tr>
+                    <th>Nro Remito</th>
+                    <th class="text-center">Ver</th>
+                  </tr>
+                </thead>
+                <tbody id="cuerpoTablaRemitos">
+                  <!-- Se llena con JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </body>
 </html>

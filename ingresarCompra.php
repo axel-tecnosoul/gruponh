@@ -16,9 +16,10 @@ if (null==$id) {
   header("Location: listarCompras.php");
 }
 
-// Validar que la compra esté en un estado que permita ingreso
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// 1. Validar Estado de la Compra
 $sqlEstado = "SELECT id_estado_compra, ec.estado FROM compras c LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra WHERE c.id = ?";
 $qEstado = $pdo->prepare($sqlEstado);
 $qEstado->execute([$id]);
@@ -81,11 +82,10 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
-        
-  // Construir información del proyecto (igual que verCompra.php)
+
   $proyectoDisplay = '';
   $codigoObra = '';
-  
+
   if ($data) {
     $codigoObraPartes = array_filter([
       $data['nro_sitio'] ?? null,
@@ -106,6 +106,17 @@ if (!empty($_POST)) {
       }
     }
   }
+
+  $remitosList = [];
+  $sql_rem = "SELECT DISTINCT i.id, i.nro_remito, DATE_FORMAT(i.fecha_remito, '%d/%m/%Y') as fecha_fmt 
+              FROM ingresos i 
+              INNER JOIN ingresos_detalle id ON id.id_ingreso = i.id 
+              WHERE id.id_compra = ? 
+              ORDER BY i.fecha_remito DESC";
+  $q_rem = $pdo->prepare($sql_rem);
+  $q_rem->execute([$id]);
+  $remitosList = $q_rem->fetchAll(PDO::FETCH_ASSOC);
+
   Database::disconnect();
 }?>
 <!DOCTYPE html>
@@ -115,50 +126,38 @@ if (!empty($_POST)) {
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
     <style>
-      /* Estilos para items cancelados */
       .table-secondary {
         background-color: #f8f9fa !important;
         opacity: 0.8;
       }
-      
       .table-secondary td {
         text-decoration: line-through;
         color: #6c757d;
       }
-      
       .table-secondary .badge-danger {
         text-decoration: none;
         font-size: 0.7rem;
         padding: 0.5rem 1rem;
       }
-      
       .text-muted {
         color: #6c757d !important;
       }
-      
-      /* Estilos para las celdas combinadas */
       .cancelado-badge {
         display: inline-block;
         min-width: 120px;
       }
-      
-      /* Asegurar que las celdas ocultas no interfieran */
       td[style*="display: none"], td.hidden-cell {
         display: none !important;
       }
     </style>
   </head>
   <body>
-    <!-- Loader ends-->
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <?php include('header.php');?>
-    
       <!-- Page Header Start-->
       <div class="page-body-wrapper">
         <?php include('menu.php');?>
-        <!-- Page Sidebar Start-->
-        <!-- Right sidebar Ends-->
         <div class="page-body"><?php
           $ubicacion="Ingresar Stock Orden de Compra";
           include_once("head_page.php")?>
@@ -178,7 +177,6 @@ if (!empty($_POST)) {
                       <div class="row">
                         <div class="col-md-12">
                           <h6 class="mb-3 font-weight-bold">Ingresar Stock - Orden de Compra</h6>
-                          
                           <div class="row">
                             <!-- Columna Izquierda - Datos de solo lectura -->
                             <div class="col-md-6">
@@ -186,27 +184,22 @@ if (!empty($_POST)) {
                                 <label class="col-sm-3 font-weight-bold">Nro O.C.</label>
                                 <div class="col-sm-9"><?=$data['id']."/".$data['nro_revision'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Proveedor</label>
                                 <div class="col-sm-9"><?=$data['proveedor_nombre'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Fecha Emisión</label>
                                 <div class="col-sm-9"><?=$data['fecha_emision_formatted'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Proyecto</label>
                                 <div class="col-sm-9"><?=$proyectoDisplay;?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Estado</label>
                                 <div class="col-sm-9"><?=$data['estado_compra'];?></div>
                               </div>
-
                               <div class="form-group row">
                                 <label class="col-sm-3 font-weight-bold">Pedido N°</label>
                                 <div class="col-sm-9">
@@ -215,100 +208,51 @@ if (!empty($_POST)) {
                                   </a>
                                 </div>
                               </div>
-
                               <div class="form-group row">
                                 <label class="col-sm-3 font-weight-bold">Total</label>
                                 <div class="col-sm-9"><?=$data['moneda'] ?: '$'?><?=number_format($data['total'], 2);?></div>
                               </div><?php
-
                               if (!empty($data['lugar_entrega'])) { ?>
                                 <div class="form-group row mt-2">
                                   <label class="col-sm-3 font-weight-bold">Lugar de Entrega</label>
                                   <div class="col-sm-9"><?=$data['lugar_entrega'];?></div>
                                 </div><?php
                               } ?>
-
                             </div>
                             
                             <!-- Columna Derecha - Campos editables -->
                             <div class="col-md-6">
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Fecha Entrega Est.</label>
-                                <div class="col-sm-9">
-                                  <input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?=$data['fecha_entrega'];?>" class="form-control">
-                                </div>
+                                <div class="col-sm-9"><?=$data['fecha_entrega_formatted'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Moneda</label>
-                                <div class="col-sm-9">
-                                  <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12">
-                                    <option value="">Seleccione...</option>
-                                    <?php
-                                    $pdo = Database::connect();
-                                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                    $sqlZon = "SELECT id, moneda FROM monedas WHERE 1";
-                                    $q = $pdo->prepare($sqlZon);
-                                    $q->execute();
-                                    while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                      echo "<option value='".$fila['id']."'";
-                                      if ($fila['id']==$data['id_moneda']) {
-                                        echo " selected ";
-                                      }
-                                      echo ">".$fila['moneda']."</option>";
-                                    }
-                                    Database::disconnect();
-                                    ?>
-                                  </select>
-                                </div>
+                                <div class="col-sm-9"><?=$data['moneda'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Tipo de Cambio</label>
-                                <div class="col-sm-9">
-                                  <input name="tipo_cambio_dia" type="number" step="0.01" class="form-control" value="<?=$data['tipo_cambio_dia'];?>">
-                                </div>
+                                <div class="col-sm-9"><?=$data['tipo_cambio_dia'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Forma de Pago</label>
-                                <div class="col-sm-9">
-                                  <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single col-sm-12">
-                                    <option value="">Seleccione...</option><?php
-                                    $pdo = Database::connect();
-                                    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                    $sqlZon = "SELECT id, forma_pago FROM formas_pago WHERE 1";
-                                    $q = $pdo->prepare($sqlZon);
-                                    $q->execute();
-                                    while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                      $selected = "";
-                                      if ($fila['id']==$data['id_forma_pago']) {
-                                        $selected = " selected ";
-                                      }?>
-                                      <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['forma_pago']?></option><?php
-                                    }
-                                    Database::disconnect();?>
-                                  </select>
-                                </div>
+                                <div class="col-sm-9"><?=$data['forma_pago'];?></div>
                               </div>
-                              
                               <div class="form-group row mt-1">
                                 <label class="col-sm-3 font-weight-bold">Comentarios</label>
-                                <div class="col-sm-9">
-                                  <textarea name="comentarios" class="form-control" rows="3"><?=$data['comentarios'];?></textarea>
-                                </div>
+                                <div class="col-sm-9"><?=$data['comentarios'];?></div>
                               </div>
                             </div>
                           </div>
-                          
                         </div>
                       </div>
+
+                      <!-- Tabla de items -->
                       <div class="row">
                         <div class="col-sm-12">
                           <table class="display" id="dataTables-example667">
                             <thead>
                               <tr>
-                                  <!--<th><input type="checkbox" data-orderable="false" class="no-sort toggle-checkboxes" /></th>-->
                                 <th>Concepto</th>
                                 <th>Nro. Colada Interna</th>
                                 <th>Precio</th>
@@ -364,27 +308,22 @@ if (!empty($_POST)) {
                                   <td>$<?=number_format($precio*$cantidad,2)?></td>
                                   <td><?=$entregado?></td>
                                   <td><?=$stock?></td>
-                                  <td><?php
-                                    // Siempre agregar hidden con el ID para mantener consistencia?>
+                                  <td>
                                     <input type="hidden" name="id_compra_detalle[]" value="<?=$row["id"]?>">
                                     <input type="hidden" name="id_material[]" value="<?=$row["id_material"]?>"><?php
 
-                                    // Verificar si el item está cancelado
                                     if ($row["cancelado"] == 1) {?>
                                       <input type="hidden" name="cantidadIngresar[]" value="0">
                                       <span class="badge badge-danger cancelado-badge">Concepto cancelado</span><?php
                                     } elseif ($cantidad > $entregado) {
-                                      // Mostrar input solo si resta cantidad por ingresar y no está cancelado
                                       if (!empty(tienePermiso(305))) {?>
                                         <input name="cantidadIngresar[]" type="number" size="2" value="0" max="<?=$cantidad-$entregado?>" class="form-control">
                                         <i><span style="color:red;">Resta: <?=$cantidad-$entregado?></span></i><?php
-                                      } else {
-                                        // Si no tiene permiso, agregar hidden con 0?>
+                                      } else {?>
                                         <input type="hidden" name="cantidadIngresar[]" value="0">
                                         Sin permisos para ingresar<?php
                                       }
-                                    } else {
-                                      // Si no resta nada, agregar hidden con 0?>
+                                    } else {?>
                                       <input type="hidden" name="cantidadIngresar[]" value="0">
                                       Completamente entregado<?php
                                     }?>
@@ -397,6 +336,7 @@ if (!empty($_POST)) {
                           </table>
                         </div>
                       </div>
+
                       <div class="form-group row mt-3">
                         <label class="col-sm-2">Fecha Remito (*)</label>
                         <div class="col-sm-4">
@@ -404,9 +344,50 @@ if (!empty($_POST)) {
                         </div>
                         <label class="col-sm-2">Nro Remito (*)</label>
                         <div class="col-sm-4">
-                          <input name="nro_remito" type="text" maxlength="99" class="form-control" value="" required>
+                          <div class="input-group">
+                            <input name="nro_remito" type="text" maxlength="13" class="form-control" value="" required pattern="\d{4}-\d{8}" placeholder="0001-12345678" title="Formato requerido: 4 números, un guión, 8 números (Ej: 0001-12345678)" id="nro_remito_input">
+                            <div class="input-group-append">
+                              <button class="btn btn-outline-primary" type="button" data-toggle="modal" data-target="#modalRemitos" title="Ver remitos asociados">
+                                <i class="fa fa-eye"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <small class="form-text text-muted">Formato: 0001-12345678</small>
                         </div>
                       </div>
+
+                      <div class="form-group row mt-3">
+                        <label class="col-sm-2">Ruta Documento</label>
+                        <div class="col-sm-10">
+                          <div class="input-group">
+                            <div class="input-group-prepend">
+                              <span class="input-group-text"><i class="fa fa-folder-open"></i></span>
+                            </div>
+                            <input name="ruta_documento" type="text" class="form-control" value="" placeholder="Ej: \\servidor\remitos\0001-12345678.pdf" id="ruta_documento_input">
+                            <div class="input-group-append">
+                              <button type="button" class="btn btn-outline-secondary" onclick="abrirExploradorRed()" title="Abrir ubicación de red">
+                                <i class="fa fa-external-link"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <small class="form-text text-muted">
+                            Copie la ruta desde el explorador de Windows. 
+                            <a href="#" onclick="mostrarAyudaRuta(); return false;">¿Cómo obtener la ruta?</a>
+                          </small>
+                        </div>
+                      </div>
+
+                      <script>
+                        document.getElementById('nro_remito_input').addEventListener('input', function (e) {
+                          var target = e.target;
+                          var input = target.value.replace(/\D/g, '').substring(0, 12);
+                          var zip = input.substring(0, 4);
+                          var middle = input.substring(4, 12);
+
+                          if (input.length > 4) { target.value = zip + "-" + middle; }
+                          else { target.value = input; }
+                        });
+                      </script>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3"><?php
@@ -414,7 +395,6 @@ if (!empty($_POST)) {
                           <button type="button" class="btn btn-warning" id="reservado-masivo" onclick="procesarIngreso(1)">Marcar Reservados</button>&nbsp;
                           <button type="button" class="btn btn-danger" id="disponible-masivo" onclick="procesarIngreso(0)">Marcar Disponibles</button><?php
                         }?>
-                        <!--<button class="btn btn-primary" type="submit">Modificar</button>-->
                         <a href="#" onclick="document.location.href='listarCompras.php'" class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -429,6 +409,57 @@ if (!empty($_POST)) {
         <?php include("footer.php"); ?>
       </div>
     </div>
+    
+    <!-- Modal Listado de Remitos -->
+    <div class="modal fade" id="modalRemitos" tabindex="-1" role="dialog" aria-labelledby="modalRemitosLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalRemitosLabel">Remitos registrados para esta OC</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="table-responsive">
+              <table class="table table-striped table-bordered table-sm">
+                <thead>
+                  <tr>
+                    <th>Fecha Remito</th>
+                    <th>Nro Remito</th>
+                    <th>Ver</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php 
+                  // Usamos la lista que cargamos al principio del PHP
+                  if (count($remitosList) > 0) {
+                    foreach ($remitosList as $rem) { ?>
+                      <tr>
+                        <td><?=$rem['fecha_fmt']?></td>
+                        <td><?=$rem['nro_remito']?></td>
+                        <td class="text-center">
+                          <a href="verIngreso.php?id=<?=$rem['id']?>" target="_blank" class="btn btn-xs btn-primary" title="Ver Detalle">
+                            <i class="fa fa-external-link"></i>
+                          </a>
+                        </td>
+                      </tr>
+                    <?php }
+                  } else {
+                    echo "<tr><td colspan='3' class='text-center'>No se encontraron remitos previos.</td></tr>";
+                  }
+                  ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -502,11 +533,19 @@ if (!empty($_POST)) {
         var table = $('#dataTables-example667').DataTable();
       } );
 
-      // Función para procesar el ingreso con validación
       function procesarIngreso(tipoReservado) {
         const form = document.form1;
+        const inputFecha = form.querySelector('input[name="fecha_remito"]');
+        const inputNro = form.querySelector('input[name="nro_remito"]');
+
+        if (tipoReservado == 1) {
+            inputFecha.removeAttribute('required');
+            inputNro.setAttribute('required', '');
+        } else {
+            inputFecha.setAttribute('required', '');
+            inputNro.setAttribute('required', '');
+        }
         
-        // Verificar si hay al menos una cantidad mayor a 0
         const cantidadInputs = document.querySelectorAll('input[name="cantidadIngresar[]"]:not([type="hidden"])');
         let hayItemsParaIngresar = false;
         
@@ -521,21 +560,17 @@ if (!empty($_POST)) {
           return false;
         }
         
-        // Validar formulario usando HTML5 validation
         if (!form.checkValidity()) {
-          // Si el formulario no es válido, mostrar los mensajes de validación nativos
           form.reportValidity();
           return false;
         }
         
-        // Si todo está válido, cambiar action y enviar
         const originalAction = form.action;
         form.action = 'marcarItemsEntregadoCompra.php?id=<?=$id?>&reservado=' + tipoReservado;
         
         try {
           form.submit();
         } catch (error) {
-          // Si hay error, restaurar action original
           form.action = originalAction;
           console.error('Error al enviar formulario:', error);
           alert('Error al procesar el formulario. Por favor, intente nuevamente.');
@@ -543,6 +578,33 @@ if (!empty($_POST)) {
       }
 		
 		</script>
+
+    <script>
+      function abrirExploradorRed() {
+        var rutaBase = '\\\\servidor\\remitos';
+        
+        window.open('file:///' + rutaBase.replace(/\\/g, '/'), '_blank');
+        
+        alert('Si no se abrió el explorador automáticamente:\n\n' +
+              '1. Abra el Explorador de Windows\n' +
+              '2. Navegue a: ' + rutaBase + '\n' +
+              '3. Seleccione el archivo\n' +
+              '4. Presione Shift + Click derecho sobre el archivo\n' +
+              '5. Seleccione "Copiar como ruta de acceso"\n' +
+              '6. Pegue la ruta en el campo');
+      }
+      
+      function mostrarAyudaRuta() {
+        alert('Para obtener la ruta del archivo:\n\n' +
+              '1. Abra el Explorador de Windows\n' +
+              '2. Navegue hasta el archivo del remito\n' +
+              '3. Mantenga presionada la tecla SHIFT\n' +
+              '4. Haga click derecho sobre el archivo\n' +
+              '5. Seleccione "Copiar como ruta de acceso"\n' +
+              '6. Pegue aquí con Ctrl+V');
+      }
+    </script>
+
 		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
   </body>

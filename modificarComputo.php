@@ -190,7 +190,7 @@ if (!empty($_POST)) {
           $id_proyecto = $dataProyecto ? $dataProyecto['id_proyecto'] : null;
 
           // 2.a) Insertar cabecera
-          $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, ?, NOW(), ?, ?, 1)";
+          $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, ?, NOW(), ?, ?, 2)";
           $params = [$idComputo, $id_proyecto, $_POST['lugar_entrega'], $_POST['id_cuenta_recibe']];
 
           if ($modoDebug == 1) {

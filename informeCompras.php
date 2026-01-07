@@ -1,0 +1,411 @@
+<?php
+require("config.php");
+if (empty($_SESSION['user'])) {
+    header("Location: index.php");
+    die("Redirecting to index.php");
+}
+require 'database.php';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head><?php
+    include('head_forms.php');?>
+    <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            background-color: #4466f2;
+            color: white !important;
+            border-color: #4466f2;
+        }
+        .nav-tabs .nav-link {
+            color: #333;
+            cursor: pointer;
+        }
+        .tab-content {
+            padding-top: 20px;
+        }
+        .concepto-col {
+            white-space: normal !important;
+            min-width: 180px;
+            max-width: 250px;
+            word-wrap: break-word;
+        }
+        .descripcion-col {
+            white-space: normal !important;
+            min-width: 100px;
+            max-width: 150px;
+            word-wrap: break-word;
+        }
+        table.dataTable tbody td {
+            padding: 4px 6px;
+            font-size: 11px;
+        }
+        table.dataTable thead th {
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+        .text-comprado {
+            color: green;
+            font-weight: bold;
+        }
+        .text-entregado {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper"><?php
+        include('header.php');?>
+        <div class="page-body-wrapper"><?php
+            include('menu.php');?>
+            <div class="page-body"><?php
+                $ubicacion = "Informe Pendientes Compras";
+                include_once("head_page.php");?>
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5><?=$ubicacion?></h5>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="nav nav-tabs" id="informeTabs" role="tablist">
+                                        <li class="nav-item">
+                                            <a class="nav-link active" id="comprando-tab" data-toggle="tab" href="#comprando" role="tab">Comprando</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="aprobar-tab" data-toggle="tab" href="#aprobar" role="tab">A Aprobar</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="pendiente-tab" data-toggle="tab" href="#pendiente" role="tab">Pendiente</a>
+                                        </li>
+                                    </ul>
+
+                                    <div class="tab-content" id="informeTabsContent">
+                                        
+                                        <div class="tab-pane fade show active" id="comprando" role="tabpanel">
+                                            <div class="dt-ext table-responsive">
+                                                <table class="display" id="tablaComprando" style="width:100%">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Nº Req</th>
+                                                            <th>Nº NP</th>
+                                                            <th>Estado</th>
+                                                            <th>Proveedor</th>
+                                                            <th>Obra</th>
+                                                            <th>Concepto</th>
+                                                            <th>Descripción</th>
+                                                            <th>Cantidad</th>
+                                                            <th>Unidad</th>
+                                                            <th>Comprado</th>
+                                                            <th>Entregado</th>
+                                                            <th>Fecha Pedido</th>
+                                                            <th>Fecha Requerido</th>
+                                                            <th>Fecha Pactada</th>
+                                                            <th>Fecha Entrega</th>
+                                                            <th>$ Unitario</th>
+                                                            <th>$ Total</th>
+                                                            <th>$ Entregado</th>
+                                                            <th>$ Pendiente</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php
+                                                        $pdo = Database::connect();
+                                                        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                                        
+                                                        $sql = "SELECT 
+                                                                    p.id AS nro_req,
+                                                                    c.id AS nro_np,
+                                                                    ec.estado AS estado_compra,
+                                                                    prov.nombre AS proveedor,
+                                                                    CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                                                                    m.concepto,
+                                                                    m.descripcion,
+                                                                    cd.cantidad,
+                                                                    um.unidad_medida AS unidad,
+                                                                    cd.cantidad AS comprado,
+                                                                    COALESCE(cd.entregado, 0) AS entregado,
+                                                                    DATE_FORMAT(p.fecha, '%d/%m/%Y %H:%i') AS fecha_pedido,
+                                                                    DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y %H:%i') AS fecha_requerido,
+                                                                    DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y %H:%i') AS fecha_pactada,
+                                                                    DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y %H:%i') AS fecha_entrega,
+                                                                    COALESCE(cd.precio, 0) AS precio_unitario,
+                                                                    COALESCE(cd.subtotal, 0) AS total,
+                                                                    COALESCE(cd.entregado * cd.precio, 0) AS monto_entregado,
+                                                                    COALESCE((cd.cantidad - COALESCE(cd.entregado, 0)) * cd.precio, 0) AS monto_pendiente
+                                                                FROM compras c
+                                                                INNER JOIN compras_detalle cd ON cd.id_compra = c.id
+                                                                INNER JOIN materiales m ON m.id = cd.id_material
+                                                                INNER JOIN pedidos p ON p.id = c.id_pedido
+                                                                LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = m.id
+                                                                INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                                                                INNER JOIN sitios si ON si.id = pr.id_sitio
+                                                                LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
+                                                                LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
+                                                                LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                                                WHERE c.id_estado_compra NOT IN (4, 7, 8)
+                                                                AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
+                                                                ORDER BY p.id DESC, c.id DESC";
+                                                        
+                                                        try {
+                                                            foreach ($pdo->query($sql) as $row) {
+                                                                echo "<tr>";
+                                                                echo "<td>{$row['nro_req']}</td>";
+                                                                echo "<td>{$row['nro_np']}</td>";
+                                                                echo "<td>{$row['estado_compra']}</td>";
+                                                                echo "<td>{$row['proveedor']}</td>";
+                                                                echo "<td>{$row['obra']}</td>";
+                                                                echo "<td class='concepto-col'>{$row['concepto']}</td>";
+                                                                echo "<td class='descripcion-col'>{$row['descripcion']}</td>";
+                                                                echo "<td>" . number_format($row['cantidad'], 2) . "</td>";
+                                                                echo "<td>{$row['unidad']}</td>";
+                                                                echo "<td>" . number_format($row['comprado'], 2) . "</td>";
+                                                                echo "<td>" . number_format($row['entregado'], 2) . "</td>";
+                                                                echo "<td>{$row['fecha_pedido']}</td>";
+                                                                echo "<td>{$row['fecha_requerido']}</td>";
+                                                                echo "<td>{$row['fecha_pactada']}</td>";
+                                                                echo "<td>{$row['fecha_entrega']}</td>";
+                                                                echo "<td>" . number_format($row['precio_unitario'], 2) . "</td>";
+                                                                echo "<td>" . number_format($row['total'], 2) . "</td>";
+                                                                echo "<td>" . number_format($row['monto_entregado'], 2) . "</td>";
+                                                                echo "<td>" . number_format($row['monto_pendiente'], 2) . "</td>";
+                                                                echo "</tr>";
+                                                            }
+                                                        } catch (PDOException $e) {
+                                                            echo "<tr><td colspan='19'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                                        }
+                                                        ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="tab-pane fade" id="aprobar" role="tabpanel">
+                                            <div class="dt-ext table-responsive">
+                                                <table class="display" id="tablaAprobar" style="width:100%">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Descripción</th>
+                                                            <th>Cantidad</th>
+                                                            <th>Unidad</th>
+                                                            <th>Fecha Pedido</th>
+                                                            <th>Fecha Requerido</th>
+                                                            <th>Fecha Pactada</th>
+                                                            <th>Fecha Entrega</th>
+                                                            <th>Comprado</th>
+                                                            <th>Entregado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php
+                                                        $sql = "SELECT 
+                                                                    m.concepto AS descripcion,
+                                                                    pd.cantidad,
+                                                                    um.unidad_medida AS unidad,
+                                                                    DATE_FORMAT(p.fecha, '%d/%m/%Y %H:%i') AS fecha_pedido,
+                                                                    DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y %H:%i') AS fecha_requerido
+                                                                FROM pedidos p
+                                                                INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
+                                                                INNER JOIN materiales m ON m.id = pd.id_material
+                                                                LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                                                WHERE p.id_estado = 2
+                                                                AND pd.cancelado = 0
+                                                                ORDER BY p.fecha DESC, m.concepto";
+                                                        
+                                                        try {
+                                                            foreach ($pdo->query($sql) as $row) {
+                                                                echo "<tr>";
+                                                                echo "<td class='concepto-col'>{$row['descripcion']}</td>";
+                                                                echo "<td>" . number_format($row['cantidad'], 2) . "</td>";
+                                                                echo "<td>{$row['unidad']}</td>";
+                                                                echo "<td>{$row['fecha_pedido']}</td>";
+                                                                echo "<td>{$row['fecha_requerido']}</td>";
+                                                                echo "<td></td>";
+                                                                echo "<td></td>";
+                                                                echo "<td><span class='text-comprado'>Comprado</span></td>";
+                                                                echo "<td><span class='text-entregado'>Entregado</span></td>";
+                                                                echo "</tr>";
+                                                            }
+                                                        } catch (PDOException $e) {
+                                                            echo "<tr><td colspan='9'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                                        }
+                                                        ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="tab-pane fade" id="pendiente" role="tabpanel">
+                                            <div class="dt-ext table-responsive">
+                                                <table class="display" id="tablaPendiente" style="width:100%">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Nº Req</th>
+                                                            <th>Nº NP</th>
+                                                            <th>Estado</th>
+                                                            <th>Proveedor</th>
+                                                            <th>Obra</th>
+                                                            <th>Concepto</th>
+                                                            <th>Descripción</th>
+                                                            <th>Cantidad</th>
+                                                            <th>Unidad</th>
+                                                            <th>Fecha Pedido</th>
+                                                            <th>Fecha Requerido</th>
+                                                            <th>Fecha Pactada</th>
+                                                            <th>Fecha Entrega</th>
+                                                            <th>Comprado</th>
+                                                            <th>Entregado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php
+                                                        $sql = "SELECT 
+                                                                    p.id AS nro_req,
+                                                                    '' AS nro_np,
+                                                                    ep.estado AS estado_pedido,
+                                                                    '' AS proveedor,
+                                                                    CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                                                                    m.concepto,
+                                                                    m.descripcion,
+                                                                    (pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,
+                                                                    um.unidad_medida AS unidad,
+                                                                    DATE_FORMAT(p.fecha, '%d/%m/%Y %H:%i') AS fecha_pedido,
+                                                                    DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y %H:%i') AS fecha_requerido
+                                                                FROM pedidos p
+                                                                INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
+                                                                INNER JOIN materiales m ON m.id = pd.id_material
+                                                                INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                                                                INNER JOIN sitios si ON si.id = pr.id_sitio
+                                                                LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                                                                LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                                                WHERE p.id_estado IN (3, 4)
+                                                                AND pd.cancelado = 0
+                                                                AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
+                                                                ORDER BY p.id DESC, m.concepto";
+                                                        
+                                                        try {
+                                                            foreach ($pdo->query($sql) as $row) {
+                                                                echo "<tr>";
+                                                                echo "<td>{$row['nro_req']}</td>";
+                                                                echo "<td>{$row['nro_np']}</td>";
+                                                                echo "<td>{$row['estado_pedido']}</td>";
+                                                                echo "<td>{$row['proveedor']}</td>";
+                                                                echo "<td>{$row['obra']}</td>";
+                                                                echo "<td class='concepto-col'>{$row['concepto']}</td>";
+                                                                echo "<td class='descripcion-col'>{$row['descripcion']}</td>";
+                                                                echo "<td>" . number_format($row['cantidad_pendiente'], 2) . "</td>";
+                                                                echo "<td>{$row['unidad']}</td>";
+                                                                echo "<td>{$row['fecha_pedido']}</td>";
+                                                                echo "<td>{$row['fecha_requerido']}</td>";
+                                                                echo "<td></td>";
+                                                                echo "<td></td>";
+                                                                echo "<td><span class='text-comprado'>Comprado</span></td>";
+                                                                echo "<td><span class='text-entregado'>Entregado</span></td>";
+                                                                echo "</tr>";
+                                                            }
+                                                        } catch (PDOException $e) {
+                                                            echo "<tr><td colspan='15'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                                        }
+                                                        
+                                                        Database::disconnect();
+                                                        ?>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php include("footer.php"); ?>
+        </div>
+    </div>
+
+    <script src="assets/js/jquery-3.2.1.min.js"></script>
+    <script src="assets/js/bootstrap/popper.min.js"></script>
+    <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/icons/feather-icon/feather.min.js"></script>
+    <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
+    <script src="assets/js/sidebar-menu.js"></script>
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/chat-menu.js"></script>
+    <script src="assets/js/tooltip-init.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            var dtOptions = {
+                dom: 'Bfrtip',
+                buttons: ['excel'],
+                scrollX: true,
+                autoWidth: false,
+                pageLength: 25,
+                order: [],
+                language: {
+                    "emptyTable": "No hay información",
+                    "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+                    "infoEmpty": "Mostrando 0 a 0 de 0 Registros",
+                    "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                    "lengthMenu": "Mostrar _MENU_ Registros",
+                    "search": "Buscar:",
+                    "zeroRecords": "No hay resultados",
+                    "paginate": {
+                        "first": "Primero",
+                        "last": "Ultimo",
+                        "next": "Siguiente",
+                        "previous": "Anterior"
+                    }
+                }
+            };
+
+            $('#tablaComprando').DataTable(dtOptions);
+
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+                var target = $(e.target).attr("href");
+                
+                if (target === '#aprobar' && !$.fn.DataTable.isDataTable('#tablaAprobar')) {
+                    $('#tablaAprobar').DataTable(dtOptions);
+                }
+                if (target === '#pendiente' && !$.fn.DataTable.isDataTable('#tablaPendiente')) {
+                    $('#tablaPendiente').DataTable(dtOptions);
+                }
+                
+                setTimeout(function() {
+                    $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+                }, 100);
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            document.querySelector('.page-main-header').classList.add('open');
+            document.querySelector('.page-sidebar').classList.add('open');
+        });
+    </script>
+</body>
+</html>

@@ -75,16 +75,18 @@ foreach ($pdo->query($sql) as $row) {
 
   //$porcentajeDescuentoFormateado = $porcentajeDescuento > 0 ? number_format($porcentajeDescuento,1,",",".") . '%' : '-';
 	
-	$remitos = "";
-	$sql2 = " SELECT i.nro_remito FROM ingresos_detalle id inner join ingresos i on i.id = id.id_ingreso WHERE id.id_material = $id_material and id.id_compra = ".$id_compra;
+	$arrRemitos = [];
+	$sql2 = " SELECT i.id, i.nro_remito, DATE_FORMAT(i.fecha_remito, '%d/%m/%Y') as fecha_fmt FROM ingresos_detalle id inner join ingresos i on i.id = id.id_ingreso WHERE id.id_material = $id_material and id.id_compra = ".$id_compra;
+	
 	foreach ($pdo->query($sql2) as $row2) {
-		$remitos = $row2["nro_remito"]." | ";
+		$arrRemitos[] = $row2["nro_remito"] . "#" . $row2["fecha_fmt"] . "#" . $row2["id"];
 	}
+	$remitos = implode(", ", $arrRemitos);
 	
 	$facturas = "";
 	$sql2 = " SELECT f.numero FROM facturas_compra_detalle_x_compras_detalle fd inner join facturas_compra_detalle d on d.id = fd.id_factura_compra_detalle inner join facturas_compra f on f.id = d.id_factura_compra inner join compras_detalle cd on cd.id = fd.id_compra_detalle WHERE cd.id_material = $id_material and f.id_orden_compra = ".$id_compra;
 	foreach ($pdo->query($sql2) as $row2) {
-		$facturas = $row2["numero"]." | ";
+		$facturas .= $row2["numero"]." | ";
 	}
 	
 	$aConceptos[]=[

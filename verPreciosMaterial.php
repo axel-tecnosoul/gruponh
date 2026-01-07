@@ -1,34 +1,40 @@
 <?php
-    require("config.php");
-    if (empty($_SESSION['user'])) {
-        header("Location: index.php");
-        die("Redirecting to index.php");
-    }
-    
-    require 'database.php';
+  require("config.php");
+  if (empty($_SESSION['user'])) {
+      header("Location: index.php");
+      die("Redirecting to index.php");
+  }
+  
+  require 'database.php';
 
-    $id = null;
-    if (!empty($_GET['id'])) {
-        $id = $_REQUEST['id'];
-    }
-    
-    if (null==$id) {
-        header("Location: listarMateriales.php");
-    }
-    
-    if (!empty($_POST)) {
-        
-    } else {
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `codigo`, `concepto`, `descripcion`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id]);
-        $data = $q->fetch(PDO::FETCH_ASSOC);
-        
-        Database::disconnect();
-    }
-    
+  $id = null;
+  if (!empty($_GET['id'])) {
+      $id = $_REQUEST['id'];
+  }
+  
+  if (null==$id) {
+      header("Location: listarMateriales.php");
+  }
+  
+  if (!empty($_POST)) {
+      
+  } else {
+      $pdo = Database::connect();
+      $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+      $sql = "SELECT `id`, `codigo`, `concepto`, `descripcion`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id]);
+      $data = $q->fetch(PDO::FETCH_ASSOC);
+      
+      Database::disconnect();
+  }
+
+  $origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+  $urlVolver = "listarMateriales.php";
+
+  if ($origen == 'pedidos') {
+      $urlVolver = "listarPedidos.php";
+  }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -186,7 +192,7 @@
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-						<a onclick="document.location.href='listarMateriales.php'" class="btn btn-light">Volver</a>
+                        <a href="<?=$urlVolver?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
