@@ -1,61 +1,140 @@
-<?php
+<?php   
+    $modoDebug = 0;
+
     require("config.php");
     if (empty($_SESSION['user'])) {
-        header("Location: index.php");
-        die("Redirecting to index.php");
+        if ($modoDebug == 0) {
+            header("Location: index.php");
+            die("Redirecting to index.php");
+        }
     }
-    
+
     require 'database.php';
-    
+
     if (!empty($_POST)) {
-        
-        // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		
-		$sql = "SELECT c.`id`, c.`nro_revision`, t.`estructura`, s.nombre, t.id idtarea, s.id idsitio FROM `computos` c inner join tareas t on t.id = c.`id_tarea` inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE c.`aprobado` = 1 and c.`id_estado` <> 6 and c.`id` = ? ";
-		$q = $pdo->prepare($sql);
-		$q->execute([$_POST["id_computo"]]);
-		$data2 = $q->fetch(PDO::FETCH_ASSOC);
-		
-		$sql = "INSERT INTO `egresos`(`fecha_hora`, `id_tipo_egreso`, `nro`, `id_cuenta_retira`, `id_sitio_destino`, `id_tarea`, `observaciones`) VALUES (now(),2,?,?,?,?,?)";
-		$q = $pdo->prepare($sql);		   
-		$q->execute([$_POST["id_computo"],$_POST['id_cuenta_retira'],$data2['idsitio'],$data2['idtarea'],$_POST['observaciones']]);
-		$idEgreso = $pdo->lastInsertId();
-		
-		$sql = " SELECT d.`id`, m.codigo, m.`concepto`, ca.categoria, d.`cantidad`, u.unidad_medida, d.id_material, u.id FROM `computos_detalle` d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = m.id_unidad_medida inner join categorias ca on ca.id = m.id_categoria WHERE d.`cancelado` = 0 and d.`aprobado` = 1 and d.id_computo = ".$_POST["id_computo"];
-		foreach ($pdo->query($sql) as $row) {
-			/*$sql = "update `stock` set `reservado` = `reservado` - ? where id_material = ?";	
-			$q = $pdo->prepare($sql);
-			$q->execute([$row[4],$row[6]]);*/
-			
-			$sql = "SELECT cd.precio,cd.precio*cd.cantidad subtotal from compras_detalle cd inner join compras c on c.id = cd.id_compra inner join pedidos p on p.id = c.id_pedido inner join computos co on co.id = p.id_computo where cd.id_material = ? and p.id_computo = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$row[6],$_POST["id_computo"]]);
-			$data2 = $q->fetch(PDO::FETCH_ASSOC);
-			
-			if (!empty($data2)) {
-				$precio = $data2['precio'];
-				$subtotal = $data2['subtotal']; 
-			} else {
-				$precio = 0;
-				$subtotal = 0; 
-			}
-			
-			$sql = "INSERT INTO egresos_detalle (id_egreso, id_material, id_unidad_medida, cantidad, precio, subtotal) VALUES (?,?,?,?,?,?)";
-			$q = $pdo->prepare($sql);		   
-			$q->execute([$idEgreso,$row[6],$row[7],$row[4],$precio,$subtotal]);
-			
-		}
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo egreso de stock de cómputo','Egresos','verEgreso.php?id=$id')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
-		
-		
-		Database::disconnect();
-        header("Location: listarEgresos.php");
+
+        try {
+            $pdo->beginTransaction();
+
+            $sql = "SELECT c.`id`, c.`nro_revision`, t.`estructura`, s.nombre, t.id idtarea, s.id idsitio, p.id AS id_proyecto 
+                    FROM `computos` c 
+                    INNER JOIN tareas t on t.id = c.`id_tarea` 
+                    INNER JOIN proyectos p on p.id = t.id_proyecto 
+                    INNER JOIN sitios s on s.id = p.id_sitio 
+                    WHERE c.`id_estado` <> 6 and c.`id` = ? ";
+            $q = $pdo->prepare($sql);
+            $q->execute([$_POST["id_computo"]]);
+            $data2 = $q->fetch(PDO::FETCH_ASSOC);
+
+            if (!$data2) throw new Exception("No se encontró el cómputo.");
+
+            $sql = "INSERT INTO `egresos`(`fecha_hora`, `id_tipo_egreso`, `nro`, `id_cuenta_retira`, `id_sitio_destino`, `id_tarea`, `id_proyecto`, `observaciones`) 
+                    VALUES (now(), 2, ?, ?, ?, ?, ?, ?)";
+            $q = $pdo->prepare($sql);		   
+            $q->execute([
+                $_POST["id_computo"],
+                $_POST['id_cuenta_retira'],
+                $data2['idsitio'],
+                $data2['idtarea'],
+                $data2['id_proyecto'],
+                $_POST['observaciones']
+            ]);
+            $idEgreso = $pdo->lastInsertId();
+
+            $sqlDet = "SELECT d.`id`, m.codigo, m.`concepto`, d.`cantidad`, u.unidad_medida, d.id_material, u.id as id_unidad_medida 
+                    FROM `computos_detalle` d 
+                    INNER JOIN materiales m on m.id = d.id_material 
+                    INNER JOIN unidades_medida u on u.id = m.id_unidad_medida 
+                    WHERE d.`cancelado` = 0 and d.`aprobado` = 1 and d.id_computo = ?";
+            $qDet = $pdo->prepare($sqlDet);
+
+            $sqlStock = "SELECT id, saldo, id_unidad_medida, saldo 
+                        FROM ingresos_detalle 
+                        WHERE id_material = ? AND saldo > 0 
+                        ORDER BY id ASC";
+            $qStock = $pdo->prepare($sqlStock);
+
+            $sqlUpdIngreso = "UPDATE ingresos_detalle 
+                            SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? 
+                            WHERE id = ?";
+            $qUpdIngreso = $pdo->prepare($sqlUpdIngreso);
+
+            $sqlInsEgresoDet = "INSERT INTO egresos_detalle (id_egreso, id_material, id_detalle_ingreso, id_unidad_medida, cantidad, cantidad_reservada, cantidad_efectivizada, precio, subtotal) 
+                                VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)";
+            $qInsEgresoDet = $pdo->prepare($sqlInsEgresoDet);
+
+            $sqlUpdComputo = "UPDATE computos_detalle SET reservado = reservado + ? WHERE id = ?";
+            $qUpdComputo = $pdo->prepare($sqlUpdComputo);
+
+            $sqlPrecio = "SELECT cd.precio FROM compras_detalle cd 
+                        INNER JOIN compras c on c.id = cd.id_compra 
+                        INNER JOIN pedidos p on p.id = c.id_pedido 
+                        WHERE cd.id_material = ? AND p.id_computo = ? LIMIT 1"; 
+            $qPrecio = $pdo->prepare($sqlPrecio);
+
+            $qDet->execute([$_POST["id_computo"]]);
+
+            while ($row = $qDet->fetch(PDO::FETCH_ASSOC)) {
+                $idMaterial = $row['id_material'];
+                $cantRequerida = (double)$row['cantidad']; 
+                $idComputoDetalle = $row['id'];
+                $nombreMaterial = $row['concepto'];
+                
+                $qUpdComputo->execute([$cantRequerida, $idComputoDetalle]);
+
+                $qPrecio->execute([$idMaterial, $_POST["id_computo"]]);
+                $dPrecio = $qPrecio->fetch(PDO::FETCH_ASSOC);
+                $precioUnitario = $dPrecio ? $dPrecio['precio'] : 0;
+
+                $qStock->execute([$idMaterial]);
+                
+                $cantPendiente = $cantRequerida;
+
+                while ($cantPendiente > 0.00001 && $lote = $qStock->fetch(PDO::FETCH_ASSOC)) {
+                    $idIngresoDetalle = $lote['id'];
+                    $saldoLote = (double)$lote['saldo'];
+                    $unidadMedidaLote = $lote['id_unidad_medida'];
+
+                    $tomar = min($cantPendiente, $saldoLote);
+                    $subtotal = $tomar * $precioUnitario;
+
+                    $qInsEgresoDet->execute([
+                        $idEgreso,
+                        $idMaterial,
+                        $idIngresoDetalle,
+                        $unidadMedidaLote,
+                        $tomar,
+                        $tomar,
+                        $precioUnitario,
+                        $subtotal
+                    ]);
+
+                    $qUpdIngreso->execute([$tomar, $tomar, $idIngresoDetalle]);
+
+                    $cantPendiente -= $tomar;
+                }
+
+                if ($cantPendiente > 0.00001) {
+                    throw new Exception("Stock Insuficiente para el material: '{$nombreMaterial}'. Se requieren {$cantRequerida}, pero solo hay disponible " . ($cantRequerida - $cantPendiente) . ".");
+                }
+            }
+            
+            $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo egreso de stock de cómputo','Egresos','verEgreso.php?id=$idEgreso')";
+            $q = $pdo->prepare($sql);
+            $q->execute(array($_SESSION['user']['id']));
+            
+            $pdo->commit();
+            Database::disconnect();
+            header("Location: listarEgresos.php");
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            Database::disconnect();
+            $error = $e->getMessage();
+        }
     }
-    
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -83,9 +162,21 @@
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
-                  </div>
+                    <div class="card-header">
+                        <h5><?=$ubicacion?></h5>
+                    </div>
+                    <?php if (isset($error)) { ?>
+                        <div class="card-body" style="padding-bottom: 0px;">
+                            <div class="alert alert-danger inverse alert-dismissible fade show" role="alert">
+                                <p><b>No se pudo realizar el egreso:</b></p>
+                                <p><?php echo $error; ?></p>
+                                <button class="close" type="button" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">×</span>
+                                </button>
+                            </div>
+                        </div>
+                    <?php } 
+                ?>
 				<form class="form theme-form" role="form" method="post" action="nuevoEgresoComputo.php">
                     <div class="card-body">
                       <div class="row">

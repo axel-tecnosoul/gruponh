@@ -390,12 +390,38 @@ if (!empty($_POST)) {
                       </script>
                     </div>
                     <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3"><?php
-                        if(tienePermiso(305)){?>
-                          <button type="button" class="btn btn-warning" id="reservado-masivo" onclick="procesarIngreso(1)">Marcar Reservados</button>&nbsp;
-                          <button type="button" class="btn btn-danger" id="disponible-masivo" onclick="procesarIngreso(0)">Marcar Disponibles</button><?php
-                        }?>
-                        <a href="#" onclick="document.location.href='listarCompras.php'" class="btn btn-light">Volver</a>
+                      <div class="card-footer">
+                        <div class="col-sm-12 text-center">
+                          <?php if(tienePermiso(305)){ ?>
+                            <div class="form-group mb-4">
+                              <label class="font-weight-bold mr-3">Seleccione el destino de los materiales:</label>
+                              <div class="btn-group btn-group-toggle" data-toggle="buttons">
+                                
+                                <label class="btn btn-outline-primary active">
+                                  <input type="radio" name="destino_seleccionado" value="0" autocomplete="off" checked> 
+                                  <i class="fa fa-cubes"></i> Poner en Stock
+                                </label>
+
+                                <label class="btn btn-outline-warning">
+                                  <input type="radio" name="destino_seleccionado" value="1" autocomplete="off"> 
+                                  <i class="fa fa-lock"></i> Reservar
+                                </label>
+
+                                <label class="btn btn-outline-success">
+                                  <input type="radio" name="destino_seleccionado" value="2" autocomplete="off"> 
+                                  <i class="fa fa-building"></i> Ingresar en Obra
+                                </label>
+                              </div>
+                            </div>
+
+                            <button type="button" class="btn btn-primary btn-lg" onclick="procesarIngreso()">
+                              <i class="fa fa-check"></i> Confirmar Ingreso
+                            </button>
+
+                          <?php } ?>
+                          &nbsp;
+                          <a href="#" onclick="document.location.href='listarCompras.php'" class="btn btn-light">Volver</a>
+                        </div>
                       </div>
                     </div>
                   </form>
@@ -533,12 +559,20 @@ if (!empty($_POST)) {
         var table = $('#dataTables-example667').DataTable();
       } );
 
-      function procesarIngreso(tipoReservado) {
+      function procesarIngreso() {
         const form = document.form1;
+        
+        const destinoInput = document.querySelector('input[name="destino_seleccionado"]:checked');
+        if (!destinoInput) {
+          alert("Por favor seleccione un destino para los materiales.");
+          return;
+        }
+        const idDestino = destinoInput.value;
+
         const inputFecha = form.querySelector('input[name="fecha_remito"]');
         const inputNro = form.querySelector('input[name="nro_remito"]');
 
-        if (tipoReservado == 1) {
+        if (idDestino == 1) {
             inputFecha.removeAttribute('required');
             inputNro.setAttribute('required', '');
         } else {
@@ -566,7 +600,7 @@ if (!empty($_POST)) {
         }
         
         const originalAction = form.action;
-        form.action = 'marcarItemsEntregadoCompra.php?id=<?=$id?>&reservado=' + tipoReservado;
+        form.action = 'marcarItemsEntregadoCompra.php?id=<?=$id?>&destino=' + idDestino;
         
         try {
           form.submit();

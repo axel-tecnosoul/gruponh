@@ -71,25 +71,19 @@ if (!empty($_POST)) {
     $nro=1;
     $id_cuenta_retira=1;
 
-    $sql = "SELECT p.id_sitio FROM ordenes_trabajo otr INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id INNER JOIN proyectos p ON lcr.id_proyecto=p.id WHERE otr.id = ?";
+    $sql = "SELECT p.id_sitio, p.id AS id_proyecto FROM ordenes_trabajo otr INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id INNER JOIN proyectos p ON lcr.id_proyecto=p.id WHERE otr.id = ?";
     $q = $pdo->prepare($sql);
-    // Alineado al uso de id_orden_trabajo
     $q->execute([$_POST["id_orden_trabajo"]]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
 
     $id_sitio=$data["id_sitio"];
+    $id_proyecto=$data["id_proyecto"];
     $id_tarea=null;
     $observaciones="";
 
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
-
-    $sql = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, id_tarea, observaciones) VALUES (now(),$id_tipo_egreso,?,?,?,?,?)";
+    $sql = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, id_tarea, id_proyecto, observaciones) VALUES (now(), ?, ?, ?, ?, ?, ?, ?)";
 		$q = $pdo->prepare($sql);
-		$q->execute([$nro,$id_cuenta_retira,$id_sitio,$id_tarea,$observaciones]);
+		$q->execute([$id_tipo_egreso,$nro,$id_cuenta_retira,$id_sitio,$id_tarea,$id_proyecto,$observaciones]);
 		$idEgreso = $pdo->lastInsertId();
 
     if ($modoDebug==1) {
@@ -104,12 +98,6 @@ if (!empty($_POST)) {
 			$q = $pdo->prepare($sql);
 			$q->execute([$value["id_material"],$value["id_colada"]]);
 			$data2 = $q->fetch(PDO::FETCH_ASSOC);
-
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
 			
 			if (!empty($data2)) {
 				$precio = $data2['precio'];
@@ -119,9 +107,9 @@ if (!empty($_POST)) {
 				$subtotal = 0; 
 			}
 			
-			$sql = "INSERT INTO egresos_detalle (id_egreso, id_detalle_ingreso, id_material, id_unidad_medida, cantidad, precio, subtotal) VALUES (?,?,?,?,?,?,?)";
+			$sql = "INSERT INTO egresos_detalle (id_egreso, id_detalle_ingreso, id_material, id_unidad_medida, cantidad, cantidad_reservada, cantidad_efectivizada, precio, subtotal) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)";
 			$q = $pdo->prepare($sql);
-			$q->execute([$idEgreso,$data2['id'],$value["id_material"],$value["id_unidad_medida"],$value["cantidad"],$precio,$subtotal]);
+			$q->execute([$idEgreso,$data2['id'],$value["id_material"],$value["id_unidad_medida"],$value["cantidad"],$value["cantidad"],$precio,$subtotal]);
 
       if ($modoDebug==1) {
         $q->debugDumpParams();

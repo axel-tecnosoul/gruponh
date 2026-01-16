@@ -31,6 +31,11 @@ if (null==$id) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$destino = isset($_GET['destino']) ? (int)$_GET['destino'] : 0;
+if (isset($_GET['reservado']) && !isset($_GET['destino'])) {
+    $destino = ($_GET['reservado'] == 1) ? 1 : 0;
+}
+
 // Validar que la compra esté en un estado que permita ingreso
 $sqlEstado = "SELECT id_estado_compra, ec.estado FROM compras c LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra WHERE c.id = ?";
 $qEstado = $pdo->prepare($sqlEstado);
@@ -75,7 +80,7 @@ if ($modoDebug == 1) {
   echo "<h3>⚙️ TRANSACCIÓN INICIADA</h3>";
   echo "<h3>Parámetros recibidos:</h3>";
   echo "<b>ID Compra:</b> " . htmlspecialchars($id) . "<br>";
-  echo "<b>Reservado:</b> " . htmlspecialchars($_GET['reservado'] ?? 'No especificado') . "<br>";
+  echo "<b>Destino:</b> " . $destino . " (0=Stock, 1=Reserva, 2=Obra)<br>";
   echo "<h3>POST Data:</h3>";
   echo "<pre>" . print_r($_POST, true) . "</pre>";
 }
@@ -96,6 +101,7 @@ if (empty($_POST['id_compra_detalle']) || !is_array($_POST['id_compra_detalle'])
 
 $count = 1;
 $idIngreso = 0;
+$idEgresoReserva = 0;
 
 try {
   // Obtener datos básicos de la compra una sola vez
@@ -125,7 +131,7 @@ try {
     
     if ($cantidadIngresar > 0) {
       // Obtener datos específicos de este item
-      $sqlItem = "SELECT cd.id, cd.id_material, cd.cantidad, cd.id_unidad_medida, cd.entregado, pd.id as idPedidoDetalle FROM compras_detalle cd INNER JOIN pedidos_detalle pd ON pd.id_pedido = ? AND pd.id_material = cd.id_material AND pd.cancelado = 0 WHERE cd.id = ?";
+      $sqlItem = "SELECT cd.id, cd.id_material, cd.cantidad, cd.id_unidad_medida, cd.entregado, cd.precio, pd.id as idPedidoDetalle FROM compras_detalle cd INNER JOIN pedidos_detalle pd ON pd.id_pedido = ? AND pd.id_material = cd.id_material AND pd.cancelado = 0 WHERE cd.id = ?";
       $paramsItem = [$compraData['id_pedido'], $idCompraDetalle];
       if ($modoDebug == 1) {
         echo "<b>Datos del item ID: $idCompraDetalle:</b><br>" . debugQuery($pdo, $sqlItem, $paramsItem) . "<br><br>";
@@ -143,6 +149,7 @@ try {
       
       $idMaterial = $itemData['id_material'];
       $idPedidoDetalle = $itemData['idPedidoDetalle'];
+      $precioMaterial = $itemData['precio'];
 
       if ($modoDebug == 1) {
         echo "<h3>🔄 Procesando Item ID: $idCompraDetalle</h3>";
@@ -152,14 +159,13 @@ try {
         echo "<b>ID Pedido Detalle:</b> $idPedidoDetalle<br>";
         echo "<b>ID Cómputo:</b> " . ($idComputo ?? 'NULL (Pedido Directo)') . "<br>";
       }
-
       $sql = "UPDATE compras_detalle SET entregado = entregado + ? WHERE id = ?";
       $params = [$cantidadIngresar, $idCompraDetalle];
       if ($modoDebug == 1) {
         echo "<b>✅ SQL 1 - Actualizar compras_detalle:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
       }
       $q = $pdo->prepare($sql);
-      $q->execute($params);
+      $q->execute([$cantidadIngresar, $idCompraDetalle]);
       if ($modoDebug == 1) {
         echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br><br>";
       }
@@ -173,65 +179,15 @@ try {
       // El pedido mantiene estado "Gestionando" (4) hasta completarse
       
       $sql = "UPDATE compras set id_estado_compra = 6 where id = ?";
+      
       $params = [$_GET['id']];
       if ($modoDebug == 1) {
         echo "<b>✅ SQL 2 - Actualizar estado compra:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
       }
       $q = $pdo->prepare($sql);
-      $q->execute($params);
+      $q->execute([$_GET['id']]);
       if ($modoDebug == 1) {
         echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br><br>";
-      }
-      
-      // Solo actualizar cómputos si existe un cómputo asociado (no es pedido directo)
-      if ($idComputo) {
-        if ($modoDebug == 1) {
-          echo "<b>📊 Actualizando cómputos (ID: $idComputo)</b><br>";
-        }
-        
-        if ($_GET['reservado'] == 0) {
-          // Actualizar directamente computos_detalle usando el idComputo ya obtenido
-          $sql = "UPDATE computos_detalle SET comprado = comprado - ? WHERE id_computo = ? AND id_material = ? AND cancelado = 0";
-          $params = [$cantidadIngresar, $idComputo, $idMaterial];
-          if ($modoDebug == 1) {
-            echo "<b>✅ SQL 3 - Descontar de comprado (disponibles):</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
-          }
-          $q = $pdo->prepare($sql);
-          $q->execute($params);
-          if ($modoDebug == 1) {
-            echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br><br>";
-          }
-        } else {
-          // Actualizar computos_detalle directamente usando el idComputo ya obtenido  
-          $sql = "UPDATE computos_detalle SET comprado = comprado - ?, reservado = reservado + ? WHERE id_computo = ? AND id_material = ? AND cancelado = 0";
-          $params = [$cantidadIngresar, $cantidadIngresar, $idComputo, $idMaterial];
-          if ($modoDebug == 1) {
-            echo "<b>✅ SQL 3 - Actualizar computos (reservado):</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
-          }
-          $q = $pdo->prepare($sql);
-          $q->execute($params);
-          if ($modoDebug == 1) {
-            echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br><br>";
-          }
-        }
-      } else {
-        if ($modoDebug == 1) {
-          echo "<b>⚠️ Sin cómputo asociado - Saltando actualización de computos_detalle</b><br><br>";
-        }
-      }
-      
-      // Actualizar reservado en pedidos_detalle si corresponde (independiente de si hay cómputo)
-      if ($_GET['reservado'] == 1) {
-        $sql = "UPDATE pedidos_detalle SET reservado = reservado + ? WHERE id = ?";
-        $params = [$cantidadIngresar, $idPedidoDetalle];
-        if ($modoDebug == 1) {
-          echo "<b>✅ SQL 4 - Actualizar reservado pedidos_detalle:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
-        }
-        $q = $pdo->prepare($sql);
-        $q->execute($params);
-        if ($modoDebug == 1) {
-          echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br><br>";
-        }
       }
       
       if ($count == 1) {
@@ -253,34 +209,97 @@ try {
       }
       
       $sql3 = "SELECT s.nro_sitio,s.nro_subsitio,p.nro from pedidos pe inner join proyectos p on p.id = pe.id_proyecto inner join sitios s on s.id = p.id_sitio where pe.id = ? ";
-      $params3 = [$idPedido];
-      if ($modoDebug == 1) {
-        echo "<b>✅ SQL 6 - Consultar datos proyecto:</b><br>" . debugQuery($pdo, $sql3, $params3) . "<br>";
-      }
+
       $q3 = $pdo->prepare($sql3);
-      $q3->execute($params3);
+      $q3->execute([$idPedido]);
       $data3 = $q3->fetch(PDO::FETCH_ASSOC);
-      
-      if ($modoDebug == 1) {
-        echo "<b>Resultado:</b> " . print_r($data3, true) . "<br>";
-      }
-      
       $colada = $data3['nro_sitio']."/".$data3['nro_subsitio']."/".$data3['nro']."-".$count;
-      
-      if ($modoDebug == 1) {
-        echo "<b>Colada generada:</b> $colada<br>";
-      }
       
       $sql = "INSERT into ingresos_detalle (id_ingreso, id_material, id_unidad_medida, cantidad, saldo, id_compra, id_proveedor,nro_colada_interna) values (?,?,?,?,?,?,?,?)";
       $params = [$idIngreso,$idMaterial,$itemData["id_unidad_medida"],$cantidadIngresar,$cantidadIngresar,$_GET['id'],$compraData["id_cuenta_proveedor"],$colada];
-      if ($modoDebug == 1) {
-        echo "<b>✅ SQL 7 - Insertar ingreso_detalle:</b><br>" . debugQuery($pdo, $sql, $params) . "<br>";
-      }
       $q = $pdo->prepare($sql);
       $q->execute($params);
-      if ($modoDebug == 1) {
-        echo "<b>Filas afectadas:</b> " . $q->rowCount() . "<br>";
-        echo "<hr>";
+      
+      $idIngresoDetalleReal = $pdo->lastInsertId(); 
+
+
+      if ($idComputo) {
+        
+        $sql = "UPDATE computos_detalle SET comprado = comprado - ? WHERE id_computo = ? AND id_material = ? AND cancelado = 0";
+        $q = $pdo->prepare($sql);
+        $q->execute([$cantidadIngresar, $idComputo, $idMaterial]);
+
+            if ($destino == 1) {
+                $sql = "UPDATE computos_detalle SET reservado = reservado + ? WHERE id_computo = ? AND id_material = ? AND cancelado = 0";
+                $q = $pdo->prepare($sql);
+                $q->execute([$cantidadIngresar, $idComputo, $idMaterial]);
+            }
+      }
+      if ($destino > 0) {
+        
+            if ($idEgresoReserva == 0) {
+            
+            $id_sitio_destino = null;
+            $id_tarea = null;
+            $id_proyecto = null;
+
+            if ($idComputo) {
+                $sqlInfo = "SELECT t.id_proyecto, p.id_sitio, t.id AS id_tarea FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto WHERE c.id = ?";
+                $qInfo = $pdo->prepare($sqlInfo);
+                $qInfo->execute([$idComputo]);
+                $info = $qInfo->fetch(PDO::FETCH_ASSOC);
+                
+                if($info){
+                    $id_sitio_destino = $info['id_sitio'];
+                    $id_tarea = $info['id_tarea'];
+                    $id_proyecto = $info['id_proyecto'];
+                }
+            } 
+            
+            if (empty($id_sitio_destino)) {
+                $sqlInfo = "SELECT p.id as id_proyecto, p.id_sitio FROM pedidos pe INNER JOIN proyectos p ON p.id = pe.id_proyecto WHERE pe.id = ?";
+                $qInfo = $pdo->prepare($sqlInfo);
+                $qInfo->execute([$idPedido]);
+                $info = $qInfo->fetch(PDO::FETCH_ASSOC);
+
+                if($info){
+                    $id_sitio_destino = $info['id_sitio'];
+                    $id_proyecto = $info['id_proyecto'];
+                }
+            }
+
+                $obsEgreso = ($destino == 1) ? 'Reserva desde ingreso OC' : 'Directo a obra desde OC';
+
+                $sqlEgresoCab = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, id_tarea, id_proyecto, observaciones) VALUES (NOW(), 2, ?, ?, ?, ?, ?, ?)";
+                $stmtCab = $pdo->prepare($sqlEgresoCab);
+                $stmtCab->execute([$idPedido, $compraData['id_cuenta_recibe'], $id_sitio_destino, $id_tarea, $id_proyecto, $obsEgreso]);
+                $idEgresoReserva = $pdo->lastInsertId();
+            }
+
+            $cantReservada = ($destino == 1) ? $cantidadIngresar : 0;
+            $cantEfectivizada = ($destino == 2) ? $cantidadIngresar : 0;
+            $subtotalEgreso = $precioMaterial * $cantidadIngresar;
+
+            $sqlInsEgresoDet = "INSERT INTO egresos_detalle 
+                                (id_egreso, id_material, id_detalle_ingreso, id_unidad_medida, cantidad, cantidad_reservada, cantidad_efectivizada, precio, subtotal) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            
+            $paramsDet = [$idEgresoReserva, $idMaterial, $idIngresoDetalleReal, $itemData['id_unidad_medida'], $cantidadIngresar, $cantReservada, $cantEfectivizada, $precioMaterial, $subtotalEgreso];
+            
+            $stmtInsEgresoDet = $pdo->prepare($sqlInsEgresoDet);
+            $stmtInsEgresoDet->execute($paramsDet);
+            $sqlUpdIngreso = "UPDATE ingresos_detalle 
+                          SET cantidad_egresada = cantidad_egresada + ?, 
+                              saldo = saldo - ? 
+                          WHERE id = ?";
+        $qUpd = $pdo->prepare($sqlUpdIngreso);
+        $qUpd->execute([$cantidadIngresar, $cantidadIngresar, $idIngresoDetalleReal]);
+      }
+      
+      if ($destino == 1) {
+        $sql = "UPDATE pedidos_detalle SET reservado = reservado + ? WHERE id = ?";
+        $q = $pdo->prepare($sql);
+        $q->execute([$cantidadIngresar, $idPedidoDetalle]);
       }
       
       $count++;
@@ -449,3 +468,4 @@ if ($modoDebug == 0) {
   echo "<h3>🔚 PROCESO COMPLETADO</h3>";
   echo "<p><b>En modo normal se redirigiría a:</b> listarCompras.php</p>";
 }
+?>
