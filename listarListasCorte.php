@@ -636,7 +636,7 @@ if($prodQuery){
         const filaActiva = $("#dataTables-example666 tbody tr.selected");
         const numeroLc = filaActiva.data("numero-lc");
         const revision = parseInt(filaActiva.data("nro-revision"),10);
-        let maxRevision = revision;
+/*         let maxRevision = revision;
         table.rows().every(function(){
           const tr = $(this.node());
           if(tr.data("numero-lc") == numeroLc){
@@ -649,7 +649,7 @@ if($prodQuery){
         if(revision < maxRevision){
           alert("Hay revisiones más recientes generadas para la lista de corte.");
           return;
-        }
+        } */
         const estado = getEstadoListaCorteSeleccionada();
         if(estado && (estado.id === 3 || estado.id === 4)){
           hrefToRedirect = this.href;

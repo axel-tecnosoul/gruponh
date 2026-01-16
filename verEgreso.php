@@ -177,24 +177,64 @@
 									  <th>Concepto</th>
 									  <th>Categoría</th>
 									  <th>Unidad Medida</th>
-									  <th>Cantidad</th>
+									  <th>Cant. Total</th>
+									  <th>Reservado</th>
+									  <th>Efectivizado</th>
 									  <th>Precio</th>
 									  <th>Subtotal</th>
+									  <th>Origen</th>
 								  </tr>
 								</thead>
 								<tbody>
 								  <?php
 									$pdo = Database::connect();
-									$sql = " SELECT m.`codigo`, m.`concepto`, cat.`categoria`, um.unidad_medida, ed.`cantidad`, ed.`precio`, ed.`subtotal` FROM `egresos_detalle` ed inner join unidades_medida um on um.id = ed.`id_unidad_medida` inner join egresos e on e.id = ed.`id_egreso` inner join tipos_egreso te on te.id = e.`id_tipo_egreso` inner join cuentas c on c.id = e.`id_cuenta_retira` inner join materiales m on m.id = ed.id_material inner join categorias cat on cat.id = m.`id_categoria` WHERE ed.`id_egreso` = ".$_GET['id'];
-									foreach ($pdo->query($sql) as $row) {
+                    $sql = " SELECT 
+                          m.`codigo`, 
+                          m.`concepto`, 
+                          cat.`categoria`, 
+                          um.unidad_medida, 
+                          ed.`cantidad`, 
+                          ed.`cantidad_reservada`, 
+                          ed.`cantidad_efectivizada`, 
+                          ed.`precio`, 
+                          ed.`subtotal`,
+                          ing.id AS id_ingreso_origen
+                      FROM `egresos_detalle` ed 
+                      INNER JOIN unidades_medida um on um.id = ed.`id_unidad_medida` 
+                      INNER JOIN egresos e on e.id = ed.`id_egreso` 
+                      INNER JOIN tipos_egreso te on te.id = e.`id_tipo_egreso` 
+                      INNER JOIN cuentas c on c.id = e.`id_cuenta_retira` 
+                      INNER JOIN materiales m on m.id = ed.id_material 
+                      INNER JOIN categorias cat on cat.id = m.`id_categoria` 
+                      LEFT JOIN ingresos_detalle idet ON idet.id = ed.id_detalle_ingreso
+                      LEFT JOIN ingresos ing ON ing.id = idet.id_ingreso
+                      WHERE ed.`id_egreso` = ?";
+                    
+										$q = $pdo->prepare($sql);
+										$q->execute([$id]);
+
+										while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
 										echo '<tr>';
-										echo '<td>'. $row[0] . '</td>';
-										echo '<td>'. $row[1] . '</td>';
-										echo '<td>'. $row[2] . '</td>';
-										echo '<td>'. $row[3] . '</td>';
-										echo '<td>'. $row[4] . '</td>';
-										echo '<td>$'. number_format($row[5],2) . '</td>';
-										echo '<td>$'. number_format($row[6],2) . '</td>';
+										echo '<td>'. $row['codigo'] . '</td>';
+										echo '<td>'. $row['concepto'] . '</td>';
+										echo '<td>'. $row['categoria'] . '</td>';
+										echo '<td>'. $row['unidad_medida'] . '</td>';
+										echo '<td>'. $row['cantidad'] . '</td>';
+										echo '<td>'. $row['cantidad_reservada'] . '</td>';
+										echo '<td>'. $row['cantidad_efectivizada'] . '</td>';
+										echo '<td>$'. number_format($row['precio'],2) . '</td>';
+										echo '<td>$'. number_format($row['subtotal'],2) . '</td>';
+                        
+                        echo '<td class="text-center">';
+                        if (!empty($row['id_ingreso_origen']) && $row['id_ingreso_origen'] != 0) {
+                            echo '<a href="verIngreso.php?id='.$row['id_ingreso_origen'].'" target="_blank" class="btn btn-primary btn-xs" title="Ver Ingreso Origen">';
+                            echo '<i class="fa fa-external-link"></i> Ingreso #'.$row['id_ingreso_origen'];
+                            echo '</a>';
+                        } else {
+                            echo '<span class="badge badge-secondary">Stock Histórico</span>';
+                        }
+										echo '</td>';
+                        
 										echo '</tr>';
 									}
 								   Database::disconnect();

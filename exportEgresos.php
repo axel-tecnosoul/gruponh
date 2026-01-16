@@ -27,7 +27,9 @@ include 'database.php';
 							  <th>Concepto</th>
 							  <th>Categoría</th>
 							  <th>Unidad Medida</th>
-							  <th>Cantidad</th>
+							  <th>Cant. Total</th>
+							  <th>Reservado</th>
+							  <th>Efectivizado</th>
 							  <th>Observaciones</th>
 		                </tr>
 		              </thead>
@@ -35,7 +37,7 @@ include 'database.php';
 		              <?php     
 						$pdo = Database::connect();
 								 
-						$sql = " SELECT ed.id, e.fecha_hora, te.tipo, e.nro, c.nombre, s.nombre, t.estructura, e.observaciones, m.codigo, m.concepto, cat.categoria, um.unidad_medida, ed.cantidad, p.nombre, te.id FROM egresos_detalle ed inner join unidades_medida um on um.id = ed.id_unidad_medida inner join egresos e on e.id = ed.id_egreso inner join tipos_egreso te on te.id = e.id_tipo_egreso inner join cuentas c on c.id = e.id_cuenta_retira inner join materiales m on m.id = ed.id_material inner join categorias cat on cat.id = m.id_categoria inner join sitios s on s.id = e.id_sitio_destino left join tareas t on t.id = e.id_tarea left join proyectos p on p.id = e.id_proyecto WHERE 1 ";
+						$sql = " SELECT ed.id, e.fecha_hora, te.tipo, e.nro, c.nombre, s.nombre, t.estructura, e.observaciones, m.codigo, m.concepto, cat.categoria, um.unidad_medida, ed.cantidad, ed.cantidad_reservada, ed.cantidad_efectivizada, p.nombre, te.id FROM egresos_detalle ed inner join unidades_medida um on um.id = ed.id_unidad_medida inner join egresos e on e.id = ed.id_egreso inner join tipos_egreso te on te.id = e.id_tipo_egreso inner join cuentas c on c.id = e.id_cuenta_retira inner join materiales m on m.id = ed.id_material inner join categorias cat on cat.id = m.id_categoria inner join sitios s on s.id = e.id_sitio_destino left join tareas t on t.id = e.id_tarea left join proyectos p on p.id = e.id_proyecto WHERE 1 ";
                         foreach ($pdo->query($sql) as $row) {
 							echo '<tr>';
 								echo '<td>'. $row[0] . '</td>';
@@ -44,17 +46,22 @@ include 'database.php';
                 echo '<td>'. $row[3] . '</td>';
                 echo '<td>'. $row[4] . '</td>';
 								echo '<td>'. $row[5] . '</td>';
-								if ($row[14] == 1) {
-									echo '<td>'. $row[13] . '</td>';	
-								} else if ($row[14] == 2) {
-									echo '<td>'. $row[6] . '</td>';	
-								}
-								echo '<td>'. $row[7] . '</td>';
-								echo '<td>'. $row[8] . '</td>';
-								echo '<td>'. $row[9] . '</td>';
-								echo '<td>'. $row[10] . '</td>';
-								echo '<td>'. $row[11] . '</td>';
-								echo '<td>'. $row[12] . '</td>';
+								if ($row[16] == 1) {
+								echo '<td>'. $row[15] . '</td>';    
+							} else if ($row[16] == 2) {
+								echo '<td>'. $row[6] . '</td>';
+							} else {
+								echo '<td></td>';
+							}
+							
+							echo '<td>'. $row[8] . '</td>';
+							echo '<td>'. $row[9] . '</td>';
+							echo '<td>'. $row[10] . '</td>';
+							echo '<td>'. $row[11] . '</td>';
+							echo '<td>'. $row[12] . '</td>';
+							echo '<td>'. $row[13] . '</td>';
+							echo '<td>'. $row[14] . '</td>';				
+							echo '<td>'. $row[7] . '</td>';
 							echo '</tr>';
 					   }
 					   Database::disconnect();

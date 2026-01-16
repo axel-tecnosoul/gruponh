@@ -5,6 +5,7 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+
 $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
 $prodQuery = $prod ? '?prod=' . $prod : '';
 $prodParam = $prod ? '&prod=' . $prod : '';
@@ -19,293 +20,181 @@ if (null==$id) {
 }
 
 if (!empty($_POST)) {
-
-  // insert data
-  /*$pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-  $modoDebug=1;
-
-  if ($modoDebug==1) {
-    $pdo->beginTransaction();
-    //var_dump($_POST);
-    //var_dump($_GET);
-    //var_dump($_FILES);
-  }
-  
-  $sql = "UPDATE computos set id_cuenta_solicitante = ? where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST['id_cuenta_solicitante'],$_GET['id']]);
-
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de computo','Computos','verComputo.php?id=$id$prodParam')";
-  $q = $pdo->prepare($sql);
-  $q->execute(array($_SESSION['user']['id']));
-
-  $pdo->rollBack();
-  
-  Database::disconnect();*/
-
-
-
-  /*$pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-  $modoDebug = 1;
-  $id        = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-  $modoDebug=1;
-
-  if ($modoDebug==1) {
-    var_dump($_POST);
-    var_dump($_GET);
-    var_dump($_FILES);
-    //var_dump($_SESSION);
-  }
-
-  try {
-    if ($modoDebug === 1) {
-      $pdo->beginTransaction();
-    }
-
-    $id_cuenta_solicitante=$_SESSION['user']['id'];
-
-    // 1) UPDATE computo
-    $sql = "UPDATE computos SET id_cuenta_solicitante = ? WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $ok = $q->execute([$id_cuenta_solicitante,$id]);
-    
-    if (!$ok) {
-      throw new Exception("Error al actualizar computo (ID: $id).");
-    }
-
-    // 2) INSERT log
-    $link = "verComputo.php?id={$id}$prodParam";
-    $sql  = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (NOW(), ?, 'Modificación de computo', 'Computos', ?)";
-    $q = $pdo->prepare($sql);
-    $ok = $q->execute([$_SESSION['user']['id'],$link]);
-    
-    if (!$ok) {
-      throw new Exception("Error al insertar log para computo (ID: $id).");
-    }
-
-    // 3) Si todo salió bien, confirmamos
-    if ($modoDebug === 1) {
-      $pdo->rollBack();
-    }else{
-      $pdo->commit();
-    }
-    echo "Operación realizada con éxito.";
-
-  } catch (Exception $e) {
-    // Si hubo cualquier fallo, deshacemos
-    if ($pdo->inTransaction()) {
-      $pdo->rollBack();
-    }
-    // Aquí puedes registrar $e->getMessage() en un log de errores
-    echo "Ocurrió un error. La operación no fue completada. Detalle: " . htmlspecialchars($e->getMessage());
-  } finally {
-    Database::disconnect();
-  }*/
-
-
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $modoDebug=0;
-
-  if ($modoDebug==1) {
-    var_dump($_POST);
-    var_dump($_GET);
-    var_dump($_FILES);
-    //var_dump($_SESSION);
-  }
-
-  $idComputo   = isset($_POST['idComputo']) ? (int) $_POST['idComputo'] : 0;
-  $reservas    = isset($_POST['cantidad_reservar']) ? $_POST['cantidad_reservar'] : [];
-  $pedidos     = isset($_POST['cantidad_pedir'])   ? $_POST['cantidad_pedir']   : [];
-  $userId      = $_SESSION['user']['id'];
+  $idComputo = isset($_POST['idComputo']) ? (int)$_POST['idComputo'] : 0;
+  $pedidos   = isset($_POST['cantidad_pedir']) ? $_POST['cantidad_pedir'] : [];
+  $userId    = $_SESSION['user']['id'];
 
   try {
       $pdo->beginTransaction();
 
-      // 1) Registrar todas las reservas de stock
-      $sqlUpdReserva = "UPDATE computos_detalle SET reservado = reservado + ? WHERE id = ?";
-      $stmtUpd = $pdo->prepare($sqlUpdReserva);
-
-      $c=$c2=0;
-      foreach ($reservas as $idDetalle => $cantRes) {
-        $cantRes = (int) $cantRes;
-        if ($cantRes > 0) {
-          $c++;
-
-          $params = [$cantRes, $idDetalle];
+      // =======================================================================
+      // 1. PROCESAR RESERVAS POR LOTE
+      // =======================================================================
+      if (!empty($_POST['reservas_lote'])) {
           
-          if ($modoDebug == 1) {
-            // Generar y mostrar la consulta “real”
-            $fullSql = debugQuery($pdo, $sqlUpdReserva, $params);
-            echo $fullSql . "<br><br>";
+          $sqlInfo = "SELECT t.id_proyecto, p.id_sitio, t.id AS id_tarea, c.id_cuenta_solicitante 
+                      FROM computos c 
+                      INNER JOIN tareas t ON t.id = c.id_tarea 
+                      INNER JOIN proyectos p ON p.id = t.id_proyecto 
+                      WHERE c.id = ?";
+          $qInfo = $pdo->prepare($sqlInfo);
+          $qInfo->execute([$idComputo]);
+          $infoComputo = $qInfo->fetch(PDO::FETCH_ASSOC);
+
+          if (!$infoComputo) {
+              throw new Exception("No se encontró información del cómputo ID: $idComputo");
           }
+
+          // Definir cuenta retira (si no viene en post, usa la del solicitante)
+          $idCuentaRetira = !empty($_POST['id_cuenta_recibe']) ? $_POST['id_cuenta_recibe'] : $infoComputo['id_cuenta_solicitante'];
+
+          // Cabecera Egreso
+          $sqlEgreso = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, id_tarea, id_proyecto, observaciones) 
+                        VALUES (NOW(), 2, ?, ?, ?, ?, ?, 'Reserva automática desde Cómputo')";
+          $stmtCab = $pdo->prepare($sqlEgreso);
+          $stmtCab->execute([
+              $idComputo, 
+              $idCuentaRetira, 
+              $infoComputo['id_sitio'], 
+              $infoComputo['id_tarea'], 
+              $infoComputo['id_proyecto']
+          ]);
+          $idEgreso = $pdo->lastInsertId();
+
+          // CORRECCION AQUI: Agregamos id_unidad_medida al INSERT y al SELECT
+          $stmtInsDet  = $pdo->prepare("INSERT INTO egresos_detalle (id_egreso, id_material, id_detalle_ingreso, cantidad, cantidad_reservada, id_unidad_medida) VALUES (?, ?, ?, ?, ?, ?)");
+          $stmtUpdIng  = $pdo->prepare("UPDATE ingresos_detalle SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? WHERE id = ?");
+          $stmtUpdComp = $pdo->prepare("UPDATE computos_detalle SET reservado = reservado + ? WHERE id = ?");
           
-          $stmtUpd->execute($params);
-          if ($stmtUpd->rowCount() === 0) {
-            throw new Exception("No se pudo actualizar reserva para detalle $idDetalle.");
-          }else{
-            $c2++;
+          // Buscamos material Y unidad de medida del ingreso
+          $stmtGetMat  = $pdo->prepare("SELECT id_material, id_unidad_medida FROM ingresos_detalle WHERE id = ?");
+
+          $contadorReservas = 0;
+
+          foreach ($_POST['reservas_lote'] as $idCompDet => $lotes) {
+              $totalReservadoItem = 0;
+              foreach ($lotes as $idIngDet => $cant) {
+                  $cant = (float)$cant;
+                  if ($cant > 0) {
+                      $stmtGetMat->execute([$idIngDet]);
+                      $rowMat = $stmtGetMat->fetch(PDO::FETCH_ASSOC);
+
+                      if ($rowMat) {
+                          // Insertamos incluyendo id_unidad_medida
+                          $stmtInsDet->execute([
+                              $idEgreso, 
+                              $rowMat['id_material'], 
+                              $idIngDet, 
+                              $cant, 
+                              $cant, 
+                              $rowMat['id_unidad_medida']
+                          ]);
+                          
+                          $stmtUpdIng->execute([$cant, $cant, $idIngDet]);
+                          
+                          $totalReservadoItem += $cant;
+                          $contadorReservas++;
+                      }
+                  }
+              }
+              if ($totalReservadoItem > 0) {
+                  $stmtUpdComp->execute([$totalReservadoItem, $idCompDet]);
+              }
           }
-        }
+
+          if ($contadorReservas > 0) {
+              $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nueva reserva de stock', 'Computos', ?)")
+                  ->execute([$userId, "verComputo.php?id={$idComputo}$prodParam"]);
+          }
       }
 
-      // si reservamos al menos un detalle y todos los detalles fueron reservados se registra el log de reserva
-      if($c>0 and $c==$c2){
-        // 4) Log de reserva
-        $sqlLogR = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nueva reserva de stock', 'Computos', ?)";
-        $stmtLogR = $pdo->prepare($sqlLogR);
-
-        $params = [$userId, "verComputo.php?id={$idComputo}$prodParam"];
-
-        if ($modoDebug == 1) {
-          // Generar y mostrar la consulta “real”
-          $fullSql = debugQuery($pdo, $sqlLogR, $params);
-          echo $fullSql . "<br><br>";
-        }
-
-        $stmtLogR->execute($params);
-      }
-
-      // 2) Si hay al menos un pedido, creamos cabecera de pedido
+      // =======================================================================
+      // 2. PROCESAR PEDIDOS
+      // =======================================================================
       $tienePedido = false;
-      foreach ($pedidos as $amt) {
-        if ((int)$amt > 0) {
-          $tienePedido = true;
-          break;
-        }
-      }
+      foreach ($pedidos as $amt) { if ((float)$amt > 0) { $tienePedido = true; break; } }
 
       if ($tienePedido) {
-          // Obtener el id_proyecto del cómputo
-          $sqlProyecto = "SELECT t.id_proyecto FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea WHERE c.id = ?";
-          $qProyecto = $pdo->prepare($sqlProyecto);
-          $qProyecto->execute([$idComputo]);
-          $dataProyecto = $qProyecto->fetch(PDO::FETCH_ASSOC);
-          $id_proyecto = $dataProyecto ? $dataProyecto['id_proyecto'] : null;
-
-          // 2.a) Insertar cabecera
-          $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, ?, NOW(), ?, ?, 2)";
-          $params = [$idComputo, $id_proyecto, $_POST['lugar_entrega'], $_POST['id_cuenta_recibe']];
-
-          if ($modoDebug == 1) {
-            // Generar y mostrar la consulta "real"
-            $fullSql = debugQuery($pdo, $sqlInsPedido, $params);
-            echo $fullSql . "<br><br>";
+          $id_proyecto = isset($infoComputo) ? $infoComputo['id_proyecto'] : null;
+          if (!$id_proyecto) {
+              $qP = $pdo->prepare("SELECT t.id_proyecto FROM computos c JOIN tareas t ON t.id=c.id_tarea WHERE c.id=?");
+              $qP->execute([$idComputo]);
+              $id_proyecto = $qP->fetchColumn();
           }
+          
+          $idSolicitantePedido = isset($_SESSION['user']['id_perfil']) ? $_SESSION['user']['id_perfil'] : 0;
 
-          $stmtInsPedido = $pdo->prepare($sqlInsPedido);
-          // Asumo que recibes fecha y lugar_entrega en $_POST:
-          $stmtInsPedido->execute($params);
+          $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_cuenta_solicitante, id_estado) VALUES (?, ?, NOW(), ?, ?, ?, 2)";
+          $pdo->prepare($sqlInsPedido)->execute([
+              $idComputo, 
+              $id_proyecto, 
+              $_POST['lugar_entrega'], 
+              $_POST['id_cuenta_recibe'],
+              $idSolicitantePedido
+          ]);
           $idPedido = $pdo->lastInsertId();
 
-          // 2.b) Insertar detalle de pedido por cada material pedido
-          $sqlInsDetalle = "INSERT INTO pedidos_detalle (id_pedido, id_computo_detalle, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-          $stmtInsDet = $pdo->prepare($sqlInsDetalle);
+          $stmtInsDet = $pdo->prepare("INSERT INTO pedidos_detalle (id_pedido, id_computo_detalle, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+          
+          $sqlRows = "SELECT cd.id AS id_computo_detalle, cd.fecha_necesidad, cd.id_material, cd.reservado, cd.comprado, m.id_unidad_medida FROM computos_detalle cd JOIN materiales m on m.id = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ?";
+          $qRows = $pdo->prepare($sqlRows);
+          $qRows->execute([$idComputo]);
 
-          // Para obtener datos de computos_detalle (id_material, fecha_necesidad, unidad, reservado, comprado)
-          $sqlFetch = "SELECT cd.id AS id_computo_detalle, m.concepto, cd.cantidad, cd.fecha_necesidad, cd.aprobado, cd.id_material, cd.reservado, cd.comprado,SUM(id.saldo) AS disponible,m.id_unidad_medida FROM computos_detalle cd inner join materiales m on m.id = cd.id_material left join ingresos_detalle id on id.id_material = cd.id_material WHERE cd.cancelado = 0 and cd.id_computo = ? GROUP BY cd.id_material";
-          $datos = $pdo->prepare($sqlFetch);
-          $datos->execute([$idComputo]);
-          $rows = $datos->fetchAll(PDO::FETCH_ASSOC);
-
-          foreach ($rows as $r) {
-            $id_computo_detalle = $r['id_computo_detalle'];
-            $cantP = isset($pedidos[$id_computo_detalle]) ? (int)$pedidos[$id_computo_detalle] : 0;
+          foreach ($qRows->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            $cantP = isset($pedidos[$r['id_computo_detalle']]) ? (float)$pedidos[$r['id_computo_detalle']] : 0;
             if ($cantP > 0) {
-
-              $params=[$idPedido,$r['id_computo_detalle'],$r['id_material'],$r['fecha_necesidad'],$cantP,$r['id_unidad_medida'],$r['reservado'],$r['comprado']];
-
-              if ($modoDebug == 1) {
-                // Generar y mostrar la consulta “real”
-                $fullSql = debugQuery($pdo, $sqlInsDetalle, $params);
-                echo $fullSql . "<br><br>";
-              }
-
-              $stmtInsDet->execute($params);
-              if ($stmtInsDet->rowCount() === 0) {
-                throw new Exception("No se pudo insertar detalle de pedido para detalle $id_computo_detalle.");
-              }
+              $stmtInsDet->execute([$idPedido, $r['id_computo_detalle'], $r['id_material'], $r['fecha_necesidad'], $cantP, $r['id_unidad_medida'], $r['reservado'], $r['comprado']]);
             }
           }
 
-          // 2.c) Log de pedido
-          $sqlLogP = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nuevo Pedido', 'Pedidos', ?)";
-          $stmtLogP = $pdo->prepare($sqlLogP);
-
-          $params = [$userId, "verPedido.php?id={$idPedido}"];
-
-          if ($modoDebug == 1) {
-            // Generar y mostrar la consulta “real”
-            $fullSql = debugQuery($pdo, $sqlLogP, $params);
-            echo $fullSql . "<br><br>";
-          }
-
-          $stmtLogP->execute($params);
+          $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, 'Nuevo Pedido', 'Pedidos', ?)")->execute([$userId, "verPedido.php?id={$idPedido}"]);
       }
 
-      // actualizamos el saldo de los detalles del cómputo
+      // =======================================================================
+      // 3. ACTUALIZAR SALDOS Y ESTADO
+      // =======================================================================
       if (!empty($_POST['saldo'])) {
-        // Prepara la consulta para actualizar el nuevo saldo
-        $sqlUpdSaldo = "UPDATE computos_detalle SET saldo = ? WHERE id = ?";
-        $stmtUpdSaldo = $pdo->prepare($sqlUpdSaldo);
-
+        $stmtUpdSaldo = $pdo->prepare("UPDATE computos_detalle SET saldo = ? WHERE id = ?");
         foreach ($_POST['saldo'] as $idDetalle => $saldoActualStr) {
-          $saldoActual = (int) $saldoActualStr;
-          // Si no vienen índices, asumimos 0
-          $cantRes = isset($reservas[$idDetalle]) ? (int)$reservas[$idDetalle] : 0;
-          $cantPed = isset($pedidos[$idDetalle])  ? (int)$pedidos[$idDetalle]  : 0;
-
-          // Calcula el nuevo saldo, jamás negativo
-          $nuevoSaldo = $saldoActual - $cantRes - $cantPed;
-          if ($nuevoSaldo < 0) {
-            $nuevoSaldo = 0;
+          $saldoActual = (float) $saldoActualStr;
+          $cantRes = 0;
+          if (isset($_POST['reservas_lote'][$idDetalle])) {
+              foreach($_POST['reservas_lote'][$idDetalle] as $c) $cantRes += (float)$c;
           }
-          
-          $params = [$nuevoSaldo, $idDetalle];
-
-          if ($modoDebug === 1) {
-            // Generar y mostrar la consulta “real”
-            $fullSql = debugQuery($pdo, $sqlUpdSaldo, $params);
-            echo $fullSql . "<br><br>";
-          }
-
-          $stmtUpdSaldo->execute($params);
-          // No forzamos excepción si rowCount()==0, porque tal vez no haya cambio si ya era 0
+          $cantPed = isset($pedidos[$idDetalle]) ? (float)$pedidos[$idDetalle] : 0;
+          $nuevoSaldo = max($saldoActual - $cantRes - $cantPed, 0);
+          $stmtUpdSaldo->execute([$nuevoSaldo, $idDetalle]);
         }
       }
 
-      $ok=marcarComputoGestionandoOTerminado($pdo, $idComputo, $modoDebug);
-
-      if($ok==0){
-        throw new Exception("Falló la ejecución de la consulta de estado de cómputo.");
+      // Validacion de estado final
+      if (function_exists('marcarComputoGestionandoOTerminado')) {
+          marcarComputoGestionandoOTerminado($pdo, $idComputo, 0);
+      } else {
+          $qSt = $pdo->prepare("SELECT cd.cantidad, cd.reservado, cd.comprado, COALESCE(SUM(pd.cantidad),0) as ped FROM computos_detalle cd LEFT JOIN pedidos p ON p.id_computo=cd.id_computo AND p.anulado=0 LEFT JOIN pedidos_detalle pd ON pd.id_pedido=p.id AND pd.id_material=cd.id_material WHERE cd.id_computo=? AND cd.cancelado=0 GROUP BY cd.id");
+          $qSt->execute([$idComputo]);
+          $finished = true;
+          foreach($qSt->fetchAll() as $r) {
+             if (($r['cantidad'] - $r['reservado'] - $r['comprado'] - $r['ped']) > 0.01) { $finished = false; break; }
+          }
+          $pdo->prepare("UPDATE computos SET id_estado = ? WHERE id = ?")->execute([$finished ? 5 : 2, $idComputo]);
       }
 
-      // 5) Commit
-      if ($modoDebug === 1) {
-        $pdo->rollBack();
-        echo "Operación realizada con éxito.";
-      }else{
-        $pdo->commit();
-      }
+      $pdo->commit();
 
   } catch (Exception $e) {
-      // Rollback y muestra mensaje de error
-      if ($pdo->inTransaction()) {
-          $pdo->rollBack();
-      }
-      echo "Error en la operación: " . htmlspecialchars($e->getMessage());
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      echo "Error: " . $e->getMessage();
+      die(); 
   } finally {
       Database::disconnect();
   }
-
   
   header("Location: verComputo.php?id=".$_GET['id'].$prodParam);
 } else {
   header("Location: listarComputos.php$prodQuery");
 }
+?>

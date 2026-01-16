@@ -210,7 +210,20 @@ $id_estado = $filters['id_estado'] ?? [];
                         <tbody><?php
                           $pdo = Database::connect();
                           // Aseguramos que mo.moneda y c.total estén en la consulta
-                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre AS nombre_proyecto, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido INNER JOIN computos co ON co.id = pe.id_computo INNER JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
+                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') 
+                          AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre 
+                          AS nombre_proyecto, mo.moneda, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') 
+                          AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') 
+                          AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') 
+                          AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra 
+                          FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor 
+                          LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
+                          INNER JOIN pedidos pe ON pe.id = c.id_pedido 
+                          LEFT JOIN computos co ON co.id = pe.id_computo 
+                          LEFT JOIN tareas t ON t.id = co.id_tarea 
+                          INNER JOIN proyectos p ON p.id = pe.id_proyecto 
+                          INNER JOIN sitios s ON s.id = p.id_sitio 
+                          LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
                           $params = [];
                           if (!empty($nro)) {
                             $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";

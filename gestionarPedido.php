@@ -55,6 +55,19 @@ if (!empty($_POST)) {
     }
   }
 
+  if (empty($_POST['id_cuenta_proveedor'])) {
+    $error_message = "Debe seleccionar un Proveedor.";
+  }
+  if (empty($_POST['id_moneda'])) {
+    $error_message = "Debe seleccionar una Moneda.";
+  }
+  if (empty($_POST['id_forma_pago'])) {
+    $error_message = "Debe seleccionar una Forma de Pago.";
+  }
+  if (empty($_POST['fecha_emision'])) {
+    $error_message = "Debe ingresar la Fecha de Emisión.";
+  }
+
   if (empty($error_message)) {
     try {
       // Obtener datos de detalle y pesos para calcular correctamente si el usuario mandó precio x kg
@@ -1197,13 +1210,36 @@ Database::disconnect();
       });
 
       function validarFormularioCompra() {
-        var idMoneda = $("#id_moneda").val();
-        var tipoCambio = $("#tipo_cambio_dia").val();
+        
+        if ($("#id_cuenta_proveedor").val() == "") {
+            alert('Debe seleccionar un Proveedor.');
+            $("#id_cuenta_proveedor").select2('open'); 
+            return false;
+        }
 
+        var idMoneda = $("#id_moneda").val();
+        if (idMoneda == "") {
+            alert('Debe seleccionar una Moneda.');
+            $("#id_moneda").select2('open');
+            return false;
+        }
+
+        var tipoCambio = $("#tipo_cambio_dia").val();
         if (idMoneda == 1 && (tipoCambio == "" || parseFloat(tipoCambio) <= 0)) {
           alert('Debe ingresar un Tipo de Cambio válido para la moneda USD.');
           $("#tipo_cambio_dia").focus();
           return false;
+        }
+        
+        if ($("#id_forma_pago").val() == "") {
+            alert('Debe seleccionar una Forma de Pago.');
+            $("#id_forma_pago").select2('open');
+            return false;
+        }
+        
+        if ($("#id_tipo_iva").val() == "") {
+            alert('Debe seleccionar el tipo de IVA.');
+            return false;
         }
 
         var hayConceptoValido = false;
@@ -1217,7 +1253,7 @@ Database::disconnect();
           
           if (qty > 0) {
             if (prc <= 0 && prcKg <= 0) {
-              alert('Hay items con cantidad pero sin precio.');
+              alert('Hay items con cantidad seleccionada pero sin precio cargado.');
               $(this).focus();
               valid = false;
               return false;
