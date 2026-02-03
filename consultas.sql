@@ -1,0 +1,1 @@
+UPDATE computos_detalle SET reservado = 0 WHERE reservado < 0; -- CORRECCIÓN 1: Normalizar los valores negativos de reservado a 0 por el tema de los negativos

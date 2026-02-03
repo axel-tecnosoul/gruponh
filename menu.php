@@ -1,81 +1,79 @@
 <?php include("permisos.php");?>
 <?php
 function abrirMenu($op) {
-        $current_page = basename($_SERVER['SCRIPT_NAME']);
-        $isProd = isset($_GET['prod']) && $_GET['prod'] == 1;
-	if ($op == "1") {
-		if ($current_page == "dashboard.php") {
-			echo 'class="active"';
-		}
-	} else if ($op == "2") {
-		if (($current_page == "listarSitios.php") || 
-		($current_page == "listarProyectos.php") || 
-		($current_page == "listarProyectosBasico.php")) {
-			echo 'class="active"';
-		}
-	} else if ($op == "3") {
-		if (($current_page == "listarCuentas.php") ||
-		($current_page == "reporteCentrosCosto.php") || 		
-		($current_page == "listarSubcuentas.php") || 
-		($current_page == "listarFacturasVenta.php") || 
-		($current_page == "listarEventos.php") || 
-		($current_page == "listarOrdenesCompraClientes.php") || 
-		($current_page == "listarCertificadosMaestros.php") || 
-		($current_page == "listarRegimenes.php") || 
-		($current_page == "listarPolizas.php") || 
-		($current_page == "listarSucesos.php")) {
-			echo 'class="active"';
-		}
-	} else if ($op == "4") {
-		if ($current_page == "listarPresupuestos.php") {
-			echo 'class="active"';
-		}
-	} else if ($op == "5") {
-		if (($current_page == "listarMateriales.php") || 
-		($current_page == "listarPedidos.php") || 
-		($current_page == "listarCompras.php") || 
-		($current_page == "listarIngresos.php") || 
-		($current_page == "listarFacturasCompra.php")) {
-			echo 'class="active"';
-		}
-        } else if ($op == "6") {
-                if (($current_page == "listarIngresos.php") ||
-                ($current_page == "listarEgresos.php") ||
-                ($current_page == "listarOrdenesTrabajo.php") ||
-                ($current_page == "listarConsumos.php") ||
-                ($current_page == "listarComputos.php" && $isProd) ||
-                ($current_page == "listarColadas.php") ||
-                ($current_page == "listarListasCorte.php" && $isProd) ||
-                ($current_page == "listarPackingList.php" && $isProd)) {
-                        echo 'class="active"';
-                }
-        } else if ($op == "7") {
-                if (($current_page == "listarTareas.php") ||
-                ($current_page == "listarComputos.php" && !$isProd) ||
-                ($current_page == "listarListasCorte.php" && !$isProd) ||
-                ($current_page == "listarPackingList.php" && !$isProd)) {
-                        echo 'class="active"';
-                }
-	} else if ($op == "8") {
-		if ($current_page == "listarDespachos.php") {
-			echo 'class="active"';
-		}
-	} else if ($op == "9") {
-		if (($current_page == "listarUsuarios.php") || 
-		($current_page == "listarPerfiles.php") || 
-		($current_page == "listarPermisos.php")) {
-			echo 'class="active"';
-		}
-	} else if ($op == "10") {
-		if (($current_page == "listarParametros.php") || 
-		($current_page == "listarLogs.php")) {
-			echo 'class="active"';
-		}
-	} else if ($op == "11") {
-		if ($current_page == "informeCompras.php") {
-			echo 'class="active"';
-		}
-	}
+    $current_page = basename($_SERVER['SCRIPT_NAME']);
+    $isProd = isset($_GET['prod']) && $_GET['prod'] == 1;
+    
+    if ($op == "1") {
+        if ($current_page == "dashboard.php") {
+            echo 'class="active"';
+        }
+    } else if ($op == "2") {
+        if (($current_page == "listarSitios.php") || 
+        ($current_page == "listarProyectos.php") || 
+        ($current_page == "listarProyectosBasico.php")) {
+            echo 'class="active"';
+        }
+    } else if ($op == "3") {
+        if (($current_page == "listarCuentas.php") ||
+        ($current_page == "reporteCentrosCosto.php") || 		
+        ($current_page == "listarSubcuentas.php") || 
+        ($current_page == "listarFacturasVenta.php") || 
+        ($current_page == "listarEventos.php") || 
+        ($current_page == "listarOrdenesCompraClientes.php") || 
+        ($current_page == "listarCertificadosMaestros.php") || 
+        ($current_page == "listarRegimenes.php") || 
+        ($current_page == "listarPolizas.php") || 
+        ($current_page == "listarSucesos.php")) {
+            echo 'class="active"';
+        }
+    } else if ($op == "4") {
+        if ($current_page == "listarPresupuestos.php") {
+            echo 'class="active"';
+        }
+    } else if ($op == "5") {
+        if (($current_page == "listarMateriales.php") || 
+        ($current_page == "listarPedidos.php") || 
+        ($current_page == "listarCompras.php") || 
+        ($current_page == "listarIngresos.php") || 
+        ($current_page == "listarFacturasCompra.php") || 
+        ($current_page == "informeCompras.php")) { 
+            echo 'class="active"';
+        }
+    } else if ($op == "6") {
+        if (($current_page == "listarIngresos.php") ||
+        ($current_page == "listarEgresos.php") ||
+        ($current_page == "listarOrdenesTrabajo.php") ||
+        ($current_page == "listarConsumos.php") ||
+        ($current_page == "listarComputos.php" && $isProd) ||
+        ($current_page == "listarColadas.php") ||
+        ($current_page == "listarListasCorte.php" && $isProd) ||
+        ($current_page == "listarPackingList.php" && $isProd)) {
+                echo 'class="active"';
+        }
+    } else if ($op == "7") {
+        if (($current_page == "listarTareas.php") ||
+        ($current_page == "listarComputos.php" && !$isProd) ||
+        ($current_page == "listarListasCorte.php" && !$isProd) ||
+        ($current_page == "listarPackingList.php" && !$isProd)) {
+                echo 'class="active"';
+        }
+    } else if ($op == "8") {
+        if ($current_page == "listarDespachos.php") {
+            echo 'class="active"';
+        }
+    } else if ($op == "9") {
+        if (($current_page == "listarUsuarios.php") || 
+        ($current_page == "listarPerfiles.php") || 
+        ($current_page == "listarPermisos.php")) {
+            echo 'class="active"';
+        }
+    } else if ($op == "10") {
+        if (($current_page == "listarParametros.php") || 
+        ($current_page == "listarLogs.php")) {
+            echo 'class="active"';
+        }
+    } 
 }
 
 ?>
@@ -130,6 +128,7 @@ function abrirMenu($op) {
 				<?php if(tienePermiso(297)){?><li><a href="listarCompras.php"><i class="fa fa-circle"></i>Compras</a></li><?php }?>
 				<?php if(tienePermiso(308)){?><li><a href="listarIngresos.php"><i class="fa fa-circle"></i>Ingresos</a></li><?php }?>
 				<?php if(tienePermiso(334)){?><li><a href="listarFacturasCompra.php"><i class="fa fa-circle"></i>Facturas Compra</a></li><?php }?>
+                <?php if(tienePermiso(297)){?><li><a href="informeCompras.php"><i class="fa fa-circle"></i>Pendientes Compras</a></li><?php }?>
 				</ul>
 			</li>
 			<li <?php abrirMenu(6);?>><a class="sidebar-header" href="#"><i data-feather="layout"></i><span>Producción</span><i class="fa fa-angle-right pull-right"></i></a>
@@ -170,12 +169,6 @@ function abrirMenu($op) {
 					<?php
 					if (tienePermiso(13)) { ?><li><a href="listarParametros.php"><i class="fa fa-circle"></i>Parámetros</a></li><?php }
 					if (tienePermiso(326)){?><li><a href="listarLogs.php"><i class="fa fa-circle"></i>Auditoría</a></li><?php }?>
-				</ul>
-			</li>
-
-			<li <?php abrirMenu(11);?>><a class="sidebar-header" href="#"><i data-feather="bar-chart-2"></i><span>Informe</span><i class="fa fa-angle-right pull-right"></i></a>
-				<ul class="sidebar-submenu">
-					<?php if(tienePermiso(297)){?><li><a href="informeCompras.php"><i class="fa fa-circle"></i>Pendientes Compras</a></li><?php }?>
 				</ul>
 			</li>
 		</ul>

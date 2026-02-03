@@ -18,6 +18,18 @@
         try {
             $pdo->beginTransaction();
 
+            $idCuentaRetira = isset($_POST['id_cuenta_retira']) ? (int)$_POST['id_cuenta_retira'] : 0;
+            
+            if ($idCuentaRetira <= 0) {
+                throw new Exception("Debe seleccionar quién retira el material.");
+            }
+            
+            $stmtVerifyCuenta = $pdo->prepare("SELECT id FROM cuentas WHERE id = ? AND activo = 1");
+            $stmtVerifyCuenta->execute([$idCuentaRetira]);
+            if (!$stmtVerifyCuenta->fetchColumn()) {
+                throw new Exception("La cuenta seleccionada no es válida o no está activa.");
+            }
+
             $sql = "SELECT c.`id`, c.`nro_revision`, t.`estructura`, s.nombre, t.id idtarea, s.id idsitio, p.id AS id_proyecto 
                     FROM `computos` c 
                     INNER JOIN tareas t on t.id = c.`id_tarea` 
@@ -35,7 +47,7 @@
             $q = $pdo->prepare($sql);		   
             $q->execute([
                 $_POST["id_computo"],
-                $_POST['id_cuenta_retira'],
+                $idCuentaRetira,  // CORRECCIÓN: usar variable verificada
                 $data2['idsitio'],
                 $data2['idtarea'],
                 $data2['id_proyecto'],
@@ -57,7 +69,7 @@
             $qStock = $pdo->prepare($sqlStock);
 
             $sqlUpdIngreso = "UPDATE ingresos_detalle 
-                            SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? 
+                            SET saldo = saldo - ? 
                             WHERE id = ?";
             $qUpdIngreso = $pdo->prepare($sqlUpdIngreso);
 
@@ -111,7 +123,7 @@
                         $subtotal
                     ]);
 
-                    $qUpdIngreso->execute([$tomar, $tomar, $idIngresoDetalle]);
+                    $qUpdIngreso->execute([$tomar, $idIngresoDetalle]);
 
                     $cantPendiente -= $tomar;
                 }

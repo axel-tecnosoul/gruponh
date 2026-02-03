@@ -76,7 +76,9 @@
 			
 			echo '<td>';
             if (!empty($data2)) {
-				echo '<a target="_blank" href="verCompra.php?id='.$data2['id'].'"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Compra" title="Ver Compra"></a>';
+				echo '<a target="_blank" href="verCompra.php?
+				id='.$data2['id'].'"><img src="img/eye.png" width="24" height="15" 
+				border="0" alt="Ver Compra" title="Ver Compra"></a>';
             }
 			echo '</td>';
 			echo '</tr>';

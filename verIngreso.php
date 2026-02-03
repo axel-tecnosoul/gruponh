@@ -162,6 +162,7 @@
                                     <th>Categoría</th>
                                     <th>Unidad Medida</th>
                                     <th>Cantidad</th>
+                                    <th>Efectivizado</th> <!-- Columna Calculada -->
                                     <th>Cantidad egresada</th>
                                     <th>Saldo</th>
                                   </tr>
@@ -169,7 +170,25 @@
                                 <tbody>
                                   <?php
                                   $pdo = Database::connect();
-                                  $sql = " SELECT m.codigo, m.concepto, cat.categoria, um.unidad_medida, id.cantidad, id.cantidad_egresada, id.saldo FROM ingresos_detalle id inner join unidades_medida um on um.id = id.id_unidad_medida inner join ingresos i on i.id = id.id_ingreso inner join tipos_ingreso ti on ti.id = i.id_tipo_ingreso inner join cuentas c on c.id = i.id_cuenta_recibe inner join materiales m on m.id = id.id_material inner join categorias cat on cat.id = m.id_categoria WHERE id.id_ingreso = ".$_GET['id'];
+                                  
+                                  $sql = " SELECT 
+                                            m.codigo, 
+                                            m.concepto, 
+                                            cat.categoria, 
+                                            um.unidad_medida, 
+                                            id.cantidad, 
+                                            (SELECT IFNULL(SUM(ed.cantidad_efectivizada), 0) FROM egresos_detalle ed WHERE ed.id_detalle_ingreso = id.id) as efectivizado,
+                                            id.cantidad_egresada, 
+                                            id.saldo 
+                                          FROM ingresos_detalle id 
+                                          INNER JOIN unidades_medida um on um.id = id.id_unidad_medida 
+                                          INNER JOIN ingresos i on i.id = id.id_ingreso 
+                                          INNER JOIN tipos_ingreso ti on ti.id = i.id_tipo_ingreso 
+                                          INNER JOIN cuentas c on c.id = i.id_cuenta_recibe 
+                                          INNER JOIN materiales m on m.id = id.id_material 
+                                          INNER JOIN categorias cat on cat.id = m.id_categoria 
+                                          WHERE id.id_ingreso = ".$_GET['id'];
+
                                   foreach ($pdo->query($sql) as $row) {
                                       echo '<tr>';
                                       echo '<td>'. $row[0] . '</td>';
@@ -179,6 +198,7 @@
                                       echo '<td>'. $row[4] . '</td>';
                                       echo '<td>'. $row[5] . '</td>';
                                       echo '<td>'. $row[6] . '</td>';
+                                      echo '<td>'. $row[7] . '</td>';
                                       echo '</tr>';
                                   }
                                   Database::disconnect();

@@ -1,19 +1,50 @@
 <?php
 require("config.php");
 require 'database.php';
+
+if (isset($_POST['action']) && $_POST['action'] == 'get_stock') {
+    ob_clean(); header('Content-Type: application/json');
+    $pdo = Database::connect();
+    $id_proyecto = $_POST['id_proyecto'] ?? 0;
+    
+    $sql = "SELECT id.id AS id_detalle, id.saldo, c.id AS id_colada, c.nro_colada, i.nro, ed.id AS id_egreso_detalle, ed.cantidad_reservada
+            FROM ingresos_detalle id 
+            INNER JOIN ingresos i ON id.id_ingreso = i.id
+            LEFT JOIN coladas c ON id.id_colada = c.id
+            INNER JOIN egresos_detalle ed ON ed.id_detalle_ingreso = id.id
+            INNER JOIN egresos e ON ed.id_egreso = e.id
+            WHERE id.id_material = ? AND ed.cantidad_reservada > 0 AND e.id_proyecto = ?"; 
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['id_material'], $id_proyecto]);
+    $data = [];
+    while($row = $q->fetch(PDO::FETCH_ASSOC)){
+        $colada = !empty($row['nro_colada']) ? $row['nro_colada'] : '(Sin Colada)';
+        $data[] = [
+            'id' => $row['id_detalle'], 
+            'text' => "Ingreso #".$row['nro']." - ".$colada." (Reservado: ".$row['cantidad_reservada'].")", 
+            'id_colada' => $row['id_colada'], 
+            'nro_colada' => $colada,
+            'id_egreso_detalle' => $row['id_egreso_detalle'],
+            'cantidad_reservada' => $row['cantidad_reservada']
+        ];
+    }
+    echo json_encode($data);
+    Database::disconnect();
+    exit;
+}
+
 if (!empty($_POST)) {
     
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $modoDebug=1;
+  $modoDebug=0;
 
   if($modoDebug==1){
     $pdo->beginTransaction();
     var_dump($_POST);
     var_dump($_GET);
-
   }
 
   $redirect="listarConsumos.php";
@@ -21,40 +52,33 @@ if (!empty($_POST)) {
   $nro_revision=0;
   $descripcion="Emision original";
 
-  // Se alinea el uso del id de OT (ya no usamos id_orden_trabajo_revision)
-  $sql = "INSERT INTO consumos (fecha,id_orden_trabajo,nro_revision,descripcion,id_usuario,anulado) VALUES (NOW(),?,?,?,?,0)";
+  $sql = "INSERT INTO consumos (fecha,id_orden_trabajo_revision,nro_revision,descripcion,id_usuario,anulado) VALUES (NOW(),?,?,?,?,0)";
   $q = $pdo->prepare($sql);
   $q->execute([$_POST["id_orden_trabajo"],$nro_revision,$descripcion,$_SESSION["user"]["id"]]);
   $id_consumo = $pdo->lastInsertId();
-
-  if ($modoDebug==1) {
-    $q->debugDumpParams();
-    echo "<br><br>Afe: ".$q->rowCount();
-    echo "<br><br>";
-  }
 
   $aEgresos=[];
   $aIngresos=[];
   foreach ($_POST["id_material"] as $key => $id_material) {
 
     $situacion=$_POST['situacion'][$key];
+    $id_detalle_ingreso = $_POST['id_detalle_ingreso'][$key] ?? null;
+    $id_egreso_detalle = $_POST['id_egreso_detalle'][$key] ?? null;
+
+    $id_colada_val = !empty($_POST['id_colada'][$key]) ? $_POST['id_colada'][$key] : null;
 
     $sql = "INSERT INTO consumos_detalle (id_consumo, id_material, id_colada, situacion, cantidad, id_unidad_medida, observacion) VALUES (?,?,?,?,?,?,?)";
     $q = $pdo->prepare($sql);
-    $q->execute([$id_consumo,$id_material,$_POST['id_colada'][$key],$situacion,$_POST['cantidad'][$key],$_POST['id_unidad_medida'][$key],$_POST['observacion'][$key]]);
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
+    $q->execute([$id_consumo, $id_material, $id_colada_val, $situacion, $_POST['cantidad'][$key], $_POST['id_unidad_medida'][$key], $_POST['observacion'][$key]]);
 
     $aux=[
       "id_material"=>$id_material,
       "id_unidad_medida"=>$_POST['id_unidad_medida'][$key],
       "cantidad"=>$_POST['cantidad'][$key],
-      "id_colada"=>$_POST['id_colada'][$key],
-      "observacion"=>$_POST['observacion'][$key]
+      "id_colada"=>$id_colada_val,
+      "observacion"=>$_POST['observacion'][$key],
+      "id_detalle_ingreso" => $id_detalle_ingreso,
+      "id_egreso_detalle" => $id_egreso_detalle
     ];
     if($situacion=="Consumo"){
       //cargamos los datos para registrar un egreso
@@ -66,113 +90,56 @@ if (!empty($_POST)) {
   }
 
   if(count($aEgresos)>0){
-    //REGISTRAMOS UN EGRESO
-    $id_tipo_egreso=1;//1 -> Lista de Corte
-    $nro=1;
-    $id_cuenta_retira=1;
-
-    $sql = "SELECT p.id_sitio, p.id AS id_proyecto FROM ordenes_trabajo otr INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id INNER JOIN proyectos p ON lcr.id_proyecto=p.id WHERE otr.id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$_POST["id_orden_trabajo"]]);
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-
-    $id_sitio=$data["id_sitio"];
-    $id_proyecto=$data["id_proyecto"];
-    $id_tarea=null;
-    $observaciones="";
-
-    $sql = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, id_tarea, id_proyecto, observaciones) VALUES (now(), ?, ?, ?, ?, ?, ?, ?)";
-		$q = $pdo->prepare($sql);
-		$q->execute([$id_tipo_egreso,$nro,$id_cuenta_retira,$id_sitio,$id_tarea,$id_proyecto,$observaciones]);
-		$idEgreso = $pdo->lastInsertId();
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
+    
+    $sqlUpdEgresoDetalle = "UPDATE egresos_detalle SET cantidad_reservada = cantidad_reservada - ?, cantidad_efectivizada = cantidad_efectivizada + ? WHERE id = ?";
+    $qUpdEgresoDetalle = $pdo->prepare($sqlUpdEgresoDetalle);
+    
+    $sqlUpdIngreso = "UPDATE ingresos_detalle SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? WHERE id = ?";
+    $qUpdIngreso = $pdo->prepare($sqlUpdIngreso);
 		
-		foreach ($aEgresos as $key => $value) {
-			
-			$sql = "SELECT id.id,cd.precio FROM ingresos_detalle id INNER JOIN compras_detalle cd ON id.id_compra=cd.id_compra AND id.id_material=cd.id_material WHERE id.id_material = ? AND id_colada = ?";
-			$q = $pdo->prepare($sql);
-			$q->execute([$value["id_material"],$value["id_colada"]]);
-			$data2 = $q->fetch(PDO::FETCH_ASSOC);
-			
-			if (!empty($data2)) {
-				$precio = $data2['precio'];
-				$subtotal = $data2['precio']*$value["cantidad"];
-			} else {
-				$precio = 0;
-				$subtotal = 0; 
-			}
-			
-			$sql = "INSERT INTO egresos_detalle (id_egreso, id_detalle_ingreso, id_material, id_unidad_medida, cantidad, cantidad_reservada, cantidad_efectivizada, precio, subtotal) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)";
-			$q = $pdo->prepare($sql);
-			$q->execute([$idEgreso,$data2['id'],$value["id_material"],$value["id_unidad_medida"],$value["cantidad"],$value["cantidad"],$precio,$subtotal]);
-
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
-			
-		}
-
-		$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo egreso de stock de Lista de corte','Egresos','verEgreso.php?id=$idEgreso')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
+    foreach ($aEgresos as $key => $value) {
+        
+        $id_origen = $value['id_detalle_ingreso'];
+        $id_egreso_det = $value['id_egreso_detalle'];
+        $cantidad = $value["cantidad"];
+        
+        if($id_egreso_det){
+            $qUpdEgresoDetalle->execute([$cantidad, $cantidad, $id_egreso_det]);
+        } else {
+            if($id_origen){
+                $qUpdIngreso->execute([$cantidad, $cantidad, $id_origen]);
+            }
+        }
     }
 
+    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Consumo efectivizado de reserva','Egresos','')";
+    $q = $pdo->prepare($sql);
+    $q->execute(array($_SESSION['user']['id']));
   }
 
   if(count($aIngresos)>0){
-    //REGISTRAMOS UN INGRESO
-    $id_tipo_ingreso=2;//2 -> Devolucion
+    $id_tipo_ingreso=2;
     $nro=1;
     $lugar_entrega="";
-    $id_cuenta_recibe=1;
+    $qC = $pdo->query("SELECT id FROM cuentas LIMIT 1");
+    $dC = $qC->fetch(PDO::FETCH_ASSOC);
+    $id_cuenta_recibe = $dC ? $dC['id'] : 1;
     $observaciones="";
 
     $sql = "INSERT INTO ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones) VALUES (now(),$id_tipo_ingreso,?,?,?,?)";
 		$q = $pdo->prepare($sql);
 		$q->execute([$nro,$id_cuenta_recibe,$lugar_entrega,$observaciones]);
 		$idIngreso = $pdo->lastInsertId();
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
 		
 		foreach ($aIngresos as $key => $value) {
-			
       $sql = "INSERT INTO ingresos_detalle (id_ingreso, id_material, id_unidad_medida, cantidad, cantidad_egresada, saldo) VALUES (?,?,?,?,?,?)";
       $q = $pdo->prepare($sql);
       $q->execute([$idIngreso,$value["id_material"],$value["id_unidad_medida"],$value['cantidad'],0,$value['cantidad']]);
-
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
-				
 		}
 		
 		$sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo ingreso por devolución','Ingresos','verIngreso.php?id=$idIngreso')";
 		$q = $pdo->prepare($sql);
 		$q->execute(array($_SESSION['user']['id']));
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
   }
 
   $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Consumo','Consumos','verConsumo.php?id=$id_consumo')";
@@ -187,13 +154,13 @@ if (!empty($_POST)) {
     Database::disconnect();
     header("Location: ".$redirect);
   }
-
 }
 
 Database::disconnect();
 
 $id_ot = $_GET['id_orden_trabajo'] ?? null;
 $infoOT = '';
+$id_proyecto_vista = 0;
 if ($id_ot) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -204,6 +171,7 @@ if ($id_ot) {
   $q = $pdo->prepare($sqlInfo);
   $q->execute([$id_ot]);
   $data_ot = $q->fetch(PDO::FETCH_ASSOC);
+  $id_proyecto_vista = $data_ot['id_proyecto'];
   $descProyecto = getDescripcionProyecto($pdo, $data_ot['id_proyecto']);
   $infoOT = 'OT N° '.$data_ot['nro_orden_trabajo'].' - LC N° '.$data_ot['numero_lc'].' - Rev '.$data_ot['nro_revision'].' '.htmlspecialchars($descProyecto);
   Database::disconnect();
@@ -217,6 +185,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
     <?php include('head_forms.php');?>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>table.dataTable tbody tr.selected {background-color:#b0bed9 !important;}</style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -263,8 +232,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                           <tbody><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            // Parametrizamos el id de OT para evitar inyección
-                            $sql = "SELECT m.concepto, SUM(lcp.largo) AS largo
+                            $sql = "SELECT m.concepto, SUM(lcp.largo) AS largo, lcp.id_material
                                     FROM ordenes_trabajo_detalle otd
                                     INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id
                                     INNER JOIN materiales m ON lcp.id_material = m.id
@@ -273,7 +241,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                             $q = $pdo->prepare($sql);
                             $q->execute([$id_ot]);
                             while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-                              echo '<tr>';
+                              echo '<tr data-id-material="'.$row['id_material'].'" style="cursor:pointer">';
                               echo '<td>' . htmlspecialchars($row["concepto"]) . '</td>';
                               echo '<td>' . htmlspecialchars($row["largo"]) . '</td>';
                               echo '<td>0</td>';
@@ -294,6 +262,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                     <h5><?=$ubicacion?></h5>
                   </div>
                   <form id="formInput">
+                    <input type="hidden" id="id_proyecto_ajax" value="<?=$id_proyecto_vista?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -305,28 +274,27 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                 // Parametrizamos el id de OT para evitar inyección
-                                $sqlZon = "SELECT lcp.id_material, m.concepto, lcp.id_colada, c.nro_colada, otd.cantidad, um.unidad_medida
+                                $sqlZon = "SELECT lcp.id_material, m.concepto
                                            FROM ordenes_trabajo_detalle otd
                                            INNER JOIN lista_corte_posiciones lcp ON otd.id_posicion = lcp.id
                                            INNER JOIN materiales m ON lcp.id_material = m.id
-                                           LEFT JOIN coladas c ON lcp.id_colada = c.id
-                                           INNER JOIN unidades_medida um ON m.id_unidad_medida = um.id
-                                           WHERE otd.id_orden_trabajo = ?";
+                                           WHERE otd.id_orden_trabajo = ? GROUP BY lcp.id_material";
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute([$id_ot]);
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                                   $concepto = htmlspecialchars($fila['concepto']);
-                                  $nro_colada = htmlspecialchars($fila['nro_colada']);
-                                  if(empty($nro_colada)){
-                                    $nro_colada="(Sin Colada)";
-                                  }
-                                  $cantidad = htmlspecialchars($fila['cantidad']);
-                                  $unidad_medida = htmlspecialchars($fila['unidad_medida']);
-                                  $textoMostrar = $concepto." | ".$nro_colada." | ".$cantidad." | ".$unidad_medida;
                                   ?>
-                                  <option value='<?=$fila['id_material']?>' data-concepto='<?=$fila['concepto']?>' data-id-colada='<?=$fila['id_colada']?>' data-nro-colada='<?=$fila['nro_colada']?>'><?=$textoMostrar?></option><?php
+                                  <option value='<?=$fila['id_material']?>' data-concepto='<?=$concepto?>'><?=$concepto?></option><?php
                                 }
                                 Database::disconnect();?>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Lote / Reserva (*)</label>
+                            <div class="col-sm-9">
+                              <select id="id_ingreso_seleccionado" class="js-example-basic-single col-sm-12" required>
+                                <option value="">Seleccione material primero...</option>
                               </select>
                             </div>
                           </div>
@@ -433,7 +401,8 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           </div>
           <!-- Container-fluid Ends-->
         </div>
-        <!-- Modal para eliminas conjuntos -->
+        
+        <!-- Modals de Eliminación -->
         <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -562,6 +531,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           var t=$(this).parent();
 
           let id_conjunto=t.find("td:first-child").html();
+          let idMaterial = t.data('id-material');
           if(t.hasClass('selected')){
             deselectRow(t);
           }else{
@@ -569,23 +539,81 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
+            if(idMaterial){
+              $('select[name="id_material"]').val(idMaterial).trigger('change');
+            }
           }
         });
 
-        //$(document).find(tablaConsumos).find(" tbody tr td").not(":last-child").on( 'click', function () {
-        //tablaConsumos.on('click',"tbody tr td", function () {
+        $('#id_ingreso_seleccionado').select2();
+
+        function getUsedReserves() {
+            let used = [];
+            $("#tablaConsumos tbody input[name='id_egreso_detalle[]']").each(function(){
+                let val = $(this).val();
+                if(val && val != "0") used.push(val);
+            });
+            return used;
+        }
+
+        $('select[name="id_material"]').on('change', function(){
+          var id_material = $(this).val();
+          var id_proyecto = $('#id_proyecto_ajax').val();
+          var selectIngresos = $('#id_ingreso_seleccionado');
+          selectIngresos.empty().trigger('change');
+          
+          if(id_material) {
+            selectIngresos.append(new Option("Cargando...", "", true, true));
+            $.ajax({
+              url: 'nuevoConsumo.php',
+              type: 'POST',
+              data: { action: 'get_stock', id_material: id_material, id_proyecto: id_proyecto },
+              dataType: 'json',
+              success: function(data) {
+                  selectIngresos.empty();
+                  
+                  let usedReserves = getUsedReserves();
+
+                  if(data.length > 0){
+                    selectIngresos.append(new Option("Seleccione Reserva...", ""));
+                    let countAvailable = 0;
+                    $.each(data, function(index, item) {
+                      
+                      if(usedReserves.includes(item.id_egreso_detalle.toString())) {
+                          return; 
+                      }
+
+                      var option = new Option(item.text, item.id);
+                      $(option).data('id-colada', item.id_colada);
+                      $(option).data('nro-colada', item.nro_colada);
+                      $(option).data('id-egreso-detalle', item.id_egreso_detalle);
+                      $(option).data('cantidad-reservada', item.cantidad_reservada);
+                      selectIngresos.append(option);
+                      countAvailable++;
+                    });
+
+                    if(countAvailable === 0){
+                        selectIngresos.append(new Option("Todas las reservas disponibles ya han sido agregadas", ""));
+                    }
+
+                  } else {
+                    selectIngresos.append(new Option("No hay reservas para este proyecto", ""));
+                  }
+                  selectIngresos.trigger('change');
+              },
+              error: function() {
+                  selectIngresos.empty();
+                  selectIngresos.append(new Option("Error al cargar datos", ""));
+              }
+            });
+          } else {
+            selectIngresos.append(new Option("Seleccione material primero...", ""));
+          }
+        });
+
         $(document).on("click","#tablaConsumos tbody tr td", function(){
           var t=$(this).parent();
           
-          /*let celdaClickeado=$(this)[0];
-          let celdaConInput=t.find("td:nth-child(5)")[0];
-          if(celdaConInput!=celdaClickeado){
-            if(t.hasClass('selected')){
-              deselectRow(t);
-            }else{
-              selectRow(t);
-            }
-          }*/
           if(t.hasClass('selected')){
             deselectRow(t);
           }else{
@@ -617,11 +645,12 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           var selectedRowsOT = tablaConsumos.DataTable().rows('.selected');
           if(selectedRowsOT[0].length>0){
 
-            $(selectedRowsOT.nodes()).find("input[name='id_posicion[]']").each(function() {
-              tablaMaterialesOT.find("#"+$(this).val()).show()
-            });
-            //$(selectedRowsOT.nodes()).remove().draw();
             selectedRowsOT.remove().draw();
+
+            var currentMaterial = $('select[name="id_material"]').val();
+            if(currentMaterial) {
+                 $('select[name="id_material"]').trigger('change');
+            }
   
           }else{
             alert("Por favor seleccione una posicion para eliminar")
@@ -632,34 +661,19 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           console.log(this);
           var selectedRowsConsumo = tablaConsumos.DataTable().rows('.selected');
           if(selectedRowsConsumo[0].length>0){
-            console.log(selectedRowsConsumo);
             let nodes=selectedRowsConsumo.nodes()[0]
-            console.log(nodes);
-            /*let data=selectedRowsConsumo.data()[0]
-            console.log(data);*/
-            $(selectedRowsConsumo.nodes()).find("input[name='id_posicion[]']").each(function() {
-              tablaMaterialesOT.find("#"+$(this).val()).show()
-            });
-
-            console.log(nodes)
-            //console.log(data)
             
             let id_material=$(nodes).find(".id_material").val()
-            console.log(id_material);
             let situacion=$(nodes).find(".situacion").val()
             let cantidad=$(nodes).find(".cantidad").val()
             let id_unidad_medida=$(nodes).find(".id_unidad_medida").val()
             let observacion=$(nodes).find(".observacion").val()
             editarFormInput(id_material,situacion,cantidad,id_unidad_medida,observacion)
-            //$(selectedRowsConsumo.nodes()).remove().draw();
-            //selectedRowsConsumo.remove().draw();
-  
           }else{
             alert("Por favor seleccione una posicion para modificar")
           }
         });
 
-        //$("#btnAgregarConsumo").on("click",function(){
         $("#formInput").on("submit",function(e){
           e.preventDefault();
           let select_id_material=$("select[name='id_material']")
@@ -667,10 +681,28 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           let selected_option_id_material=select_id_material.find("option[value='"+id_material+"']")
             
           let concepto=selected_option_id_material.data("concepto")
-          let id_colada=selected_option_id_material.data("idColada")
-          let nro_colada=selected_option_id_material.data("nroColada")
+          
+          let select_ingreso = $('#id_ingreso_seleccionado');
+          let id_detalle_ingreso = select_ingreso.val();
+          let nro_colada = select_ingreso.find('option:selected').data('nro-colada') || "(Sin Colada)";
+          let id_colada = select_ingreso.find('option:selected').data('id-colada') || 0;
+          let id_egreso_detalle = select_ingreso.find('option:selected').data('id-egreso-detalle') || 0;
+          let cantidad_reservada = select_ingreso.find('option:selected').data('cantidad-reservada') || 0;
+          
           let situacion=$("input[name='situacion']:checked").val()
+          
+          if(situacion == "Consumo" && !id_detalle_ingreso){
+            alert("Seleccione una reserva para consumir");
+            return;
+          }
+          
           let cantidad=$("input[name='cantidad']").val()
+          
+          if(situacion == "Consumo" && parseFloat(cantidad) > parseFloat(cantidad_reservada)){
+            alert("La cantidad no puede exceder lo reservado ("+cantidad_reservada+")");
+            return;
+          }
+          
           let select_id_unidad_medida=$("select[name='id_unidad_medida']")
           let id_unidad_medida=select_id_unidad_medida.val()
           let selected_option_id_unidad_medida=select_id_unidad_medida.find("option[value='"+id_unidad_medida+"']").text()
@@ -678,7 +710,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           let observacion=$("input[name='observacion']").val()
 
           let newConsumo=[
-            `<input type="hidden" name="id_material[]" class="id_material" value="${id_material}">`+concepto,
+            `<input type="hidden" name="id_material[]" class="id_material" value="${id_material}"><input type="hidden" name="id_detalle_ingreso[]" value="${id_detalle_ingreso}"><input type="hidden" name="id_egreso_detalle[]" value="${id_egreso_detalle}">`+concepto,
             `<input type="hidden" name="id_colada[]" class="id_colada" value="${id_colada}">`+nro_colada,
             `<input type="hidden" name="situacion[]" class="situacion" value="${situacion}">`+situacion,
             `<input type="hidden" name="cantidad[]" class="cantidad" value="${cantidad}">`+cantidad,
@@ -688,6 +720,11 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           console.log(newConsumo);
 
           tablaConsumos.DataTable().row.add(newConsumo).draw();
+          
+          if(id_detalle_ingreso) {
+            $("#id_ingreso_seleccionado option:selected").remove();
+            $("#id_ingreso_seleccionado").trigger('change'); // Actualizar select2
+          }
 
           limpiarFormInput()
         });
@@ -704,7 +741,10 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
       }
 
       function limpiarFormInput(){
-        editarFormInput(id_material="",situacion="",cantidad="",id_unidad_medida="",observacion="")
+        $("input[name='situacion']").prop("checked",false)
+        $("input[name='cantidad']").val("")
+        $("input[name='observacion']").val("")
+        $("#id_ingreso_seleccionado").val("").trigger("change");
       }
 
       function selectRow(t){

@@ -43,105 +43,107 @@ if (empty($_SESSION['user'])) {
                 <div class="card">
                   <div class="card-header">
                     <h5><?php echo $ubicacion; if (!empty(tienePermiso(312))) { ?><a href="nuevoEgreso.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a>&nbsp;<?php } ?><a href="exportEgresos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>
-					&nbsp;&nbsp;
-					<?php 
-					echo '<a href="#" id="link_ver_egreso"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
-					echo '&nbsp;&nbsp;';   
-					?>
-					</h5>
-                  </div>
-                  <div class="card-body">
-                    <div class="dt-ext table-responsive">
-                      <table class="display truncate" id="dataTables-example666">
-                        <thead>
-                          <tr>
-							  <th>ID</th>
-							  <th>Fecha/Hora</th>
-							  <th>Tipo</th>
-							  <th>Nro.</th>
-							  <th>Retira</th>
-							  <th>Destino</th>
-							  <th>Proyecto/Tarea</th>
-							  <th>Observaciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <?php
-                            include 'database.php';
-                            $pdo = Database::connect();
-                            $sql = " SELECT e.`id`, date_format(e.`fecha_hora`,'%d/%m/%y %H:%i'), te.`tipo`, e.`nro`, c.`nombre`, s.`nombre`, t.estructura, e.`observaciones`, p.nombre, te.`id` FROM `egresos` e inner join tipos_egreso te on te.id = e.`id_tipo_egreso` inner join cuentas c on c.id = e.`id_cuenta_retira` inner join sitios s on s.id = e.`id_sitio_destino` left join tareas t on t.id = e.`id_tarea` left join proyectos p on p.id = e.`id_proyecto` WHERE 1 ";
-									 
-                            foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
-                                echo '<td>'. $row[0] . '</td>';
-								echo '<td>'. $row[1] . 'hs</td>';
-								echo '<td>'. $row[2] . '</td>';
-                                echo '<td>'. $row[3] . '</td>';
-                                echo '<td>'. $row[4] . '</td>';
-								echo '<td>'. $row[5] . '</td>';
-								if ($row[9] == 1) {
-									echo '<td>'. $row[8] . '</td>';	
-								} else if ($row[9] == 2) {
-									echo '<td>'. $row[6] . '</td>';	
-								}
-								echo '<td>'. $row[7] . '</td>';
-                                echo '</tr>';
-                            }
-                           Database::disconnect();
-                          ?>
-                        </tbody>
-						<tfoot>
-                          <tr>
-							  <th>ID</th>
-							  <th>Fecha/Hora</th>
-							  <th>Tipo</th>
-							  <th>Nro.</th>
-							  <th>Retira</th>
-							  <th>Destino</th>
-							  <th>Tarea</th>
-							  <th>Observaciones</th>
-                          </tr>
-                        </tfoot>
-                      </table>
+                    &nbsp;&nbsp;
+                    <?php 
+                    echo '<a href="#" id="link_ver_egreso"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
+                    echo '&nbsp;&nbsp;';   
+                    ?>
+                    </h5>
+                    </div>
+                    <div class="card-body">
+                      <div class="dt-ext table-responsive">
+                        <table class="display truncate" id="dataTables-example666">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Fecha/Hora</th>
+                              <th>Tipo</th>
+                              <th>Nro.</th>
+                              <th>Retira</th>
+                              <th>Destino</th>
+                              <th>Proyecto/Tarea</th>
+                              <th>Observaciones</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <?php
+                              include 'database.php';
+                              $pdo = Database::connect();
+                              $sql = " SELECT e.`id`, date_format(e.`fecha_hora`,'%d/%m/%y %H:%i'), te.`tipo`, e.`nro`, c.`nombre`, s.`nombre`, t.estructura, e.`observaciones`, p.nombre, te.`id` FROM `egresos` e inner join tipos_egreso te on te.id = e.`id_tipo_egreso` inner join cuentas c on c.id = e.`id_cuenta_retira` inner join sitios s on s.id = e.`id_sitio_destino` left join tareas t on t.id = e.`id_tarea` left join proyectos p on p.id = e.`id_proyecto` WHERE 1 ";
+                      
+                              foreach ($pdo->query($sql) as $row) {
+                                  echo '<tr>';
+                                  echo '<td>'. $row[0] . '</td>';
+                                  echo '<td>'. $row[1] . 'hs</td>';
+                                  echo '<td>'. $row[2] . '</td>';
+                                  echo '<td>'. $row[3] . '</td>';
+                                  echo '<td>'. $row[4] . '</td>';
+                                  echo '<td>'. $row[5] . '</td>';
+                                  if ($row[9] == 1) {
+                                    echo '<td>'. $row[8] . '</td>';	
+                                  } else if ($row[9] == 2) {
+                                    echo '<td>'. $row[6] . '</td>';	
+                                  }
+                                  echo '<td>'. $row[7] . '</td>';
+                                                  echo '</tr>';
+                              }
+                              Database::disconnect();
+                            ?>
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <th>ID</th>
+                              <th>Fecha/Hora</th>
+                              <th>Tipo</th>
+                              <th>Nro.</th>
+                              <th>Retira</th>
+                              <th>Destino</th>
+                              <th>Tarea</th>
+                              <th>Observaciones</th>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </div>
+                <!-- Zero Configuration  Ends-->
+                <!-- Feature Unable /Disable Order Starts-->
               </div>
-              <!-- Zero Configuration  Ends-->
-              <!-- Feature Unable /Disable Order Starts-->
-            </div>
-			<div class="row">
+			        <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
                     <h5>Conceptos
-					&nbsp;&nbsp;
-					</h5>
+                    &nbsp;&nbsp;
+                    </h5>
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
                       <table class="display truncate" id="dataTables-example667">
                         <thead>
                           <tr>
-						      <th>ID</th>
-							  <th>Código</th>
-							  <th>Concepto</th>
-							  <th>Categoría</th>
-							  <th>Unidad Medida</th>
-							  <th>Cantidad</th>
+                            <th>ID</th>
+                            <th>Código</th>
+                            <th>Concepto</th>
+                            <th>Categoría</th>
+                            <th>Unidad Medida</th>
+                            <th>Cantidad</th>
+                            <th>Efectivizado</th>
                           </tr>
                         </thead>
                         <tbody>
                         </tbody>
-						<tfoot>
+                        <tfoot>
                           <tr>
-						      <th>ID</th>
-							  <th>Código</th>
-							  <th>Concepto</th>
-							  <th>Categoría</th>
-							  <th>Unidad Medida</th>
-							  <th>Cantidad</th>
+                              <th>ID</th>
+                            <th>Código</th>
+                            <th>Concepto</th>
+                            <th>Categoría</th>
+                            <th>Unidad Medida</th>
+                            <th>Cantidad</th>
+                            <th>Efectivizado</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -194,7 +196,6 @@ if (empty($_SESSION['user'])) {
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
-    <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
   <script>
@@ -212,8 +213,8 @@ if (empty($_SESSION['user'])) {
             'excel'
         ],
 		lengthMenu: [
-        [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-        [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
+        [10, 25, 50, 100, 500, 1000],
+        [10, 25, 50, 100, 500, 1000]
 		],
         language: {
          "decimal": "",
@@ -350,15 +351,18 @@ if (empty($_SESSION['user'])) {
         contentType: false,
         processData: false,
         success: function(data){
-          console.log(data);
+          // console.log(data);
           data = JSON.parse(data);
-          console.log(data);
+          // console.log(data);
 
           $('#dataTables-example667').DataTable().destroy();
           $('#dataTables-example667').DataTable({
             stateSave: false,
             responsive: false,
             data: data,
+            columnDefs: [
+                { targets: [0, 1, 2, 3, 4, 5, 6], className: 'text-center' }
+            ],
             language: {
               "decimal": "",
               "emptyTable": "No hay información",

@@ -77,7 +77,8 @@ if (empty($_SESSION['user'])) {
                         <tbody><?php 
                           include 'database.php';
                           $pdo = Database::connect();
-                          $sql = "SELECT c.id, date_format(c.fecha,'%d/%m/%y') AS fecha,otr.id_orden_trabajo FROM consumos c INNER JOIN ordenes_trabajo otr ON c.id_orden_trabajo_revision=otr.id WHERE c.anulado = 0";
+                          $sql = "SELECT c.id, date_format(c.fecha,'%d/%m/%y') AS fecha, otr.id AS id_orden_trabajo
+                          FROM consumos c INNER JOIN ordenes_trabajo otr ON c.id_orden_trabajo_revision=otr.id WHERE c.anulado = 0";
                           //echo $sql;
                           foreach ($pdo->query($sql) as $row) {
                             echo '<tr>';

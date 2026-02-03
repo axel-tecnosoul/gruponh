@@ -301,6 +301,15 @@ if ($data) {
 }
 
 Database::disconnect();
+
+$filtroCompra = "";
+$joinCompras="";
+$actionForm="gestionarPedido.php";
+if(isset($id_compra)){
+  $actionForm="modificarCompra.php";
+  $joinCompras="";
+  $filtroCompra = " AND pd.id IN (SELECT id_pedido FROM compras WHERE id_compra = $id_compra) ";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -665,7 +674,7 @@ Database::disconnect();
                       <div class="alert alert-danger"><?=$error;?></div>
                     <?php } ?>
                   </div>
-                  <form class="form theme-form" role="form" method="post" action="#" id="form-unificado" onsubmit="return validarFormularioCompra();">
+                  <form class="form theme-form" role="form" method="post" action="<?=$actionForm?>" id="form-unificado" onsubmit="return validarFormularioCompra();">
                     <div class="card-body">
                       <div class="row">
                         <div class="col-md-6">
@@ -850,7 +859,8 @@ Database::disconnect();
                                         FROM pedidos_detalle pd 
                                         INNER JOIN materiales m ON m.id = pd.id_material 
                                         INNER JOIN unidades_medida u ON u.id = pd.id_unidad_medida 
-                                        WHERE pd.id_pedido = ".$id;
+                                        WHERE pd.id_pedido = ".$id . $filtroCompra;
+  
                                 
                                 foreach ($pdo->query($sql) as $row) {
                                   $id_material = (int)$row["id_material"];

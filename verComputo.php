@@ -16,7 +16,6 @@ if (null == $id) {
 }
 
 if (!empty($_POST)) {
-  ob_start();
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
@@ -29,19 +28,22 @@ if (!empty($_POST)) {
     $id_cuenta_recibe = !empty($_POST['id_cuenta_recibe']) ? $_POST['id_cuenta_recibe'] : 0;
     
     $userId = $_SESSION['user']['id'];
-    
+    $userCuentaId = 1;
+
     if (!empty($_POST['reservas_lote'])) {
-        $sqlProy = "SELECT t.id_proyecto FROM computos c JOIN tareas t ON t.id = c.id_tarea WHERE c.id = ?";
+        $sqlProy = "SELECT t.id_proyecto, p.id_sitio FROM computos c JOIN tareas t ON t.id = c.id_tarea JOIN proyectos p ON p.id = t.id_proyecto WHERE c.id = ?";
         $qProy = $pdo->prepare($sqlProy);
         $qProy->execute([$idComputo]);
-        $idProyecto = $qProy->fetchColumn();
+        $rowProy = $qProy->fetch(PDO::FETCH_ASSOC);
+        $idProyecto = $rowProy ? $rowProy['id_proyecto'] : null;
+        $idSitio = $rowProy ? (int)$rowProy['id_sitio'] : 0;
 
-        $sqlEgreso = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, observations, id_proyecto) VALUES (NOW(), 2, ?, ?, ?, 'Reserva automática', ?)";
+        $sqlEgreso = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, observaciones, id_proyecto) VALUES (NOW(), 2, ?, ?, ?, 'Reserva automatica', ?)";
         $qEgreso = $pdo->prepare($sqlEgreso);
-        $qEgreso->execute([$idComputo, $userId, $idProyecto, $idProyecto]); 
+        $qEgreso->execute([$idComputo, $userCuentaId, $idSitio, $idProyecto]); 
         $idEgreso = $pdo->lastInsertId();
 
-        $sqlInsDet  = "INSERT INTO egresos_detalle (id_egreso, id_material, id_detalle_ingreso, cantidad, cantidad_reservada) VALUES (?,?,?,?,?)";
+        $sqlInsDet  = "INSERT INTO egresos_detalle (id_egreso, id_material, id_detalle_ingreso, cantidad, cantidad_reservada, id_unidad_medida) VALUES (?,?,?,?,?,?)";
         $sqlUpdIng  = "UPDATE ingresos_detalle SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? WHERE id = ?";
         $sqlUpdComp = "UPDATE computos_detalle SET reservado = reservado + ? WHERE id = ?";
         
@@ -51,14 +53,21 @@ if (!empty($_POST)) {
 
         foreach ($_POST['reservas_lote'] as $idCompDet => $lotes) {
             $totalReservadoItem = 0;
-            foreach ($lotes as $idIngDet => $cant) {
+            foreach ($lotes as $loteKey => $cant) {
+                $cant = (float)$cant;
                 if ($cant > 0) {
-                    $matRow = $pdo->query("SELECT id_material FROM ingresos_detalle WHERE id=$idIngDet")->fetch();
+                    $idIngDet = (int)str_replace('ing_', '', $loteKey);
                     
-                    $qInsDet->execute([$idEgreso, $matRow['id_material'], $idIngDet, $cant, $cant]);
-                    $qUpdIng->execute([$cant, $cant, $idIngDet]);
+                    $sqlMat = "SELECT i.id_material, m.id_unidad_medida FROM ingresos_detalle i JOIN materiales m ON i.id_material = m.id WHERE i.id = ?";
+                    $stmtMat = $pdo->prepare($sqlMat);
+                    $stmtMat->execute([$idIngDet]);
+                    $matRow = $stmtMat->fetch(PDO::FETCH_ASSOC);
                     
-                    $totalReservadoItem += $cant;
+                    if ($matRow) {
+                        $qInsDet->execute([$idEgreso, $matRow['id_material'], $idIngDet, $cant, $cant, $matRow['id_unidad_medida']]);
+                        $qUpdIng->execute([$cant, $cant, $idIngDet]);
+                        $totalReservadoItem += $cant;
+                    }
                 }
             }
             if ($totalReservadoItem > 0) {
@@ -117,7 +126,8 @@ if (!empty($_POST)) {
 
     $computoTerminado = true;
     foreach ($items as $row) {
-      $pendiente = $row['solicitada'] - $row['reservado'] - $row['comprado'] - $row['pedido_total'];
+      $reservado = ($row['reservado'] < 0) ? 0 : $row['reservado'];
+      $pendiente = $row['solicitada'] - $reservado - $row['comprado'] - $row['pedido_total'];
       
       if (round($pendiente, 2) > 0) {
         $computoTerminado = false;
@@ -133,8 +143,6 @@ if (!empty($_POST)) {
 
     $pdo->commit();
     Database::disconnect();
-    
-    ob_end_clean(); 
 
     if ($computoTerminado) {
       header("Location: listarComputos.php");
@@ -147,7 +155,11 @@ if (!empty($_POST)) {
   } catch (Exception $e) {
     $pdo->rollBack();
     Database::disconnect();
-    die("Error: " . $e->getMessage());
+    echo "<div style='padding:20px; background:#f2dede; border:1px solid red; color:red;'>";
+    echo "<h3>Error Detectado</h3>";
+    echo "<p>" . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "</div>";
+    exit();
   }
 
 } else { 
@@ -161,7 +173,7 @@ if (!empty($_POST)) {
   
   if ($data && ($data['id_estado'] == 1 || $data['id_estado'] == 5)) {
     header("Location: listarComputos.php");
-    die("Redirigiendo a la lista de cómputos.");
+    die("Redirigiendo a la lista de computos.");
   }
   
   Database::disconnect();
@@ -308,7 +320,9 @@ if (!empty($_POST)) {
                                       $id_computo_detalle  = $row["id_computo_detalle"];
                                       $cantidad_solicitada = $row["cantidad_solicitada"];
                                       $aprobado           = $row["aprobado"];
-                                      $reservado          = $row["reservado"];
+                                      
+                                      $reservado          = ($row["reservado"] < 0) ? 0 : $row["reservado"];
+                                      
                                       $cantidad_pedida    = $row["cantidad_pedida"];
                                       $comprado           = $row["comprado"];
                                       
@@ -318,7 +332,7 @@ if (!empty($_POST)) {
                                         $cantidad_pedida = 0;
                                       }
 
-                                      $sql3  = "SELECT SUM(saldo) AS disponible FROM ingresos_detalle WHERE id_material = " . $id_material;
+                                      $sql3  = "SELECT SUM(saldo) AS disponible FROM ingresos_detalle WHERE id_material = " . $id_material . " AND saldo > 0";
                                       $q3    = $pdo->prepare($sql3);
                                       $q3->execute();
                                       $data3 = $q3->fetch(PDO::FETCH_ASSOC);
@@ -326,16 +340,17 @@ if (!empty($_POST)) {
                                       $enStock = !empty($data3['disponible']) ? $data3['disponible'] : 0;
 
                                       $saldo = $cantidad_solicitada - $reservado - $cantidad_pedida;
+                                      
                                       if ($saldo < 0) $saldo = 0;
 
                                       $inputReservar = "";
                                       $inputPedir    = "";
 
                                       if ($aprobado == 1) {
-                                        $saldo        = max($saldo, 0);
-                                        $maxReservar  = min($saldo, $enStock);
+                                        $maxReservar  = $saldo;
 
                                         if ($tienePermisoParaReservar){
+
                                           $inputReservar = "
                                           <div class='input-group input-group-sm'>
                                             <input type='text' readonly class='form-control form-control-sm text-center cantidad-reservada-visual' id='txt_reserva_vis_$id_computo_detalle' value='0' style='width:50px; background:#fff;'>
@@ -395,8 +410,12 @@ if (!empty($_POST)) {
                     <input type="hidden" name="lugar_entrega" id="hiddenLugar">
                     <input type="hidden" name="id_cuenta_recibe" id="hiddenRecibe">
                     
+                    <!-- Contenedor para inputs hidden de reservas -->
+                    <div id="reservas_container" style="display:none;"></div>
+                    
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
+                        <input type="hidden" name="modo_debug" value="1">
                         <?php if(tienePermiso(290)){?> <button class="btn btn-success" type="submit">Ejecutar</button><?php }?>
                         <?php /*if(tienePermiso(295)){?> <a class="btn btn-warning" id="pedido-masivo" onclick="pedir();">Hacer Pedido</a><?php }*/?>
                         <?php /*if(tienePermiso(310)){?> <a class="btn btn-danger" id="reserva-masivo" onclick="reservar();">Hacer Reserva</a><?php }*/?>
@@ -578,8 +597,8 @@ if (!empty($_POST)) {
           autoWidth: false,
           responsive: false,
           columnDefs: [
-            { targets: 0, width: '36%', className: 'text-left text-narrow' }, // Concepto ancho grande
-            { targets: [1,2,3,4,5,6,7,8,9,10], width: '2%', className: 'text-center text-narrow' } // resto columnas iguales y centradas
+            { targets: 0, width: '28%', className: 'text-left text-narrow' },
+            { targets: [1,2,3,4,5,6,7,8,9,10], width: '2%', className: 'text-center text-narrow' }
           ],
           language: {
             "decimal": "",
@@ -807,6 +826,7 @@ if (!empty($_POST)) {
       function confirmarStock() {
         let total = 0;
         let inputsHtml = "";
+        let contadorInputs = 0;
         
         $('#modalStockBody .input-reserva').each(function(){
           let val = parseFloat($(this).val()) || 0;
@@ -814,17 +834,32 @@ if (!empty($_POST)) {
               total += val;
               let name = $(this).attr('name');
               inputsHtml += `<input type="hidden" name="${name}" value="${val}">`;
+              contadorInputs++;
+              console.log('Input agregado:', name, 'valor:', val);
           }
         });
+
+        console.log('Total procesado:', total, 'Max permitido:', curMax, 'Inputs creados:', contadorInputs);
 
         if(total > curMax) {
           alert("No puedes reservar más del saldo pendiente ("+curMax+")");
           return;
         }
 
-        $('#container_reservas_' + curDetalle).html(inputsHtml);
+        // Agregar los inputs al contenedor principal de reservas
+        if(inputsHtml) {
+          $('#reservas_container').append(inputsHtml);
+        }
+        
+        // Limpiar y actualizar el visual con el total
         $('#txt_reserva_vis_' + curDetalle).val(total);
         
+        // Trigger input para validación
+        $('#txt_reserva_vis_' + curDetalle).trigger('input');
+        
+        console.log('Inputs agregados al contenedor #reservas_container - Total: ' + total);
+        
+        // Cerrar el modal
         $('#modalStock').modal('hide');
       }
     </script>

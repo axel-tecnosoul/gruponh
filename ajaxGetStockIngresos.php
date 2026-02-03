@@ -2,8 +2,9 @@
 require("config.php");
 require 'database.php';
 
-// Validar sesión
 if (empty($_SESSION['user'])) { die("Acceso denegado"); }
+
+$DEBUG = isset($_GET['debug']) && $_GET['debug'] == 1;
 
 $id_material = isset($_POST['id_material']) ? (int)$_POST['id_material'] : 0;
 $id_detalle_computo = isset($_POST['id_detalle_computo']) ? (int)$_POST['id_detalle_computo'] : 0;
@@ -11,8 +12,14 @@ $id_detalle_computo = isset($_POST['id_detalle_computo']) ? (int)$_POST['id_deta
 if ($id_material > 0) {
     $pdo = Database::connect();
     
-    // Buscar ingresos con saldo positivo para este material
-    $sql = "SELECT id.id, id.nro_colada_interna, i.nro_remito, id.saldo, i.fecha_hora 
+    $sql = "SELECT 
+                id.id, 
+                id.nro_colada_interna, 
+                i.nro_remito, 
+                i.nro,
+                i.id_tipo_ingreso,
+                id.saldo AS disponible, 
+                i.fecha_hora 
             FROM ingresos_detalle id 
             INNER JOIN ingresos i ON i.id = id.id_ingreso 
             WHERE id.id_material = ? AND id.saldo > 0 
@@ -20,40 +27,56 @@ if ($id_material > 0) {
             
     $q = $pdo->prepare($sql);
     $q->execute([$id_material]);
-    $ingresos = $q->fetchAll(PDO::FETCH_ASSOC);
+    $registros = $q->fetchAll(PDO::FETCH_ASSOC);
     
     Database::disconnect();
     
-    if (count($ingresos) > 0) {
+    if ($DEBUG) {
+        echo '<div class="alert alert-info"><strong>DEBUG:</strong> Material ID: '.$id_material.', Computo Detalle ID: '.$id_detalle_computo.', Registros encontrados: '.count($registros).'</div>';
+        echo '<pre>'.print_r($registros, true).'</pre>';
+    }
+    
+    if (count($registros) > 0) {
         echo '<table class="table table-bordered table-sm">';
-        echo '<thead><tr><th>Remito/Colada</th><th>Fecha</th><th>Saldo Disp.</th><th>Reservar</th></tr></thead>';
+        echo '<thead><tr><th>Tipo</th><th>Documento</th><th>Fecha</th><th>Disponible</th><th>Reservar</th></tr></thead>';
         echo '<tbody>';
-        foreach ($ingresos as $fila) {
+        foreach ($registros as $fila) {
+            $esDevolucion = ($fila['id_tipo_ingreso'] == 2);
+            
+            if ($esDevolucion) {
+                $tipoLabel = '<span class="badge badge-warning">Devolucion</span>';
+                $documento = 'Devolucion #' . $fila['nro'];
+            } else {
+                $tipoLabel = '<span class="badge badge-success">Ingreso</span>';
+                $documento = ($fila['nro_remito'] ?: 'Ingreso #' . $fila['nro']);
+            }
+            
+            $colada = $fila['nro_colada_interna'] ? ' (' . $fila['nro_colada_interna'] . ')' : '';
+            
             echo '<tr>';
-            echo '<td>' . ($fila['nro_remito'] ?: 'S/R') . ' (' . ($fila['nro_colada_interna'] ?: '-') . ')</td>';
+            echo '<td>' . $tipoLabel . '</td>';
+            echo '<td>' . $documento . $colada . '</td>';
             echo '<td>' . date("d/m/Y", strtotime($fila['fecha_hora'])) . '</td>';
-            echo '<td class="text-right">' . number_format($fila['saldo'], 2) . '</td>';
+            echo '<td class="text-right">' . number_format($fila['disponible'], 2) . '</td>';
             echo '<td>';
-            // Input array: reservas_lote[id_computo_detalle][id_ingreso_detalle]
-            echo '<input type="number" step="0.01" min="0" max="'.$fila['saldo'].'" 
+            echo '<input type="number" step="0.01" min="0" max="'.$fila['disponible'].'" 
                   class="form-control form-control-sm input-reserva" 
-                  name="reservas_lote['.$id_detalle_computo.']['.$fila['id'].']" 
-                  placeholder="0" onchange="validarMaximo(this, '.$fila['saldo'].')">';
+                  name="reservas_lote['.$id_detalle_computo.'][ing_'.$fila['id'].']" 
+                  placeholder="0" onchange="validarMaximo(this, '.$fila['disponible'].')">';
             echo '</td>';
             echo '</tr>';
         }
         echo '</tbody></table>';
-        echo '<small class="text-muted">La suma se validará al guardar.</small>';
+        echo '<small class="text-muted">Incluye ingresos y devoluciones con saldo disponible.</small>';
     } else {
-        echo '<div class="alert alert-warning">No hay stock disponible en ingresos para este material.</div>';
+        echo '<div class="alert alert-warning">No hay stock disponible para este material.</div>';
     }
 }
 ?>
-<!-- Script JS simple para validación visual inmediata en el modal -->
 <script>
 function validarMaximo(input, max) {
     if (parseFloat(input.value) > max) {
-        alert("No puede reservar más de lo disponible en este ingreso (" + max + ")");
+        alert("No puede reservar mas de lo disponible (" + max + ")");
         input.value = max;
     }
     if (parseFloat(input.value) < 0) input.value = 0;

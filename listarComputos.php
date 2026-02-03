@@ -877,6 +877,13 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             return;
           }
 
+          var $btnSubmit = $(this).find("button[type='submit']");
+          var $btnCancel = $(this).find("button.btn-cancelar");
+          var originalText = $btnSubmit.text();
+
+          $btnSubmit.html('<i class="fa fa-spinner fa-spin"></i> Procesando...').prop("disabled", true);
+          $btnCancel.prop("disabled", true);
+
           const data = {
             ajax: true,
             accion: accionPendiente,
@@ -890,23 +897,26 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             success: function (resp) {
               if (resp.trim() === "ok") {
                 location.reload();
-                //console.log("funcionó");
               } else {
                 alert("Error: " + resp);
+                restaurarModal();
               }
             },
             error: function (xhr) {
               alert("Error del servidor: " + xhr.responseText);
-            },
-            complete: function () {
-              $("#modalConfirmacion").modal("hide");
-              accionPendiente = null;
-              idComputoPendiente = null;
+              restaurarModal();
             }
           });
+
+          function restaurarModal() {
+            $btnSubmit.text(originalText).prop("disabled", false);
+            $btnCancel.prop("disabled", false);
+            $("#modalConfirmacion").modal("hide");
+            accionPendiente = null;
+            idComputoPendiente = null;
+          }
         });
 
-        // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
           var title = $(this).text();
           $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
