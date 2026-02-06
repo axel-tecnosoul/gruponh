@@ -128,7 +128,7 @@ function abrirMenu($op) {
 				<?php if(tienePermiso(297)){?><li><a href="listarCompras.php"><i class="fa fa-circle"></i>Compras</a></li><?php }?>
 				<?php if(tienePermiso(308)){?><li><a href="listarIngresos.php"><i class="fa fa-circle"></i>Ingresos</a></li><?php }?>
 				<?php if(tienePermiso(334)){?><li><a href="listarFacturasCompra.php"><i class="fa fa-circle"></i>Facturas Compra</a></li><?php }?>
-                <?php if(tienePermiso(297)){?><li><a href="informeCompras.php"><i class="fa fa-circle"></i>Pendientes Compras</a></li><?php }?>
+                <?php if(tienePermiso(297)){?><li><a href="informeCompras.php"><i class="fa fa-circle"></i>Informe Pendientes</a></li><?php }?>
 				</ul>
 			</li>
 			<li <?php abrirMenu(6);?>><a class="sidebar-header" href="#"><i data-feather="layout"></i><span>Producción</span><i class="fa fa-angle-right pull-right"></i></a>
