@@ -397,15 +397,15 @@ if (!empty($_POST)) {
                               <label class="font-weight-bold d-block mb-3">Destino de los materiales:</label>
                               <input type="hidden" name="destino_seleccionado" id="destino_seleccionado" value="">
                               
-                              <button type="button" class="btn btn-primary btn-lg mr-3" onclick="procesarIngreso(0)">
+                              <button type="button" class="btn btn-primary btn-lg mr-3 py-4 border" onclick="procesarIngreso(0)">
                                 <i class="fa fa-cubes mr-1"></i> Poner en Stock
                               </button>
 
-                              <button type="button" class="btn btn-warning btn-lg mr-3" onclick="procesarIngreso(1)">
+                              <button type="button" class="btn btn-warning btn-lg mr-3 py-4 border" onclick="procesarIngreso(1)">
                                 <i class="fa fa-lock mr-1"></i> Reservar
                               </button>
 
-                              <button type="button" class="btn btn-success btn-lg" onclick="procesarIngreso(2)">
+                              <button type="button" class="btn btn-success btn-lg py-4 border" onclick="procesarIngreso(2)">
                                 <i class="fa fa-building mr-1"></i> Ingresar en Obra
                               </button>
                             </div>

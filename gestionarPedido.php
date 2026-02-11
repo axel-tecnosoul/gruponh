@@ -304,9 +304,9 @@ Database::disconnect();
 
 $filtroCompra = "";
 $joinCompras="";
-$actionForm="gestionarPedido.php";
-if(isset($id_compra)){
-  $actionForm="modificarCompra.php";
+$actionForm="gestionarPedido.php?id=" . $id;
+if(isset($id_compra)) {
+  $actionForm="modificarCompra.php?id=" . $id_compra;
   $joinCompras="";
   $filtroCompra = " AND pd.id IN (SELECT id_pedido FROM compras WHERE id_compra = $id_compra) ";
 }
