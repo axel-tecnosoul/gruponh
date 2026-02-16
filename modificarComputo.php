@@ -28,18 +28,14 @@ if (!empty($_POST)) {
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // TEMPORAL: Forzar debug para diagnosticar
-    $modoDebug = 1; // isset($_POST['modo_debug']) ? (int)$_POST['modo_debug'] : 0;
+    $modoDebug = 0; // isset($_POST['modo_debug']) ? (int)$_POST['modo_debug'] : 0;
 
     $idComputo = isset($_POST['idComputo']) ? (int)$_POST['idComputo'] : 0;
     $pedidos = isset($_POST['cantidad_pedir']) ? $_POST['cantidad_pedir'] : [];
     $userId = $_SESSION['user']['id'];
 
-    // CORRECCIÓN: Obtener id_cuenta válido del usuario actual desde la tabla cuentas
-    // Primero intentamos obtener la cuenta vinculada al usuario
     $userCuentaId = 0;
     
-    // Opción 1: Buscar cuenta vinculada al usuario por id_usuario (si existe esa relación)
     $stmtCuenta = $pdo->prepare("SELECT id FROM cuentas WHERE id_usuario = ? AND activo = 1 LIMIT 1");
     $stmtCuenta->execute([$userId]);
     $cuentaUsuario = $stmtCuenta->fetchColumn();
@@ -47,9 +43,7 @@ if (!empty($_POST)) {
     if ($cuentaUsuario) {
         $userCuentaId = (int)$cuentaUsuario;
     } else {
-        // Opción 2: Si el usuario tiene id_cuenta directo en sesión
         if (isset($_SESSION['user']['id_cuenta']) && $_SESSION['user']['id_cuenta'] > 0) {
-            // Verificar que existe en la tabla cuentas
             $stmtVerify = $pdo->prepare("SELECT id FROM cuentas WHERE id = ? AND activo = 1");
             $stmtVerify->execute([$_SESSION['user']['id_cuenta']]);
             if ($stmtVerify->fetchColumn()) {
@@ -57,7 +51,6 @@ if (!empty($_POST)) {
             }
         }
         
-        // Opción 3: Fallback a una cuenta activa por defecto (tipo empleado o similar)
         if ($userCuentaId <= 0) {
             $stmtFallback = $pdo->prepare("SELECT id FROM cuentas WHERE activo = 1 AND anulado = 0 ORDER BY id ASC LIMIT 1");
             $stmtFallback->execute();
@@ -66,7 +59,6 @@ if (!empty($_POST)) {
         }
     }
     
-    // Si aún no tenemos cuenta válida, mostrar error
     if ($userCuentaId <= 0) {
         echo "<div style='padding:20px; background:#f2dede; border:1px solid red; color:red;'>";
         echo "<h3>Error de Configuración</h3>";
@@ -97,7 +89,6 @@ if (!empty($_POST)) {
                 echo "<p>idProyecto: $idProyecto, idSitio: $idSitio</p>";
             }
 
-            // CORRECCIÓN: Usar userCuentaId verificado
             $sqlEgreso = "INSERT INTO egresos (fecha_hora, id_tipo_egreso, nro, id_cuenta_retira, id_sitio_destino, observaciones, id_proyecto) VALUES (NOW(), 2, ?, ?, ?, 'Reserva automatica', ?)";
             $qEgreso = $pdo->prepare($sqlEgreso);
             $qEgreso->execute([$idComputo, $userCuentaId, $idSitio, $idProyecto]);
@@ -109,7 +100,6 @@ if (!empty($_POST)) {
 
             $sqlInsDet = "INSERT INTO egresos_detalle (id_egreso, id_material, id_detalle_ingreso, cantidad, cantidad_reservada, id_unidad_medida) VALUES (?,?,?,?,?,?)";
             $sqlUpdIng = "UPDATE ingresos_detalle SET saldo = saldo - ? WHERE id = ?";
-            // Nota: devoluciones_detalle no tiene columna saldo, se trackea via egresos_detalle
             $sqlUpdComp = "UPDATE computos_detalle SET reservado = reservado + ? WHERE id = ?";
 
             $qInsDet = $pdo->prepare($sqlInsDet);
@@ -136,11 +126,8 @@ if (!empty($_POST)) {
                     }
                     
                     if ($cant > 0) {
-                        // Todos los registros vienen de ingresos_detalle (siempre prefijo ing_)
-                        // Las devoluciones también están en ingresos_detalle con id_tipo_ingreso = 2
                         $idDetalle = (int)str_replace(['ing_', 'dev_'], '', $loteKey);
 
-                        // Consultar el material Y verificar si es devolución por id_tipo_ingreso
                         $sqlMat = "SELECT id.id_material, m.id_unidad_medida, i.id_tipo_ingreso
                                    FROM ingresos_detalle id
                                    JOIN ingresos i ON i.id = id.id_ingreso
@@ -162,14 +149,12 @@ if (!empty($_POST)) {
                             $idUnidad = $matRow['id_unidad_medida'];
                             $esDevolucion = ($matRow['id_tipo_ingreso'] == 2);
 
-                            // Insertar detalle de egreso (para todos los tipos)
                             $qInsDet->execute([$idEgreso, $idMaterial, $idDetalle, $cant, $cant, $idUnidad]);
                             
                             if ($modoDebug) {
                                 echo "<p style='color:purple;'>INSERT egresos_detalle: idEgreso=$idEgreso, idMaterial=$idMaterial, idDetalle=$idDetalle, cant=$cant</p>";
                             }
                             
-                            // Actualizar saldo en ingresos_detalle (aplica tanto para ingresos como devoluciones)
                             $qUpdIng->execute([$cant, $idDetalle]);
                             $rowsIng = $qUpdIng->rowCount();
                             
@@ -189,9 +174,11 @@ if (!empty($_POST)) {
 
                 if ($totalReservadoItem > 0) {
                     if ($modoDebug) {
-                        echo "<p style='color:blue;'><strong>UPDATE computos_detalle SET reservado = reservado + $totalReservadoItem WHERE id = $idCompDet</strong></p>";
+                        echo "<p style='color:blue;'><strong>UPDATE computos_detalle SET reservado = reservado + $totalReservadoItem, saldo = saldo - $totalReservadoItem WHERE id = $idCompDet</strong></p>";
                     }
-                    $qUpdComp->execute([$totalReservadoItem, $idCompDet]);
+                    $sqlUpdCompSaldo = "UPDATE computos_detalle SET reservado = reservado + ?, saldo = saldo - ? WHERE id = ?";
+                    $qUpdCompSaldo = $pdo->prepare($sqlUpdCompSaldo);
+                    $qUpdCompSaldo->execute([$totalReservadoItem, $totalReservadoItem, $idCompDet]);
                     $rowsAffected = $qUpdComp->rowCount();
                     if ($modoDebug) {
                         echo "<p>Filas afectadas en computos_detalle: $rowsAffected</p>";
@@ -240,12 +227,21 @@ if (!empty($_POST)) {
             $datos->execute([$idComputo]);
             $rows = $datos->fetchAll(PDO::FETCH_ASSOC);
 
+            $sqlUpdSaldoPedido = "UPDATE computos_detalle SET saldo = saldo - ? WHERE id = ?";
+            $stmtUpdSaldoPedido = $pdo->prepare($sqlUpdSaldoPedido);
+
             foreach ($rows as $r) {
                 $id_computo_detalle = $r['id_computo_detalle'];
                 $cantP = isset($pedidos[$id_computo_detalle]) ? (int)$pedidos[$id_computo_detalle] : 0;
                 if ($cantP > 0) {
                     $params = [$idPedido, $r['id_computo_detalle'], $r['id_material'], $r['fecha_necesidad'], $cantP, $r['id_unidad_medida'], $r['reservado'], $r['comprado']];
                     $stmtInsDet->execute($params);
+                    
+                    $stmtUpdSaldoPedido->execute([$cantP, $id_computo_detalle]);
+                    
+                    if ($modoDebug) {
+                        echo "<p style='color:blue;'>UPDATE computos_detalle SET saldo = saldo - $cantP WHERE id = $id_computo_detalle</p>";
+                    }
                 }
             }
 
@@ -286,7 +282,6 @@ if (!empty($_POST)) {
         }
 
         if ($modoDebug) {
-            // En modo debug, hacemos commit pero mostramos la info
             $pdo->commit();
             echo "<p><strong>Modo Debug Finalizado (COMMIT realizado, cambios guardados).</strong></p></div>";
             echo "<p><a href='verComputo.php?id=$id$prodParam'>Volver al Computo</a></p>";

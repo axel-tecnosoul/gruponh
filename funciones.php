@@ -1019,3 +1019,61 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
   }
 }
 
+function obtenerStockYReservado(PDO $pdo, int $idMaterial): array
+{
+  $sqlDisponible = 'SELECT COALESCE(SUM(saldo), 0) 
+                    FROM ingresos_detalle 
+                    WHERE id_material = ?';
+  $stmt = $pdo->prepare($sqlDisponible);
+  $stmt->execute([$idMaterial]);
+  $stockDisponible = (float)$stmt->fetchColumn();
+
+  $sqlReservado = 'SELECT COALESCE(SUM(cantidad_reservada), 0) 
+                    FROM egresos_detalle 
+                    WHERE id_material = ?';
+  $stmt = $pdo->prepare($sqlReservado);
+  $stmt->execute([$idMaterial]);
+  $totalReservado = (float)$stmt->fetchColumn();
+
+  $sqlEfectivizado = 'SELECT COALESCE(SUM(cantidad_efectivizada), 0) 
+                      FROM egresos_detalle 
+                      WHERE id_material = ?';
+  $stmt = $pdo->prepare($sqlEfectivizado);
+  $stmt->execute([$idMaterial]);
+  $totalEfectivizado = (float)$stmt->fetchColumn();
+
+  $sqlIngresado = 'SELECT COALESCE(SUM(cantidad), 0) 
+                    FROM ingresos_detalle 
+                    WHERE id_material = ?';
+  $stmt = $pdo->prepare($sqlIngresado);
+  $stmt->execute([$idMaterial]);
+  $totalIngresado = (float)$stmt->fetchColumn();
+
+  $sqlDevuelto = 'SELECT COALESCE(SUM(id.cantidad), 0) 
+                  FROM ingresos_detalle id 
+                  INNER JOIN ingresos i ON i.id = id.id_ingreso 
+                  WHERE id.id_material = ? AND i.id_tipo_ingreso = 2';
+  $stmt = $pdo->prepare($sqlDevuelto);
+  $stmt->execute([$idMaterial]);
+  $totalDevuelto = (float)$stmt->fetchColumn();
+
+  $sqlEgresado = 'SELECT COALESCE(SUM(cantidad), 0) 
+                  FROM egresos_detalle 
+                  WHERE id_material = ?';
+  $stmt = $pdo->prepare($sqlEgresado);
+  $stmt->execute([$idMaterial]);
+  $totalEgresado = (float)$stmt->fetchColumn();
+
+  $stockFisico = $stockDisponible + $totalReservado;
+
+  return [
+    'stock'            => $stockDisponible,
+    'stock_fisico'     => $stockFisico,
+    'reservado'        => $totalReservado,
+    'efectivizado'     => $totalEfectivizado,
+    'devuelto'         => $totalDevuelto,
+    'total_ingresado'  => $totalIngresado,
+    'total_egresado'   => $totalEgresado,
+    'disponible'       => $stockDisponible
+  ];
+}

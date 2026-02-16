@@ -459,7 +459,7 @@ if (!empty($_POST)) {
                                       </a>
                                     </td>
                                   </tr>
-                                <?php/*  } 
+                                <?php /*  } 
                                 
                                 if (!$remitos_encontrados) {
                                   echo "<tr><td colspan='4' class='text-center'>No hay remitos registrados para esta compra.</td></tr>";

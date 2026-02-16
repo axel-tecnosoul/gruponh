@@ -1179,14 +1179,15 @@ if(isset($id_compra)) {
           let pesoMetro = parseFloat(row.data('peso')) || 0;
           let largoMm = parseFloat(row.data('largo')) || 0;
           
+          let precioParaCalculo = precioUnit;
+          
           if (precioKg > 0) {
             let largoMetros = (largoMm > 0) ? largoMm / 1000 : 1;
             let pesoUnitario = pesoMetro * largoMetros; 
-            precioUnit = precioKg * pesoUnitario;
-            row.find('.precio-input').val(precioUnit.toFixed(4));
+            precioParaCalculo = precioKg * pesoUnitario;
           }
           
-          let subtotalBruto = cantidad * precioUnit;
+          let subtotalBruto = cantidad * precioParaCalculo;
           let montoDescuento = subtotalBruto * (descuento / 100);
           let subtotalNeto = subtotalBruto - montoDescuento;
           
@@ -1195,7 +1196,7 @@ if(isset($id_compra)) {
           
           calcularTotalesGenerales();
         }
-
+        
         function calcularTotalesGenerales() {
           let totalNeto = 0;
           
@@ -1219,14 +1220,24 @@ if(isset($id_compra)) {
           let row = $(this).closest('tr');
           
           if ($(this).hasClass('precio-input')) {
-            row.find('.preciokg-input').val(0);
+            let val = parseFloat($(this).val()) || 0;
+            if (val > 0) {
+              row.find('.preciokg-input').val(0).prop('disabled', true);
+            } else {
+              row.find('.preciokg-input').prop('disabled', false);
+            }
+          }
+          
+          if ($(this).hasClass('preciokg-input')) {
+            let val = parseFloat($(this).val()) || 0;
+            if (val > 0) {
+              row.find('.precio-input').val(0).prop('disabled', true);
+            } else {
+              row.find('.precio-input').prop('disabled', false);
+            }
           }
           
           calcularFila(row);
-        });
-        
-        $('#id_tipo_iva').on('change', function() {
-          calcularTotalesGenerales();
         });
 
       });

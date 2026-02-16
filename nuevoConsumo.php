@@ -121,25 +121,30 @@ if (!empty($_POST)) {
     $id_tipo_ingreso=2;
     $nro=1;
     $lugar_entrega="";
-    $qC = $pdo->query("SELECT id FROM cuentas LIMIT 1");
-    $dC = $qC->fetch(PDO::FETCH_ASSOC);
-    $id_cuenta_recibe = $dC ? $dC['id'] : 1;
-    $observaciones="";
+    $id_cuenta_recibe = !empty($_POST['id_cuenta_recibe_sobrante']) ? intval($_POST['id_cuenta_recibe_sobrante']) : 1;
+    
+    $observaciones="Ingreso por sobrante de consumo";
 
-    $sql = "INSERT INTO ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones) VALUES (now(),$id_tipo_ingreso,?,?,?,?)";
-		$q = $pdo->prepare($sql);
-		$q->execute([$nro,$id_cuenta_recibe,$lugar_entrega,$observaciones]);
-		$idIngreso = $pdo->lastInsertId();
-		
-		foreach ($aIngresos as $key => $value) {
+    $sql = "INSERT INTO ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones) VALUES (now(),?,?,?,?,?)";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_tipo_ingreso, $nro, $id_cuenta_recibe, $lugar_entrega, $observaciones]);
+    $idIngreso = $pdo->lastInsertId();
+    
+    foreach ($aIngresos as $key => $value) {
       $sql = "INSERT INTO ingresos_detalle (id_ingreso, id_material, id_unidad_medida, cantidad, cantidad_egresada, saldo) VALUES (?,?,?,?,?,?)";
       $q = $pdo->prepare($sql);
       $q->execute([$idIngreso,$value["id_material"],$value["id_unidad_medida"],$value['cantidad'],0,$value['cantidad']]);
-		}
-		
-		$sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo ingreso por devolución','Ingresos','verIngreso.php?id=$idIngreso')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
+
+      if (!empty($value['id_egreso_detalle'])) {
+        $sqlUpdReservaDev = "UPDATE egresos_detalle SET cantidad_reservada = cantidad_reservada - ? WHERE id = ?";
+        $qUpdReservaDev = $pdo->prepare($sqlUpdReservaDev);
+        $qUpdReservaDev->execute([$value['cantidad'], $value['id_egreso_detalle']]);
+      }
+    }
+    
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo ingreso por devolución','Ingresos','verIngreso.php?id=$idIngreso')";
+    $q = $pdo->prepare($sql);
+    $q->execute(array($_SESSION['user']['id']));
   }
 
   $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Consumo','Consumos','verConsumo.php?id=$id_consumo')";
@@ -266,10 +271,10 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Material(*)</label>
-                            <div class="col-sm-9">
-                              <select name="id_material" id="id_material" class="js-example-basic-single col-sm-12" autofocus required="required">
+                          <div class="form-group row" style="display:none;">
+                              <label class="col-sm-3 col-form-label">Material(*)</label>
+                              <div class="col-sm-9">
+                                <select name="id_material" id="id_material" class="col-sm-12" autofocus required="required">
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -291,7 +296,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                             </div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Lote / Reserva (*)</label>
+                            <label class="col-sm-3 col-form-label">Ingreso (*)</label>
                             <div class="col-sm-9">
                               <select id="id_ingreso_seleccionado" class="js-example-basic-single col-sm-12" required>
                                 <option value="">Seleccione material primero...</option>
@@ -355,9 +360,11 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                       <!-- <img src="img/icon_modificar.png" id="link_modificar_consumo" style="cursor: pointer;" data-id="" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp; -->
                     </h5>
                   </div>
-                  <form action="nuevoConsumo.php" method="post">
+                  <form id="formCrearConsumo" action="nuevoConsumo.php" method="post">
                     <!-- Alineado: ahora enviamos id_orden_trabajo (no *_revision) -->
                     <input type="hidden" name="id_orden_trabajo" id="id_orden_trabajo" value="<?=$id_ot?>">
+                    <!-- Hidden que se llena desde el modal de sobrante -->
+                    <input type="hidden" name="id_cuenta_recibe_sobrante" id="hiddenCuentaRecibeSobrante" value="">
                     <div class="card-body">
                       <div class="form-group row">
                         <div class="dt-ext table-responsive">
@@ -402,58 +409,91 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           <!-- Container-fluid Ends-->
         </div>
         
-        <!-- Modals de Eliminación -->
-        <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
+        <!-- Modal Eliminar Conjunto -->
+        <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalConjuntoLabel">Confirmación</h5>
+                <h5 class="modal-title">Confirmación</h5>
                 <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
               </div>
               <div class="modal-body">¿Está seguro que desea eliminar el conjunto?</div>
               <div class="modal-footer">
                 <a href="#" class="btn btn-primary">Eliminar</a>
-                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+                <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Modal para eliminas posiciones -->
-        <div class="modal fade" id="eliminarPosicion" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
+        <!-- Modal Eliminar Posición -->
+        <div class="modal fade" id="eliminarPosicion" tabindex="-1" role="dialog" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalConjuntoLabel">Confirmación</h5>
+                <h5 class="modal-title">Confirmación</h5>
                 <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
               </div>
               <div class="modal-body">¿Está seguro que desea eliminar la posicion?</div>
               <div class="modal-footer">
                 <a href="#" class="btn btn-primary">Eliminar</a>
-                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+                <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
               </div>
             </div>
           </div>
         </div>
-        <!-- footer start-->
+
+        <div class="modal fade" id="sobranteModal" tabindex="-1" role="dialog" aria-labelledby="sobranteModalLabel">
+          <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+              <form id="sobranteForm">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="sobranteModalLabel">Datos de Devolución por Sobrante</h5>
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-group row">
+                    <label for="inputRecibeSobrante" class="col-sm-3 col-form-label">Recibe(*)</label>
+                    <div class="col-sm-9">
+                      <select name="id_cuenta_recibe_sobrante" id="inputRecibeSobrante" class="js-example-basic-single col-sm-12" required="required">
+                        <option value="">Seleccione...</option>
+                        <?php
+                        $pdo = Database::connect();
+                        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                        $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (4) AND activo = 1 AND anulado = 0";
+                        $q = $pdo->prepare($sqlZon);
+                        $q->execute();
+                        while ($fila = $q->fetch(PDO::FETCH_ASSOC)) { ?>
+                          <option value='<?= $fila['id'] ?>'><?= $fila['nombre'] ?></option>
+                        <?php
+                        }
+                        Database::disconnect(); ?>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Confirmar y Crear</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <?php include("footer.php"); ?>
       </div>
     </div>
-    <!-- latest jquery-->
+    <!-- Scripts -->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
     <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
@@ -474,9 +514,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
     <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
@@ -484,7 +522,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
         var tablaMaterialesOT = $('#tablaMaterialesOT');
         var tablaConsumos = $('#tablaConsumos');
 
-        let datatableDefault={
+        let datatableDefault = {
           stateSave: false,
           responsive: false,
           language: {
@@ -493,7 +531,6 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
             "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
             "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
             "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "infoPostFix": "",
             "thousands": ",",
             "lengthMenu": "Mostrar _MENU_ Registros",
             "loadingRecords": "Cargando...",
@@ -507,103 +544,93 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
               "previous": "Anterior"
             }
           }
-        }
+        };
 
-        // Setup - add a text input to each footer cell
-        tablaMaterialesOT.find('tfoot th').each( function () {
+        // Tabla Materiales OT
+        tablaMaterialesOT.find('tfoot th').each(function () {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-	      tablaMaterialesOT.DataTable(datatableDefault);
- 
-        // Apply the search
-        tablaMaterialesOT.DataTable().columns().every( function () {
+          $(this).html('<input type="text" size="'+title.length+'" placeholder="'+title+'" />');
+        });
+        tablaMaterialesOT.DataTable(datatableDefault);
+        tablaMaterialesOT.DataTable().columns().every(function () {
           var that = this;
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that.search( this.value ).draw();
+          $('input', this.footer()).on('keyup change', function () {
+            if (that.search() !== this.value) {
+              that.search(this.value).draw();
             }
           });
-        } );
+        });
 
-        //tablaMaterialesOT.find("tbody tr td").not(":last-child").on( 'click', function () {
-        $(document).on("click","#tablaMaterialesOT tbody tr td", function(){
-          var t=$(this).parent();
-
-          let id_conjunto=t.find("td:first-child").html();
+        // Click en tabla materiales OT
+        $(document).on("click", "#tablaMaterialesOT tbody tr td", function () {
+          var t = $(this).parent();
           let idMaterial = t.data('id-material');
-          if(t.hasClass('selected')){
+          if (t.hasClass('selected')) {
             deselectRow(t);
-          }else{
-            tablaMaterialesOT.DataTable().rows().nodes().each( function (rowNode, index) {
+          } else {
+            tablaMaterialesOT.DataTable().rows().nodes().each(function (rowNode) {
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
-            if(idMaterial){
+            if (idMaterial) {
               $('select[name="id_material"]').val(idMaterial).trigger('change');
             }
           }
         });
 
+        // Select2 para ingreso
         $('#id_ingreso_seleccionado').select2();
 
         function getUsedReserves() {
-            let used = [];
-            $("#tablaConsumos tbody input[name='id_egreso_detalle[]']").each(function(){
-                let val = $(this).val();
-                if(val && val != "0") used.push(val);
-            });
-            return used;
+          let used = [];
+          $("#tablaConsumos tbody input[name='id_egreso_detalle[]']").each(function () {
+            let val = $(this).val();
+            if (val && val != "0") used.push(val);
+          });
+          return used;
         }
 
-        $('select[name="id_material"]').on('change', function(){
+        // Cambio de material -> cargar reservas
+        $('select[name="id_material"]').on('change', function () {
           var id_material = $(this).val();
           var id_proyecto = $('#id_proyecto_ajax').val();
           var selectIngresos = $('#id_ingreso_seleccionado');
           selectIngresos.empty().trigger('change');
-          
-          if(id_material) {
+
+          if (id_material) {
             selectIngresos.append(new Option("Cargando...", "", true, true));
             $.ajax({
               url: 'nuevoConsumo.php',
               type: 'POST',
               data: { action: 'get_stock', id_material: id_material, id_proyecto: id_proyecto },
               dataType: 'json',
-              success: function(data) {
-                  selectIngresos.empty();
-                  
-                  let usedReserves = getUsedReserves();
-
-                  if(data.length > 0){
-                    selectIngresos.append(new Option("Seleccione Reserva...", ""));
-                    let countAvailable = 0;
-                    $.each(data, function(index, item) {
-                      
-                      if(usedReserves.includes(item.id_egreso_detalle.toString())) {
-                          return; 
-                      }
-
-                      var option = new Option(item.text, item.id);
-                      $(option).data('id-colada', item.id_colada);
-                      $(option).data('nro-colada', item.nro_colada);
-                      $(option).data('id-egreso-detalle', item.id_egreso_detalle);
-                      $(option).data('cantidad-reservada', item.cantidad_reservada);
-                      selectIngresos.append(option);
-                      countAvailable++;
-                    });
-
-                    if(countAvailable === 0){
-                        selectIngresos.append(new Option("Todas las reservas disponibles ya han sido agregadas", ""));
-                    }
-
-                  } else {
-                    selectIngresos.append(new Option("No hay reservas para este proyecto", ""));
+              success: function (data) {
+                selectIngresos.empty();
+                let usedReserves = getUsedReserves();
+                if (data.length > 0) {
+                  selectIngresos.append(new Option("Seleccione Reserva...", ""));
+                  let countAvailable = 0;
+                  $.each(data, function (index, item) {
+                    if (usedReserves.includes(item.id_egreso_detalle.toString())) return;
+                    var option = new Option(item.text, item.id);
+                    $(option).data('id-colada', item.id_colada);
+                    $(option).data('nro-colada', item.nro_colada);
+                    $(option).data('id-egreso-detalle', item.id_egreso_detalle);
+                    $(option).data('cantidad-reservada', item.cantidad_reservada);
+                    selectIngresos.append(option);
+                    countAvailable++;
+                  });
+                  if (countAvailable === 0) {
+                    selectIngresos.append(new Option("Todas las reservas disponibles ya han sido agregadas", ""));
                   }
-                  selectIngresos.trigger('change');
+                } else {
+                  selectIngresos.append(new Option("No hay reservas para este proyecto", ""));
+                }
+                selectIngresos.trigger('change');
               },
-              error: function() {
-                  selectIngresos.empty();
-                  selectIngresos.append(new Option("Error al cargar datos", ""));
+              error: function () {
+                selectIngresos.empty();
+                selectIngresos.append(new Option("Error al cargar datos", ""));
               }
             });
           } else {
@@ -611,146 +638,188 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           }
         });
 
-        $(document).on("click","#tablaConsumos tbody tr td", function(){
-          var t=$(this).parent();
-          
-          if(t.hasClass('selected')){
+        // Click en tabla consumos
+        $(document).on("click", "#tablaConsumos tbody tr td", function () {
+          var t = $(this).parent();
+          if (t.hasClass('selected')) {
             deselectRow(t);
-          }else{
-            tablaConsumos.DataTable().rows().nodes().each( function (rowNode, index) {
+          } else {
+            tablaConsumos.DataTable().rows().nodes().each(function (rowNode) {
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
           }
         });
 
-        // Setup - add a text input to each footer cell
-        tablaConsumos.find('tfoot th').each( function () {
+        // Tabla Consumos
+        tablaConsumos.find('tfoot th').each(function () {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-	      tablaConsumos.DataTable(datatableDefault);
- 
-        // Apply the search
-        tablaConsumos.DataTable().columns().every( function () {
+          $(this).html('<input type="text" size="'+title.length+'" placeholder="'+title+'" />');
+        });
+        tablaConsumos.DataTable(datatableDefault);
+        tablaConsumos.DataTable().columns().every(function () {
           var that = this;
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that.search( this.value ).draw();
+          $('input', this.footer()).on('keyup change', function () {
+            if (that.search() !== this.value) {
+              that.search(this.value).draw();
             }
           });
-        } );
+        });
 
-        $("#link_eliminar_consumo").on("click",function(){
+        // Eliminar consumo de la tabla
+        $("#link_eliminar_consumo").on("click", function () {
           var selectedRowsOT = tablaConsumos.DataTable().rows('.selected');
-          if(selectedRowsOT[0].length>0){
-
+          if (selectedRowsOT[0].length > 0) {
             selectedRowsOT.remove().draw();
-
             var currentMaterial = $('select[name="id_material"]').val();
-            if(currentMaterial) {
-                 $('select[name="id_material"]').trigger('change');
+            if (currentMaterial) {
+              $('select[name="id_material"]').trigger('change');
             }
-  
-          }else{
-            alert("Por favor seleccione una posicion para eliminar")
+          } else {
+            alert("Por favor seleccione una posicion para eliminar");
           }
         });
 
-        $("#link_modificar_consumo").on("click",function(){
-          console.log(this);
-          var selectedRowsConsumo = tablaConsumos.DataTable().rows('.selected');
-          if(selectedRowsConsumo[0].length>0){
-            let nodes=selectedRowsConsumo.nodes()[0]
-            
-            let id_material=$(nodes).find(".id_material").val()
-            let situacion=$(nodes).find(".situacion").val()
-            let cantidad=$(nodes).find(".cantidad").val()
-            let id_unidad_medida=$(nodes).find(".id_unidad_medida").val()
-            let observacion=$(nodes).find(".observacion").val()
-            editarFormInput(id_material,situacion,cantidad,id_unidad_medida,observacion)
-          }else{
-            alert("Por favor seleccione una posicion para modificar")
-          }
-        });
-
-        $("#formInput").on("submit",function(e){
+        // Agregar ítem al detalle
+        $("#formInput").on("submit", function (e) {
           e.preventDefault();
-          let select_id_material=$("select[name='id_material']")
-          let id_material=select_id_material.val()
-          let selected_option_id_material=select_id_material.find("option[value='"+id_material+"']")
-            
-          let concepto=selected_option_id_material.data("concepto")
-          
+          let select_id_material = $("select[name='id_material']");
+          let id_material = select_id_material.val();
+          let selected_option_id_material = select_id_material.find("option[value='" + id_material + "']");
+          let concepto = selected_option_id_material.data("concepto");
+
           let select_ingreso = $('#id_ingreso_seleccionado');
           let id_detalle_ingreso = select_ingreso.val();
           let nro_colada = select_ingreso.find('option:selected').data('nro-colada') || "(Sin Colada)";
           let id_colada = select_ingreso.find('option:selected').data('id-colada') || 0;
           let id_egreso_detalle = select_ingreso.find('option:selected').data('id-egreso-detalle') || 0;
           let cantidad_reservada = select_ingreso.find('option:selected').data('cantidad-reservada') || 0;
-          
-          let situacion=$("input[name='situacion']:checked").val()
-          
-          if(situacion == "Consumo" && !id_detalle_ingreso){
+
+          let situacion = $("input[name='situacion']:checked").val();
+
+          if (situacion == "Consumo" && !id_detalle_ingreso) {
             alert("Seleccione una reserva para consumir");
             return;
           }
-          
-          let cantidad=$("input[name='cantidad']").val()
-          
-          if(situacion == "Consumo" && parseFloat(cantidad) > parseFloat(cantidad_reservada)){
-            alert("La cantidad no puede exceder lo reservado ("+cantidad_reservada+")");
+
+          let cantidad = $("input[name='cantidad']").val();
+
+          if (situacion == "Consumo" && parseFloat(cantidad) > parseFloat(cantidad_reservada)) {
+            alert("La cantidad no puede exceder lo reservado (" + cantidad_reservada + ")");
             return;
           }
-          
-          let select_id_unidad_medida=$("select[name='id_unidad_medida']")
-          let id_unidad_medida=select_id_unidad_medida.val()
-          let selected_option_id_unidad_medida=select_id_unidad_medida.find("option[value='"+id_unidad_medida+"']").text()
 
-          let observacion=$("input[name='observacion']").val()
+          let select_id_unidad_medida = $("select[name='id_unidad_medida']");
+          let id_unidad_medida = select_id_unidad_medida.val();
+          let selected_option_id_unidad_medida = select_id_unidad_medida.find("option[value='" + id_unidad_medida + "']").text();
 
-          let newConsumo=[
-            `<input type="hidden" name="id_material[]" class="id_material" value="${id_material}"><input type="hidden" name="id_detalle_ingreso[]" value="${id_detalle_ingreso}"><input type="hidden" name="id_egreso_detalle[]" value="${id_egreso_detalle}">`+concepto,
-            `<input type="hidden" name="id_colada[]" class="id_colada" value="${id_colada}">`+nro_colada,
-            `<input type="hidden" name="situacion[]" class="situacion" value="${situacion}">`+situacion,
-            `<input type="hidden" name="cantidad[]" class="cantidad" value="${cantidad}">`+cantidad,
-            `<input type="hidden" name="id_unidad_medida[]" class="id_unidad_medida" value="${id_unidad_medida}">`+selected_option_id_unidad_medida,
-            `<input type="hidden" name="observacion[]" class="observacion" value="${observacion}">`+observacion
-          ]
-          console.log(newConsumo);
+          let observacion = $("input[name='observacion']").val();
+
+          let newConsumo = [
+            `<input type="hidden" name="id_material[]" class="id_material" value="${id_material}"><input type="hidden" name="id_detalle_ingreso[]" value="${id_detalle_ingreso}"><input type="hidden" name="id_egreso_detalle[]" value="${id_egreso_detalle}">` + concepto,
+            `<input type="hidden" name="id_colada[]" class="id_colada" value="${id_colada}">` + nro_colada,
+            `<input type="hidden" name="situacion[]" class="situacion" value="${situacion}">` + situacion,
+            `<input type="hidden" name="cantidad[]" class="cantidad" value="${cantidad}">` + cantidad,
+            `<input type="hidden" name="id_unidad_medida[]" class="id_unidad_medida" value="${id_unidad_medida}">` + selected_option_id_unidad_medida,
+            `<input type="hidden" name="observacion[]" class="observacion" value="${observacion}">` + observacion
+          ];
 
           tablaConsumos.DataTable().row.add(newConsumo).draw();
-          
-          if(id_detalle_ingreso) {
+
+          if (id_detalle_ingreso) {
             $("#id_ingreso_seleccionado option:selected").remove();
-            $("#id_ingreso_seleccionado").trigger('change'); // Actualizar select2
+            $("#id_ingreso_seleccionado").trigger('change');
           }
 
-          limpiarFormInput()
+          limpiarFormInput();
         });
-    
+
+        // =====================================================================
+        // LÓGICA DEL MODAL DE SOBRANTE AL CREAR
+        // =====================================================================
+
+        // Función para detectar si hay sobrantes en la tabla
+        function haySobrantes() {
+          let tiene = false;
+          $("#tablaConsumos tbody .situacion").each(function () {
+            if ($(this).val() === "Sobrante") {
+              tiene = true;
+              return false;
+            }
+          });
+          return tiene;
+        }
+
+        // Inicializar Select2 en el modal cuando se abre
+        $('#sobranteModal').on('shown.bs.modal', function () {
+          $('#inputRecibeSobrante').select2({
+            dropdownParent: $('#sobranteModal'),
+            width: '100%',
+            placeholder: 'Seleccione...',
+            allowClear: true
+          });
+        });
+
+        // Variable para saber si el modal ya fue confirmado
+        let datosRecibeSobranteListos = false;
+
+        // Interceptar submit del form principal
+        $('#formCrearConsumo').on('submit', function (e) {
+          // Validar que hay al menos un ítem
+          let totalItems = tablaConsumos.DataTable().rows().count();
+          if (totalItems === 0) {
+            e.preventDefault();
+            alert("Agregue al menos un ítem de consumo o sobrante.");
+            return;
+          }
+
+          // Si ya confirmó el modal, dejamos pasar
+          if (datosRecibeSobranteListos) {
+            $(this).off('submit');
+            return true;
+          }
+
+          // Si hay sobrantes, abrimos el modal
+          if (haySobrantes()) {
+            e.preventDefault();
+            $('#sobranteModal').modal('show');
+            return;
+          }
+
+          // Si no hay sobrantes, dejamos pasar directamente
+        });
+
+        // Al confirmar el modal de sobrante
+        $('#sobranteForm').on('submit', function (e) {
+          e.preventDefault();
+          const recibe = $('#inputRecibeSobrante').val();
+
+          if (!recibe) {
+            return alert('Seleccione quién recibe la devolución.');
+          }
+
+          // Llenar el hidden del form principal
+          $('#hiddenCuentaRecibeSobrante').val(recibe);
+
+          datosRecibeSobranteListos = true;
+          $('#sobranteModal').modal('hide');
+
+          // Disparar de nuevo el submit
+          $('#formCrearConsumo').submit();
+        });
       });
 
-      function editarFormInput(id_material,situacion,cantidad,id_unidad_medida,observacion){
-        $("select[name='id_material']").val(id_material).trigger('change')
-        $("input[name='situacion']").prop("checked",false)
-        $("input[name='situacion'][value='"+situacion+"']").prop("checked",true)
-        $("input[name='cantidad']").val(cantidad)
-        $("select[name='id_unidad_medida']").val(id_unidad_medida).trigger('change')
-        $("input[name='observacion']").val(observacion)
-      }
-
-      function limpiarFormInput(){
-        $("input[name='situacion']").prop("checked",false)
-        $("input[name='cantidad']").val("")
-        $("input[name='observacion']").val("")
+      function limpiarFormInput() {
+        $("input[name='situacion']").prop("checked", false);
+        $("input[name='cantidad']").val("");
+        $("input[name='observacion']").val("");
         $("#id_ingreso_seleccionado").val("").trigger("change");
       }
 
-      function selectRow(t){
+      function selectRow(t) {
         t.addClass('selected');
       }
-      function deselectRow(t){
+      function deselectRow(t) {
         t.removeClass('selected');
       }
     </script>

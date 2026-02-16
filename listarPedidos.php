@@ -10,10 +10,24 @@ require_once 'manejarFiltros.php';
 $filters = gestionarFiltros('listarPedidos');
 
 $nro = $filters['nro'] ?? "";
-$nro_pedido = $filters['nro_pedido'] ?? ""; 
+$nro_pedido = $filters['nro_pedido'] ?? "";
 $fecha = $filters['fecha'] ?? "";
 $fechah = $filters['fechah'] ?? "";
 $id_estado = $filters['id_estado'] ?? [];
+
+if (empty($filters)) {
+  $id_estado = [1, 2, 3, 4];
+}
+
+if (in_array("todos", $id_estado)) {
+  $id_estado = ["todos"];
+  $filtrarPorEstado = false;
+} else {
+  $id_estado = array_filter($id_estado, function($v) {
+    return $v !== "" && $v !== null;
+  });
+  $filtrarPorEstado = !empty($id_estado);
+}
 
 ?>
 <!DOCTYPE html>
@@ -111,29 +125,29 @@ $id_estado = $filters['id_estado'] ?? [];
                 <div class="card">
                   <div class="card-body">
                     <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarPedidos.php">
-                      <!-- NUEVO INPUT FILTRO -->
                       <div class="form-group mb-0">
                         N. Pedido:&nbsp;<input class="form-control" size="5" type="text" value="<?=$nro_pedido?>" name="nro_pedido">
                       </div>
                       <div class="form-group mb-0">
-						            N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?=$nro?>" name="nro">
-					            </div>
-					            <div class="form-group mb-0">
-						            Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=$fecha?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=$fechah?>" name="fechah">
-					            </div>
+                        N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?=$nro?>" name="nro">
+                      </div>
+                      <div class="form-group mb-0">
+                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=$fecha?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=$fechah?>" name="fechah">
+                      </div>
                       <div class="form-group mb-0">
                         Estado:&nbsp;
                         <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-                          <option value="">Todos</option><?php
+                          <option value="todos" <?= in_array("todos", $id_estado) ? 'selected' : '' ?>>Todos</option>
+                          <?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                           $sqlZon = "SELECT id, estado FROM estados_pedidos WHERE 1 ORDER BY id ASC";
                           $q = $pdo->prepare($sqlZon);
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                            $selected="";
-                            if (in_array($fila['id'],$id_estado)) {
-                              $selected=" selected ";
+                            $selected = "";
+                            if (!in_array("todos", $id_estado) && in_array($fila['id'], $id_estado)) {
+                              $selected = " selected ";
                             }?>
                             <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['estado']?></option><?php
                           }
@@ -173,7 +187,7 @@ $id_estado = $filters['id_estado'] ?? [];
                       if (!empty(tienePermiso(284))) {?>
                         <a href="#" id="link_nuevo_suceso"><img src="img/venc.jpg" width="24" height="25" border="0" alt="Agregar Suceso" title="Agregar Suceso"></a>&nbsp;&nbsp;<?php
                       }?>
-					          </h5>
+                    </h5>
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
@@ -188,18 +202,13 @@ $id_estado = $filters['id_estado'] ?? [];
                             <th style="width: 85px;">F. Entrega</th>
                             <th style="width: 80px;">Estado</th>
                             <th class="truncate-solicitante">Solicitante</th>
-                            <!-- <th>Aprobado</th> -->
                             <th style="width: 60px;">Tipo</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
-                          if (empty($filters)) {
-                            $id_estado = [1,2,4];
-                          }
 
-                          // --- LOGICA FILTRO NRO PEDIDO ---
                           $filtroNroPedido = "";
                           if ($nro_pedido != "") {
                             $filtroNroPedido = " AND pe.id = ".intval($nro_pedido)." ";
@@ -225,15 +234,14 @@ $id_estado = $filters['id_estado'] ?? [];
                             $filtroFechah .= " AND pe.fecha <= '".$fechah."' ";
                           }
 
-                          $filtroEstado="";
-                          if (!empty($id_estado)) {
-                            $filtroEstado .= " AND ep.id IN (".implode(', ', array_map('intval', $id_estado)).") ";
+                          $filtroEstado = "";
+                          if ($filtrarPorEstado) {
+                            $filtroEstado = " AND ep.id IN (".implode(', ', array_map('intval', $id_estado)).") ";
                           }
 
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                          // --- APLICAR FILTRO EN CONSULTA 1 (COMPUTOS) ---
                           $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.nombre AS nombre_proyecto, pe.id_computo
                           FROM pedidos pe 
                             INNER JOIN computos c ON c.id = pe.id_computo 
@@ -282,7 +290,6 @@ $id_estado = $filters['id_estado'] ?? [];
                             </tr><?php
                           }
 
-                          // --- APLICAR FILTRO EN CONSULTA 2 (DIRECTOS) ---
                           $sql2 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, 
                           (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
                           ep.estado, ep.id AS id_estado, 
@@ -349,7 +356,7 @@ $id_estado = $filters['id_estado'] ?? [];
                 </div>
               </div>
             </div>
-			      <div class="row">
+            <div class="row">
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
@@ -358,34 +365,33 @@ $id_estado = $filters['id_estado'] ?? [];
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
                       <table class="display truncate" id="dataTables-example667">
-                        <!-- ESTRUCTURA MODIFICADA: Quitados Stock, Agregado Entregado y Acciones -->
                         <thead>
                           <tr>
                             <th class="truncate-concepto">Concepto</th>
                             <th style="width: 70px;">Requerido</th>
                             <th style="width: 70px;">Reservado</th>
                             <th style="width: 70px;">Comprado</th>
-                            <th style="width: 70px;">Entregado</th> <!-- NUEVA -->
+                            <th style="width: 70px;">Entregado</th>
                             <th style="width: 85px;">F. Necesidad</th>
                             <th style="width: 100px;">F. Última Compra</th>
                             <th style="width: 90px;">Costo Último Precio</th>
                             <th style="width: 90px;">Estado</th>
-                            <th style="width: 50px;">Acciones</th> <!-- NUEVA -->
+                            <th style="width: 50px;">Acciones</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
-						            <tfoot>
+                        <tfoot>
                           <tr>
                             <th class="truncate-concepto">Concepto</th>
                             <th style="width: 70px;">Requerido</th>
                             <th style="width: 70px;">Reservado</th>
                             <th style="width: 70px;">Comprado</th>
-                            <th style="width: 70px;">Entregado</th> <!-- NUEVA -->
+                            <th style="width: 70px;">Entregado</th>
                             <th style="width: 85px;">F. Necesidad</th>
                             <th style="width: 100px;">F. Última Compra</th>
                             <th style="width: 90px;">Costo Último Precio</th>
                             <th style="width: 90px;">Estado</th>
-                            <th style="width: 50px;">Acciones</th> <!-- NUEVA -->
+                            <th style="width: 50px;">Acciones</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -401,8 +407,8 @@ $id_estado = $filters['id_estado'] ?? [];
         <?php include("footer.php"); ?>
       </div>
     </div>
-	
-	    <!-- Modales únicos -->
+  
+    <!-- Modales únicos -->
     <div class="modal fade" id="aprobarModal" tabindex="-1" role="dialog" aria-labelledby="aprobarModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -481,9 +487,18 @@ $id_estado = $filters['id_estado'] ?? [];
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
       } );
 
+      $('#id_estado').on('change', function() {
+        var currentValues = $(this).val() || [];
+        
+        if (currentValues.includes('todos') && currentValues.length > 1) {
+          $(this).val(['todos']).trigger('change.select2');
+          return;
+        }
+        
+      });
+
       $('#dataTables-example666').DataTable({
         stateSave: false,
-        //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
         autoWidth: false,
         dom: 'Bfrtp<"bottom"l>',

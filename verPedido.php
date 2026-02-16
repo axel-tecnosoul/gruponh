@@ -166,7 +166,9 @@ if (!empty($_POST)) {
                               $sql = " SELECT pd.id, m.concepto, pd.cantidad, date_format(pd.fecha_necesidad,'%d/%m/%y') AS fecha_necesidad, u.unidad_medida,pd.id_material,pd.reservado,pd.comprado FROM pedidos_detalle pd inner join materiales m on m.id = pd.id_material inner join unidades_medida u on u.id = pd.id_unidad_medida WHERE pd.id_pedido = ".$_GET['id'];
                               
                               foreach ($pdo->query($sql) as $row) {
-                                $cantidadDisponible = $row["cantidad"] - $row["reservado"] - $row["comprado"];
+                                $stockInfo = obtenerStockYReservado($pdo, $row[5]);
+                                
+                                $disponible = $stockInfo['stock'];
 
                                 $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') AS fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
                                 $q2 = $pdo->prepare($sql2);
@@ -182,15 +184,7 @@ if (!empty($_POST)) {
                                 if (!empty($data2['precio'])) {
                                   $precio = "$".number_format($data2['precio'],2);
                                 }
-                                
-                                $sql = "SELECT SUM(id.saldo) AS disponible FROM ingresos_detalle id WHERE id_material = ? ";
-                                $q = $pdo->prepare($sql);
-                                $q->execute([$row[5]]);
-                                $data3 = $q->fetch(PDO::FETCH_ASSOC);
-                                
-                                $disponible=0;
-                                if (empty($data3['disponible'])) {
-                                }?>
+                                ?>
 
                                 <tr>
                                   <td><?=$row["concepto"]?></td>

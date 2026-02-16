@@ -389,11 +389,11 @@ if (empty($_SESSION['user'])) {
                     "previous": "Anterior"
                 }
               },
-              "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
+/*            "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
                 console.log(nRow);
                 console.log(aData);
                 $('td:eq(7)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
-              },
+              }, */
               initComplete: function(){
                 $('[title]').tooltip();
               }

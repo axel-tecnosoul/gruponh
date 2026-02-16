@@ -162,9 +162,9 @@
                                     <th>Categoría</th>
                                     <th>Unidad Medida</th>
                                     <th>Cantidad</th>
-                                    <th>Efectivizado</th> <!-- Columna Calculada -->
-                                    <th>Cantidad egresada</th>
-                                    <th>Saldo</th>
+                                    <th>Efectivizado</th>
+                                    <th>Stock Físico</th> 
+                                    <th>Reservado</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -179,7 +179,8 @@
                                             id.cantidad, 
                                             (SELECT IFNULL(SUM(ed.cantidad_efectivizada), 0) FROM egresos_detalle ed WHERE ed.id_detalle_ingreso = id.id) as efectivizado,
                                             id.cantidad_egresada, 
-                                            id.saldo 
+                                            id.saldo,
+                                            id.id_material 
                                           FROM ingresos_detalle id 
                                           INNER JOIN unidades_medida um on um.id = id.id_unidad_medida 
                                           INNER JOIN ingresos i on i.id = id.id_ingreso 
@@ -190,6 +191,8 @@
                                           WHERE id.id_ingreso = ".$_GET['id'];
 
                                   foreach ($pdo->query($sql) as $row) {
+                                      $infoStock = obtenerStockYReservado($pdo, $row[8]);
+
                                       echo '<tr>';
                                       echo '<td>'. $row[0] . '</td>';
                                       echo '<td>'. $row[1] . '</td>';
@@ -197,8 +200,9 @@
                                       echo '<td>'. $row[3] . '</td>';
                                       echo '<td>'. $row[4] . '</td>';
                                       echo '<td>'. $row[5] . '</td>';
-                                      echo '<td>'. $row[6] . '</td>';
-                                      echo '<td>'. $row[7] . '</td>';
+                                      
+                                      echo '<td>'. $infoStock['stock'] . '</td>';
+                                      echo '<td>'. $infoStock['reservado'] . '</td>';
                                       echo '</tr>';
                                   }
                                   Database::disconnect();
