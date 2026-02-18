@@ -26,4 +26,4 @@
         
     Database::disconnect();
         
-    header("Location: modificarCompra.php?id=".$_GET['id_compra']);
+    header("Location: modificarCompra.php?id_compra=".$_GET['id_compra']);

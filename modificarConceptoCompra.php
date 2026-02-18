@@ -58,7 +58,7 @@
         
 		Database::disconnect();
         
-        header("Location: modificarCompra.php?id=".$_POST['id_compra']);
+        header("Location: modificarCompra.php?id_compra=".$_POST['id_compra']);
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

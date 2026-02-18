@@ -149,6 +149,70 @@ if (!empty($_POST)) {
       td[style*="display: none"], td.hidden-cell {
         display: none !important;
       }
+
+      #modalConfirmacion .modal-content,
+      #modalRemitos .modal-content {
+        background-color: #ffffff !important;
+        color: #333333 !important;
+      }
+
+      #modalConfirmacion .modal-body,
+      #modalRemitos .modal-body {
+        background-color: #ffffff !important;
+        color: #333333 !important;
+      }
+
+      #modalConfirmacion .modal-body p,
+      #modalConfirmacion .modal-body span,
+      #modalConfirmacion .modal-body div,
+      #modalConfirmacion .modal-body h6,
+      #modalRemitos .modal-body td,
+      #modalRemitos .modal-body th {
+        color: #333333 !important;
+      }
+
+      #modalConfirmacion .modal-footer,
+      #modalRemitos .modal-footer {
+        background-color: #f8f9fa !important;
+      }
+
+      #modalConfirmacion .modal-header.bg-primary { background-color: #007bff !important; }
+      #modalConfirmacion .modal-header.bg-warning { background-color: #ffc107 !important; }
+      #modalConfirmacion .modal-header.bg-success { background-color: #28a745 !important; }
+      #modalRemitos .modal-header.bg-info { background-color: #17a2b8 !important; }
+
+      #modalConfirmacion .modal-header *,
+      #modalRemitos .modal-header * {
+        color: #ffffff !important;
+      }
+
+      #modalConfirmacion .text-muted {
+        color: #6c757d !important;
+      }
+
+      #modalConfirmacion .card {
+        background-color: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+      }
+
+      #modalConfirmacion .card .card-body {
+        background-color: #f8f9fa !important;
+      }
+
+      #modalConfirmacion .bg-light {
+        background-color: #e9ecef !important;
+        color: #333333 !important;
+      }
+
+      #modalRemitos .table {
+        color: #333333 !important;
+      }
+
+      #modalConfirmacion .close span,
+      #modalRemitos .close span {
+        color: #ffffff !important;
+        text-shadow: none !important;
+      }
     </style>
   </head>
   <body>
@@ -209,7 +273,7 @@ if (!empty($_POST)) {
                                 </div>
                               </div>
                               <div class="form-group row">
-                                <label class="col-sm-3 font-weight-bold">Total</label>
+                                <label class="col-sm-3 font-weight-bold">Total s/IVA</label>
                                 <div class="col-sm-9"><?=$data['moneda'] ?: '$'?><?=number_format($data['total'], 2);?></div>
                               </div><?php
                               if (!empty($data['lugar_entrega'])) { ?>
@@ -390,30 +454,30 @@ if (!empty($_POST)) {
                       </script>
                     </div>
                     <div class="card-footer">
-                      <div class="card-footer">
-                        <div class="col-sm-12 text-center">
-                          <?php if(tienePermiso(305)){ ?>
-                            <div class="form-group mb-3">
-                              <label class="font-weight-bold d-block mb-3">Destino de los materiales:</label>
-                              <input type="hidden" name="destino_seleccionado" id="destino_seleccionado" value="">
-                              
-                              <button type="button" class="btn btn-primary btn-lg mr-3 py-4 border" onclick="procesarIngreso(0)">
-                                <i class="fa fa-cubes mr-1"></i> Poner en Stock
-                              </button>
+                      <div class="col-sm-12 text-center">
+                        <?php if(tienePermiso(305)){ ?>
+                          <div class="form-group mb-3">
+                            <label class="font-weight-bold d-block mb-3">Destino de los materiales:</label>
+                            <input type="hidden" name="destino_seleccionado" id="destino_seleccionado" value="">
+                            
+                            <button type="button" class="btn btn-primary btn-lg mr-3 py-4 border" 
+                                    onclick="mostrarConfirmacion(0, 'Poner en Stock', 'primary', 'fa-cubes')">
+                              <i class="fa fa-cubes mr-1"></i> Poner en Stock
+                            </button>
 
-                              <button type="button" class="btn btn-warning btn-lg mr-3 py-4 border" onclick="procesarIngreso(1)">
-                                <i class="fa fa-lock mr-1"></i> Reservar
-                              </button>
+                            <button type="button" class="btn btn-warning btn-lg mr-3 py-4 border" 
+                                    onclick="mostrarConfirmacion(1, 'Reservar', 'warning', 'fa-lock')">
+                              <i class="fa fa-lock mr-1"></i> Reservar
+                            </button>
 
-                              <button type="button" class="btn btn-success btn-lg py-4 border" onclick="procesarIngreso(2)">
-                                <i class="fa fa-building mr-1"></i> Ingresar en Obra
-                              </button>
-                            </div>
-
-                          <?php } ?>
-                          &nbsp;
-                          <a href="#" onclick="document.location.href='listarCompras.php'" class="btn btn-light">Volver</a>
-                        </div>
+                            <button type="button" class="btn btn-success btn-lg py-4 border" 
+                                    onclick="mostrarConfirmacion(2, 'Ingresar en Obra', 'success', 'fa-building')">
+                              <i class="fa fa-building mr-1"></i> Ingresar en Obra
+                            </button>
+                          </div>
+                        <?php } ?>
+                        &nbsp;
+                        <a href="listarCompras.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -427,14 +491,15 @@ if (!empty($_POST)) {
         <?php include("footer.php"); ?>
       </div>
     </div>
-    
-    <!-- Modal Listado de Remitos -->
-    <div class="modal fade" id="modalRemitos" tabindex="-1" role="dialog" aria-labelledby="modalRemitosLabel" aria-hidden="true">
+
+    <div class="modal fade" id="modalRemitos" tabindex="-1" role="dialog" aria-hidden="true">
       <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="modalRemitosLabel">Remitos registrados para esta OC</h5>
-            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <div class="modal-header bg-info">
+            <h5 class="modal-title text-white">
+              <i class="fa fa-file-text-o mr-2"></i>Remitos registrados para esta OC
+            </h5>
+            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
@@ -450,23 +515,26 @@ if (!empty($_POST)) {
                 </thead>
                 <tbody>
                   <?php 
-                  // Usamos la lista que cargamos al principio del PHP
                   if (count($remitosList) > 0) {
                     foreach ($remitosList as $rem) { ?>
                       <tr>
                         <td><?=$rem['fecha_fmt']?></td>
                         <td><?=$rem['nro_remito']?></td>
                         <td class="text-center">
-                          <a href="verIngreso.php?id=<?=$rem['id']?>" target="_blank" class="btn btn-xs btn-primary" title="Ver Detalle">
+                          <a href="verIngreso.php?id=<?=$rem['id']?>" target="_blank" 
+                             class="btn btn-xs btn-primary" title="Ver Detalle">
                             <i class="fa fa-external-link"></i>
                           </a>
                         </td>
                       </tr>
                     <?php }
-                  } else {
-                    echo "<tr><td colspan='3' class='text-center'>No se encontraron remitos previos.</td></tr>";
-                  }
-                  ?>
+                  } else { ?>
+                    <tr>
+                      <td colspan="3" class="text-center text-muted py-3">
+                        <i class="fa fa-info-circle mr-1"></i>No se encontraron remitos previos.
+                      </td>
+                    </tr>
+                  <?php } ?>
                 </tbody>
               </table>
             </div>
@@ -478,27 +546,62 @@ if (!empty($_POST)) {
       </div>
     </div>
 
-    <!-- latest jquery-->
+    <div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header" id="headerConfirmacion">
+            <h5 class="modal-title text-white" id="tituloConfirmacion">
+              <i class="fa" id="iconoConfirmacion"></i> Confirmar Acción
+            </h5>
+            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div class="text-center mb-3">
+              <i class="fa fa-question-circle fa-3x" id="iconoGrandeConfirmacion" style="color: #007bff;"></i>
+            </div>
+            <p class="text-center font-weight-bold" id="textoConfirmacion" style="font-size: 1.1rem;">
+              ¿Está seguro?
+            </p>
+            
+            <div class="card mt-3" id="resumenIngreso">
+              <div class="card-body p-2">
+                <h6 class="card-title mb-2"><i class="fa fa-list mr-1"></i> Resumen del ingreso:</h6>
+                <div id="listaResumen" class="small"></div>
+              </div>
+            </div>
+
+            <p class="text-muted small text-center mt-3">
+              <i class="fa fa-exclamation-triangle mr-1"></i>
+              Verifique que los datos del remito y las cantidades sean correctas antes de confirmar.
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-dismiss="modal">
+              <i class="fa fa-times mr-1"></i> Cancelar
+            </button>
+            <button type="button" class="btn" id="btnConfirmarAccion" onclick="ejecutarIngreso()">
+              <i class="fa fa-check mr-1"></i> <span id="textoBotonConfirmar">Confirmar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-    <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
-	  <script src="assets/js/select2/select2.full.min.js"></script>
+    <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-	  <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+    <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
@@ -518,21 +621,23 @@ if (!empty($_POST)) {
     <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
+
     <script>
       $(document).ready(function() {
+        if ($.fn.DataTable.isDataTable('#dataTables-example667')) {
+          $('#dataTables-example667').DataTable().destroy();
+        }
+        
         $('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
+          paging: false,
           language: {
             "decimal": "",
             "emptyTable": "No hay información",
             "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
             "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
             "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "infoPostFix": "",
             "thousands": ",",
             "lengthMenu": "Mostrar _MENU_ Registros",
             "loadingRecords": "Cargando...",
@@ -540,78 +645,148 @@ if (!empty($_POST)) {
             "search": "Buscar:",
             "zeroRecords": "No hay resultados",
             "paginate": {
-                "first": "Primero",
-                "last": "Ultimo",
-                "next": "Siguiente",
-                "previous": "Anterior"
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
             }
           }
         });
-        // DataTable
-        var table = $('#dataTables-example667').DataTable();
-      } );
+      });
 
-      function procesarIngreso(idDestino) {
-        const form = document.form1;
-        
-        // Guardar el destino seleccionado en el campo oculto
-        document.getElementById('destino_seleccionado').value = idDestino;
+      document.getElementById('nro_remito_input').addEventListener('input', function(e) {
+        var input = e.target.value.replace(/\D/g, '').substring(0, 12);
+        var zip = input.substring(0, 4);
+        var middle = input.substring(4, 12);
+        e.target.value = input.length > 4 ? zip + "-" + middle : input;
+      });
 
-        const inputFecha = form.querySelector('input[name="fecha_remito"]');
-        const inputNro = form.querySelector('input[name="nro_remito"]');
+      var destinoPendiente = null;
+
+      var configDestinos = {
+        0: { 
+          titulo: 'Poner en Stock', 
+          color: 'primary', 
+          icono: 'fa-cubes',
+          texto: '¿Confirma que desea ingresar los siguientes materiales al <strong>Stock general</strong>?'
+        },
+        1: { 
+          titulo: 'Reservar', 
+          color: 'warning', 
+          icono: 'fa-lock',
+          texto: '¿Confirma que desea <strong>reservar</strong> los siguientes materiales?'
+        },
+        2: { 
+          titulo: 'Ingresar en Obra', 
+          color: 'success', 
+          icono: 'fa-building',
+          texto: '¿Confirma que desea ingresar los siguientes materiales directamente <strong>en Obra</strong>?'
+        }
+      };
+
+      function mostrarConfirmacion(idDestino, nombreAccion, colorBtn, icono) {
+        var form = document.form1;
+        var inputFecha = form.querySelector('input[name="fecha_remito"]');
+        var inputNro = form.querySelector('input[name="nro_remito"]');
 
         if (idDestino == 1) {
-            inputFecha.removeAttribute('required');
-            inputNro.setAttribute('required', '');
+          inputFecha.removeAttribute('required');
+          inputNro.setAttribute('required', '');
         } else {
-            inputFecha.setAttribute('required', '');
-            inputNro.setAttribute('required', '');
+          inputFecha.setAttribute('required', '');
+          inputNro.setAttribute('required', '');
         }
-        
-        const cantidadInputs = document.querySelectorAll('input[name="cantidadIngresar[]"]:not([type="hidden"])');
-        let hayItemsParaIngresar = false;
-        
+
+        var cantidadInputs = document.querySelectorAll('input[name="cantidadIngresar[]"]:not([type="hidden"])');
+        var hayItems = false;
+        var resumenHTML = '';
+
         cantidadInputs.forEach(function(input) {
-          if (parseFloat(input.value) > 0) {
-            hayItemsParaIngresar = true;
+          var val = parseFloat(input.value) || 0;
+          if (val > 0) {
+            hayItems = true;
+            var fila = input.closest('tr');
+            var concepto = fila ? fila.querySelector('td:first-child').textContent : 'Material';
+            resumenHTML += '<div class="d-flex justify-content-between border-bottom py-1">' +
+                           '<span>' + concepto + '</span>' +
+                           '<span class="font-weight-bold">' + val + ' unidades</span>' +
+                           '</div>';
           }
         });
-        
-        if (!hayItemsParaIngresar) {
+
+        if (!hayItems) {
           alert('Debe ingresar al menos una cantidad mayor a 0 para procesar.');
           return false;
         }
-        
+
         if (!form.checkValidity()) {
           form.reportValidity();
           return false;
         }
-        
-        const originalAction = form.action;
-        form.action = 'marcarItemsEntregadoCompra.php?id=<?=$id?>&destino=' + idDestino;
-        
-        try {
-          form.submit();
-        } catch (error) {
-          form.action = originalAction;
-          console.error('Error al enviar formulario:', error);
-          alert('Error al procesar el formulario. Por favor, intente nuevamente.');
-        }
-      }
-		
-		</script>
 
-    <script>
+        destinoPendiente = idDestino;
+
+        var config = configDestinos[idDestino];
+        
+        var header = document.getElementById('headerConfirmacion');
+        header.className = 'modal-header bg-' + config.color;
+        
+        document.getElementById('tituloConfirmacion').innerHTML = 
+          '<i class="fa ' + config.icono + ' mr-2"></i> Confirmar: ' + config.titulo;
+
+        var iconoGrande = document.getElementById('iconoGrandeConfirmacion');
+        iconoGrande.className = 'fa ' + config.icono + ' fa-3x';
+        var colores = { primary: '#007bff', warning: '#ffc107', success: '#28a745' };
+        iconoGrande.style.color = colores[config.color] || '#007bff';
+
+        document.getElementById('textoConfirmacion').innerHTML = config.texto;
+
+        var nroRemito = inputNro.value || 'Sin especificar';
+        var fechaRemito = inputFecha.value || 'Sin especificar';
+        
+        document.getElementById('listaResumen').innerHTML = 
+          '<div class="d-flex justify-content-between border-bottom py-1 bg-light px-2">' +
+          '<span><i class="fa fa-calendar mr-1"></i> Fecha Remito:</span>' +
+          '<span class="font-weight-bold">' + fechaRemito + '</span></div>' +
+          '<div class="d-flex justify-content-between border-bottom py-1 bg-light px-2 mb-2">' +
+          '<span><i class="fa fa-hashtag mr-1"></i> Nro Remito:</span>' +
+          '<span class="font-weight-bold">' + nroRemito + '</span></div>' +
+          resumenHTML;
+
+        var btnConfirmar = document.getElementById('btnConfirmarAccion');
+        btnConfirmar.className = 'btn btn-' + config.color;
+        document.getElementById('textoBotonConfirmar').textContent = 'Confirmar ' + config.titulo;
+
+        $('#modalConfirmacion').modal('show');
+      }
+
+      function ejecutarIngreso() {
+        if (destinoPendiente === null) return;
+
+        var form = document.form1;
+        document.getElementById('destino_seleccionado').value = destinoPendiente;
+
+        var btnConfirmar = document.getElementById('btnConfirmarAccion');
+        btnConfirmar.disabled = true;
+        btnConfirmar.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Procesando...';
+
+        form.action = 'marcarItemsEntregadoCompra.php?id=<?=$id?>&destino=' + destinoPendiente;
+        
+        $('#modalConfirmacion').modal('hide');
+        
+        setTimeout(function() {
+          form.submit();
+        }, 300);
+      }
+
       function abrirExploradorRed() {
         var rutaBase = '\\\\servidor\\remitos';
-        
         window.open('file:///' + rutaBase.replace(/\\/g, '/'), '_blank');
-        
         alert('Si no se abrió el explorador automáticamente:\n\n' +
               '1. Abra el Explorador de Windows\n' +
               '2. Navegue a: ' + rutaBase + '\n' +
               '3. Seleccione el archivo\n' +
-              '4. Presione Shift + Click derecho sobre el archivo\n' +
+              '4. Presione Shift + Click derecho\n' +
               '5. Seleccione "Copiar como ruta de acceso"\n' +
               '6. Pegue la ruta en el campo');
       }
@@ -619,15 +794,12 @@ if (!empty($_POST)) {
       function mostrarAyudaRuta() {
         alert('Para obtener la ruta del archivo:\n\n' +
               '1. Abra el Explorador de Windows\n' +
-              '2. Navegue hasta el archivo del remito\n' +
-              '3. Mantenga presionada la tecla SHIFT\n' +
-              '4. Haga click derecho sobre el archivo\n' +
-              '5. Seleccione "Copiar como ruta de acceso"\n' +
+              '2. Navegue hasta el archivo\n' +
+              '3. Mantenga presionada SHIFT\n' +
+              '4. Click derecho sobre el archivo\n' +
+              '5. "Copiar como ruta de acceso"\n' +
               '6. Pegue aquí con Ctrl+V');
       }
     </script>
-
-		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-    <!-- Plugin used-->
   </body>
 </html>

@@ -22,22 +22,28 @@ function getSmtpConfig(PDO $pdo): array {
         $config['password'] ?? '',
         $config['from'] ?? '',
         $config['from_name'] ?? '',
-        $config['port'] ?? '',
-        $config['smtpSecure'] ?? ''
+        $config['port'] ?? 587,
+        $config['smtpSecure'] ?? 'tls'
       ];
     }
   }
   $stmt = $pdo->query("SELECT valor FROM parametros WHERE id BETWEEN 1 AND 5 ORDER BY id ASC");
-  //return $stmt->fetchAll(PDO::FETCH_COLUMN);
   $valores = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+  $stmtPort = $pdo->query("SELECT valor FROM parametros WHERE id = 6");
+  $port = $stmtPort->fetchColumn();
+
+  $stmtSecure = $pdo->query("SELECT valor FROM parametros WHERE id = 7");
+  $secure = $stmtSecure->fetchColumn();
+
   return [
     $valores[0] ?? '',
     $valores[1] ?? '',
     $valores[2] ?? '',
     $valores[3] ?? '',
     $valores[4] ?? '',
-    $valores[5] = 25,
-    $valores[6] = false,
+    is_numeric($port) ? (int)$port : 587,
+    !empty($secure) ? $secure : 'tls',
   ];
 }
 
@@ -575,35 +581,41 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
 }
 
 
-function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, string $detalleNotificacion, string $asuntoEmail,string $cuerpoEmail): void{
+function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, string $detalleNotificacion, string $asuntoEmail, string $cuerpoEmail): void {
   // Se asume que $pdo es una conexión válida y con la configuración adecuada
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
-  // --- Cargo configuración SMTP ---
-  $smtp = getSmtpConfig($pdo); // [host, usuario, clave, from, from_name]
+  $smtp = getSmtpConfig($pdo);
   list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName, $smtpPort, $smtpSecure) = $smtp;
 
-  //$whereDebug=" AND u.id = 1";//QUITAR -> SOLO PARA DESARROLLO
-  $whereDebug="";
+  error_log("=== DEBUG crearNotificacion ===");
+  error_log("Tipo notificación: $idTipoNotificacion");
+  error_log("SMTP Host: $smtpHost");
+  error_log("SMTP Port: $smtpPort");
+  error_log("SMTP Secure: " . var_export($smtpSecure, true));
+  error_log("SMTP Usuario: $smtpUsuario");
+
+  $whereDebug = "";
   
-  // --- Recorro usuarios suscriptos al tipo_notificación = $idTipoNotificacion ---
-  $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = $idTipoNotificacion".$whereDebug;
+  $sql = "SELECT t.id_usuario, u.email FROM usuarios_tipos_notificacion t JOIN usuarios u ON u.id = t.id_usuario WHERE t.id_tipo_notificacion = $idTipoNotificacion" . $whereDebug;
+  
+  $countRows = 0;
+  
   foreach ($pdo->query($sql) as $row) {
+    $countRows++;
     list($destUsuario, $destEmail) = $row;
-    // Inserto en notificaciones
+    
+    error_log("Destinatario #$countRows: usuario=$destUsuario, email=$destEmail");
+
     $stmt = $pdo->prepare("INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES ($idTipoNotificacion, ?, NOW(), 0, ?, ?)");
-    //$detalle = "ID Cómputo: #{$idComp}";
-    $detalle = $detalleNotificacion; // Usar el detalle pasado como parámetro
+    $detalle = $detalleNotificacion;
     $stmt->execute([$destUsuario, $detalle, $idEntidad]);
 
-    // Armo y envío mail
-    //$titulo  = "ERP Notificaciones - Producción - Revisión Cómputo ({$descProyecto})";
-    $titulo  = "ERP Notificaciones - ".$asuntoEmail; // Usar el asunto del email pasado como parámetro
-    //$mensaje = "La revisión de cómputo #{$descProyecto} está lista para aprobación.";
-    $mensaje = $cuerpoEmail; // Usar el cuerpo del email pasado como parámetro
+    $titulo  = "ERP Notificaciones - " . $asuntoEmail;
+    $mensaje = $cuerpoEmail;
 
     $mail = new PHPMailer();
-    //$mail->SMTPDebug = 3;//Habilitamos solo para debugguear
+    $mail->SMTPDebug = 0;
     $mail->IsSMTP();
     $mail->Host       = $smtpHost;
     $mail->Username   = $smtpUsuario;
@@ -622,28 +634,29 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     //$mail->SMTPSecure = 'ssl';
     //$mail->SMTPAutoTLS = false;
     $mail->SMTPSecure = false;*/
-
-    $mail->Port = $smtpPort;
+    $mail->Port       = $smtpPort;
     $mail->SMTPSecure = $smtpSecure;
-    
     $mail->From       = $smtpFrom;
     $mail->FromName   = $_SESSION['user']['usuario'];
     $mail->CharSet    = "utf-8";
     $mail->IsHTML(true);
-    $mail->clearAddresses(); // <- MUY IMPORTANTE LIMPIAR destinatarios anteriores
+    $mail->clearAddresses();
     $mail->AddAddress($destEmail);
     $mail->Subject    = $titulo;
     $mail->Body       = nl2br($mensaje) . "<br><br>";
     $mail->AltBody    = $mensaje;
-    //$mail->Send();
+    
     $envio = $mail->Send();
 
     if (!$envio) {
-        
+        error_log("ERROR PHPMailer: " . $mail->ErrorInfo);
+    } else {
+        error_log("Email enviado OK a: $destEmail");
     }
-
-
   }
+  
+  error_log("Total destinatarios encontrados para tipo $idTipoNotificacion: $countRows");
+  error_log("=== FIN DEBUG ===");
 }
 
 // Verifica si la función str_starts_with ya existe (PHP 8.0+)

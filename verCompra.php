@@ -800,20 +800,110 @@ if (!empty($_POST)) {
         });
       });
 
-      function showResultModal(title, message, type) {
-        $('#resultModalTitle').text(title);
-        $('#resultModalMessage').text(message);
+      $('#confirmApproval').on('click', function() {
+        var compraId = <?= $id ?>;
+        var $btnConfirm = $(this);
+        var $btnCancel = $('#btnCancelApproval');
+        var $closeBtn = $('#approvalModal .close');
         
-        var iconHtml = '';
-        if (type === 'success') {
-          iconHtml = '<i class="fa fa-check-circle fa-3x text-success"></i>';
-        } else if (type === 'error') {
-          iconHtml = '<i class="fa fa-times-circle fa-3x text-danger"></i>';
-        }
+        $btnConfirm.prop('disabled', true);
+        $btnCancel.prop('disabled', true);
+        $closeBtn.hide();
+        $('#approvalLoading').fadeIn(200);
         
-        $('#resultModalIcon').html(iconHtml);
-        $('#resultModal').modal('show');
-      }
+        $('#approvalModal').data('bs.modal')._config.keyboard = false;
+        $('#approvalModal').data('bs.modal')._config.backdrop = 'static';
+        
+        $.ajax({
+          url: 'modificarEstadoCompra.php',
+          type: 'POST',
+          data: {
+            id_compra: compraId,
+            nuevo_estado: 2
+          },
+          dataType: 'json',
+          success: function(response) {
+            $('#approvalLoading').fadeOut(200, function() {
+              $('#approvalModal').modal('hide');
+              
+              $btnConfirm.prop('disabled', false);
+              $btnCancel.prop('disabled', false);
+              $closeBtn.show();
+              
+              if(response.success) {
+                $('button[data-target="#approvalModal"]').hide();
+                showResultModal(
+                  '¡Éxito!', 
+                  'La compra ha sido enviada para aprobación correctamente.',
+                  'success'
+                );
+              } else {
+                showResultModal(
+                  'Error', 
+                  'Error al enviar la compra para aprobación: ' + (response.message || 'Error desconocido'),
+                  'error'
+                );
+              }
+            });
+          },
+          error: function(xhr, status, error) {
+            $('#approvalLoading').fadeOut(200, function() {
+              $('#approvalModal').modal('hide');
+              
+              $btnConfirm.prop('disabled', false);
+              $btnCancel.prop('disabled', false);
+              $closeBtn.show();
+              
+              console.error('Error AJAX:', error);
+              showResultModal(
+                'Error de Conexión', 
+                'No se pudo conectar con el servidor. Intente nuevamente.',
+                'error'
+              );
+            });
+          }
+        });
+      });
+
+    function showResultModal(title, message, type) {
+      $('#resultLoading').show();
+      $('#resultModalTitle').text('');
+      $('#resultModalMessage').text('');
+      $('#resultModalIcon').html('');
+      
+      $('#resultModal').modal('show');
+      
+      setTimeout(function() {
+        $('#resultLoading').fadeOut(300, function() {
+          $('#resultModalTitle').text(title);
+          $('#resultModalMessage').text(message);
+          
+          var iconHtml = '';
+          if (type === 'success') {
+            iconHtml = '<i class="fa fa-check-circle fa-3x" style="color: #28a745;"></i>';
+            $('#resultModal .modal-header').css('border-left', '4px solid #28a745');
+          } else if (type === 'error') {
+            iconHtml = '<i class="fa fa-times-circle fa-3x" style="color: #dc3545;"></i>';
+            $('#resultModal .modal-header').css('border-left', '4px solid #dc3545');
+          }
+          
+          $('#resultModalIcon').html(iconHtml);
+        });
+      }, 500);
+    }
+
+    $('#approvalModal').on('hidden.bs.modal', function () {
+      $('#approvalLoading').hide();
+      $('#confirmApproval').prop('disabled', false);
+      $('#btnCancelApproval').prop('disabled', false);
+      $('#approvalModal .close').show();
+      $('#estado-error').addClass('d-none').text('');
+    });
+
+    $('#resultModal').on('hidden.bs.modal', function () {
+      $('#resultLoading').hide();
+      $('#resultModal .modal-header').css('border-left', 'none');
+    });
 
     });
 		

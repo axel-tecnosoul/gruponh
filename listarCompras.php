@@ -210,7 +210,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         <tbody><?php
                           $pdo = Database::connect();
                           // Aseguramos que mo.moneda y c.total estén en la consulta
-                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre AS nombre_proyecto, mo.moneda, pe.id AS id_pedido, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido LEFT JOIN computos co ON co.id = pe.id_computo LEFT JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = pe.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
+                          $sql = "SELECT c.id, cu.nombre, DATE_FORMAT(c.fecha_emision,'%d/%m/%y') AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre AS nombre_proyecto, mo.moneda, pe.id AS id_pedido, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, c.nro_oc, (SELECT MAX(c2.nro_revision) FROM compras c2 WHERE c2.nro_oc = c.nro_oc) AS max_revision FROM compras c LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor LEFT JOIN estados_compra e ON e.id = c.id_estado_compra INNER JOIN pedidos pe ON pe.id = c.id_pedido LEFT JOIN computos co ON co.id = pe.id_computo LEFT JOIN tareas t ON t.id = co.id_tarea INNER JOIN proyectos p ON p.id = pe.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio LEFT JOIN monedas mo ON mo.id = c.id_moneda WHERE 1 ";
                           $params = [];
                           if (!empty($nro)) {
                             $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
@@ -266,9 +266,13 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             }
                             $unique_ids[] = $row['id'];?>
 
-                            <tr>
+                            <tr data-id="<?=$row['id']?>" data-estado-id="<?=$row['id_estado_compra']?>" data-nro-revision="<?=$row['nro_revision']?>" data-max-revision="<?=$row['max_revision']?>" data-nro-oc="<?=$row['nro_oc']?>">
                               <td class="d-none"><?=$row['id']?></td>
-                              <td><?=$row['id']?> / <?=$row['nro_revision']?></td>
+                              <?php
+                                $partes_nro_oc = explode('/', $row['nro_oc']);
+                                $id_compra_display = (count($partes_nro_oc) > 1) ? $partes_nro_oc[1] : $row['id'];
+                              ?>
+                              <td><?=$id_compra_display?> / <?=$row['nro_revision']?></td>
                               <td>
                                 <a href="verPedido.php?id=<?=$row['id_pedido']?>" target="_blank" title="Ver Pedido">
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>
@@ -403,6 +407,33 @@ $id_estado = $filters['id_estado'] ?? [];?>
         </div>
       </div>
     </div>
+
+    <div class="modal fade" id="modalRevisionOC" tabindex="-1" role="dialog" aria-labelledby="modalRevisionOCLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <form id="formRevisionOC" method="post">
+            <div class="modal-header">
+              <h5 class="modal-title" id="modalRevisionOCLabel">Nueva Revisión</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p>¿Está seguro que desea generar una nueva revisión?</p>
+              <div class="form-group">
+                <label for="motivoRevisionOC">Motivo de la revisión:</label>
+                <textarea id="motivoRevisionOC" name="motivoRevision" class="form-control" required></textarea>
+              </div>
+              <input type="hidden" name="id_compra" id="revision_id_compra" value="">
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary" id="btnConfirmarRevision">Confirmar</button>
+              <button type="button" class="btn btn-cancelar" data-dismiss="modal">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
   
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
@@ -511,9 +542,96 @@ $id_estado = $filters['id_estado'] ?? [];?>
       });
 
       $("#link_modificar_compra").on("click", function(e) {
-        if (!checkSeleccion(e, this)) {
-          alert("Por favor seleccione una compra para modificar/revisar");
-        }
+          e.preventDefault();
+
+          if (!selectedCompraInfo) {
+            alert("Por favor seleccione una compra para modificar/revisar");
+            return;
+          }
+
+          var fila = $("#dataTables-example666 tbody tr.selected");
+          var id_compra    = selectedCompraInfo.id;
+          var estado_id    = parseInt(selectedCompraInfo.id_estado, 10);
+          var nro_revision = parseInt(fila.data('nro-revision'), 10);
+          var max_revision = parseInt(fila.data('max-revision'), 10);
+
+          if (nro_revision < max_revision) {
+            alert("Hay revisiones más recientes para esta OC. Seleccione la última revisión.");
+            return;
+          }
+
+          if (estado_id === 1 || estado_id === 2) {
+            window.location.href = "modificarCompra.php?id_compra=" + id_compra;
+
+          } else if (estado_id === 3) {
+            $.ajax({
+              url: "verificarRevisionOC.php",
+              method: "POST",
+              data: { id_compra: id_compra },
+              dataType: "json",
+              success: function(resp) {
+                if (resp.puede_revisar) {
+                  $("#motivoRevisionOC").val("");
+                  $("#revision_id_compra").val(id_compra);
+                  $("#btnConfirmarRevision").html('Confirmar Revisión').prop("disabled", false);
+                  $("#modalRevisionOC").modal("show");
+                } else {
+                  alert(resp.mensaje || "No se puede generar una nueva revisión en este momento.");
+                }
+              },
+              error: function(xhr) {
+                alert("Error al verificar: " + xhr.responseText);
+              }
+            });
+
+          } else {
+            alert("No se puede modificar/revisar la OC en este estado.");
+          }
+      });
+
+      $("#formRevisionOC").on("submit", function(e) {
+          e.preventDefault();
+
+          var motivo = $("#motivoRevisionOC").val().trim();
+          if (motivo === "") {
+            alert("Por favor complete el motivo de la revisión.");
+            return;
+          }
+
+          var id_compra = $("#revision_id_compra").val();
+
+          var $btnSubmit = $("#btnConfirmarRevision");
+          var $btnCancel = $(this).find("button.btn-light");
+          $btnSubmit.html('<i class="fa fa-spinner fa-spin"></i> Procesando...').prop("disabled", true);
+          $btnCancel.prop("disabled", true);
+
+          $.ajax({
+            url: "revisionOC.php",
+            method: "POST",
+            data: {
+              id_compra: id_compra,
+              motivoRevision: motivo
+            },
+            dataType: "json",
+            success: function(resp) {
+              if (resp.success) {
+                if (resp.redirect) {
+                  window.location.href = resp.redirect;
+                } else {
+                  location.reload();
+                }
+              } else {
+                alert("Error: " + (resp.mensaje || "No se pudo crear la revisión."));
+                $btnSubmit.html('Confirmar Revisión').prop("disabled", false);
+                $btnCancel.prop("disabled", false);
+              }
+            },
+            error: function(xhr) {
+              alert("Error: " + xhr.responseText);
+              $btnSubmit.html('Confirmar Revisión').prop("disabled", false);
+              $btnCancel.prop("disabled", false);
+            }
+          });
       });
 
       // Lógica especial para INGRESAR STOCK
@@ -711,7 +829,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
           // Asignar links básicos
           $("#link_ver_compra").attr("href", "verCompra.php?id=" + id_compra);
           $("#link_imprimir_compra").attr("href", "imprimirCompra.php?id=" + id_compra);
-          $("#link_modificar_compra").attr("href", "modificarCompra.php?id=" + id_compra);
+          $("#link_modificar_compra").attr("href", "modificarCompra.php?id_compra=" + id_compra);
           $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=compras&entidad_id=" + id_compra);
 
           // Lógica Ingresar Stock

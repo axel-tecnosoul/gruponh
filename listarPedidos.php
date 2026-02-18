@@ -677,7 +677,7 @@ if (in_array("todos", $id_estado)) {
           $("#link_gestionar_pedido").data("estadoId", estadoId).data("tipo", tipo).data("pedidoId", id_pedido);
 
           if (estado === 'Aprobado' || estado === 'Gestionando' || ['3','4'].includes(estadoId)) {
-            $("#link_gestionar_pedido").attr("href", "gestionarPedido.php?id=" + id_pedido);
+            $("#link_gestionar_pedido").attr("href", "modificarCompra.php?id_pedido=" + id_pedido);
           } else {
             $("#link_gestionar_pedido").attr("href", "#");
           }
