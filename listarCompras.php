@@ -28,7 +28,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
         text-overflow: ellipsis;
       }
       .truncate-project {
-        width: 30%;
+        width: 20%;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -199,10 +199,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             <th style="width: 100px;">Proyecto</th>
                             <th class="truncate-project">Nombre Proyecto</th>
                             <th class="truncate-provider">Proveedor</th>
+                            <th style="width: 90px;">Total</th>
                             <th style="width: 80px;">Estado</th>
                             <th style="width: 85px;">F. Emisión</th>
                             <th style="width: 85px;">F. Entrega</th>
-                            <th>Total</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -281,11 +281,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
                               <td><?=$row['nro_sitio'].'/'.$row['nro_subsitio'].'/'.$row['nro']?></td>
                               <td class="truncate-project"><?=htmlspecialchars($row['nombre_proyecto'])?></td>
                               <td class="truncate-provider"><?=$row['nombre']?></td>
+                              <td><?=$row['moneda'] . ' ' . number_format($row['total'], 2, ',', '.')?></td>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_entrega"]?></span><?=$row["fecha_entrega_formatted"]?></td>
-                              <!-- Valor Total Agregado -->
-                              <td><?=$row['moneda'] . ' ' . number_format($row['total'], 2, ',', '.')?></td>
                               <td style="display: none;"><?=$row['id_proyecto']?></td>
                               <td style="display: none;"><?=$row['id_estado_compra']?></td>
                             </tr><?php
@@ -300,10 +299,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             <th style="width: 100px;">Proyecto</th>
                             <th class="truncate-project">Nombre Proyecto</th>
                             <th class="truncate-provider">Proveedor</th>
+                            <th style="width: 90px;">Total</th>
                             <th style="width: 80px;">Estado</th>
                             <th style="width: 85px;">F. Emisión</th>
                             <th style="width: 85px;">F. Entrega</th>
-                            <th>Total</th>
                             <th style="display: none;">Proy</th>
                             <th style="display: none;">Estado ID</th>
                           </tr>
@@ -802,7 +801,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
         // Índices de columnas (ajustar si agregas/quitas columnas en HTML)
         // 0: ID (hidden), 1: OC, 2: Proy, 3: Prov, 4: Estado, 5: F.Emis, 6: F.Entr, 7: Total, 8: ID Proy, 9: ID Estado
         let id_compra = t.find("td:eq(0)").html();
-        let estado = t.find("td:eq(6)").html();
+        let estado = t.find("td:eq(7)").html();
         let id_proyecto = t.find("td:eq(10)").html();
         let id_estado_compra = t.find("td:eq(11)").html();
 
@@ -1044,123 +1043,6 @@ $id_estado = $filters['id_estado'] ?? [];?>
         addTitleToTruncated();
       }, 50);
     });
-	
-	  function selectRow(t){
-      t.addClass('selected');
-    }
-    function deselectRow(t){
-      t.removeClass('selected');
-    }
-
-    function get_conceptos(id_compra){
-      let datosUpdate = new FormData();
-      datosUpdate.append('id_compra', id_compra);
-      $.ajax({
-        data: datosUpdate,
-        url: 'get_conceptos_compra.php',
-        method: "post",
-        cache: false,
-        contentType: false,
-        processData: false,
-        success: function(data){
-          console.log(data);
-          data = JSON.parse(data);
-          console.log(data);
-
-          $('#dataTables-example667').DataTable().destroy();
-          $('#dataTables-example667').DataTable({
-            stateSave: false,
-            responsive: false,
-            autoWidth: false,
-            data: data,
-            columnDefs: [
-              { "width": "auto", "targets": 0, "className": "truncate-concepto" },
-              { "width": "90px", "targets": 1 },
-              { "width": "80px", "targets": 2 },
-              { "width": "70px", "targets": 3 , "className": "text-right"},
-              { "width": "60px", "targets": 4 , "className": "text-right"},
-              { "width": "70px", "targets": 5 , "className": "text-right"},
-              { "width": "80px", "targets": 6 , "className": "text-right"},
-              { "width": "60px", "targets": 7 , "className": "text-right"},
-              { "width": "80px", "targets": 8 , "className": "text-right"},
-              { "width": "70px", "targets": 9 },
-              { 
-                "width": "70px", 
-                "targets": 10,
-                "className": "text-center",
-                "render": function ( data, type, row ) {
-                  if (data && data.trim() !== '' && data.trim() !== '0') {
-                    let dataSafe = data.toString().replace(/"/g, '&quot;');
-                    return '<button type="button" class="btn btn-primary btn-xs btn-ver-remitos-modal" data-remitos="'+dataSafe+'" title="Ver remitos asociados"><i class="fa fa-eye"></i></button>';
-                  }
-                  return '-';
-                }
-              },
-              { "width": "70px", "targets": 11 }
-            ],
-            drawCallback: function() {
-              setTimeout(function() {
-                addTitleToTruncated();
-              }, 100);
-            },
-            language: {
-              "decimal": "",
-              "emptyTable": "No hay información",
-              "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-              "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-              "infoFiltered": "(Filtrado de _MAX_ total registros)",
-              "infoPostFix": "",
-              "thousands": ",",
-              "lengthMenu": "Mostrar _MENU_ Registros",
-              "loadingRecords": "Cargando...",
-              "processing": "Procesando...",
-              "search": "Buscar:",
-              "zeroRecords": "No hay resultados",
-              "paginate": {
-                "first": "Primero",
-                "last": "Ultimo",
-                "next": "Siguiente",
-                "previous": "Anterior"
-              }
-            }
-          });
-      
-          var table = $('#dataTables-example667').DataTable();
-          table.columns().every( function () {
-            var that = this;
-            $( 'input', this.footer() ).on( 'keyup change', function () {
-              if ( that.search() !== this.value ) {
-                that.search( this.value ).draw();
-              }
-            });
-          });
-
-          setTimeout(function() {
-            addTitleToTruncated();
-          }, 200);
-          
-        }
-      });
-    }
-
-    function addTitleToTruncated() {
-      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').tooltip('dispose');
-      $('.truncate-project, .truncate-provider, .truncate-concepto, #dataTables-example667 th').each(function() {
-        var element = $(this);
-        element.removeAttr('title').removeAttr('data-original-title').removeAttr('aria-describedby');
-        if (this.scrollWidth > this.offsetWidth) {
-          element.attr('title', element.text().trim());
-        }
-      });
-      $('.truncate-project[title], .truncate-provider[title], .truncate-concepto[title], #dataTables-example667 th[title]').tooltip({
-        placement: 'top',
-        trigger: 'hover',
-        delay: { show: 300, hide: 100 },
-        boundary: 'viewport',
-        fallbackPlacement: ['top', 'bottom'],
-        flip: false
-      });
-    }
 
     $(window).on('resize', function() {
       setTimeout(addTitleToTruncated, 100);

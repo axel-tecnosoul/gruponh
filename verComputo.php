@@ -408,7 +408,7 @@ if (!empty($_POST)) {
                       </div>
                     </div>
 
-                    <input type="hidden" name="fecha" id="hiddenFecha">
+                    <input type="hidden" name="fecha" id="hiddenFecha" value="<?= date('Y-m-d') ?>">
                     <input type="hidden" name="lugar_entrega" id="hiddenLugar">
                     <input type="hidden" name="id_cuenta_recibe" id="hiddenRecibe">
 
@@ -452,7 +452,7 @@ if (!empty($_POST)) {
                 <div class="col-sm-9">
                   <?php
                   $fecha_actual = date('Y-m-d'); ?>
-                  <input name="fecha" id="inputFecha" min="<? $fecha_actual ?>" type="date" autofocus onfocus="this.showPicker()" value="<?php echo date('Y-m-d'); ?>" class="form-control" required="required">
+                  <input name="fecha" id="inputFecha" min="<?= $fecha_actual ?>" type="date" autofocus onfocus="this.showPicker()" value="<?= $fecha_actual ?>" class="form-control" required="required">
                 </div>
               </div>
               <div class="form-group row">
@@ -464,8 +464,8 @@ if (!empty($_POST)) {
                   $sql = "SELECT valor FROM parametros WHERE id = 8 ";
                   $q = $pdo->prepare($sql);
                   $q->execute();
-                  $data = $q->fetch(PDO::FETCH_ASSOC);
-                  $direccion = $data['valor']; ?>
+                  $dataParam = $q->fetch(PDO::FETCH_ASSOC);
+                  $direccion = $dataParam['valor'];?>
                   <input name="lugar_entrega" id="inputLugar" type="text" maxlength="199" class="form-control" required="required" value="<?= $direccion; ?>">
                 </div>
               </div>
