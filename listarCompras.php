@@ -218,19 +218,18 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $params[] = $nro;
                           }
                           if (!empty($nro_ocnp)) {
-                            $nro_ocnp_trimmed = trim($nro_ocnp);
-                            $ex=explode("/", $nro_ocnp_trimmed);
-                            if(count($ex)>1){
-                              $id_oc = $ex[0];
-                              $nro_revision = $ex[1];
-                              $sql .= " AND (c.nro_revision = ? AND c.id = ? ) ";
-                              $params[] = $nro_revision;
-                              $params[] = $id_oc;
-                              
-                            }else{
-                              $sql .= " AND c.id = ? ";
-                              $params[] = intval($nro_ocnp_trimmed);
-                            }
+                              $nro_ocnp_trimmed = trim($nro_ocnp);
+                              $ex = explode("/", $nro_ocnp_trimmed);
+                              if (count($ex) > 1) {
+                                  $nro_oc_buscar = trim($ex[0]);
+                                  $nro_revision_buscar = trim($ex[1]);
+                                  $sql .= " AND (c.nro_oc = ? AND c.nro_revision = ?) ";
+                                  $params[] = $nro_oc_buscar;
+                                  $params[] = $nro_revision_buscar;
+                              } else {
+                                  $sql .= " AND c.nro_oc = ? ";
+                                  $params[] = intval($nro_ocnp_trimmed);
+                              }
                           }
                           if (!empty($nro_pedido)) {
                             $nro_pedido_trimmed = trim($nro_pedido);
@@ -268,11 +267,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
 
                             <tr data-id="<?=$row['id']?>" data-estado-id="<?=$row['id_estado_compra']?>" data-nro-revision="<?=$row['nro_revision']?>" data-max-revision="<?=$row['max_revision']?>" data-nro-oc="<?=$row['nro_oc']?>">
                               <td class="d-none"><?=$row['id']?></td>
-                              <?php
-                                $partes_nro_oc = explode('/', $row['nro_oc']);
-                                $id_compra_display = (count($partes_nro_oc) > 1) ? $partes_nro_oc[1] : $row['id'];
-                              ?>
-                              <td><?=$id_compra_display?> / <?=$row['nro_revision']?></td>
+                              <td><?=$row['nro_oc']?> / <?=$row['nro_revision']?></td>
                               <td>
                                 <a href="verPedido.php?id=<?=$row['id_pedido']?>" target="_blank" title="Ver Pedido">
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>

@@ -20,7 +20,14 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio), pe.id_computo
+  $sql = "SELECT c.id, c.nro_oc, c.id_pedido, c.id_cuenta_proveedor, 
+          DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, 
+          DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, 
+          c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, 
+          c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura,
+          c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre,
+          fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre,
+          COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio), pe.id_computo
           FROM compras c 
           INNER JOIN pedidos pe ON pe.id = c.id_pedido 
           LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
@@ -172,7 +179,7 @@ if (!empty($_POST)) {
                 <div class="card">
                   <div class="card-header compra-summary">
                     <h5>
-                      <?=$ubicacion." N° ".$data["id"]."/".$data["nro_revision"]?> - Pedido N° <?=$data["id_pedido"]?>
+                      <?=$ubicacion." N° ".$data["nro_oc"]."/".$data["nro_revision"]?> - Pedido N° <?=$data["id_pedido"]?>
                       <a href="imprimirCompra.php?id=<?=$data['id'];?>" target="_blank"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir O.C." title="Imprimir O.C."></a>
                     </h5>
                   </div>
@@ -183,7 +190,7 @@ if (!empty($_POST)) {
                           <h6 class="mb-3 font-weight-bold">Datos de la Orden de Compra</h6>
                           <div class="form-group row mt-1">
                             <label class="col-sm-2 font-weight-bold">Nro O.C.</label>
-                            <div class="col-sm-4"><?=$data['id']."/".$data['nro_revision'];?></div>
+                            <div class="col-sm-4"><?=$data['nro_oc']."/".$data['nro_revision'];?></div>
                             <label class="col-sm-2 font-weight-bold">Proveedor</label>
                             <div class="col-sm-4"><?=$data['proveedor_nombre'];?></div>
                           </div>
@@ -800,96 +807,26 @@ if (!empty($_POST)) {
         });
       });
 
-      $('#confirmApproval').on('click', function() {
-        var compraId = <?= $id ?>;
-        var $btnConfirm = $(this);
-        var $btnCancel = $('#btnCancelApproval');
-        var $closeBtn = $('#approvalModal .close');
-        
-        $btnConfirm.prop('disabled', true);
-        $btnCancel.prop('disabled', true);
-        $closeBtn.hide();
-        $('#approvalLoading').fadeIn(200);
-        
-        $('#approvalModal').data('bs.modal')._config.keyboard = false;
-        $('#approvalModal').data('bs.modal')._config.backdrop = 'static';
-        
-        $.ajax({
-          url: 'modificarEstadoCompra.php',
-          type: 'POST',
-          data: {
-            id_compra: compraId,
-            nuevo_estado: 2
-          },
-          dataType: 'json',
-          success: function(response) {
-            $('#approvalLoading').fadeOut(200, function() {
-              $('#approvalModal').modal('hide');
-              
-              $btnConfirm.prop('disabled', false);
-              $btnCancel.prop('disabled', false);
-              $closeBtn.show();
-              
-              if(response.success) {
-                $('button[data-target="#approvalModal"]').hide();
-                showResultModal(
-                  '¡Éxito!', 
-                  'La compra ha sido enviada para aprobación correctamente.',
-                  'success'
-                );
-              } else {
-                showResultModal(
-                  'Error', 
-                  'Error al enviar la compra para aprobación: ' + (response.message || 'Error desconocido'),
-                  'error'
-                );
-              }
-            });
-          },
-          error: function(xhr, status, error) {
-            $('#approvalLoading').fadeOut(200, function() {
-              $('#approvalModal').modal('hide');
-              
-              $btnConfirm.prop('disabled', false);
-              $btnCancel.prop('disabled', false);
-              $closeBtn.show();
-              
-              console.error('Error AJAX:', error);
-              showResultModal(
-                'Error de Conexión', 
-                'No se pudo conectar con el servidor. Intente nuevamente.',
-                'error'
-              );
-            });
-          }
-        });
-      });
+
 
     function showResultModal(title, message, type) {
-      $('#resultLoading').show();
-      $('#resultModalTitle').text('');
-      $('#resultModalMessage').text('');
-      $('#resultModalIcon').html('');
-      
+      var iconHtml = '';
+      var borderColor = '';
+
+      if (type === 'success') {
+        iconHtml = '<i class="fa fa-check-circle fa-3x" style="color: #28a745;"></i>';
+        borderColor = '#28a745';
+      } else if (type === 'error') {
+        iconHtml = '<i class="fa fa-times-circle fa-3x" style="color: #dc3545;"></i>';
+        borderColor = '#dc3545';
+      }
+
+      $('#resultModalTitle').text(title);
+      $('#resultModalMessage').text(message);
+      $('#resultModalIcon').html(iconHtml);
+      $('#resultModal .modal-header').css('border-left', '4px solid ' + borderColor);
+
       $('#resultModal').modal('show');
-      
-      setTimeout(function() {
-        $('#resultLoading').fadeOut(300, function() {
-          $('#resultModalTitle').text(title);
-          $('#resultModalMessage').text(message);
-          
-          var iconHtml = '';
-          if (type === 'success') {
-            iconHtml = '<i class="fa fa-check-circle fa-3x" style="color: #28a745;"></i>';
-            $('#resultModal .modal-header').css('border-left', '4px solid #28a745');
-          } else if (type === 'error') {
-            iconHtml = '<i class="fa fa-times-circle fa-3x" style="color: #dc3545;"></i>';
-            $('#resultModal .modal-header').css('border-left', '4px solid #dc3545');
-          }
-          
-          $('#resultModalIcon').html(iconHtml);
-        });
-      }, 500);
     }
 
     $('#approvalModal').on('hidden.bs.modal', function () {
@@ -901,7 +838,6 @@ if (!empty($_POST)) {
     });
 
     $('#resultModal').on('hidden.bs.modal', function () {
-      $('#resultLoading').hide();
       $('#resultModal .modal-header').css('border-left', 'none');
     });
 

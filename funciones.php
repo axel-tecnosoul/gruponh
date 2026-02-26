@@ -583,7 +583,7 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
 
 function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, string $detalleNotificacion, string $asuntoEmail, string $cuerpoEmail): void {
   // Se asume que $pdo es una conexión válida y con la configuración adecuada
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+/*   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
   $smtp = getSmtpConfig($pdo);
   list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName, $smtpPort, $smtpSecure) = $smtp;
@@ -619,12 +619,12 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     $mail->IsSMTP();
     $mail->Host       = $smtpHost;
     $mail->Username   = $smtpUsuario;
-    $mail->Password   = $smtpClave;
+    $mail->Password   = $smtpClave; */
     
     /*$mail->Port = 465;
     $mail->SMTPSecure = 'ssl';*/
 
-    $mail->SMTPAuth   = true;
+    //$mail->SMTPAuth   = true;
     //EN LOCAL
     //$mail->Port = 587;
     //$mail->SMTPSecure = 'tls';
@@ -634,7 +634,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
     //$mail->SMTPSecure = 'ssl';
     //$mail->SMTPAutoTLS = false;
     $mail->SMTPSecure = false;*/
-    $mail->Port       = $smtpPort;
+/*     $mail->Port       = $smtpPort;
     $mail->SMTPSecure = $smtpSecure;
     $mail->From       = $smtpFrom;
     $mail->FromName   = $_SESSION['user']['usuario'];
@@ -656,7 +656,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
   }
   
   error_log("Total destinatarios encontrados para tipo $idTipoNotificacion: $countRows");
-  error_log("=== FIN DEBUG ===");
+  error_log("=== FIN DEBUG ==="); */
 }
 
 // Verifica si la función str_starts_with ya existe (PHP 8.0+)

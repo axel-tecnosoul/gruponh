@@ -351,12 +351,12 @@ if(isset($id_compra)) {
       }
       
       #dataTables-example667 thead th {
-        white-space: nowrap !important;
-        padding: 6px 4px !important;
-        font-size: 0.7rem;
-        font-weight: 600;
-        line-height: 1.2;
-        background-color: #f8f9fa;
+          white-space: nowrap !important;
+          padding: 6px 4px !important;
+          font-size: 0.7rem;
+          font-weight: 600;
+          line-height: 1.2;
+          background-color: #192938;
       }
       
       #dataTables-example667 th:nth-child(1),
@@ -1064,7 +1064,7 @@ if(isset($id_compra)) {
           dom: 'l<"#custom-controls-container">frtip',
           stateSave: false,
           responsive: false,
-          scrollX: false,
+          scrollX: true,
           scrollCollapse: false,
           autoWidth: false,
           paging: true,

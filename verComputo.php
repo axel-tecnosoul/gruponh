@@ -859,20 +859,30 @@ if (!empty($_POST)) {
           return;
         }
 
-        // Agregar los inputs al contenedor principal de reservas
+        $('#reservas_container input[name^="reservas_lote[' + curDetalle + ']"]').remove();
+
         if(inputsHtml) {
           $('#reservas_container').append(inputsHtml);
         }
         
-        // Limpiar y actualizar el visual con el total
         $('#txt_reserva_vis_' + curDetalle).val(total);
+
+        var $fila = $('#txt_reserva_vis_' + curDetalle).closest('tr');
+        var saldo = parseFloat($fila.find('.saldo').text()) || 0;
+        var nuevoPedir = saldo - total;
+        if (nuevoPedir < 0) nuevoPedir = 0;
+
+        var $inputPedir = $fila.find('input[name^="cantidad_pedir"]');
+        if ($inputPedir.length) {
+            $inputPedir.val(nuevoPedir);
+            $inputPedir.attr('max', nuevoPedir);
+        }
         
-        // Trigger input para validación
         $('#txt_reserva_vis_' + curDetalle).trigger('input');
         
         console.log('Inputs agregados al contenedor #reservas_container - Total: ' + total);
+        console.log('Cantidad a pedir ajustada a: ' + nuevoPedir);
         
-        // Cerrar el modal
         $('#modalStock').modal('hide');
       }
     </script>

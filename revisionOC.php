@@ -116,6 +116,18 @@ try {
             "verCompra.php?id=$id_nueva_oc"
         ]);
 
+    // 7. Notificación
+    $idTipoNotificacion = 4;
+    $idEntidad = $id_nueva_oc;
+    $detalleNotificacion = "ID OC: #$id_nueva_oc - Revisión $nueva_revision";
+    $asuntoEmail = "Compras - Nueva Revisión (Rev.$nueva_revision) de OC {$oc['nro_oc']}";
+    $cuerpoEmail = "Se ha generado una nueva revisión de la Orden de Compra.\n"
+                 . "OC: {$oc['nro_oc']}\n"
+                 . "Revisión: $nueva_revision\n"
+                 . "Motivo: $motivo\n"
+                 . "Usuario: " . ($_SESSION['user']['usuario'] ?? '');
+    crearNotificacion($pdo, $idTipoNotificacion, $idEntidad, $detalleNotificacion, $asuntoEmail, $cuerpoEmail);
+
     $pdo->commit();
     Database::disconnect();
 
