@@ -24,25 +24,30 @@ require 'database.php';?>
       .tab-content {
         padding-top: 20px;
       }
-      .concepto-col {
-        white-space: normal !important;
-        min-width: 180px;
-        max-width: 250px;
-        word-wrap: break-word;
+      /* Contenedor con scroll, thead sticky dentro de la misma tabla */
+      .table-scroll-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 65vh;
+        width: 100%;
       }
-      .descripcion-col {
-        white-space: normal !important;
-        min-width: 100px;
-        max-width: 150px;
-        word-wrap: break-word;
+      .table-scroll-wrapper table.dataTable {
+        width: 100% !important;
+      }
+      /* thead sticky: se queda fijo al hacer scroll vertical */
+      .table-scroll-wrapper table.dataTable thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: #f8f9fa;
+        padding: 6px 8px;
+        font-size: 11px;
+        white-space: nowrap;
       }
       table.dataTable tbody td {
         padding: 4px 6px;
         font-size: 11px;
-      }
-      table.dataTable thead th {
-        padding: 6px 8px;
-        font-size: 11px;
+        white-space: nowrap;
       }
       .text-comprado {
         color: green;
@@ -73,7 +78,7 @@ require 'database.php';?>
                     <h5><?=$ubicacion?></h5>
                   </div>
                   <div class="card-body">
-                    
+
                     <ul class="nav nav-tabs" id="informeTabs" role="tablist">
                       <li class="nav-item">
                         <a class="nav-link active" id="comprando-tab" data-toggle="tab" href="#comprando" role="tab">Comprando</a>
@@ -87,9 +92,9 @@ require 'database.php';?>
                     </ul>
 
                     <div class="tab-content" id="informeTabsContent">
-                      
+
                       <div class="tab-pane fade show active" id="comprando" role="tabpanel">
-                        <div class="dt-ext table-responsive">
+                        <div class="table-scroll-wrapper">
                           <table class="display" id="tablaComprando" style="width:100%">
                             <thead>
                               <tr>
@@ -117,8 +122,8 @@ require 'database.php';?>
                             <tbody><?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              
-                              $sql = "SELECT 
+
+                              $sql = "SELECT
                                   p.id AS nro_pedido,
                                   c.id AS nro_op,
                                   ec.estado AS estado_compra,
@@ -148,10 +153,10 @@ require 'database.php';?>
                                   LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
                                   LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                                WHERE c.id_estado_compra NOT IN (4, 7, 8)
+                                WHERE c.id_estado_compra IN (3, 6)
                                   AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
                                 ORDER BY p.id DESC, c.id DESC";
-                                
+
                               try {
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
@@ -160,8 +165,8 @@ require 'database.php';?>
                                     <td><?=$row['estado_compra']?></td>
                                     <td><?=$row['proveedor']?></td>
                                     <td><?=$row['obra']?></td>
-                                    <td class='concepto-col'><?=$row['concepto']?></td>
-                                    <td class='descripcion-col'><?=$row['descripcion']?></td>
+                                    <td><?=$row['concepto']?></td>
+                                    <td><?=$row['descripcion']?></td>
                                     <td class="number"><?=number_format($row['cantidad'], 2, ",", ".")?></td>
                                     <td><?=$row['unidad']?></td>
                                     <td class="number"><?=number_format($row['comprado'], 2, ",", ".")?></td>
@@ -185,10 +190,13 @@ require 'database.php';?>
                       </div>
 
                       <div class="tab-pane fade" id="aprobar" role="tabpanel">
-                        <div class="dt-ext table-responsive">
+                        <div class="table-scroll-wrapper">
                           <table class="display" id="tablaAprobar" style="width:100%">
                             <thead>
                               <tr>
+                                <th>Nº Pedido</th>
+                                <th>Obra</th>
+                                <th>Concepto</th>
                                 <th>Descripción</th>
                                 <th>Cantidad</th>
                                 <th>Unidad</th>
@@ -201,8 +209,11 @@ require 'database.php';?>
                               </tr>
                             </thead>
                             <tbody><?php
-                              $sql = "SELECT 
-                                  m.concepto AS descripcion,
+                              $sql = "SELECT
+                                  p.id AS nro_pedido,
+                                  CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                                  m.concepto,
+                                  m.descripcion,
                                   pd.cantidad,
                                   um.unidad_medida AS unidad,
                                   DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
@@ -210,16 +221,21 @@ require 'database.php';?>
                                 FROM pedidos p
                                   INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
                                   INNER JOIN materiales m ON m.id = pd.id_material
+                                  INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                                  INNER JOIN sitios si ON si.id = pr.id_sitio
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                                 WHERE p.id_estado = 2
                                   AND pd.cancelado = 0
-                                ORDER BY p.fecha DESC, m.concepto";
-                              
+                                ORDER BY p.id DESC, m.concepto";
+
                               try {
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
-                                    <td class='concepto-col'><?=$row['descripcion']?></td>
-                                    <td><?=number_format($row['cantidad'], 2,",",".")?></td>
+                                    <td><?=$row['nro_pedido']?></td>
+                                    <td><?=$row['obra']?></td>
+                                    <td><?=$row['concepto']?></td>
+                                    <td><?=$row['descripcion']?></td>
+                                    <td class="number"><?=number_format($row['cantidad'], 2, ",", ".")?></td>
                                     <td><?=$row['unidad']?></td>
                                     <td><?=$row['fecha_pedido']?></td>
                                     <td><?=$row['fecha_requerido']?></td>
@@ -230,7 +246,7 @@ require 'database.php';?>
                                   </tr><?php
                                 }
                               } catch (PDOException $e) {
-                                echo "<tr><td colspan='9'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                echo "<tr><td colspan='8'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                               }?>
                             </tbody>
                           </table>
@@ -238,7 +254,7 @@ require 'database.php';?>
                       </div>
 
                       <div class="tab-pane fade" id="pendiente" role="tabpanel">
-                        <div class="dt-ext table-responsive">
+                        <div class="table-scroll-wrapper">
                           <table class="display" id="tablaPendiente" style="width:100%">
                             <thead>
                               <tr>
@@ -268,6 +284,8 @@ require 'database.php';?>
                                   CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                   m.concepto,
                                   m.descripcion,
+                                  pd.cantidad AS cantidad_pedida,
+                                  COALESCE(pd.comprado, 0) AS cantidad_comprada,
                                   (pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,
                                   um.unidad_medida AS unidad,
                                   DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
@@ -279,11 +297,14 @@ require 'database.php';?>
                                   INNER JOIN sitios si ON si.id = pr.id_sitio
                                   LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                                WHERE p.id_estado IN (3, 4)
-                                  AND pd.cancelado = 0
+                                WHERE pd.cancelado = 0
                                   AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
+                                  AND p.id_estado NOT IN (
+                                    SELECT id FROM estados_pedidos
+                                    WHERE estado IN ('Cancelado', 'Superado', 'Elaboracion')
+                                  )
                                 ORDER BY p.id DESC, m.concepto";
-                              
+
                               try {
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
@@ -305,14 +326,15 @@ require 'database.php';?>
                                   </tr><?php
                                 }
                               } catch (PDOException $e) {
-                                echo "<tr><td colspan='15'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                echo "<tr><td colspan='11'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                               }
-                              
+
                               Database::disconnect();?>
                             </tbody>
                           </table>
                         </div>
                       </div>
+
                     </div>
                   </div>
                 </div>
@@ -356,27 +378,27 @@ require 'database.php';?>
     <script src="assets/js/datatable/datatable-extension/custom.js"></script>
 
     <script>
-      $(document).ready(function() {
+      $(document).ready(function () {
+
         var dtOptions = {
-          //dom: 'Bfrtip',
           dom: 'lfrtip',
           buttons: ['excel'],
-          scrollX: true,
-          autoWidth: false,
+          scrollX: false,
+          autoWidth: true,
           pageLength: 25,
           order: [],
           language: {
-            "emptyTable": "No hay información",
-            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-            "infoEmpty": "Mostrando 0 a 0 de 0 Registros",
+            "emptyTable":   "No hay información",
+            "info":         "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty":    "Mostrando 0 a 0 de 0 Registros",
             "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "lengthMenu": "Mostrar _MENU_ Registros",
-            "search": "Buscar:",
-            "zeroRecords": "No hay resultados",
+            "lengthMenu":   "Mostrar _MENU_ Registros",
+            "search":       "Buscar:",
+            "zeroRecords":  "No hay resultados",
             "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
+              "first":    "Primero",
+              "last":     "Ultimo",
+              "next":     "Siguiente",
               "previous": "Anterior"
             }
           }
@@ -384,23 +406,23 @@ require 'database.php';?>
 
         $('#tablaComprando').DataTable(dtOptions);
 
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
           var target = $(e.target).attr("href");
-          
+
           if (target === '#aprobar' && !$.fn.DataTable.isDataTable('#tablaAprobar')) {
             $('#tablaAprobar').DataTable(dtOptions);
           }
           if (target === '#pendiente' && !$.fn.DataTable.isDataTable('#tablaPendiente')) {
             $('#tablaPendiente').DataTable(dtOptions);
           }
-          
-          setTimeout(function() {
+
+          setTimeout(function () {
             $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
-          }, 100);
+          }, 50);
         });
       });
 
-      document.addEventListener("DOMContentLoaded", function() {
+      document.addEventListener("DOMContentLoaded", function () {
         document.querySelector('.page-main-header').classList.add('open');
         document.querySelector('.page-sidebar').classList.add('open');
       });

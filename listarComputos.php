@@ -6,60 +6,67 @@ if (empty($_SESSION['user'])) {
 }*/
 include 'config.php';
 include 'database.php';
-$prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
+$prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
-  <head><?php
-    include('head_tables.php');?>
-    <style>
-      .truncate {
-        max-width:50px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .faClass{
-        width: 24px;
-        height: 20px;
-        color: midnightblue;
-      }
-      .editable {
-        text-decoration: underline;
-        cursor: default;
-      }
-      .abrirModalAprobarItem, .abrirModalCancelarItem, .abrirModalCancelarReservaItem{
-        cursor: pointer;
-      }
-    </style>
-	  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-  </head>
-  <body>
-    <input type="hidden" id="prod" value="<?= isset($_GET['prod']) ? (int)$_GET['prod'] : '' ?>">
-    <!-- page-wrapper Start-->
-    <div class="page-wrapper">
-      <!-- Page Header Start--><?php
-      include('header.php');?>
-      <!-- Page Header Ends                              -->
-      <!-- Page Body Start-->
-      <div class="page-body-wrapper">
-        <!-- Page Sidebar Start--><?php
-        include('menu.php');?>
-        <!-- Page Sidebar Ends-->
-        <!-- Right sidebar Start-->
-        <!-- Right sidebar Ends-->
-        <div class="page-body"><?php
-          $ubicacion="Cómputos ";
-          include_once("head_page.php")?>
-          <!-- Container-fluid starts-->
-          <div class="container-fluid">
-            <div class="row">
-              <div class="col-md-12">
-                <div class="card">
-                  <div class="card-body">
+
+<head><?php
+      include('head_tables.php'); ?>
+  <style>
+    .truncate {
+      max-width: 50px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .faClass {
+      width: 24px;
+      height: 20px;
+      color: midnightblue;
+    }
+
+    .editable {
+      text-decoration: underline;
+      cursor: default;
+    }
+
+    .abrirModalAprobarItem,
+    .abrirModalCancelarItem,
+    .abrirModalCancelarReservaItem {
+      cursor: pointer;
+    }
+  </style>
+  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+</head>
+
+<body>
+  <input type="hidden" id="prod" value="<?= isset($_GET['prod']) ? (int)$_GET['prod'] : '' ?>">
+  <!-- page-wrapper Start-->
+  <div class="page-wrapper">
+    <!-- Page Header Start--><?php
+                              include('header.php'); ?>
+    <!-- Page Header Ends                              -->
+    <!-- Page Body Start-->
+    <div class="page-body-wrapper">
+      <!-- Page Sidebar Start--><?php
+                                include('menu.php'); ?>
+      <!-- Page Sidebar Ends-->
+      <!-- Right sidebar Start-->
+      <!-- Right sidebar Ends-->
+      <div class="page-body"><?php
+                              $ubicacion = "Cómputos ";
+                              include_once("head_page.php") ?>
+        <!-- Container-fluid starts-->
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-md-12">
+              <div class="card">
+                <div class="card-body">
                   <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarComputos.php<?= $prodQuery ?>">
                     <div class="form-group mb-0">
-                      N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" autofocus name="nro" id="nro">
+                      N.Sitio-N.Sub-N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" autofocus name="nro" id="nro">
                     </div>
                     <div class="form-group mb-0">
                       Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha" id="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah" id="fechah">
@@ -67,24 +74,28 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                     <div class="form-group mb-0">
                       Estado:&nbsp;
                       <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-							          <option value="">Todos</option><?php
-                        $pdo = Database::connect();
-                        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                        $sqlZon = "SELECT `id`, `estado` FROM `estados_computos` WHERE 1 ORDER BY id ASC";
-                        $q = $pdo->prepare($sqlZon);
-                        $q->execute();
-                        while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                          echo "<option value='".$fila['id']."'";
-                          if (isset($_POST['id_estado'])) {
-                            if (in_array($fila['id'],$_POST['id_estado'])) {
-                              echo " selected ";
-                            }
-                          }
-                          echo ">".$fila['estado']."</option>";
-                        }
-                        Database::disconnect();?>
-							        </select>
-					          </div>
+                        <option value="">Todos</option><?php
+                                                        $pdo = Database::connect();
+                                                        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                                        $sqlZon = "SELECT `id`, `estado` FROM `estados_computos` WHERE 1 ORDER BY id ASC";
+                                                        $q = $pdo->prepare($sqlZon);
+                                                        $q->execute();
+                                                        while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                                          echo "<option value='" . $fila['id'] . "'";
+                                                          if (isset($_POST['id_estado'])) {
+                                                            if (in_array($fila['id'], $_POST['id_estado'])) {
+                                                              echo " selected ";
+                                                            }
+                                                          } else {
+                                                            if (in_array($fila['id'], [1, 2, 3, 4])) {
+                                                              echo " selected ";
+                                                            }
+                                                          }
+                                                          echo ">" . $fila['estado'] . "</option>";
+                                                        }
+                                                        Database::disconnect(); ?>
+                      </select>
+                    </div>
                     <div class="form-group mb-0">
                       <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php<?= $prodQuery ?>'">Buscar</button>
                     </div>
@@ -99,41 +110,41 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
               <div class="card">
                 <div class="card-header">
                   <h5><?php
-                    echo $ubicacion;
-                    /*if (!empty(tienePermiso(290))) { ?>
+                      echo $ubicacion;
+                      /*if (!empty(tienePermiso(290))) { ?>
                       <a href="nuevoComputo.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a><?php
-                    }*/?>
+                    }*/ ?>
                     <a href="#" onclick="jsExportar();"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>
                     &nbsp;&nbsp;
                     <a href="#" id="link_ver_computo"><img src="img/medalla-dorada.png" width="24" height="15" border="0" alt="Gestionar" title="Gestionar"></a>
                     &nbsp;&nbsp;
                     <a href="#" id="link_imprimir_computo"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir" title="Imprimir"></a>
                     &nbsp;&nbsp;<?php
-                    if (!empty(tienePermiso(291))) {?>
-                      <a href="#" id="link_items_computo"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Editar / Revisión" title="Editar / Revisión"></a>
-                      &nbsp;&nbsp;<?php
-                    }
-                    if (!empty(tienePermiso(293))) {?>
-                      <a href="#" class="accion-computo" data-accion="aprobar_completo" title="Aprobar Completo">
-                        <img src="img/estrella.png" width="24" height="25">
-                      </a>&nbsp;&nbsp;<?php
-                    }
-                    if (!empty(tienePermiso(293))) {?>
-                      <a href="#" class="accion-computo" data-accion="aprobar_parcial" title="Aprobar Parcial">
-                        <img src="img/medalla-plateada.png" width="24" height="25">
-                      </a>&nbsp;&nbsp;<?php
-                    }
-                    if (!empty(tienePermiso(293))) {?>
-                      <a href="#" class="accion-computo" data-accion="cancelar_computo" title="Cancelar Cómputo">
-                        <img src="img/neg.png" width="24" height="25">
-                      </a>&nbsp;&nbsp;<?php
-                    }
-                    
-                    if (!empty(tienePermiso(292))) {?>
-                      <a href="#" id="link_eliminar_computo"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>
-                      &nbsp;&nbsp;<?php
-                    }?>
-                    
+                                if (!empty(tienePermiso(291))) { ?>
+                    <a href="#" id="link_items_computo"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Editar / Revisión" title="Editar / Revisión"></a>
+                    &nbsp;&nbsp;<?php
+                                }
+                                if (!empty(tienePermiso(293))) { ?>
+                    <a href="#" class="accion-computo" data-accion="aprobar_completo" title="Aprobar Completo">
+                      <img src="img/estrella.png" width="24" height="25">
+                    </a>&nbsp;&nbsp;<?php
+                                  }
+                                  if (!empty(tienePermiso(293))) { ?>
+                    <a href="#" class="accion-computo" data-accion="aprobar_parcial" title="Aprobar Parcial">
+                      <img src="img/medalla-plateada.png" width="24" height="25">
+                    </a>&nbsp;&nbsp;<?php
+                                  }
+                                  if (!empty(tienePermiso(293))) { ?>
+                    <a href="#" class="accion-computo" data-accion="cancelar_computo" title="Cancelar Cómputo">
+                      <img src="img/neg.png" width="24" height="25">
+                    </a>&nbsp;&nbsp;<?php
+                                  }
+
+                                  if (!empty(tienePermiso(292))) { ?>
+                    <a href="#" id="link_eliminar_computo"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>
+                    &nbsp;&nbsp;<?php
+                                  } ?>
+
                   </h5>
                 </div>
                 <div class="card-body">
@@ -154,49 +165,58 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                           <th>Observaciones</th>
                         </tr>
                       </thead>
-                      <tbody><?php
+                      <tbody>
+                        <?php
                         //if (!empty($_POST)) {
-                          $pdo = Database::connect();
-                          $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
-                          if (!empty($_POST['nro'])) {
-                            $nro=$_POST['nro'];
-                            $ex=explode("/", $nro);
-                            if(count($ex)>1){
-                              $sitio = $ex[0];
-                              $proyecto = $ex[1];
-                              $sql .= " AND (p.nro = ".$proyecto." AND s.nro_sitio = ".$sitio.") ";
-                            }else{
-                              $sql .= " AND (p.nro = ".$nro." OR s.nro_sitio = ".$nro.") ";
-                            }
+                        $pdo = Database::connect();
+                        $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number, p.id_estado_proyecto FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
+                        if (!empty($_POST['nro'])) {
+                          $nro = $_POST['nro'];
+                          $ex  = explode("-", $nro);
+
+                          if (count($ex) >= 3) {
+                            $sitio    = (int)$ex[0];
+                            $subsitio = (int)$ex[1];
+                            $proyecto = (int)$ex[2];
+                            $sql .= " AND s.nro_sitio = $sitio AND s.nro_subsitio = $subsitio AND p.nro = $proyecto ";
+                          } elseif (count($ex) === 2) {
+                            $sitio    = (int)$ex[0];
+                            $subsitio = (int)$ex[1];
+                            $sql .= " AND s.nro_sitio = $sitio AND s.nro_subsitio = $subsitio ";
+                          } else {
+                            $nro = (int)$nro;
+                            $sql .= " AND (p.nro = $nro OR s.nro_sitio = $nro) ";
                           }
-                          if (!empty($_POST['fecha'])) {
-                            $sql .= " AND c.fecha >= '".$_POST['fecha']."' ";
-                          }
-                          if (!empty($_POST['fechah'])) {
-                            $sql .= " AND c.fecha <= '".$_POST['fechah']."' ";
-                          }
-                          if (!empty($_POST['id_estado'][0])) {
-                            $sql .= " AND ec.id in (".implode(', ',$_POST['id_estado']).") ";
-                          }else{
-                            $sql .= " AND ec.id in (1,2,3,4) ";
-                          }
-                          foreach ($pdo->query($sql) as $row) {?>
-                            <tr data-estado-id="<?=$row["id_estado"]?>" data-id="<?=$row["id_computo"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-max-revision="<?=$row["max_revision"]?>">
-                              <td><?=$row["nro_sitio"]?></td>
-                              <td><?=$row["nro_subsitio"]?></td>
-                              <td><?=$row["nro_proyecto"]?></td>
-                              <td><?=$row["nombre_proyecto"]?></td>
-                              <td class="d-none"><?=$row["id_computo"]?></td>
-                              <td><?=$row["nro_computo"]?></td>
-                              <td><?=$row["nro_revision"]?></td>
-                              <td><span style="display: none;"><?=$row["fecha_computo_number"]?></span><?=$row["fecha_computo"]?></td>
-                              <td><?=$row["nombre_cuenta"]?></td>
-                              <td><?=$row["estado"]?></td>
-                              <td><?=$row["comentarios_revision"]?></td>
-                            </tr><?php
-                          }
-                          Database::disconnect();
-                        /*} else {
+                        }
+                        if (!empty($_POST['fecha'])) {
+                          $sql .= " AND c.fecha >= '" . $_POST['fecha'] . "' ";
+                        }
+                        if (!empty($_POST['fechah'])) {
+                          $sql .= " AND c.fecha <= '" . $_POST['fechah'] . "' ";
+                        }
+                        if (!empty($_POST['id_estado'][0])) {
+                          $sql .= " AND ec.id in (" . implode(', ', $_POST['id_estado']) . ") ";
+                        } else {
+                          $sql .= " AND ec.id in (1,2,3,4) ";
+                        }
+                        foreach ($pdo->query($sql) as $row) {
+                        ?>
+                          <tr data-estado-id="<?= $row["id_estado"] ?>" data-id="<?= $row["id_computo"] ?>" data-nro-revision="<?= $row["nro_revision"] ?>" data-max-revision="<?= $row["max_revision"] ?>" data-estado-proyecto="<?= $row["id_estado_proyecto"] ?>">
+                            <td><?= $row["nro_sitio"] ?></td>
+                            <td><?= $row["nro_subsitio"] ?></td>
+                            <td><?= $row["nro_proyecto"] ?></td>
+                            <td><?= $row["nombre_proyecto"] ?></td>
+                            <td class="d-none"><?= $row["id_computo"] ?></td>
+                            <td><?= $row["nro_computo"] ?></td>
+                            <td><?= $row["nro_revision"] ?></td>
+                            <td><span style="display: none;"><?= $row["fecha_computo_number"] ?></span><?= $row["fecha_computo"] ?></td>
+                            <td><?= $row["nombre_cuenta"] ?></td>
+                            <td><?= $row["estado"] ?></td>
+                            <td><?= $row["comentarios_revision"] ?></td>
+                          </tr><?php
+                              }
+                              Database::disconnect();
+                              /*} else {
                           $pdo = Database::connect();
                           $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE ec.id in (1,2,3,4) ";
                             
@@ -216,9 +236,9 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                             </tr><?php
                           }
                           Database::disconnect();
-                        }*/?>
+                        }*/ ?>
                       </tbody>
-						          <tfoot>
+                      <tfoot>
                         <tr>
                           <th>Sitio</th>
                           <th>Sub</th>
@@ -241,7 +261,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             <!-- Zero Configuration  Ends-->
             <!-- Feature Unable /Disable Order Starts-->
           </div>
-			    <div class="row">
+          <div class="row">
             <!-- Zero Configuration  Starts-->
             <div class="col-sm-12">
               <div class="card">
@@ -267,7 +287,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                         </tr>
                       </thead>
                       <tbody></tbody>
-						          <tfoot>
+                      <tfoot>
                         <tr>
                           <th>Concepto</th>
                           <th>Solicitado</th>
@@ -299,12 +319,12 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 
     <div style="width: 0;height: 0;display: none;">
       <select id="select_estado_base"><?php
-        $pdo = Database::connect();
-        $sql = "SELECT id,estado FROM estados_computos";
-        foreach ($pdo->query($sql) as $row) {
-          echo '<option value="'.$row["id"].'">'.$row["estado"].'</option>';
-        }
-        Database::disconnect();?>
+                                      $pdo = Database::connect();
+                                      $sql = "SELECT id,estado FROM estados_computos";
+                                      foreach ($pdo->query($sql) as $row) {
+                                        echo '<option value="' . $row["id"] . '">' . $row["estado"] . '</option>';
+                                      }
+                                      Database::disconnect(); ?>
       </select>
     </div>
 
@@ -324,7 +344,6 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                 <label for="motivoRevision">Motivo de la revisión:</label>
                 <textarea id="motivoRevision" name="motivoRevision" class="form-control" required></textarea>
               </div>
-              <!-- Aquí iremos inyectando inputs ocultos -->
             </div>
             <div class="modal-footer">
               <button type="submit" class="btn btn-primary">Confirmar</button>
@@ -356,7 +375,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
         </div>
       </div>
     </div>
-    
+
     <div class="modal fade" id="aprobarModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -369,7 +388,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             <input type="hidden" id="id_computo_detalle">
             <input type="hidden" id="id_computo">
             <button class="btn btn-primary" type="button" id="aprobarItem">Aprobar</a>
-            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
       </div>
@@ -387,12 +406,12 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             <input type="hidden" id="id_computo_detalle">
             <input type="hidden" id="id_computo">
             <button class="btn btn-primary" type="button" id="cancelarItem">Cancelar</a>
-            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+              <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
       </div>
     </div>
-    
+
     <div class="modal fade" id="cancelarReservaModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -409,7 +428,6 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
       </div>
     </div>
 
-    <!-- Modales genéricos para aprobar, enviar a aprobación y eliminar cómputos -->
     <div class="modal fade" id="modalEliminar" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -501,11 +519,11 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
       const prodParam = prod ? '&prod=' + prod : '';
       $(document).ready(function() {
         // Setup - add a text input to each footer cell
-        $('#dataTables-example666 tfoot th').each( function () {
+        $('#dataTables-example666 tfoot th').each(function() {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-    
+          $(this).html('<input type="text" size="' + title.length + '" placeholder="' + title + '" />');
+        });
+
         var table = $('#dataTables-example666').DataTable({
           stateSave: false,
           //searching: false,//debemos quitar esta linea para que funcione el buscador
@@ -515,8 +533,8 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             'excel'
           ],
           lengthMenu: [
-            [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-            [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
+            [10, 25, 50, 100, 500, 1000],
+            [10, 25, 50, 100, 500, 1000]
           ],
           language: {
             "decimal": "",
@@ -541,28 +559,28 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           // "fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
           //   $('td:eq(9)', nRow).addClass("editable").attr('data-id-posicion', aData[4]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
           // },
-          initComplete: function(){
+          initComplete: function() {
             $('[title]').tooltip();
           }
         });
-  
+
         // DataTable
         //var table = $('#dataTables-example666').DataTable();
         // Apply the search
-        table.columns().every( function () {
+        table.columns().every(function() {
           var that = this;
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that.search( this.value ).draw();
+          $('input', this.footer()).on('keyup change', function() {
+            if (that.search() !== this.value) {
+              that.search(this.value).draw();
             }
           });
         });
-    
-        $("#link_ver_computo").on("click",function(e){
+
+        $("#link_ver_computo").on("click", function(e) {
           e.preventDefault();
 
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
+          let l = document.location.href;
+          if (this.href == l || this.href == l + "#") {
             alert("Por favor seleccione un cómputo para ver detalle")
             return;
           }
@@ -571,31 +589,29 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 
           //console.log("estado_id:", estado_id);
 
-          let id_estado=getIdEstadoComputoSeleccionado();
+          let id_estado = getIdEstadoComputoSeleccionado();
 
           console.log("id_estado:", id_estado);
 
-          //if (estado_id == 3 || estado_id == 4) {
           if (id_estado == 3 || id_estado == 4) {
-            // Elaboración o Para Aprobar → se puede modificar directamente
             window.location.href = this.href;
           } else {
-            // Cancelado, Terminado, Superado u otros → no permitido
             alert("No se puede gestionar el cómputo en este estado.");
           }
         })
 
-        $("#link_imprimir_computo").on("click",function(){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
+        $("#link_imprimir_computo").on("click", function() {
+          let l = document.location.href;
+          if (this.href == l || this.href == l + "#") {
             alert("Por favor seleccione un cómputo para ver imprimir")
           }
         })
-      
-        let formRevision  = $("#formRevision");
-        let hrefToRedirect = null;
 
-        $("#link_items_computo").on("click", function (e) {
+        let formRevision = $("#formRevision");
+        let hrefToRedirect = null;
+        let idOrigenRevision = null;
+
+        $("#link_items_computo").on("click", function(e) {
           e.preventDefault();
 
           const fila = $("#dataTables-example666 tbody tr.selected");
@@ -619,25 +635,32 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 
           const estado_id = parseInt(fila.data("estado-id"), 10);
 
-          console.log("estado_id:", estado_id);
+          const ID_ESTADO_ELABORACION = 1;
+          const ID_ESTADO_PARA_APROBAR = 2;
+          const ID_ESTADO_TERMINADO = 5;
+          const ID_ESTADO_PROY_TERMINADO = 4;
 
-          if (estado_id === 1 || estado_id === 2) {
-            // Elaboración o Para Aprobar → se puede modificar directamente
+          const estadoProyecto = parseInt(fila.data("estado-proyecto"), 10);
+          const proyectoTerminado = (estadoProyecto === ID_ESTADO_PROY_TERMINADO);
+          const idComputo = fila.data("id");
+
+          if (estado_id === ID_ESTADO_ELABORACION || estado_id === ID_ESTADO_PARA_APROBAR) {
             window.location.href = this.href;
 
-          } else if (estado_id === 3 || estado_id === 4) {
-            // Aprobado o Gestionando → solo revisión
+          } else if (estado_id === ID_ESTADO_TERMINADO && !proyectoTerminado) {
             hrefToRedirect = this.href;
+            idOrigenRevision = idComputo;
             $("#modalRevision").modal("show");
 
+          } else if (estado_id === ID_ESTADO_TERMINADO && proyectoTerminado) {
+            alert("No se puede revisar un cómputo terminado cuando el proyecto ya está finalizado.");
+
           } else {
-            // Cancelado, Terminado, Superado u otros → no permitido
             alert("No se puede modificar ni revisar ítems en este estado.");
           }
         });
 
-        // Confirmación del modal usando botón tipo submit
-        $("#formRevision").on("submit", function (e) {
+        $("#formRevision").on("submit", function(e) {
           e.preventDefault();
 
           const motivo = $("#motivoRevision").val().trim();
@@ -646,178 +669,172 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             return;
           }
 
-          // Redirigir
-          /*if (hrefToRedirect) {
-            window.location.href = hrefToRedirect;
-            hrefToRedirect = null;
-          }*/
-
-          // Construyo un URL object para extraer query params
           const url = new URL(hrefToRedirect, window.location.origin);
-          const id       = url.searchParams.get("id");
-          const modo     = url.searchParams.get("modo");
+          const id = url.searchParams.get("id");
+          const modo = url.searchParams.get("modo");
           const revision = url.searchParams.get("revision");
 
-          // Inyecto inputs ocultos en el form
-          formRevision.find("input[name='id']"      ).remove();
-          formRevision.find("input[name='modo']"    ).remove();
+          formRevision.find("input[name='id']").remove();
+          formRevision.find("input[name='modo']").remove();
           formRevision.find("input[name='revision']").remove();
+          formRevision.find("input[name='idOrigen']").remove();
 
           formRevision.append(`<input type="hidden" name="id"       value="${id}">`);
           formRevision.append(`<input type="hidden" name="modo"     value="${modo}">`);
           formRevision.append(`<input type="hidden" name="revision" value="${revision}">`);
-          if(prod){
+          formRevision.append(`<input type="hidden" name="idOrigen" value="${idOrigenRevision}">`);
+
+          if (prod) {
             formRevision.find("input[name='prod']").remove();
             formRevision.append(`<input type="hidden" name="prod" value="${prod}">`);
           }
-          // motivo ya lo tiene como textarea name="motivoRevision"
 
-          // Finalmente envío el POST al mismo script
           formRevision.attr("action", url.pathname + (prod ? '?prod=' + prod : ''));
           this.submit();
         });
 
-      
-        $("#link_aprobar_computo").on("click",function(){
-          let target=this.dataset.target;
-          if(target==undefined || target=="#"){
+        $("#link_aprobar_computo").on("click", function() {
+          let target = this.dataset.target;
+          if (target == undefined || target == "#") {
             alert("Por favor seleccione un cómputo para aprobar")
           } else {
-            let id=$(this).data('id');
-            $("#btnAprobar").attr("href","aprobarComputo.php?id="+id+prodParam);
+            let id = $(this).data('id');
+            $("#btnAprobar").attr("href", "aprobarComputo.php?id=" + id + prodParam);
           }
         })
 
-        $("#link_enviar_aprobar_computo").on("click",function(){
-          let target=this.dataset.target;
-          if(target==undefined || target=="#"){
+        $("#link_enviar_aprobar_computo").on("click", function() {
+          let target = this.dataset.target;
+          if (target == undefined || target == "#") {
             alert("Por favor seleccione un cómputo para enviar a aprobación")
           } else {
-            let id=$(this).data('id');
-            $("#btnEnviarAprobar").attr("href","aprobarComputo.php?id="+id+prodParam);
+            let id = $(this).data('id');
+            $("#btnEnviarAprobar").attr("href", "aprobarComputo.php?id=" + id + prodParam);
           }
         })
 
-        $("#link_eliminar_computo").on("click",function(){
-          let target=this.dataset.target;
-          if(target==undefined || target=="#"){
+        $("#link_eliminar_computo").on("click", function() {
+          let target = this.dataset.target;
+          if (target == undefined || target == "#") {
             alert("Por favor seleccione un cómputo no aprobado para eliminar")
           } else {
-            let id=$(this).data('id');
-            $("#btnEliminar").attr("href","eliminarComputo.php?id="+id+prodParam);
+            let id = $(this).data('id');
+            $("#btnEliminar").attr("href", "eliminarComputo.php?id=" + id + prodParam);
           }
         })
-      
+
         //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
-        $(document).on("click","#dataTables-example666 tbody tr td", function(){
-          var t=$(this).parent();
+        $(document).on("click", "#dataTables-example666 tbody tr td", function() {
+          var t = $(this).parent();
           //t.parent().find("tr").removeClass("selected");
 
-          let id_computo=t.data('id');
+          let id_computo = t.data('id');
           let nro_revision = t.find("td:nth-child(7)").html();
           let estado = t.find("td:nth-child(10)").html();
-      
-          if(t.hasClass('selected')){
+
+          if (t.hasClass('selected')) {
             deselectRow(t);
             get_conceptos(id_computo)
-            $("#link_ver_computo").attr("href","#");
-            $("#link_imprimir_computo").attr("href","#");
-            $("#link_items_computo").attr("href","#");
-            $("#link_enviar_aprobar_computo").attr("data-target","#");
-            $("#link_aprobar_computo").attr("data-target","#");
-            $("#link_eliminar_computo").attr("data-target","#");
-          }else{
-            table.rows().nodes().each( function (rowNode, index) {
+            $("#link_ver_computo").attr("href", "#");
+            $("#link_imprimir_computo").attr("href", "#");
+            $("#link_items_computo").attr("href", "#");
+            $("#link_enviar_aprobar_computo").attr("data-target", "#");
+            $("#link_aprobar_computo").attr("data-target", "#");
+            $("#link_eliminar_computo").attr("data-target", "#");
+          } else {
+            table.rows().nodes().each(function(rowNode, index) {
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
             get_conceptos(id_computo)
-            $("#link_ver_computo").attr("href","verComputo.php?id="+id_computo+prodParam);
-            $("#link_imprimir_computo").attr("target","_blank");
-            $("#link_imprimir_computo").attr("href","imprimirComputo.php?id="+id_computo+prodParam);
+            $("#link_ver_computo").attr("href", "verComputo.php?id=" + id_computo + prodParam);
+            $("#link_imprimir_computo").attr("target", "_blank");
+            $("#link_imprimir_computo").attr("href", "imprimirComputo.php?id=" + id_computo + prodParam);
             if ((estado == 'Para Aprobar') || (estado == 'Elaboración')) {
-              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=nuevo&revision="+nro_revision+prodParam);
+              $("#link_items_computo").attr("href", "itemsComputo.php?id=" + id_computo + "&modo=nuevo&revision=" + nro_revision + prodParam);
             } else {
-              $("#link_items_computo").attr("href","itemsComputo.php?id="+id_computo+"&modo=update&revision="+nro_revision+prodParam);
+              $("#link_items_computo").attr("href", "itemsComputo.php?id=" + id_computo + "&modo=update&revision=" + nro_revision + prodParam);
             }
             if (estado == 'Para Aprobar') {
-              $("#link_aprobar_computo").attr("data-toggle","modal");
-              $("#link_aprobar_computo").attr("data-target","#modalAprobar");
+              $("#link_aprobar_computo").attr("data-toggle", "modal");
+              $("#link_aprobar_computo").attr("data-target", "#modalAprobar");
               $("#link_aprobar_computo").data('id', id_computo);
             } else {
-              $("#link_aprobar_computo").attr("data-target","#");
+              $("#link_aprobar_computo").attr("data-target", "#");
               $("#link_aprobar_computo").removeData('id');
             }
             if (estado == 'Elaboración') {
-              $("#link_enviar_aprobar_computo").attr("data-toggle","modal");
-              $("#link_enviar_aprobar_computo").attr("data-target","#modalEnviarAprobar");
+              $("#link_enviar_aprobar_computo").attr("data-toggle", "modal");
+              $("#link_enviar_aprobar_computo").attr("data-target", "#modalEnviarAprobar");
               $("#link_enviar_aprobar_computo").data('id', id_computo);
             } else {
-              $("#link_enviar_aprobar_computo").attr("data-target","#");
+              $("#link_enviar_aprobar_computo").attr("data-target", "#");
               $("#link_enviar_aprobar_computo").removeData('id');
             }
 
             if ((estado == 'Elaboración') || (estado == 'Para Aprobar')) {
-              $("#link_eliminar_computo").attr("data-toggle","modal");
-              $("#link_eliminar_computo").attr("data-target","#modalEliminar");
+              $("#link_eliminar_computo").attr("data-toggle", "modal");
+              $("#link_eliminar_computo").attr("data-target", "#modalEliminar");
               $("#link_eliminar_computo").data('id', id_computo);
             } else {
-              $("#link_eliminar_computo").attr("data-target","#");
+              $("#link_eliminar_computo").attr("data-target", "#");
               $("#link_eliminar_computo").removeData('id');
             }
           }
 
         });
-      
-        $("body").on('dblclick',".editable", function(event) {
-          var t=$(this);
-          
-          let old_padding=t.css("padding");
-          t.css({padding: '0'});
+
+        $("body").on('dblclick', ".editable", function(event) {
+          var t = $(this);
+
+          let old_padding = t.css("padding");
+          t.css({
+            padding: '0'
+          });
           t.find('input[type="hidden"]');
-            
-          var idPosicion=t.data("idPosicion");
+
+          var idPosicion = t.data("idPosicion");
           console.log(idPosicion);
-          var idEstado=t.data("idEstado");
+          var idEstado = t.data("idEstado");
 
-          dataString="idPosicion="+idPosicion;
+          dataString = "idPosicion=" + idPosicion;
 
-          let nuevo_select_estado=$("#select_estado_base").clone()
-          nuevo_select_estado.id="id_estado_nuevo"
+          let nuevo_select_estado = $("#select_estado_base").clone()
+          nuevo_select_estado.id = "id_estado_nuevo"
 
           t.html(nuevo_select_estado);
           nuevo_select_estado.val(idEstado)
 
           nuevo_select_estado.on('blur', function(event) {
-            nuevaEstado=nuevo_select_estado.val();
-            // Obtener el texto correspondiente al valor seleccionado
-            var textoSeleccionado = nuevo_select_estado.find('option[value="'+nuevaEstado+'"]').text();
-        
+            nuevaEstado = nuevo_select_estado.val();
+            var textoSeleccionado = nuevo_select_estado.find('option[value="' + nuevaEstado + '"]').text();
+
             $.ajax({
               type: "POST",
               url: "modificarEstadoComputo.php",
-              data: "idPosicion="+idPosicion+"&idEstado="+nuevaEstado,
+              data: "idPosicion=" + idPosicion + "&idEstado=" + nuevaEstado,
               success: function(data) {
                 console.log(data)
-                if(data==1){
-                  t.css({padding: old_padding});
+                if (data == 1) {
+                  t.css({
+                    padding: old_padding
+                  });
                   t.html(textoSeleccionado)
                 }
               }
             });
           });
         });
-      
+
         let accionPendiente = null;
         let idComputoPendiente = null;
 
-        // Marcar fila activa al hacer clic
-        $(document).on("click", "#dataTables-example666 tbody tr", function () {
+        $(document).on("click", "#dataTables-example666 tbody tr", function() {
           $("#dataTables-example666 tbody tr").removeClass("fila-activa");
           $(this).addClass("fila-activa");
         });
 
-        $(document).on("click", ".accion-computo", function (e) {
+        $(document).on("click", ".accion-computo", function(e) {
           e.preventDefault();
 
           const accion = $(this).data("accion");
@@ -826,14 +843,14 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
 
           let mensaje = "";
 
-          const filaActiva = $("#dataTables-example666 tbody tr.selected"); 
-          
+          const filaActiva = $("#dataTables-example666 tbody tr.selected");
+
           if (filaActiva.length === 0) {
             alert("Debe seleccionar un cómputo de la tabla primero.");
             return;
           }
 
-          idComputoPendiente = filaActiva.data("id"); 
+          idComputoPendiente = filaActiva.data("id");
 
           let quiereAprobar = false;
           switch (accion) {
@@ -856,10 +873,10 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
               return;
           }
 
-          if(quiereAprobar){
+          if (quiereAprobar) {
             let id_estado = filaActiva.data("estado-id");
-            
-            if (id_estado != 2) { 
+
+            if (id_estado != 2) {
               alert("No se puede aprobar el cómputo en este estado.");
               return;
             }
@@ -869,7 +886,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           $("#modalConfirmacion").modal("show");
         });
 
-        $("#formConfirmacion").on("submit", function (e) {
+        $("#formConfirmacion").on("submit", function(e) {
           e.preventDefault();
 
           if (!accionPendiente || !idComputoPendiente) {
@@ -894,7 +911,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             url: "acciones_computo.php",
             method: "POST",
             data: data,
-            success: function (resp) {
+            success: function(resp) {
               if (resp.trim() === "ok") {
                 location.reload();
               } else {
@@ -902,7 +919,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                 restaurarModal();
               }
             },
-            error: function (xhr) {
+            error: function(xhr) {
               alert("Error del servidor: " + xhr.responseText);
               restaurarModal();
             }
@@ -917,11 +934,11 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           }
         });
 
-        $('#dataTables-example667 tfoot th').each( function () {
+        $('#dataTables-example667 tfoot th').each(function() {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-        
+          $(this).html('<input type="text" size="' + title.length + '" size="' + title.length + '" placeholder="' + title + '" />');
+        });
+
         $('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
@@ -939,33 +956,33 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             "search": "Buscar:",
             "zeroRecords": "No hay resultados",
             "paginate": {
-                "first": "Primero",
-                "last": "Ultimo",
-                "next": "Siguiente",
-                "previous": "Anterior"
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
             }
           }
         });
 
-        $(document).on("click", ".abrirModalAprobarItem", function(){
-          let id_computo_detalle=this.dataset.id_computo_detalle;
-          let id_computo=this.dataset.id_computo;
-          let modal=$("#aprobarModal")
+        $(document).on("click", ".abrirModalAprobarItem", function() {
+          let id_computo_detalle = this.dataset.id_computo_detalle;
+          let id_computo = this.dataset.id_computo;
+          let modal = $("#aprobarModal")
           modal.modal("show");
           $("#id_computo_detalle").val(id_computo_detalle);
           $("#id_computo").val(id_computo);
           //modal.find(".btn-primary").attr("href","aprobarComputoDetalle.php?id="+id_computo_detalle+"&idComputo="+id_computo);
         });
 
-        $("#aprobarItem").on("click",function(){
-          let id_computo_detalle=$("#id_computo_detalle").val();
-          let id_computo=$("#id_computo").val();
+        $("#aprobarItem").on("click", function() {
+          let id_computo_detalle = $("#id_computo_detalle").val();
+          let id_computo = $("#id_computo").val();
 
           // Crear el objeto FormData y agregarle los campos
           let data = new FormData();
           data.append('id_computo_detalle', id_computo_detalle);
           data.append('id_computo', id_computo);
-          
+
           fetch('aprobarComputoDetalle.php', {
               method: 'POST',
               body: data
@@ -974,7 +991,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             .then(data => {
               if (data.success) {
                 alert(data.message);
-                let modal=$("#aprobarModal").modal("hide");
+                let modal = $("#aprobarModal").modal("hide");
                 get_conceptos(id_computo)
               } else {
                 alert("Error al aprobar el ítem");
@@ -986,25 +1003,24 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             });
         });
 
-        $(document).on("click", ".abrirModalCancelarItem", function(){
-          let id_computo_detalle=this.dataset.id_computo_detalle;
-          let id_computo=this.dataset.id_computo;
-          let modal=$("#cancelarModal")
+        $(document).on("click", ".abrirModalCancelarItem", function() {
+          let id_computo_detalle = this.dataset.id_computo_detalle;
+          let id_computo = this.dataset.id_computo;
+          let modal = $("#cancelarModal")
           modal.modal("show");
           $("#id_computo_detalle").val(id_computo_detalle);
           $("#id_computo").val(id_computo);
           //modal.find(".btn-primary").attr("href","aprobarComputoDetalle.php?id="+id_computo_detalle+"&idComputo="+id_computo);
         });
 
-        $("#cancelarItem").on("click",function(){
-          let id_computo_detalle=$("#id_computo_detalle").val();
-          let id_computo=$("#id_computo").val();
+        $("#cancelarItem").on("click", function() {
+          let id_computo_detalle = $("#id_computo_detalle").val();
+          let id_computo = $("#id_computo").val();
 
-          // Crear el objeto FormData y agregarle los campos
           let data = new FormData();
           data.append('id_computo_detalle', id_computo_detalle);
           data.append('id_computo', id_computo);
-          
+
           fetch('cancelarComputoDetalle.php', {
               method: 'POST',
               body: data
@@ -1013,7 +1029,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             .then(data => {
               if (data.success) {
                 alert(data.message);
-                let modal=$("#cancelarModal").modal("hide");
+                let modal = $("#cancelarModal").modal("hide");
                 get_conceptos(id_computo)
               } else {
                 alert("Error al cancelar el ítem");
@@ -1025,32 +1041,32 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
             });
         });
 
-        $(document).on("click",".abrirModalCancelarReservaItem", function(){
-          let id_computo_detalle=this.dataset.id_computo_detalle;
-          let id_computo=this.dataset.id_computo;
-          let modal=$("#cancelarReservaModal");
+        $(document).on("click", ".abrirModalCancelarReservaItem", function() {
+          let id_computo_detalle = this.dataset.id_computo_detalle;
+          let id_computo = this.dataset.id_computo;
+          let modal = $("#cancelarReservaModal");
           modal.modal("show");
-          modal.find(".btn-primary").attr("href","cancelarStockPedido.php?id="+id_computo_detalle+"&idComputo="+id_computo+prodParam);
+          modal.find(".btn-primary").attr("href", "cancelarStockPedido.php?id=" + id_computo_detalle + "&idComputo=" + id_computo + prodParam);
         });
 
       });
 
       function getIdEstadoComputoSeleccionado() {
-        let fila_seleccionada=$("#dataTables-example666 tbody tr.selected");
-        let id_estado=fila_seleccionada.data("estado-id");
+        let fila_seleccionada = $("#dataTables-example666 tbody tr.selected");
+        let id_estado = fila_seleccionada.data("estado-id");
         console.log(id_estado);
         return id_estado;
       }
-    
-      function selectRow(t){
+
+      function selectRow(t) {
         t.addClass('selected');
       }
-      
-      function deselectRow(t){
+
+      function deselectRow(t) {
         t.removeClass('selected');
       }
 
-      function get_conceptos(id_computo){
+      function get_conceptos(id_computo) {
         let datosUpdate = new FormData();
         datosUpdate.append('id_computo', id_computo);
         $.ajax({
@@ -1060,7 +1076,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
           cache: false,
           contentType: false,
           processData: false,
-          success: function(data){
+          success: function(data) {
             data = JSON.parse(data);
 
             $('#dataTables-example667').DataTable().destroy();
@@ -1088,19 +1104,19 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
                   "previous": "Anterior"
                 }
               },
-              initComplete: function(){
+              initComplete: function() {
                 $('[title]').tooltip();
               }
             });
-        
+
             // DataTable
             var table = $('#dataTables-example667').DataTable();
             // Apply the search
-            table.columns().every( function () {
+            table.columns().every(function() {
               var that = this;
-              $( 'input', this.footer() ).on( 'keyup change', function () {
-                if ( that.search() !== this.value ) {
-                  that.search( this.value ).draw();
+              $('input', this.footer()).on('keyup change', function() {
+                if (that.search() !== this.value) {
+                  that.search(this.value).draw();
                 }
               });
             });
@@ -1109,13 +1125,13 @@ $prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
       }
 
       function jsExportar() {
-        document.location.href="exportComputos.php?nro="+document.getElementById('nro').value+"&fecha="+document.getElementById('fecha').value+"&fechah="+document.getElementById('fechah').value+"&estado="+document.getElementById('id_estado').value+prodParam;
+        document.location.href = "exportComputos.php?nro=" + document.getElementById('nro').value + "&fecha=" + document.getElementById('fecha').value + "&fechah=" + document.getElementById('fechah').value + "&estado=" + document.getElementById('id_estado').value + prodParam;
       }
-      
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <!-- Plugin used-->
-  </body>
+</body>
+
 </html>

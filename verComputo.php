@@ -224,6 +224,44 @@ if (!empty($_POST)) {
       td.text-center {
         text-align: center !important;
       }
+      .badge-colada {
+        font-size: 14px;
+        font-weight: bold;
+        color: #fff;
+        background-color: #17a2b8;
+        padding: 4px 10px;
+        border-radius: 4px;
+        display: inline-block;
+      }
+      .badge-colada-interna {
+        font-size: 14px;
+        font-weight: bold;
+        color: #fff;
+        background-color: #6c757d;
+        padding: 4px 10px;
+        border-radius: 4px;
+        display: inline-block;
+      }
+      #modalStockBody table td,
+      #modalStockBody table th {
+        font-size: 14px !important;
+        padding: 10px 8px !important;
+        vertical-align: middle !important;
+      }
+      #modalStockBody table th {
+        font-weight: bold !important;
+        background-color: #f8f9fa !important;
+      }
+      #modalStockBody .input-reserva {
+        font-size: 15px !important;
+        height: 36px !important;
+        width: 90px !important;
+        text-align: center !important;
+      }
+      #modalStockBody #totalReservaLive {
+        font-size: 16px !important;
+        font-weight: bold !important;
+      }
     </style>
   </head>
   <body>
@@ -452,7 +490,9 @@ if (!empty($_POST)) {
                 <div class="col-sm-9">
                   <?php
                   $fecha_actual = date('Y-m-d'); ?>
-                  <input name="fecha" id="inputFecha" min="<?= $fecha_actual ?>" type="date" autofocus onfocus="this.showPicker()" value="<?= $fecha_actual ?>" class="form-control" required="required">
+                  <input name="fecha" id="inputFecha" type="date" 
+                        autofocus onfocus="this.showPicker()" value="<?= $fecha_actual ?>" 
+                        class="form-control" required="required">
                 </div>
               </div>
               <div class="form-group row">
@@ -536,7 +576,7 @@ if (!empty($_POST)) {
     Database::disconnect(); ?>
 
     <div class="modal fade" id="modalStock" tabindex="-1">
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Seleccionar Lotes</h5>

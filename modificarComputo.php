@@ -33,6 +33,7 @@ if (!empty($_POST)) {
     $idComputo = isset($_POST['idComputo']) ? (int)$_POST['idComputo'] : 0;
     $pedidos = isset($_POST['cantidad_pedir']) ? $_POST['cantidad_pedir'] : [];
     $userId = $_SESSION['user']['id'];
+    $fechaPedido = !empty($_POST['fecha']) ? $_POST['fecha'] : date('Y-m-d');
 
     $userCuentaId = 0;
     
@@ -210,13 +211,14 @@ if (!empty($_POST)) {
                 $idProyecto = $qProy->fetchColumn();
             }
 
-            $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) VALUES (?, ?, NOW(), ?, ?, 1)";
+            $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) 
+                            VALUES (?, ?, ?, ?, ?, 1)";
             $stmtInsPedido = $pdo->prepare($sqlInsPedido);
 
             $lugar = !empty($_POST['lugar_entrega']) ? $_POST['lugar_entrega'] : 'Direccion Default';
             $recibe = !empty($_POST['id_cuenta_recibe']) ? $_POST['id_cuenta_recibe'] : $userCuentaId;
 
-            $stmtInsPedido->execute([$idComputo, $idProyecto, $lugar, $recibe]);
+            $stmtInsPedido->execute([$idComputo, $idProyecto, $fechaPedido, $lugar, $recibe]);
             $idPedido = $pdo->lastInsertId();
 
             $sqlInsDetalle = "INSERT INTO pedidos_detalle (id_pedido, id_computo_detalle, id_material, fecha_necesidad, cantidad, id_unidad_medida, reservado, comprado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
