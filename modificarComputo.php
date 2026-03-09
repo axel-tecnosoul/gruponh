@@ -211,8 +211,8 @@ if (!empty($_POST)) {
                 $idProyecto = $qProy->fetchColumn();
             }
 
-            $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado) 
-                            VALUES (?, ?, ?, ?, ?, 1)";
+            $sqlInsPedido = "INSERT INTO pedidos (id_computo, id_proyecto, fecha, lugar_entrega, id_cuenta_recibe, id_estado, aprobado) 
+                            VALUES (?, ?, ?, ?, ?, 1, 0)";
             $stmtInsPedido = $pdo->prepare($sqlInsPedido);
 
             $lugar = !empty($_POST['lugar_entrega']) ? $_POST['lugar_entrega'] : 'Direccion Default';

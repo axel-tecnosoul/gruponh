@@ -202,10 +202,7 @@ require 'database.php';?>
                                 <th>Unidad</th>
                                 <th>Fecha Pedido</th>
                                 <th>Fecha Requerido</th>
-                                <th>Fecha Pactada</th>
-                                <th>Fecha Entrega</th>
-                                <th>Comprado</th>
-                                <th>Entregado</th>
+                                <th>Solicitante</th>
                               </tr>
                             </thead>
                             <tbody><?php
@@ -217,13 +214,16 @@ require 'database.php';?>
                                   pd.cantidad,
                                   um.unidad_medida AS unidad,
                                   DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                                  DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido
+                                  DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                                  cu.nombre AS solicitante
                                 FROM pedidos p
                                   INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
                                   INNER JOIN materiales m ON m.id = pd.id_material
                                   INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                                   INNER JOIN sitios si ON si.id = pr.id_sitio
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                  LEFT JOIN computos co ON co.id = p.id_computo
+                                  LEFT JOIN cuentas cu ON cu.id = co.id_cuenta_solicitante
                                 WHERE p.id_estado = 2
                                   AND pd.cancelado = 0
                                 ORDER BY p.id DESC, m.concepto";
@@ -239,14 +239,11 @@ require 'database.php';?>
                                     <td><?=$row['unidad']?></td>
                                     <td><?=$row['fecha_pedido']?></td>
                                     <td><?=$row['fecha_requerido']?></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td><span class='text-comprado'>Comprado</span></td>
-                                    <td><span class='text-entregado'>Entregado</span></td>
+                                    <td><?=$row['solicitante']?></td>
                                   </tr><?php
                                 }
                               } catch (PDOException $e) {
-                                echo "<tr><td colspan='8'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                echo "<tr><td colspan='9'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                               }?>
                             </tbody>
                           </table>
@@ -259,37 +256,33 @@ require 'database.php';?>
                             <thead>
                               <tr>
                                 <th>Nº Pedido</th>
-                                <th>Nº OP</th>
-                                <th>Estado</th>
-                                <th>Proveedor</th>
                                 <th>Obra</th>
+                                <th>Estado</th>
                                 <th>Concepto</th>
                                 <th>Descripción</th>
                                 <th>Cantidad</th>
                                 <th>Unidad</th>
                                 <th>Fecha Pedido</th>
                                 <th>Fecha Requerido</th>
-                                <th>Fecha Pactada</th>
-                                <th>Fecha Entrega</th>
-                                <th>Comprado</th>
-                                <th>Entregado</th>
+                                <th>Ultimo Proveedor</th>
+                                <th>Ultimo Precio</th>
+                                <th>Ultima Fecha</th>
                               </tr>
                             </thead>
                             <tbody><?php
                               $sql = "SELECT 
                                   p.id AS nro_pedido,
-                                  '' AS nro_op,
                                   ep.estado AS estado_pedido,
-                                  '' AS proveedor,
                                   CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                   m.concepto,
                                   m.descripcion,
-                                  pd.cantidad AS cantidad_pedida,
-                                  COALESCE(pd.comprado, 0) AS cantidad_comprada,
                                   (pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,
                                   um.unidad_medida AS unidad,
                                   DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                                  DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido
+                                  DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                                  ult.ultimo_proveedor,
+                                  ult.ultimo_precio,
+                                  ult.ultima_fecha
                                 FROM pedidos p
                                   INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
                                   INNER JOIN materiales m ON m.id = pd.id_material
@@ -297,36 +290,41 @@ require 'database.php';?>
                                   INNER JOIN sitios si ON si.id = pr.id_sitio
                                   LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                  LEFT JOIN (
+                                    SELECT
+                                      cd.id_material,
+                                      prov.nombre AS ultimo_proveedor,
+                                      cd.precio   AS ultimo_precio,
+                                      DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS ultima_fecha,
+                                      ROW_NUMBER() OVER (PARTITION BY cd.id_material ORDER BY c.fecha_emision DESC) AS rn
+                                    FROM compras_detalle cd
+                                      INNER JOIN compras c ON c.id = cd.id_compra
+                                      LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
+                                  ) ult ON ult.id_material = m.id AND ult.rn = 1
                                 WHERE pd.cancelado = 0
                                   AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
-                                  AND p.id_estado NOT IN (
-                                    SELECT id FROM estados_pedidos
-                                    WHERE estado IN ('Cancelado', 'Superado', 'Elaboracion')
-                                  )
+                                  AND p.id_estado NOT IN (1, 7)
                                 ORDER BY p.id DESC, m.concepto";
 
                               try {
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
                                     <td><?=$row['nro_pedido']?></td>
-                                    <td><?=$row['nro_op']?></td>
-                                    <td><?=$row['estado_pedido']?></td>
-                                    <td><?=$row['proveedor']?></td>
                                     <td><?=$row['obra']?></td>
+                                    <td><?=$row['estado_pedido']?></td>
                                     <td class='concepto-col'><?=$row['concepto']?></td>
                                     <td class='descripcion-col'><?=$row['descripcion']?></td>
-                                    <td><?=number_format($row['cantidad_pendiente'], 2)?></td>
+                                    <td class="number"><?=number_format($row['cantidad_pendiente'], 2, ",", ".")?></td>
                                     <td><?=$row['unidad']?></td>
                                     <td><?=$row['fecha_pedido']?></td>
                                     <td><?=$row['fecha_requerido']?></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td><span class='text-comprado'>Comprado</span></td>
-                                    <td><span class='text-entregado'>Entregado</span></td>
+                                    <td><?=$row['ultimo_proveedor']?></td>
+                                    <td class="number"><?= $row['ultimo_precio'] !== null ? number_format($row['ultimo_precio'], 2, ",", ".") : '' ?></td>
+                                    <td><?=$row['ultima_fecha']?></td>
                                   </tr><?php
                                 }
                               } catch (PDOException $e) {
-                                echo "<tr><td colspan='11'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                echo "<tr><td colspan='12'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                               }
 
                               Database::disconnect();?>

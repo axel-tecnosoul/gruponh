@@ -108,7 +108,9 @@ if (!empty($_POST)) {
   }
 
   $remitosList = [];
-  $sql_rem = "SELECT DISTINCT i.id, i.nro_remito, DATE_FORMAT(i.fecha_remito, '%d/%m/%Y') as fecha_fmt 
+  $sql_rem = "SELECT DISTINCT i.id, i.nro_remito, 
+                  DATE_FORMAT(i.fecha_remito, '%d/%m/%Y') as fecha_fmt,
+                  i.fecha_remito
               FROM ingresos i 
               INNER JOIN ingresos_detalle id ON id.id_ingreso = i.id 
               WHERE id.id_compra = ? 

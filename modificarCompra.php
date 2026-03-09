@@ -71,121 +71,95 @@ if (!empty($_POST)) {
   $pdo->beginTransaction();
 
   try {
-    $error_message = '';
-
-    // --- Validaciones de cabecera ---
-    if (empty($_POST['id_cuenta_proveedor']))   $error_message = "Debe seleccionar un Proveedor.";
-    if (empty($_POST['id_moneda']))             $error_message = "Debe seleccionar una Moneda.";
-    if (empty($_POST['id_forma_pago']))         $error_message = "Debe seleccionar una Forma de Pago.";
-    if (empty($_POST['fecha_emision']))         $error_message = "Debe ingresar la Fecha de Emisión.";
-    if ($_POST['id_moneda'] == 1 && (empty($_POST['tipo_cambio_dia']) || (float)$_POST['tipo_cambio_dia'] <= 0)) {
-      $error_message = 'Para la moneda USD, es obligatorio ingresar un Tipo de Cambio válido.';
-    }
-
-    if (!empty($error_message)) throw new Exception($error_message);
-
-    $id_tipo_iva = $_POST['id_tipo_iva'];
-    $tasa_iva = 0;
-    $qTasa = $pdo->prepare("SELECT tasa FROM tipos_iva WHERE id = ?");
-    $qTasa->execute([$id_tipo_iva]);
-    $dtTasa = $qTasa->fetch(PDO::FETCH_ASSOC);
-    if ($dtTasa) $tasa_iva = (float)$dtTasa['tasa'];
-
-    $items_procesar = [];
-    $totalNeto = 0;
-
-    foreach ($_POST as $key => $val) {
-      if (strpos($key, 'cantidad_') !== 0) continue;
-      $id_ref = substr($key, 9);
-      $cantidad = floatval($val);
-      if ($cantidad <= 0) continue;
-
-      $precio     = floatval($_POST['precio_' . $id_ref] ?? 0);
-      $precioKg   = floatval($_POST['preciokg_' . $id_ref] ?? 0);
-      $descItem   = floatval($_POST['descuento_' . $id_ref] ?? 0);
-      $fechaEnt   = $_POST['fecha_entrega_' . $id_ref] ?? ($_POST['fecha_entrega'] ?? '');
-
-      $id_material   = $_POST['id_material_' . $id_ref] ?? null;
-      $id_unidad     = $_POST['id_unidad_' . $id_ref] ?? null;
-      $peso_metro    = floatval($_POST['peso_' . $id_ref] ?? 0);
-      $largo         = floatval($_POST['largo_' . $id_ref] ?? 0);
-
-      $precioGuardar = $precio;
-      if ($precioKg > 0) {
-        $peso_calc = ($largo > 0) ? $peso_metro * ($largo / 1000) : $peso_metro;
-        $precioUnitarioCalc = $precioKg * $peso_calc;
-        $subtotalBruto = $cantidad * $precioUnitarioCalc;
-        $precioGuardar = 0;
-      } else {
-        $subtotalBruto = $cantidad * $precio;
-      }
-
-      $subtotalLinea = $subtotalBruto * (1 - ($descItem / 100));
-      $totalNeto += $subtotalLinea;
-
-      $items_procesar[] = [
-        'id_ref'        => $id_ref,
-        'id_material'   => $id_material,
-        'cantidad'      => $cantidad,
-        'id_unidad'     => $id_unidad,
-        'precio'        => $precioGuardar,
-        'precio_kg'     => $precioKg,
-        'subtotal'      => $subtotalLinea,
-        'descuento'     => $descItem,
-        'fecha_entrega' => $fechaEnt
-      ];
-    }
-
-    if (empty($items_procesar)) throw new Exception("Debe haber al menos un ítem con cantidad mayor a 0 y precio.");
-
-    $desc_gral_pct   = floatval($_POST['descuento'] ?? 0);
-    $desc_gral_monto = $totalNeto * ($desc_gral_pct / 100);
-    $baseIva         = $totalNeto - $desc_gral_monto;
-    $monto_iva       = $baseIva * ($tasa_iva / 100);
-    $totalFinal      = $baseIva + $monto_iva;
-
-    $id_param_limite = ($_POST['id_moneda'] == 1) ? 11 : 10;
-    $qP = $pdo->prepare("SELECT valor FROM parametros WHERE id = ?");
-    $qP->execute([$id_param_limite]);
-    $monto_limite = (float)($qP->fetchColumn() ?: 0);
-
-    $id_estado_compra = ($totalFinal < $monto_limite) ? 3 : 1;
 
     if ($esCompra) {
 
-      $sqlUpd = "UPDATE compras SET 
-        id_cuenta_proveedor=?, fecha_emision=?, fecha_entrega=?, id_moneda=?, tipo_cambio_dia=?,
-        descuento=?, id_forma_pago=?, comentarios=?, total=?, iva=?, id_tipo_iva=?, id_estado_compra=?
-        WHERE id=?";
-      $pdo->prepare($sqlUpd)->execute([
-        $_POST['id_cuenta_proveedor'],
-        $_POST['fecha_emision'],
-        $_POST['fecha_entrega'],
-        $_POST['id_moneda'],
-        $_POST['tipo_cambio_dia'],
-        $desc_gral_pct,
-        $_POST['id_forma_pago'],
-        $_POST['comentarios'],
-        $totalNeto,
-        $monto_iva,
-        $id_tipo_iva,
-        $id_estado_compra,
-        $id_compra
-      ]);
+      if (empty($_POST['id_forma_pago'])) throw new Exception("Debe seleccionar una Forma de Pago.");
 
-      foreach ($items_procesar as $item) {
-        $sqlD = "UPDATE compras_detalle SET cantidad=?, precio=?, precio_kg=?, subtotal=?, descuento=?, fecha_entrega=? WHERE id=?";
-        $pdo->prepare($sqlD)->execute([
-          $item['cantidad'], $item['precio'], $item['precio_kg'],
-          $item['subtotal'], $item['descuento'], $item['fecha_entrega'],
-          $item['id_ref']
-        ]);
-      }
+      $pdo->prepare("UPDATE compras SET id_forma_pago = ?, comentarios = ? WHERE id = ?")
+        ->execute([$_POST['id_forma_pago'], $_POST['comentarios'], $id_compra]);
 
       $targetId  = $id_compra;
       $accionLog = "Modificación de orden de compra";
 
     } else {
+
+      $error_message = '';
+      if (empty($_POST['id_cuenta_proveedor'])) $error_message = "Debe seleccionar un Proveedor.";
+      if (empty($_POST['id_moneda']))           $error_message = "Debe seleccionar una Moneda.";
+      if (empty($_POST['id_forma_pago']))       $error_message = "Debe seleccionar una Forma de Pago.";
+      if (empty($_POST['fecha_emision']))       $error_message = "Debe ingresar la Fecha de Emisión.";
+      if ($_POST['id_moneda'] == 1 && (empty($_POST['tipo_cambio_dia']) || (float)$_POST['tipo_cambio_dia'] <= 0)) {
+        $error_message = 'Para la moneda USD, es obligatorio ingresar un Tipo de Cambio válido.';
+      }
+      if (!empty($error_message)) throw new Exception($error_message);
+
+      $id_tipo_iva = $_POST['id_tipo_iva'];
+      $tasa_iva = 0;
+      $qTasa = $pdo->prepare("SELECT tasa FROM tipos_iva WHERE id = ?");
+      $qTasa->execute([$id_tipo_iva]);
+      $dtTasa = $qTasa->fetch(PDO::FETCH_ASSOC);
+      if ($dtTasa) $tasa_iva = (float)$dtTasa['tasa'];
+
+      $items_procesar = [];
+      $totalNeto = 0;
+
+      foreach ($_POST as $key => $val) {
+        if (strpos($key, 'cantidad_') !== 0) continue;
+        $id_ref   = substr($key, 9);
+        $cantidad = floatval($val);
+        if ($cantidad <= 0) continue;
+
+        $precio   = floatval($_POST['precio_'    . $id_ref] ?? 0);
+        $precioKg = floatval($_POST['preciokg_'  . $id_ref] ?? 0);
+        $descItem = floatval($_POST['descuento_' . $id_ref] ?? 0);
+        $fechaEnt = $_POST['fecha_entrega_' . $id_ref] ?? ($_POST['fecha_entrega'] ?? '');
+
+        $id_material = $_POST['id_material_' . $id_ref] ?? null;
+        $id_unidad   = $_POST['id_unidad_'   . $id_ref] ?? null;
+        $peso_metro  = floatval($_POST['peso_'  . $id_ref] ?? 0);
+        $largo       = floatval($_POST['largo_' . $id_ref] ?? 0);
+
+        $precioGuardar = $precio;
+        if ($precioKg > 0) {
+          $peso_calc          = ($largo > 0) ? $peso_metro * ($largo / 1000) : $peso_metro;
+          $precioUnitarioCalc = $precioKg * $peso_calc;
+          $subtotalBruto      = $cantidad * $precioUnitarioCalc;
+          $precioGuardar      = 0;
+        } else {
+          $subtotalBruto = $cantidad * $precio;
+        }
+
+        $subtotalLinea = $subtotalBruto * (1 - ($descItem / 100));
+        $totalNeto    += $subtotalLinea;
+
+        $items_procesar[] = [
+          'id_ref'        => $id_ref,
+          'id_material'   => $id_material,
+          'cantidad'      => $cantidad,
+          'id_unidad'     => $id_unidad,
+          'precio'        => $precioGuardar,
+          'precio_kg'     => $precioKg,
+          'subtotal'      => $subtotalLinea,
+          'descuento'     => $descItem,
+          'fecha_entrega' => $fechaEnt
+        ];
+      }
+
+      if (empty($items_procesar)) throw new Exception("Debe haber al menos un ítem con cantidad mayor a 0 y precio.");
+
+      $desc_gral_pct   = floatval($_POST['descuento'] ?? 0);
+      $desc_gral_monto = $totalNeto * ($desc_gral_pct / 100);
+      $baseIva         = $totalNeto - $desc_gral_monto;
+      $monto_iva       = $baseIva * ($tasa_iva / 100);
+      $totalFinal      = $baseIva + $monto_iva;
+
+      $id_param_limite = ($_POST['id_moneda'] == 1) ? 11 : 10;
+      $qP = $pdo->prepare("SELECT valor FROM parametros WHERE id = ?");
+      $qP->execute([$id_param_limite]);
+      $monto_limite = (float)($qP->fetchColumn() ?: 0);
+
+      $id_estado_compra = ($totalFinal < $monto_limite) ? 3 : 1;
 
       $sqlIns = "INSERT INTO compras (id_pedido, id_cuenta_proveedor, fecha_emision, fecha_entrega, id_forma_pago, id_tipo_iva, id_estado_compra, nro_oc, total, iva, comentarios, id_moneda, tipo_cambio_dia, comentarios_revision, descuento, nro_revision) 
                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'Revisión Original',?,0)";
@@ -208,75 +182,59 @@ if (!empty($_POST)) {
       $targetId = $pdo->lastInsertId();
 
       $qMaxOc = $pdo->query("SELECT COALESCE(MAX(CAST(nro_oc AS UNSIGNED)), 0) AS max_oc FROM compras");
-      $maxOc = (int)$qMaxOc->fetch(PDO::FETCH_ASSOC)['max_oc'];
-      $nroOC = $maxOc + 1;
+      $maxOc  = (int)$qMaxOc->fetch(PDO::FETCH_ASSOC)['max_oc'];
+      $nroOC  = $maxOc + 1;
       $pdo->prepare("UPDATE compras SET nro_oc = ? WHERE id = ?")->execute([$nroOC, $targetId]);
 
       foreach ($items_procesar as $item) {
-        $sqlDetIns = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, subtotal, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?,?)";
-        $pdo->prepare($sqlDetIns)->execute([
-          $targetId, $item['id_material'], $item['cantidad'], $item['id_unidad'],
-          $item['precio'], $item['precio_kg'], $item['subtotal'], $item['descuento'], $item['fecha_entrega']
-        ]);
+        $pdo->prepare("INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, subtotal, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?,?)")
+          ->execute([$targetId, $item['id_material'], $item['cantidad'], $item['id_unidad'], $item['precio'], $item['precio_kg'], $item['subtotal'], $item['descuento'], $item['fecha_entrega']]);
       }
 
-      $accionLog = "Nueva orden de compra";
-    }
+      foreach ($items_procesar as $item) {
+        $idMat = $item['id_material'];
 
-    foreach ($items_procesar as $item) {
-      $idMat = $item['id_material'];
+        $qSum = $pdo->prepare("SELECT SUM(cd.cantidad) FROM compras_detalle cd JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra NOT IN (5)");
+        $qSum->execute([$id_pedido, $idMat]);
+        $totalComprado = $qSum->fetchColumn() ?: 0;
 
-      $sqlSum = "SELECT SUM(cd.cantidad) FROM compras_detalle cd 
-                 JOIN compras c ON c.id = cd.id_compra 
-                 WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra NOT IN (5)";
-      $qSum = $pdo->prepare($sqlSum);
-      $qSum->execute([$id_pedido, $idMat]);
-      $totalComprado = $qSum->fetchColumn() ?: 0;
+        $pdo->prepare("UPDATE pedidos_detalle SET comprado=? WHERE id_pedido=? AND id_material=?")->execute([$totalComprado, $id_pedido, $idMat]);
 
-      $pdo->prepare("UPDATE pedidos_detalle SET comprado=? WHERE id_pedido=? AND id_material=?")->execute([$totalComprado, $id_pedido, $idMat]);
+        if (function_exists('actualizarEstadoPedidoDetalle')) {
+          $qPD = $pdo->prepare("SELECT id FROM pedidos_detalle WHERE id_pedido=? AND id_material=?");
+          $qPD->execute([$id_pedido, $idMat]);
+          $pdRow = $qPD->fetch(PDO::FETCH_ASSOC);
+          if ($pdRow) actualizarEstadoPedidoDetalle($pdo, $pdRow['id']);
+        }
 
-      if (function_exists('actualizarEstadoPedidoDetalle')) {
-        $qPD = $pdo->prepare("SELECT id FROM pedidos_detalle WHERE id_pedido=? AND id_material=?");
-        $qPD->execute([$id_pedido, $idMat]);
-        $pdRow = $qPD->fetch(PDO::FETCH_ASSOC);
-        if ($pdRow) {
-          actualizarEstadoPedidoDetalle($pdo, $pdRow['id']);
+        $qComp = $pdo->prepare("SELECT cd.id FROM computos_detalle cd JOIN computos c ON c.id = cd.id_computo JOIN pedidos p ON p.id_computo = c.id WHERE p.id = ? AND cd.cancelado = 0 AND cd.id_material = ?");
+        $qComp->execute([$id_pedido, $idMat]);
+        $compDet = $qComp->fetch(PDO::FETCH_ASSOC);
+        if ($compDet) {
+          $pdo->prepare("UPDATE computos_detalle SET comprado=? WHERE id=?")->execute([$totalComprado, $compDet['id']]);
         }
       }
 
-      $sqlComp = "SELECT cd.id FROM computos_detalle cd 
-                  JOIN computos c ON c.id = cd.id_computo 
-                  JOIN pedidos p ON p.id_computo = c.id 
-                  WHERE p.id = ? AND cd.cancelado = 0 AND cd.id_material = ?";
-      $qComp = $pdo->prepare($sqlComp);
-      $qComp->execute([$id_pedido, $idMat]);
-      $compDet = $qComp->fetch(PDO::FETCH_ASSOC);
-      if ($compDet) {
-        $pdo->prepare("UPDATE computos_detalle SET comprado=? WHERE id=?")->execute([$totalComprado, $compDet['id']]);
+      $cntOC = $pdo->prepare("SELECT COUNT(*) FROM compras WHERE id_pedido = ?");
+      $cntOC->execute([$id_pedido]);
+      if ($cntOC->fetchColumn() > 0) {
+        $pdo->prepare("UPDATE pedidos SET id_estado = 4 WHERE id = ?")->execute([$id_pedido]);
       }
-    }
 
-    $cntOC = $pdo->prepare("SELECT COUNT(*) FROM compras WHERE id_pedido = ?");
-    $cntOC->execute([$id_pedido]);
-    if ($cntOC->fetchColumn() > 0) {
-      $pdo->prepare("UPDATE pedidos SET id_estado = 4 WHERE id = ?")->execute([$id_pedido]);
+      $accionLog    = "Nueva orden de compra";
+      $estado_texto = ($id_estado_compra == 3) ? "APROBADA (Automática)" : "Pendiente de Aprobación";
+      $asuntoEmail  = "Compras - Nueva OC #$targetId ($estado_texto)";
+      $cuerpoEmail  = "Nueva compra generada.\nOC: #$targetId\nEstado: $estado_texto\nNeto: $" . number_format($totalNeto, 2) . "\nIVA: $" . number_format($monto_iva, 2) . "\nTotal: $" . number_format($totalFinal, 2);
+      crearNotificacion($pdo, 4, $targetId, "ID OC: #$targetId - $estado_texto", $asuntoEmail, $cuerpoEmail);
     }
 
     $pdo->prepare("INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(), ?, ?, 'Compras', ?)")
       ->execute([$_SESSION['user']['id'], $accionLog, "verCompra.php?id=$targetId"]);
 
-    if (!$esCompra) {
-      $estado_texto = ($id_estado_compra == 3) ? "APROBADA (Automática)" : "Pendiente de Aprobación";
-      $asuntoEmail = "Compras - Nueva OC #$targetId ($estado_texto)";
-      $cuerpoEmail = "Nueva compra generada.\nOC: #$targetId\nEstado: $estado_texto\nNeto: $" . number_format($totalNeto, 2) . "\nIVA: $" . number_format($monto_iva, 2) . "\nTotal: $" . number_format($totalFinal, 2);
-      crearNotificacion($pdo, 4, $targetId, "ID OC: #$targetId - $estado_texto", $asuntoEmail, $cuerpoEmail);
-    }
-
     $pdo->commit();
     Database::disconnect();
 
-    $msgExito = $esCompra ? 'Orden de Compra modificada exitosamente.' : 'Orden de Compra creada exitosamente.';
-    $_SESSION['flash_message'] = ['type' => 'success', 'message' => $msgExito];
+    $_SESSION['flash_message'] = ['type' => 'success', 'message' => $esCompra ? 'Orden de Compra modificada exitosamente.' : 'Orden de Compra creada exitosamente.'];
     header("Location: listarCompras.php");
     exit();
 
@@ -369,8 +327,8 @@ if ($esCompra) {
 }
 
 $titulo   = $esCompra 
-  ? "Modificar Orden de Compra del Pedido $tipoPedido N° $id_pedido" 
-  : "Información del Pedido $tipoPedido N° $id_pedido";
+  ? "Modificar Orden de Compra N° {$form['nro_oc']} Rev {$form['nro_revision']} del Pedido $tipoPedido N° $id_pedido" 
+  : "Gestión del Pedido $tipoPedido N° $id_pedido";
 $action   = $esCompra ? "?id_compra=$id_compra" : "?id_pedido=$id_pedido";
 $btnTxt   = $esCompra ? "Guardar Cambios" : "Crear Orden de Compra";
 $urlVolver = $esCompra ? "listarCompras.php" : "listarPedidos.php";
@@ -441,7 +399,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
             <div class="col-sm-12">
               <div class="card">
                 <div class="card-header">
-                  <h5><?= $titulo ?></h5>
+                  <?php if ($esCompra) { ?><h5><?= $titulo ?></h5><?php } ?>
                   <?php if (isset($error)) { ?>
                     <div class="alert alert-danger"><?= $error ?></div>
                   <?php } ?>
@@ -455,8 +413,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                     <div class="row">
 
                       <div class="col-md-6">
-                        <h6 class="mb-3">Datos del Pedido</h6>
-                        <div class="form-group row">
+                        <h6 class="mb-3"><?= $esCompra ? 'Datos del Pedido' : "Información del Pedido $tipoPedido N° $id_pedido" ?></h6>                        <div class="form-group row">
                           <label class="col-sm-4 col-form-label font-weight-bold">Fecha Pedido</label>
                           <div class="col-sm-8"><?= $data['fecha_formatted'] ?></div>
                         </div>
@@ -496,6 +453,60 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                       <div class="col-md-6">
                         <h6 class="mb-3">Datos de la Orden de Compra</h6>
 
+                        <?php if ($esCompra) {
+                          // Buscar nombre proveedor
+                          $provNombre = '';
+                          foreach ($proveedores as $p) {
+                            if ($p['id'] == $form['prov']) { $provNombre = $p['nombre']; break; }
+                          }
+                          // Buscar nombre moneda
+                          $monedaNombre = '';
+                          foreach ($monedas as $m) {
+                            if ($m['id'] == $form['moneda']) { $monedaNombre = $m['moneda']; break; }
+                          }
+                          // Buscar tasa IVA
+                          $ivaNombre = '';
+                          foreach ($tiposIva as $ti) {
+                            if ($ti['id'] == $form['iva']) { $ivaNombre = (float)$ti['tasa'] . '%'; break; }
+                          }
+                          $camposInfo = [
+                            'Proveedor'        => htmlspecialchars($provNombre),
+                            'Fecha Emisión'    => date('d/m/Y', strtotime($form['f_emision'])),
+                            'Fecha Entrega'    => !empty($form['f_entrega']) ? date('d/m/Y', strtotime($form['f_entrega'])) : '',
+                            'Moneda'           => htmlspecialchars($monedaNombre),
+                            'Tipo de Cambio'   => $form['tc'],
+                            'IVA'              => $ivaNombre,
+                            'Descuento General'=> $form['desc'] . '%',
+                          ];
+                          foreach ($camposInfo as $label => $valor) { ?>
+                            <div class="form-group row">
+                              <label class="col-sm-4 col-form-label font-weight-bold"><?= $label ?></label>
+                              <div class="col-sm-8 col-form-label"><?= $valor ?></div>
+                            </div>
+                          <?php } ?>
+
+                        <div class="form-group row">
+                          <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
+                          <div class="col-sm-8">
+                            <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single w-100" required>
+                              <option value="">Seleccione...</option>
+                              <?php foreach ($formasPago as $fp) {
+                                $sel = ($fp['id'] == $form['pago']) ? 'selected' : '';
+                                echo "<option value='{$fp['id']}' $sel>{$fp['forma_pago']}</option>";
+                              } ?>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="form-group row">
+                          <label class="col-sm-4 col-form-label">Comentarios</label>
+                          <div class="col-sm-8">
+                            <textarea name="comentarios" class="form-control" rows="2"><?= htmlspecialchars($form['obs']) ?></textarea>
+                          </div>
+                        </div>
+
+                        <?php } else { ?>
+
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Proveedor(*)</label>
                           <div class="col-sm-8">
@@ -510,17 +521,12 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                           </div>
                         </div>
 
+                        <input type="hidden" name="fecha_entrega" value="<?= $form['f_entrega'] ?>">
+
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Fecha Emisión(*)</label>
                           <div class="col-sm-8">
                             <input name="fecha_emision" type="date" onfocus="this.showPicker()" value="<?= $form['f_emision'] ?>" class="form-control" required <?= $esCompra ? 'readonly' : '' ?>>
-                          </div>
-                        </div>
-
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Fecha Entrega</label>
-                          <div class="col-sm-8">
-                            <input name="fecha_entrega" type="date" onfocus="this.showPicker()" value="<?= $form['f_entrega'] ?>" class="form-control" <?= $esCompra ? 'readonly' : '' ?>>
                           </div>
                         </div>
 
@@ -559,13 +565,6 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                         </div>
 
                         <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Descuento General</label>
-                          <div class="col-sm-8">
-                            <input name="descuento" type="number" step="0.01" class="form-control" value="<?= $form['desc'] ?>" <?= $esCompra ? 'readonly' : '' ?>>
-                          </div>
-                        </div>
-
-                        <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
                           <div class="col-sm-8">
                             <select name="id_forma_pago" id="id_forma_pago" class="js-example-basic-single w-100" required <?= $esCompra ? 'disabled' : '' ?>>
@@ -585,6 +584,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                             <textarea name="comentarios" class="form-control" rows="2" <?= $esCompra ? 'readonly' : '' ?>><?= htmlspecialchars($form['obs']) ?></textarea>
                           </div>
                         </div>
+                        <?php } ?>
                       </div>
                       <?php } ?>
 
@@ -1107,6 +1107,12 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
   });
 
   function validarFormularioCompra() {
+    if ($("#id_forma_pago").val() == "") {
+      alert('Debe seleccionar una Forma de Pago.');
+      $("#id_forma_pago").select2('open');
+      return false;
+    }
+    if (esCompra) return true;
     if ($("#id_cuenta_proveedor").val() == "") {
       alert('Debe seleccionar un Proveedor.');
       $("#id_cuenta_proveedor").select2('open');
