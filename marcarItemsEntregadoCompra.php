@@ -11,6 +11,7 @@ if (empty($_SESSION['user'])) {
     echo "<h3>DEBUG: Usuario no logueado (redireccion deshabilitada)</h3>";
   }
 }
+
 require 'database.php';
 require_once('funciones.php');
 
@@ -27,6 +28,7 @@ if (null==$id) {
     exit();
   }
 }
+
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -191,7 +193,7 @@ try {
       }
       
       if ($count == 1) {
-        $rutaDocumento = isset($_POST['ruta_documento']) && !empty($_POST['ruta_documento']) ? $_POST['ruta_documento'] : null;
+        $rutaDocumento = isset($_POST['ruta_documento']) && !empty($_POST['ruta_documento']) ? $_POST['ruta_documento'] : "null";
         
         $sql = "INSERT into ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones, fecha_remito, nro_remito, ruta_documento) values (now(),1,?,?,?,?,?,?,?)";
         $params = [$idPedido,$compraData["id_cuenta_recibe"],$compraData["lugar_entrega"],$compraData["comentarios"],$_POST['fecha_remito'],$_POST['nro_remito'],$rutaDocumento];
@@ -201,6 +203,7 @@ try {
         }
         $q = $pdo->prepare($sql);
         $q->execute($params);
+        
         $idIngreso = $pdo->lastInsertId();
         
         if ($modoDebug == 1) {
