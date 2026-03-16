@@ -432,14 +432,13 @@ if (!empty($_POST)) {
                       <label class="col-sm-2">Nro Remito (*)</label>
                       <div class="col-sm-4">
                         <div class="input-group">
-                          <input name="nro_remito" type="text" maxlength="13" class="form-control" value="" required pattern="\d{4}-\d{8}" placeholder="0001-12345678" title="Formato requerido: 4 números, un guión, 8 números (Ej: 0001-12345678)" id="nro_remito_input">
+                          <input name="nro_remito" type="text" maxlength="13" class="form-control" value="" required pattern="\d{4}-\d{8}" placeholder="0001-12345678" id="nro_remito_input">
                           <div class="input-group-append">
                             <button class="btn btn-outline-primary" type="button" data-toggle="modal" data-target="#modalRemitos" title="Ver remitos asociados">
                               <i class="fa fa-eye"></i>
                             </button>
                           </div>
                         </div>
-                        <small class="form-text text-muted">Formato: 0001-12345678</small>
                       </div>
                     </div>
 

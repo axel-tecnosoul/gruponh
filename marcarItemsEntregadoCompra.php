@@ -1,6 +1,6 @@
 <?php
 // Modo Debug habilitado para ver consultas y resultados
-$modoDebug = 1;
+$modoDebug = 0;
 
 require("config.php");
 if (empty($_SESSION['user'])) {
@@ -248,13 +248,6 @@ try {
       if ($modoDebug == 1) {
           echo "<b>ID ingresos_detalle creado:</b> $idIngresoDetalleReal<br><br>";
       }
-
-      $params = [$idIngreso,$idMaterial,$itemData["id_unidad_medida"],$cantidadIngresar,$cantidadIngresar,$_GET['id'],$compraData["id_cuenta_proveedor"],$colada];
-      $q = $pdo->prepare($sql);
-      $q->execute($params);
-      
-      $idIngresoDetalleReal = $pdo->lastInsertId(); 
-
 
       if ($idComputo) {
         

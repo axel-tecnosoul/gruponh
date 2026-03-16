@@ -408,7 +408,7 @@ $tituloPrincipal = $esCompra
   : "Gestión del Pedido $tipoPedido N° $id_pedido";
 
 // H6 de la columna izquierda → siempre muestra info del pedido
-$tituloInfoPedido = "Información del Pedido $tipoPedido N° $id_pedido";
+$tituloInfoPedido = "Información del Pedido";
 
 $action    = $esCompra ? "?id_compra=$id_compra" : "?id_pedido=$id_pedido";
 $btnTxt    = $esCompra ? "Guardar Cambios" : "Crear Orden de Compra";

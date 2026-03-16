@@ -307,7 +307,8 @@ require 'database.php';?>
                                 ORDER BY p.id DESC, m.concepto";
 
                               try {
-                                foreach ($pdo->query($sql) as $row) {?>
+                                foreach ($pdo->query($sql) as $row) {
+                                  //ejemplo: If ultimo_precio != null $val = row[]?>
                                   <tr>
                                     <td><?=$row['nro_pedido']?></td>
                                     <td><?=$row['obra']?></td>
