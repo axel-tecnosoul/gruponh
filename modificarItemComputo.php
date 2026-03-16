@@ -1,12 +1,17 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+ob_start();
+
 require("config.php");
 require 'database.php';
-
 $prod      = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
 $prodQuery = $prod ? '?prod=' . $prod : '';
 $prodParam = $prod ? '&prod=' . $prod : '';
 
-define('ID_ESTADO_TERMINADO_COMPUTO',  4);
+define('ID_ESTADO_TERMINADO_COMPUTO',  5);
 define('ID_ESTADO_TERMINADO_PROYECTO', 4);
 
 $id = !empty($_GET['id']) ? (int)$_GET['id'] : null;
@@ -95,6 +100,21 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  $cantidadOriginal = $data['cantidad']; // valor por defecto
+  if ($modoActual === 'update' && !empty($data['id_material'])) {
+    $stmtCantOrig = $pdo->prepare("
+      SELECT cantidad FROM computos_detalle 
+      WHERE id_computo = ? AND id_material = ? AND cancelado = 0
+      LIMIT 1
+    ");
+    $stmtCantOrig->execute([$idOrigen, $data['id_material']]);
+    $fetched = $stmtCantOrig->fetchColumn();
+    if ($fetched !== false) {
+      $cantidadOriginal = (float)$fetched;
+    }
+  }
+
   Database::disconnect();
 }
 ?>
@@ -121,9 +141,6 @@ if (!empty($_POST)) {
                 <div class="card-header">
                   <h5>
                     <?= $ubicacion ?>
-                    <?php if ($esModoRestringido): ?>
-                      <span class="badge badge-warning ml-2">Revisión restringida</span>
-                    <?php endif; ?>
                   </h5>
                 </div>
                 <form class="form theme-form" role="form" method="post"
@@ -131,14 +148,6 @@ if (!empty($_POST)) {
                   <div class="card-body">
                     <div class="row">
                       <div class="col">
-
-                        <?php if ($esModoRestringido): ?>
-                          <div class="alert alert-warning">
-                            <strong>⚠ Revisión restringida:</strong>
-                            Solo se puede <strong>disminuir la cantidad</strong>.
-                            No se puede aumentar ni cambiar el concepto.
-                          </div>
-                        <?php endif; ?>
 
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Concepto(*)</label>
@@ -160,7 +169,7 @@ if (!empty($_POST)) {
                             </select>
                             <?php if ($esModoRestringido): ?>
                               <input type="hidden" name="id_material" value="<?= (int)$data['id_material'] ?>">
-                              <small class="text-muted">El concepto no puede modificarse en una revisión restringida.</small>
+                              <small class="text-muted">El concepto no puede modificarse en una revisión.</small>
                             <?php endif; ?>
                           </div>
                         </div>
@@ -170,7 +179,7 @@ if (!empty($_POST)) {
                           <div class="col-sm-9">
                             <?php
                             $maxAttr = ($modoActual === 'update')
-                              ? 'max="' . $data['cantidad'] . '"'
+                              ? 'max="' . $cantidadOriginal . '"'
                               : '';
                             ?>
                             <input name="cantidad" step="0.01" min="0.01"
@@ -179,7 +188,7 @@ if (!empty($_POST)) {
                               required="required" value="<?= $data['cantidad'] ?>">
                             <?php if ($modoActual === 'update'): ?>
                               <small class="text-muted">
-                                Cantidad máxima: <?= $data['cantidad'] ?> — no se puede aumentar en revisión.
+                                Cantidad máxima: <?= $cantidadOriginal ?> — no se puede aumentar en revisión.
                               </small>
                             <?php endif; ?>
                             <?php if (isset($_GET['error']) && $_GET['error'] === 'cantidad_aumentada'): ?>

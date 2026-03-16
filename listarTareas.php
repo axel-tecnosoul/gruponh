@@ -10,6 +10,7 @@ $nro           = isset($_POST['nro'])           ? $_POST['nro']           : "";
 $id_tipo_tarea = isset($_POST['id_tipo_tarea']) ? $_POST['id_tipo_tarea'] : "";
 $completada    = isset($_POST['completada'])    ? $_POST['completada']    : "";
 $orden         = isset($_POST['orden'])         ? $_POST['orden']         : "t.id asc";
+$submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -95,6 +96,7 @@ $orden         = isset($_POST['orden'])         ? $_POST['orden']         : "t.i
                     </div>
                     <div class="form-group mb-0">
                       <button type="submit" class="btn btn-primary">Buscar</button>
+                      <input type="hidden" name="buscar" value="1">
                     </div>
                   </form>
                 </div>
@@ -292,6 +294,7 @@ $orden         = isset($_POST['orden'])         ? $_POST['orden']         : "t.i
             d.id_tipo_tarea = '<?php echo addslashes($id_tipo_tarea); ?>';
             d.completada    = '<?php echo addslashes($completada); ?>';
             d.orden         = '<?php echo addslashes($orden); ?>';
+            d.submitted     = '<?php echo $submitted; ?>';
             return d;
           }
         },

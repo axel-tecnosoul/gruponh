@@ -614,7 +614,12 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
         $("#link_items_computo").on("click", function(e) {
           e.preventDefault();
 
+          console.log("=== CLICK link_items_computo ===");
+          console.log("href actual:", this.href);
+
           const fila = $("#dataTables-example666 tbody tr.selected");
+          console.log("fila seleccionada:", fila.length);
+
           if (fila.length === 0) {
             alert("Por favor seleccione un cómputo para ver/añadir/modificar ítems");
             return;
@@ -644,26 +649,43 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
           const proyectoTerminado = (estadoProyecto === ID_ESTADO_PROY_TERMINADO);
           const idComputo = fila.data("id");
 
+          console.log("estado_id:", estado_id);
+          console.log("estadoProyecto:", estadoProyecto);
+          console.log("proyectoTerminado:", proyectoTerminado);
+          console.log("idComputo:", idComputo);
+          console.log("hrefToRedirect:", this.href);
+
           if (estado_id === ID_ESTADO_ELABORACION || estado_id === ID_ESTADO_PARA_APROBAR) {
-            window.location.href = this.href;
+            console.log("→ caso: elaboracion o para aprobar");
+              window.location.href = this.href;
+
+          } else if (estado_id === 3 || estado_id === 4) {
+              hrefToRedirect = this.href;
+              idOrigenRevision = idComputo;
+              $("#modalRevision").modal("show");
 
           } else if (estado_id === ID_ESTADO_TERMINADO && !proyectoTerminado) {
-            hrefToRedirect = this.href;
-            idOrigenRevision = idComputo;
-            $("#modalRevision").modal("show");
+              hrefToRedirect = this.href;
+              idOrigenRevision = idComputo;
+              $("#modalRevision").modal("show");
 
           } else if (estado_id === ID_ESTADO_TERMINADO && proyectoTerminado) {
-            alert("No se puede revisar un cómputo terminado cuando el proyecto ya está finalizado.");
+              alert("No se puede revisar un cómputo terminado cuando el proyecto ya está finalizado.");
 
           } else {
-            alert("No se puede modificar ni revisar ítems en este estado.");
+              alert("No se puede modificar ni revisar ítems en este estado.");
           }
         });
 
         $("#formRevision").on("submit", function(e) {
           e.preventDefault();
 
+          console.log("=== SUBMIT formRevision ===");
+          console.log("hrefToRedirect:", hrefToRedirect);
+          console.log("idOrigenRevision:", idOrigenRevision);
+
           const motivo = $("#motivoRevision").val().trim();
+          console.log("motivo:", motivo);
           if (motivo === "") {
             alert("Por favor complete el motivo de la revisión.");
             return;

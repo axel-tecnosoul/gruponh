@@ -273,7 +273,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>
                                 </a>
                               </td>
-                              <td><?=$row['nro_sitio'].'/'.$row['nro_subsitio'].'/'.$row['nro']?></td>
+                              <td><?=$row['nro_sitio'].'_'.$row['nro_subsitio'].'_'.$row['nro']?></td>
                               <td class="truncate-project"><?=htmlspecialchars($row['nombre_proyecto'])?></td>
                               <td class="truncate-provider"><?=$row['nombre']?></td>
                               <td><?=$row['moneda'] . ' ' . number_format($row['total'], 2, ',', '.')?></td>

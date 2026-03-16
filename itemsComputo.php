@@ -1,4 +1,10 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+ob_start();
+
 require("config.php");
 require 'database.php';
 
@@ -6,7 +12,7 @@ $prod      = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
 $prodQuery = $prod ? '?prod=' . $prod : '';
 $prodParam = $prod ? '&prod=' . $prod : '';
 
-define('ID_ESTADO_TERMINADO_COMPUTO',  4);
+define('ID_ESTADO_TERMINADO_COMPUTO',  5);
 define('ID_ESTADO_TERMINADO_PROYECTO', 4);
 
 $modo     = $_REQUEST['modo']     ?? 'nuevo';
@@ -93,7 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if ($esRevision) {
     $idPadrePost = !empty($_POST['idOrigen']) ? (int)$_POST['idOrigen'] : (int)$idOrigen;
-    validarProyectoNoTerminado($pdo, $idPadrePost, $prodQuery);
+
+    if ($estadoPadre === ID_ESTADO_TERMINADO_COMPUTO) {
+        validarProyectoNoTerminado($pdo, $idPadrePost, $prodQuery);
+    }
 
     $pdo->beginTransaction();
     try {
@@ -155,15 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
   if (!empty($_POST['id_material'])) {
     if ($esModoRestringido) {
-      $stmtExiste = $pdo->prepare("
-                SELECT COUNT(*) FROM computos_detalle 
-                WHERE cancelado = 0 AND id_computo = ? AND id_material = ?
-            ");
-      $stmtExiste->execute([$idComputoPadre, $_POST['id_material']]);
-      if ((int)$stmtExiste->fetchColumn() === 0) {
-        header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev&idOrigen=$idComputoPadre&error=2$prodParam");
-        exit;
-      }
+      header("Location: itemsComputo.php?modo=$modo&id=$id&revision=$nroRev&idOrigen=$idComputoPadre&error=2$prodParam");
+      exit;
     }
 
     $stmt = $pdo->prepare("
@@ -180,8 +182,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $stmt = $pdo->prepare("
             INSERT INTO computos_detalle 
-                (id_computo, id_material, cantidad, saldo, fecha_necesidad, aprobado, comentarios) 
-            VALUES (?, ?, ?, ?, ?, 0, ?)
+                (id_computo, id_material, cantidad, saldo, fecha_necesidad, aprobado, reservado, comprado, cancelado, comentarios) 
+            VALUES (?, ?, ?, ?, ?, 0, 0, 0, 0, ?)
         ");
     $stmt->execute([$id, $_POST['id_material'], $cantidad, $cantidad, $_POST['fecha_necesidad'], $_POST['comentarios']]);
 
@@ -271,9 +273,6 @@ Database::disconnect();
                     <?= $ubicacion . " N° " . $data["nro_computo"]
                       . " Rev. N° " . $data["nro_revision"]
                       . " (" . $data["sitio"] . "_" . $data["subsitio"] . "_" . $data["nro_proyecto"] . ")" ?>
-                    <?php if ($esModoRestringido): ?>
-                      <span class="badge badge-warning ml-2">Revisión restringida</span>
-                    <?php endif; ?>
                   </h5>
                 </div>
                 <form class="form theme-form" role="form" method="post" id="miFormulario"
@@ -286,17 +285,6 @@ Database::disconnect();
                   <div class="card-body">
                     <div class="row">
                       <div class="col">
-
-                        <?php if ($esModoRestringido): ?>
-                          <div class="alert alert-warning">
-                            <strong>⚠ Revisión restringida:</strong>
-                            Este cómputo estaba en estado <strong>Terminado</strong>.
-                            Solo se pueden <strong>eliminar conceptos</strong> o
-                            <strong>disminuir cantidades</strong>.
-                            No se pueden agregar conceptos nuevos ni aumentar cantidades.
-                          </div>
-                        <?php endif; ?>
-
                         <div class="form-group row">
                           <div class="col-sm-12">
                             <table class="display" id="dataTables-example667">
@@ -381,6 +369,11 @@ Database::disconnect();
                               <?php if (isset($_GET['error']) && $_GET['error'] == 1): ?>
                                 <b>
                                   <font color="red">No se puede agregar un concepto repetido!</font>
+                                </b>
+                              <?php endif; ?>
+                              <?php if (isset($_GET['error']) && $_GET['error'] == 2): ?>
+                                <b>
+                                  <font color="red">No se pueden agregar conceptos en una revisión.</font>
                                 </b>
                               <?php endif; ?>
                             </div>

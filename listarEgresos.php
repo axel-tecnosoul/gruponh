@@ -69,24 +69,43 @@ if (empty($_SESSION['user'])) {
                             <?php
                               include 'database.php';
                               $pdo = Database::connect();
-                              $sql = " SELECT e.`id`, date_format(e.`fecha_hora`,'%d/%m/%y %H:%i'), te.`tipo`, e.`nro`, c.`nombre`, s.`nombre`, t.estructura, e.`observaciones`, p.nombre, te.`id` FROM `egresos` e inner join tipos_egreso te on te.id = e.`id_tipo_egreso` inner join cuentas c on c.id = e.`id_cuenta_retira` inner join sitios s on s.id = e.`id_sitio_destino` left join tareas t on t.id = e.`id_tarea` left join proyectos p on p.id = e.`id_proyecto` WHERE 1 ";
-                      
+                              $sql = "SELECT 
+                                  e.`id`, 
+                                  date_format(e.`fecha_hora`,'%d/%m/%y %H:%i'), 
+                                  te.`tipo`, 
+                                  e.`nro`, 
+                                  c.`nombre`, 
+                                  s.`nombre`, 
+                                  t.estructura, 
+                                  e.`observaciones`, 
+                                  p.nombre, 
+                                  te.`id`,
+                                  date_format(e.`fecha_hora`,'%Y%m%d%H%i')
+                              FROM `egresos` e 
+                              inner join tipos_egreso te on te.id = e.`id_tipo_egreso` 
+                              inner join cuentas c on c.id = e.`id_cuenta_retira` 
+                              inner join sitios s on s.id = e.`id_sitio_destino` 
+                              left join tareas t on t.id = e.`id_tarea` 
+                              left join proyectos p on p.id = e.`id_proyecto` 
+                              WHERE 1";        
+
                               foreach ($pdo->query($sql) as $row) {
                                   echo '<tr>';
-                                  echo '<td>'. $row[0] . '</td>';
-                                  echo '<td>'. $row[1] . 'hs</td>';
-                                  echo '<td>'. $row[2] . '</td>';
-                                  echo '<td>'. $row[3] . '</td>';
-                                  echo '<td>'. $row[4] . '</td>';
-                                  echo '<td>'. $row[5] . '</td>';
+                                  echo '<td>' . $row[0] . '</td>';
+                                  echo '<td data-order="' . $row[10] . '">' . $row[1] . 'hs</td>';
+                                  echo '<td>' . $row[2] . '</td>';
+                                  echo '<td>' . $row[3] . '</td>';
+                                  echo '<td>' . $row[4] . '</td>';
+                                  echo '<td>' . $row[5] . '</td>';
                                   if ($row[9] == 1) {
-                                    echo '<td>'. $row[8] . '</td>';	
+                                      echo '<td>' . $row[8] . '</td>';
                                   } else if ($row[9] == 2) {
-                                    echo '<td>'. $row[6] . '</td>';	
+                                      echo '<td>' . $row[6] . '</td>';
                                   }
-                                  echo '<td>'. $row[7] . '</td>';
-                                                  echo '</tr>';
+                                  echo '<td>' . $row[7] . '</td>';
+                                  echo '</tr>';
                               }
+
                               Database::disconnect();
                             ?>
                           </tbody>
@@ -205,37 +224,38 @@ if (empty($_SESSION['user'])) {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
     } );
-	$('#dataTables-example666').DataTable({
+    
+    $('#dataTables-example666').DataTable({
         stateSave: false,
         responsive: false,
-		dom: 'Bfrtp<"bottom"l>',
-        buttons: [
-            'excel'
+        dom: 'Bfrtp<"bottom"l>',
+        buttons: ['excel'],
+        order: [[0, 'desc']],
+        lengthMenu: [
+            [10, 25, 50, 100, 500, 1000],
+            [10, 25, 50, 100, 500, 1000]
         ],
-		lengthMenu: [
-        [10, 25, 50, 100, 500, 1000],
-        [10, 25, 50, 100, 500, 1000]
-		],
         language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
+            "decimal": "",
+            "emptyTable": "No hay información",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+            "infoFiltered": "(Filtrado de _MAX_ total registros)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "Mostrar _MENU_ Registros",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar:",
+            "zeroRecords": "No hay resultados",
+            "paginate": {
+                "first": "Primero",
+                "last": "Ultimo",
+                "next": "Siguiente",
+                "previous": "Anterior"
+            }
+        }
+    });
  
     // DataTable
     var table = $('#dataTables-example666').DataTable();

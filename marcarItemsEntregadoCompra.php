@@ -1,6 +1,6 @@
 <?php
 // Modo Debug habilitado para ver consultas y resultados
-$modoDebug = 0;
+$modoDebug = 1;
 
 require("config.php");
 if (empty($_SESSION['user'])) {
@@ -217,8 +217,38 @@ try {
       $q3->execute([$idPedido]);
       $data3 = $q3->fetch(PDO::FETCH_ASSOC);
       $colada = $data3['nro_sitio']."/".$data3['nro_subsitio']."/".$data3['nro']."-".$count;
-      
-      $sql = "INSERT into ingresos_detalle (id_ingreso, id_material, id_unidad_medida, cantidad, saldo, id_compra, id_proveedor,nro_colada_interna) values (?,?,?,?,?,?,?,?)";
+            
+      $sql = "INSERT INTO ingresos_detalle 
+              (id_ingreso, id_material, id_unidad_medida, cantidad, cantidad_egresada, saldo, 
+              id_compra, id_proveedor, nro_colada_interna) 
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+      $params = [
+          $idIngreso,                          // 1 - id_ingreso
+          $idMaterial,                         // 2 - id_material
+          $itemData["id_unidad_medida"],        // 3 - id_unidad_medida
+          $cantidadIngresar,                   // 4 - cantidad
+          0,                                   // 5 - cantidad_egresada
+          $cantidadIngresar,                   // 6 - saldo
+          $_GET['id'],                         // 7 - id_compra
+          $compraData["id_cuenta_proveedor"],  // 8 - id_proveedor
+          $colada                              // 9 - nro_colada_interna
+      ];
+
+      if ($modoDebug == 1) {
+          echo "<b>✅ SQL 6 - Insertar ingresos_detalle:</b><br>";
+          echo "<pre>Parámetros (" . count($params) . "):\n" . print_r($params, true) . "</pre>";
+      }
+
+      $q = $pdo->prepare($sql);
+      $q->execute($params);
+
+      $idIngresoDetalleReal = $pdo->lastInsertId();
+
+      if ($modoDebug == 1) {
+          echo "<b>ID ingresos_detalle creado:</b> $idIngresoDetalleReal<br><br>";
+      }
+
       $params = [$idIngreso,$idMaterial,$itemData["id_unidad_medida"],$cantidadIngresar,$cantidadIngresar,$_GET['id'],$compraData["id_cuenta_proveedor"],$colada];
       $q = $pdo->prepare($sql);
       $q->execute($params);

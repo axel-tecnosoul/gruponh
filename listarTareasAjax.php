@@ -13,6 +13,17 @@ $nro           = isset($_GET['nro'])           ? trim($_GET['nro'])           : 
 $id_tipo_tarea = isset($_GET['id_tipo_tarea']) ? trim($_GET['id_tipo_tarea']) : "";
 $completada    = isset($_GET['completada'])    ? trim($_GET['completada'])    : "";
 $orden         = isset($_GET['orden'])         ? trim($_GET['orden'])         : "t.id asc";
+$submitted     = isset($_GET['submitted']) ? $_GET['submitted'] : "0";
+
+if ($submitted !== "1") {
+    echo json_encode([
+        "draw"            => isset($_GET['draw']) ? intval($_GET['draw']) : 1,
+        "recordsTotal"    => 0,
+        "recordsFiltered" => 0,
+        "data"            => []
+    ]);
+    exit;
+}
 
 $fields = [
     "t.`id`",

@@ -668,12 +668,10 @@ if (!empty($_POST)) {
     (function() {
       var input = document.getElementById('nro_remito_input');
 
-      // Pad con ceros a la izquierda
       function padParte(valor, longitud) {
         return String(parseInt(valor, 10) || 0).padStart(longitud, '0');
       }
 
-      // "2-58" → "0002-00000058"
       function formatearRemito(valor) {
         valor = valor.trim();
         if (!valor) return '';
@@ -683,25 +681,26 @@ if (!empty($_POST)) {
         if (partes.length === 2) {
           return padParte(partes[0], 4) + '-' + padParte(partes[1], 8);
         } else {
-          // Solo ingresó números sin guión: los trata como primera parte
           return padParte(partes[0], 4);
         }
       }
 
-      // Al escribir: solo permite dígitos y UN guión
       input.addEventListener('input', function(e) {
         var val = e.target.value;
 
-        // Solo dígitos y guiones
         val = val.replace(/[^0-9\-]/g, '');
 
-        // Máximo un guión
         var partes = val.split('-');
         if (partes.length > 2) {
           val = partes[0] + '-' + partes.slice(1).join('');
+          partes = val.split('-');
         }
 
-        // Limitar longitud: 4 + guión + 8 = 13 caracteres
+        if (partes.length === 1 && partes[0].length === 4) {
+          val = partes[0] + '-';
+          partes = val.split('-');
+        }
+
         if (partes.length === 2) {
           val = partes[0].substring(0, 4) + '-' + partes[1].substring(0, 8);
         } else {
@@ -711,7 +710,6 @@ if (!empty($_POST)) {
         e.target.value = val;
       });
 
-      // Al salir del campo: formatea con ceros
       input.addEventListener('blur', function(e) {
         var val = e.target.value.trim();
         if (val !== '') {
@@ -719,7 +717,6 @@ if (!empty($_POST)) {
         }
       });
 
-      // Al entrar al campo: muestra sin ceros para edición cómoda
       input.addEventListener('focus', function(e) {
         var val = e.target.value.trim();
         if (!val) return;
@@ -754,7 +751,7 @@ if (!empty($_POST)) {
       }
     };
 
-    function mostrarConfirmacion(idDestino, nombreAccion, colorBtn, icono) {
+function mostrarConfirmacion(idDestino, nombreAccion, colorBtn, icono) {
       var form = document.form1;
       var inputFecha = form.querySelector('input[name="fecha_remito"]');
       var inputNro = form.querySelector('input[name="nro_remito"]');
@@ -789,8 +786,7 @@ if (!empty($_POST)) {
         return false;
       }
 
-      if (!form.checkValidity()) {
-        form.reportValidity();
+      if (!form.reportValidity()) {
         return false;
       }
 

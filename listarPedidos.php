@@ -253,7 +253,7 @@ if (in_array("todos", $id_estado)) {
                           WHERE 1 ".$filtroNroPedido.$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
 
                           foreach ($pdo->query($sql1) as $row) {
-                            $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
+                            $obra = htmlspecialchars($row['nro_sitio']).'_'.htmlspecialchars($row['nro_subsitio']).'_'.htmlspecialchars($row['nro']);
                             $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
                             $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
 

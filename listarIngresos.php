@@ -79,22 +79,37 @@ if (empty($_SESSION['user'])) {
                           include 'database.php';
                           $pdo = Database::connect();
                           
-                          // Se quitó ti.id y ti.destino
-                          $sql = " SELECT i.`id`, date_format(i.`fecha_hora`,'%d/%m/%y %H:%i'), ti.`tipo`, i.`nro`, c.`nombre`, i.`lugar_entrega`, i.`observaciones`, date_format(i.`fecha_remito`,'%d/%m/%Y'), i.`nro_remito`, date_format(i.`fecha_remito`,'%Y%m%d') FROM `ingresos` i inner join tipos_ingreso ti on ti.id = i.`id_tipo_ingreso` inner join cuentas c on c.id = i.`id_cuenta_recibe` WHERE 1 ";
+                          $sql = " SELECT 
+                                i.`id`, 
+                                date_format(i.`fecha_hora`,'%d/%m/%y %H:%i'), 
+                                ti.`tipo`, 
+                                i.`nro`, 
+                                c.`nombre`, 
+                                i.`lugar_entrega`, 
+                                i.`observaciones`, 
+                                date_format(i.`fecha_remito`,'%d/%m/%Y'), 
+                                i.`nro_remito`, 
+                                date_format(i.`fecha_remito`,'%Y%m%d%H%i'),
+                                date_format(i.`fecha_hora`,'%Y%m%d%H%i')
+                            FROM `ingresos` i 
+                            inner join tipos_ingreso ti on ti.id = i.`id_tipo_ingreso` 
+                            inner join cuentas c on c.id = i.`id_cuenta_recibe` 
+                            WHERE 1 ";
 
-                          foreach ($pdo->query($sql) as $row) {
-                            echo '<tr>';
-                            echo '<td>' . $row[0] . '</td>';
-                            echo '<td>' . $row[1] . 'hs</td>';
-                            echo '<td>' . $row[2] . '</td>';
-                            echo '<td>' . $row[3] . '</td>';
-                            echo '<td>' . $row[4] . '</td>';
-                            echo '<td>' . $row[5] . '</td>';
-                            echo '<td><span style="display: none;">' . $row[9] . '</span>' . $row[7] . '</td>';
-                            echo '<td>' . $row[8] . '</td>';
-                            echo '<td>' . $row[6] . '</td>';
-                            echo '</tr>';
-                          }
+                            foreach ($pdo->query($sql) as $row) {
+                                echo '<tr>';
+                                echo '<td>' . $row[0] . '</td>';
+                                echo '<td data-order="' . $row[10] . '">' . $row[1] . 'hs</td>';
+                                echo '<td>' . $row[2] . '</td>';
+                                echo '<td>' . $row[3] . '</td>';
+                                echo '<td>' . $row[4] . '</td>';
+                                echo '<td>' . $row[5] . '</td>';
+                                echo '<td data-order="' . $row[9] . '">' . $row[7] . '</td>';
+                                echo '<td>' . $row[8] . '</td>';
+                                echo '<td>' . $row[6] . '</td>';
+                                echo '</tr>';
+                            }
+
                           Database::disconnect();
                           ?>
                         </tbody>
@@ -231,36 +246,35 @@ if (empty($_SESSION['user'])) {
         });
 
         $('#dataTables-example666').DataTable({
-          stateSave: false,
-          responsive: false,
-          dom: 'Bfrtp<"bottom"l>',
-          buttons: [
-            'excel'
-          ],
-          lengthMenu: [
-            [10, 25, 50, 100, 500, 1000],
-            [10, 25, 50, 100, 500, 1000]
-          ],
-          language: {
-            "decimal": "",
-            "emptyTable": "No hay información",
-            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-            "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "infoPostFix": "",
-            "thousands": ",",
-            "lengthMenu": "Mostrar _MENU_ Registros",
-            "loadingRecords": "Cargando...",
-            "processing": "Procesando...",
-            "search": "Buscar:",
-            "zeroRecords": "No hay resultados",
-            "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
+            stateSave: false,
+            responsive: false,
+            dom: 'Bfrtp<"bottom"l>',
+            buttons: ['excel'],
+            order: [[0, 'desc']],
+            lengthMenu: [
+                [10, 25, 50, 100, 500, 1000],
+                [10, 25, 50, 100, 500, 1000]
+            ],
+            language: {
+                "decimal": "",
+                "emptyTable": "No hay información",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+                "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ Registros",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No hay resultados",
+                "paginate": {
+                    "first": "Primero",
+                    "last": "Ultimo",
+                    "next": "Siguiente",
+                    "previous": "Anterior"
+                }
             }
-          }
         });
 
         // DataTable
