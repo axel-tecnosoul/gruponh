@@ -64,6 +64,20 @@ require 'database.php';?>
       #tablaPendiente tbody tr.fila-seleccionada td {
         background-color: #d9e8fb !important;
       }
+      .btn-copiar-custom {
+        margin-left: 10px;
+        vertical-align: middle;
+        background-color: #5a6268;
+        color: #fff;
+        border-color: #545b62;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .btn-copiar-custom svg {
+        width: 14px;
+        height: 14px;
+      }
     </style>
   </head>
   <body>
@@ -138,11 +152,7 @@ require 'database.php';?>
                                   DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
                                   DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
                                   DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_pactada,
-                                  DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega,
-                                  COALESCE(cd.precio, 0) AS precio_unitario,
-                                  COALESCE(cd.subtotal, 0) AS total,
-                                  COALESCE(cd.entregado * cd.precio, 0) AS monto_entregado,
-                                  COALESCE((cd.cantidad - COALESCE(cd.entregado, 0)) * cd.precio, 0) AS monto_pendiente
+                                  DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega
                                 FROM compras c
                                   INNER JOIN compras_detalle cd ON cd.id_compra = c.id
                                   INNER JOIN materiales m ON m.id = cd.id_material
@@ -205,7 +215,7 @@ require 'database.php';?>
                             <tbody><?php
                               $sql = "SELECT
                                   p.id AS nro_pedido,
-                                  ep.estado AS estado_pedido,
+                                  epd.estado AS estado_detalle,
                                   CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                   m.concepto,
                                   m.descripcion,
@@ -219,7 +229,7 @@ require 'database.php';?>
                                   INNER JOIN materiales m ON m.id = pd.id_material
                                   INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                                   INNER JOIN sitios si ON si.id = pr.id_sitio
-                                  INNER JOIN estados_pedidos ep ON ep.id = p.id_estado
+                                  LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                                   LEFT JOIN computos co ON co.id = p.id_computo
                                   LEFT JOIN cuentas cu ON cu.id = co.id_cuenta_solicitante
@@ -231,7 +241,7 @@ require 'database.php';?>
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
                                     <td><a href="#" onclick="postPedido(<?=$row['nro_pedido']?>);return false;" style="cursor:pointer;"><?=$row['nro_pedido']?></a></td>
-                                    <td><?=$row['estado_pedido']?></td>
+                                    <td><?=$row['estado_detalle']?></td>
                                     <td><?=$row['obra']?></td>
                                     <td><?=$row['concepto']?></td>
                                     <td><?=$row['descripcion']?></td>
@@ -272,7 +282,7 @@ require 'database.php';?>
                             <tbody><?php
                               $sql = "SELECT 
                                   p.id AS nro_pedido,
-                                  ep.estado AS estado_pedido,
+                                  epd.estado AS estado_pedido,
                                   CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                   m.concepto,
                                   m.descripcion,
@@ -288,7 +298,7 @@ require 'database.php';?>
                                   INNER JOIN materiales m ON m.id = pd.id_material
                                   INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                                   INNER JOIN sitios si ON si.id = pr.id_sitio
-                                  LEFT JOIN estados_pedidos ep ON ep.id = p.id_estado
+                                  LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                                   LEFT JOIN (
                                     SELECT
@@ -377,6 +387,46 @@ require 'database.php';?>
     <script src="assets/js/datatable/datatable-extension/custom.js"></script>
 
     <script>
+      function copiarFilasSeleccionadas(tableId, btnId, colConcepto, colCantidad) {
+        var $filas = $(tableId + ' tbody tr.fila-seleccionada');
+        if ($filas.length === 0) {
+          alert('Seleccione al menos una fila para copiar.');
+          return;
+        }
+        var lineas = [];
+        $filas.each(function () {
+          var $celdas = $(this).find('td');
+          var concepto = $celdas.eq(colConcepto).text().trim();
+          var cantidad = $celdas.eq(colCantidad).text().trim();
+          lineas.push(concepto + '\t' + cantidad);
+        });
+        var texto = lineas.join('\n');
+
+        var $ta = $('<textarea>').val(texto).css({ position: 'fixed', top: 0, left: 0, width: '1px', height: '1px', opacity: 0 }).appendTo('body');
+        $ta[0].focus();
+        $ta[0].select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch(e) {}
+        $ta.remove();
+
+        if (!ok && navigator.clipboard) {
+          navigator.clipboard.writeText(texto).then(function() {}).catch(function() {
+            alert('No se pudo copiar. Por favor copie manualmente.');
+          });
+          ok = true;
+        }
+        if (ok) {
+          var $btn = $(btnId);
+          var textoOriginal = $btn.html();
+          $btn.html('<i data-feather="check"></i> Copiado!');
+          feather.replace();
+          setTimeout(function () {
+            $btn.html(textoOriginal);
+            feather.replace();
+          }, 1500);
+        }
+      }
+
       $(document).ready(function () {
 
         var dtOptions = {
@@ -417,46 +467,16 @@ require 'database.php';?>
 
             var $wrapper = $('#tablaPendiente').closest('.dataTables_wrapper');
             var $lengthDiv = $wrapper.find('.dataTables_length');
-            var $btnCopiar = $('<button id="btn-copiar-pendiente" class="btn btn-sm" style="margin-left:10px;vertical-align:middle;background-color:#5a6268;color:#fff;border-color:#545b62;">Copiar</button>');
+            var $btnCopiar = $('<button id="btn-copiar-pendiente" class="btn btn-sm btn-copiar-custom"><i data-feather="copy"></i> Copiar</button>');
             $lengthDiv.after($btnCopiar);
+            feather.replace();
 
             $('#tablaPendiente tbody').on('click', 'tr', function () {
               $(this).toggleClass('fila-seleccionada');
             });
 
             $(document).on('click', '#btn-copiar-pendiente', function () {
-              var $filas = $('#tablaPendiente tbody tr.fila-seleccionada');
-              if ($filas.length === 0) {
-                alert('Seleccione al menos una fila para copiar.');
-                return;
-              }
-              var lineas = [];
-              $filas.each(function () {
-                var $celdas = $(this).find('td');
-                var concepto = $celdas.eq(3).text().trim();
-                var cantidad = $celdas.eq(5).text().trim();
-                lineas.push(concepto + '\t' + cantidad);
-              });
-              var texto = lineas.join('\n');
-
-              var $ta = $('<textarea>').val(texto).css({ position: 'fixed', top: 0, left: 0, width: '1px', height: '1px', opacity: 0 }).appendTo('body');
-              $ta[0].focus();
-              $ta[0].select();
-              var ok = false;
-              try { ok = document.execCommand('copy'); } catch(e) {}
-              $ta.remove();
-
-              if (!ok && navigator.clipboard) {
-                navigator.clipboard.writeText(texto).then(function() { ok = true; }).catch(function() {
-                  alert('No se pudo copiar. Por favor copie manualmente.');
-                });
-                ok = true;
-              }
-              if (ok) {
-                var $btn = $('#btn-copiar-pendiente');
-                $btn.html('Copiado!');
-                setTimeout(function () { $btn.html('Copiar'); }, 1500);
-              }
+              copiarFilasSeleccionadas('#tablaPendiente', '#btn-copiar-pendiente', 3, 5);
             });
           }
 
