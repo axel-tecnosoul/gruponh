@@ -52,9 +52,32 @@ function validarProyectoNoTerminado(PDO $pdo, int $idComputo, string $prodQuery)
   }
 }
 
-$stmtEstadoPadre = $pdo->prepare("SELECT id_estado FROM computos WHERE id = ?");
+$stmtEstadoPadre = $pdo->prepare("
+  SELECT c.id_estado,
+         (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision,
+         c.nro_revision
+  FROM computos c WHERE c.id = ?
+");
 $stmtEstadoPadre->execute([$idComputoPadre]);
-$estadoPadre = (int)$stmtEstadoPadre->fetchColumn();
+$rowPadre    = $stmtEstadoPadre->fetch(PDO::FETCH_ASSOC);
+$estadoPadre = (int)($rowPadre['id_estado'] ?? 0);
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+
+  if (!in_array($estadoPadre, [1, 2, ID_ESTADO_TERMINADO_COMPUTO])) {
+    header("Location: listarComputos.php$prodQuery");
+    exit;
+  }
+
+  if ($estadoPadre === ID_ESTADO_TERMINADO_COMPUTO) {
+    $tokenOk = isset($_SESSION['revision_autorizada']) && $_SESSION['revision_autorizada'] === $id;
+    if (!$tokenOk) {
+      header("Location: listarComputos.php$prodQuery");
+      exit;
+    }
+    unset($_SESSION['revision_autorizada']);
+  }
+}
 
 $esModoRestringido = ($modo === 'update' && $estadoPadre === ID_ESTADO_TERMINADO_COMPUTO);
 
@@ -95,9 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
   }
 
-  $esRevision = ($modo === 'update' && !empty($_POST['motivoRevision']));
+  $esRevision = ($modo === 'update' && !empty(trim($_POST['motivoRevision'] ?? '')));
 
   if ($esRevision) {
+    $motivo = trim($_POST['motivoRevision']);
+
+    if ($motivo === '') {
+      header("Location: listarComputos.php$prodQuery");
+      exit;
+    }
+
     $idPadrePost = !empty($_POST['idOrigen']) ? (int)$_POST['idOrigen'] : (int)$idOrigen;
 
     if ($estadoPadre === ID_ESTADO_TERMINADO_COMPUTO) {
@@ -114,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $orig = $stmt->fetch(PDO::FETCH_ASSOC);
 
       $nuevoNroRev = $orig['nro_revision'] + 1;
-      $motivo      = trim($_POST['motivoRevision']);
 
       $stmt = $pdo->prepare("SELECT id FROM cuentas WHERE id_usuario = ?");
       $stmt->execute([$userId]);
@@ -157,6 +186,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $pdo->rollBack();
       die("Error al generar revisión: " . $e->getMessage());
     }
+
+    $_SESSION['revision_autorizada'] = $idRevision;
 
     header("Location: itemsComputo.php?modo=$modo&id=$idRevision&revision=$nuevoNroRev&idOrigen={$idPadrePost}$prodParam");
     exit;
@@ -350,7 +381,12 @@ Database::disconnect();
                           </div>
                         </div>
 
-                        <?php if (!$esModoRestringido): ?>
+                        <?php if ($esModoRestringido): ?>
+                          <div class="alert alert-info mt-3" role="alert">
+                            <strong>Modo revisión:</strong> Este cómputo ya fue terminado/aprobado.
+                            No es posible agregar nuevos conceptos.
+                          </div>
+                        <?php else: ?>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Concepto(*)</label>
                             <div class="col-sm-9">
@@ -522,17 +558,16 @@ Database::disconnect();
     const prod = <?= $prod ?? 0 ?>;
     const prodQuery = prod ? '?prod=' + prod : '';
     const prodParam = prod ? '&prod=' + prod : '';
-    const esModoRestringido = <?= $esModoRestringido ? 'true' : 'false' ?>;
     const idOrigen = <?= $idComputoPadre ?>;
 
     $(document).ready(function() {
 
       $('#btnEnviarAprobacion').on('click', function() {
-        if (!esModoRestringido) {
-          const id_material = $("#id_material").val();
-          const cantidad = $("#cantidad").val();
-          const fecha_necesidad = $("#fecha_necesidad").val();
-          if (id_material !== "" || cantidad !== "" || fecha_necesidad !== "") {
+        const $id_material    = $("#id_material");
+        const $cantidad       = $("#cantidad");
+        const $fecha_necesidad = $("#fecha_necesidad");
+        if ($id_material.length && $cantidad.length && $fecha_necesidad.length) {
+          if ($id_material.val() !== "" || $cantidad.val() !== "" || $fecha_necesidad.val() !== "") {
             alert("No se puede enviar a aprobación si hay ítems sin guardar.");
             return false;
           }
@@ -541,11 +576,11 @@ Database::disconnect();
       });
 
       $("#guardarYVolver").on("click", function() {
-        if (!esModoRestringido) {
-          const id_material = $("#id_material").val();
-          const cantidad = $("#cantidad").val();
-          const fecha_necesidad = $("#fecha_necesidad").val();
-          if (id_material !== "" || cantidad !== "" || fecha_necesidad !== "") {
+        const $id_material    = $("#id_material");
+        const $cantidad       = $("#cantidad");
+        const $fecha_necesidad = $("#fecha_necesidad");
+        if ($id_material.length && $cantidad.length && $fecha_necesidad.length) {
+          if ($id_material.val() !== "" || $cantidad.val() !== "" || $fecha_necesidad.val() !== "") {
             alert("No se puede guardar y volver si hay ítems sin cargar.");
             return false;
           }

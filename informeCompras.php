@@ -24,7 +24,6 @@ require 'database.php';?>
       .tab-content {
         padding-top: 20px;
       }
-      /* Contenedor con scroll, thead sticky dentro de la misma tabla */
       .table-scroll-wrapper {
         overflow-x: auto;
         overflow-y: auto;
@@ -34,7 +33,6 @@ require 'database.php';?>
       .table-scroll-wrapper table.dataTable {
         width: 100% !important;
       }
-      /* thead sticky: se queda fijo al hacer scroll vertical */
       .table-scroll-wrapper table.dataTable thead th {
         position: sticky;
         top: 0;
@@ -59,6 +57,12 @@ require 'database.php';?>
       }
       .number {
         text-align: right;
+      }
+      #tablaPendiente tbody tr {
+        cursor: pointer;
+      }
+      #tablaPendiente tbody tr.fila-seleccionada td {
+        background-color: #d9e8fb !important;
       }
     </style>
   </head>
@@ -99,7 +103,7 @@ require 'database.php';?>
                             <thead>
                               <tr>
                                 <th>Nº Pedido</th>
-                                <th>Nº OP</th>
+                                <th>Nº OC</th>
                                 <th>Estado</th>
                                 <th>Proveedor</th>
                                 <th>Obra</th>
@@ -113,10 +117,6 @@ require 'database.php';?>
                                 <th>Fecha Requerido</th>
                                 <th>Fecha Pactada</th>
                                 <th>Fecha Entrega</th>
-                                <th>$ Unitario</th>
-                                <th>$ Total</th>
-                                <th>$ Entregado</th>
-                                <th>$ Pendiente</th>
                               </tr>
                             </thead>
                             <tbody><?php
@@ -161,7 +161,7 @@ require 'database.php';?>
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
                                     <td><?=$row['nro_pedido']?></td>
-                                    <td><?=$row['nro_op']?></td>
+                                    <td><a href="verCompra.php?id=<?=$row['nro_op']?>"><?=$row['nro_op']?></a></td>
                                     <td><?=$row['estado_compra']?></td>
                                     <td><?=$row['proveedor']?></td>
                                     <td><?=$row['obra']?></td>
@@ -175,14 +175,10 @@ require 'database.php';?>
                                     <td><?=$row['fecha_requerido']?></td>
                                     <td><?=$row['fecha_pactada']?></td>
                                     <td><?=$row['fecha_entrega']?></td>
-                                    <td class="number"><?=number_format($row['precio_unitario'], 2, ",", ".")?></td>
-                                    <td class="number"><?=number_format($row['total'], 2, ",", ".")?></td>
-                                    <td class="number"><?=number_format($row['monto_entregado'], 2, ",", ".")?></td>
-                                    <td class="number"><?=number_format($row['monto_pendiente'], 2, ",", ".")?></td>
                                   </tr><?php
                                 }
                               } catch (PDOException $e) {
-                                echo "<tr><td colspan='19'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                echo "<tr><td colspan='15'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                               }?>
                             </tbody>
                           </table>
@@ -195,6 +191,7 @@ require 'database.php';?>
                             <thead>
                               <tr>
                                 <th>Nº Pedido</th>
+                                <th>Estado</th>
                                 <th>Obra</th>
                                 <th>Concepto</th>
                                 <th>Descripción</th>
@@ -208,6 +205,7 @@ require 'database.php';?>
                             <tbody><?php
                               $sql = "SELECT
                                   p.id AS nro_pedido,
+                                  ep.estado AS estado_pedido,
                                   CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                   m.concepto,
                                   m.descripcion,
@@ -221,6 +219,7 @@ require 'database.php';?>
                                   INNER JOIN materiales m ON m.id = pd.id_material
                                   INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                                   INNER JOIN sitios si ON si.id = pr.id_sitio
+                                  INNER JOIN estados_pedidos ep ON ep.id = p.id_estado
                                   LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                                   LEFT JOIN computos co ON co.id = p.id_computo
                                   LEFT JOIN cuentas cu ON cu.id = co.id_cuenta_solicitante
@@ -231,7 +230,8 @@ require 'database.php';?>
                               try {
                                 foreach ($pdo->query($sql) as $row) {?>
                                   <tr>
-                                    <td><?=$row['nro_pedido']?></td>
+                                    <td><a href="#" onclick="postPedido(<?=$row['nro_pedido']?>);return false;" style="cursor:pointer;"><?=$row['nro_pedido']?></a></td>
+                                    <td><?=$row['estado_pedido']?></td>
                                     <td><?=$row['obra']?></td>
                                     <td><?=$row['concepto']?></td>
                                     <td><?=$row['descripcion']?></td>
@@ -243,7 +243,7 @@ require 'database.php';?>
                                   </tr><?php
                                 }
                               } catch (PDOException $e) {
-                                echo "<tr><td colspan='9'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                echo "<tr><td colspan='10'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                               }?>
                             </tbody>
                           </table>
@@ -411,8 +411,53 @@ require 'database.php';?>
           if (target === '#aprobar' && !$.fn.DataTable.isDataTable('#tablaAprobar')) {
             $('#tablaAprobar').DataTable(dtOptions);
           }
+
           if (target === '#pendiente' && !$.fn.DataTable.isDataTable('#tablaPendiente')) {
             $('#tablaPendiente').DataTable(dtOptions);
+
+            var $wrapper = $('#tablaPendiente').closest('.dataTables_wrapper');
+            var $lengthDiv = $wrapper.find('.dataTables_length');
+            var $btnCopiar = $('<button id="btn-copiar-pendiente" class="btn btn-sm" style="margin-left:10px;vertical-align:middle;background-color:#5a6268;color:#fff;border-color:#545b62;">Copiar</button>');
+            $lengthDiv.after($btnCopiar);
+
+            $('#tablaPendiente tbody').on('click', 'tr', function () {
+              $(this).toggleClass('fila-seleccionada');
+            });
+
+            $(document).on('click', '#btn-copiar-pendiente', function () {
+              var $filas = $('#tablaPendiente tbody tr.fila-seleccionada');
+              if ($filas.length === 0) {
+                alert('Seleccione al menos una fila para copiar.');
+                return;
+              }
+              var lineas = [];
+              $filas.each(function () {
+                var $celdas = $(this).find('td');
+                var concepto = $celdas.eq(3).text().trim();
+                var cantidad = $celdas.eq(5).text().trim();
+                lineas.push(concepto + '\t' + cantidad);
+              });
+              var texto = lineas.join('\n');
+
+              var $ta = $('<textarea>').val(texto).css({ position: 'fixed', top: 0, left: 0, width: '1px', height: '1px', opacity: 0 }).appendTo('body');
+              $ta[0].focus();
+              $ta[0].select();
+              var ok = false;
+              try { ok = document.execCommand('copy'); } catch(e) {}
+              $ta.remove();
+
+              if (!ok && navigator.clipboard) {
+                navigator.clipboard.writeText(texto).then(function() { ok = true; }).catch(function() {
+                  alert('No se pudo copiar. Por favor copie manualmente.');
+                });
+                ok = true;
+              }
+              if (ok) {
+                var $btn = $('#btn-copiar-pendiente');
+                $btn.html('Copiado!');
+                setTimeout(function () { $btn.html('Copiar'); }, 1500);
+              }
+            });
           }
 
           setTimeout(function () {
@@ -420,6 +465,23 @@ require 'database.php';?>
           }, 50);
         });
       });
+
+      function postPedido(id) {
+        var f = document.createElement('form');
+        f.method = 'post';
+        f.action = 'listarPedidos.php';
+        f.target = '_blank';
+        var campos = { nro_pedido: id, 'id_estado[]': 'todos' };
+        for (var k in campos) {
+          var i = document.createElement('input');
+          i.type = 'hidden';
+          i.name = k;
+          i.value = campos[k];
+          f.appendChild(i);
+        }
+        document.body.appendChild(f);
+        f.submit();
+      }
 
       document.addEventListener("DOMContentLoaded", function () {
         document.querySelector('.page-main-header').classList.add('open');

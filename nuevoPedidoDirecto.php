@@ -13,7 +13,7 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO pedidos (id_proyecto, fecha, lugar_entrega, id_cuenta_solicitante, id_cuenta_recibe, id_estado) VALUES (?,?,?,?,?,1)";
+  $sql = "INSERT INTO pedidos (id_proyecto, fecha, lugar_entrega, id_cuenta_solicitante, id_cuenta_recibe, id_estado, aprobado) VALUES (?,?,?,?,?,1,0)";
   $q = $pdo->prepare($sql);
   $q->execute([$_POST['id_proyecto'],$_POST['fecha'],$_POST['lugar_entrega'],$_POST['id_cuenta_solicitante'],$_POST['id_cuenta_recibe']]);
 
@@ -69,7 +69,11 @@ $direccion = $data['valor'];?>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre FROM proyectos p INNER JOIN sitios s ON s.id = p.id_sitio WHERE p.anulado = 0";
+                                $sqlZon = "SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre, e.empresa 
+                                           FROM proyectos p 
+                                           INNER JOIN sitios s ON s.id = p.id_sitio 
+                                           LEFT JOIN empresas e ON e.id = s.id_empresa
+                                           WHERE p.anulado = 0";
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute();
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
@@ -78,8 +82,10 @@ $direccion = $data['valor'];?>
                                     if ($fila['id'] == $_GET['id']) {
                                       $selected = " selected ";
                                     }
-                                  }?>
-                                  <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']?></option><?php
+                                  }
+                                  $empresa_corta = !empty($fila['empresa']) ? ' ('.substr($fila['empresa'], 0, 6).')' : '';
+                                  ?>
+                                  <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre'].$empresa_corta?></option><?php
                                 }
                                 Database::disconnect();?>
                               </select>

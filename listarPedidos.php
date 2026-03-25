@@ -242,18 +242,20 @@ if (in_array("todos", $id_estado)) {
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                          $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.nombre AS nombre_proyecto, pe.id_computo
+                          $sql1 = "SELECT pe.id, s.nro_sitio, s.nro_subsitio, p.nro, pe.fecha, p.fecha_entrega, (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, ep.estado, ep.id AS id_estado, cu.nombre AS solicitante, pe.aprobado, p.id AS id_proyecto, p.nombre AS nombre_proyecto, pe.id_computo, e.empresa
                           FROM pedidos pe 
                             INNER JOIN computos c ON c.id = pe.id_computo 
                             INNER JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante
                             INNER JOIN tareas t ON t.id = c.id_tarea 
                             INNER JOIN proyectos p ON p.id = t.id_proyecto 
                             LEFT JOIN sitios s ON s.id = p.id_sitio 
+                            LEFT JOIN empresas e ON e.id = s.id_empresa
                             INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
                           WHERE 1 ".$filtroNroPedido.$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
 
                           foreach ($pdo->query($sql1) as $row) {
-                            $obra = htmlspecialchars($row['nro_sitio']).'_'.htmlspecialchars($row['nro_subsitio']).'_'.htmlspecialchars($row['nro']);
+                            $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 6).')' : '';
+                            $obra = htmlspecialchars($row['nro_sitio']).'_'.htmlspecialchars($row['nro_subsitio']).'_'.htmlspecialchars($row['nro']).$empresa_corta;
                             $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
                             $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
 
@@ -294,16 +296,18 @@ if (in_array("todos", $id_estado)) {
                           (SELECT MIN(c.fecha_emision) FROM compras c WHERE c.id_pedido = pe.id) AS fecha_pactada_prov, 
                           ep.estado, ep.id AS id_estado, 
                           cu.nombre AS solicitante, 
-                          pe.aprobado, pe.id_proyecto, p.nombre AS nombre_proyecto
+                          pe.aprobado, pe.id_proyecto, p.nombre AS nombre_proyecto, e.empresa
                           FROM pedidos pe 
                             INNER JOIN proyectos p ON p.id = pe.id_proyecto 
                             LEFT JOIN sitios s ON s.id = p.id_sitio 
+                            LEFT JOIN empresas e ON e.id = s.id_empresa
                             INNER JOIN estados_pedidos ep ON ep.id = pe.id_estado 
                             LEFT JOIN cuentas cu ON cu.id = pe.id_cuenta_solicitante 
                           WHERE pe.id_computo IS NULL ".$filtroNroPedido.$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
                             
                           foreach ($pdo->query($sql2) as $row) {
-                            $obra=htmlspecialchars($row['nro_sitio']).'/'.htmlspecialchars($row['nro_subsitio']).'/'.htmlspecialchars($row['nro']);
+                            $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 6).')' : '';
+                            $obra=htmlspecialchars($row['nro_sitio']).'_'.htmlspecialchars($row['nro_subsitio']).'_'.htmlspecialchars($row['nro']).$empresa_corta;
                             $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
                             $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
                             

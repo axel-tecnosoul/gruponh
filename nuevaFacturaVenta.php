@@ -1,300 +1,436 @@
 <?php
-    require("config.php");
-    if (empty($_SESSION['user'])) {
-        header("Location: index.php");
-        die("Redirecting to index.php");
+require("config.php");
+if (empty($_SESSION['user'])) {
+    header("Location: index.php");
+    die("Redirecting to index.php");
+}
+require 'database.php';
+
+// Datos pre-cargados desde proyecto (si viene ?id_proyecto=X)
+$proyectoDatos = [];
+if (!empty($_GET['id_proyecto'])) {
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    // Traemos proyecto + sitio (para id_empresa) + cliente del proyecto
+    $sql = "SELECT p.id, p.nombre, p.id_cliente, p.solicitante,
+                   s.id_empresa,
+                   COALESCE(cu.nombre, p.solicitante) AS nombre_cliente
+            FROM proyectos p
+            INNER JOIN sitios s ON s.id = p.id_sitio
+            LEFT JOIN cuentas cu ON cu.id = p.id_cliente
+            WHERE p.id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_GET['id_proyecto']]);
+    $proyectoDatos = $q->fetch(PDO::FETCH_ASSOC) ?: [];
+    Database::disconnect();
+}
+
+if (!empty($_POST)) {
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $sql = "INSERT INTO facturas_venta
+              (descripcion, id_tipo_comprobante, id_letra_comprobante, id_proyecto,
+               numero, id_cuenta_destino, id_empresa, fecha_emitida, fecha_enviada,
+               id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)";
+    $q = $pdo->prepare($sql);
+    $q->execute([
+        $_POST['descripcion'],
+        $_POST['id_tipo_comprobante'],
+        $_POST['id_letra_comprobante'],
+        $_POST['id_proyecto'],
+        $_POST['numero'],
+        $_POST['id_cuenta_destino'],
+        $_POST['id_empresa'],
+        $_POST['fecha_emitida'],
+        $_POST['fecha_enviada'],
+        $_POST['id_condicion_pago'],
+        $_POST['id_moneda'],
+        $_POST['cotizacion'],
+        $_POST['observaciones'],
+        $_SESSION['user']['id']
+    ]);
+    $idFactura = $pdo->lastInsertId();
+
+    // Regímenes seleccionados
+    if (!empty($_POST['regimenes'])) {
+        foreach ($_POST['regimenes'] as $idRegimen) {
+            $qp = $pdo->prepare("SELECT porcentaje FROM regimenes_facturacion WHERE id = ?");
+            $qp->execute([$idRegimen]);
+            $reg = $qp->fetch(PDO::FETCH_ASSOC);
+            $porcentaje = $reg ? $reg['porcentaje'] : 0;
+
+            $qi = $pdo->prepare("INSERT INTO facturas_venta_otros (id_factura_venta, id_regimen, porcentaje) VALUES (?,?,?)");
+            $qi->execute([$idFactura, $idRegimen, $porcentaje]);
+        }
     }
-    
-    require 'database.php';
-    
-    if (!empty($_POST)) {
-        
-        // insert data
-        $pdo = Database::connect();
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $sql = "INSERT INTO `facturas_venta`(`descripcion`, `id_tipo_comprobante`, `id_letra_comprobante`, `id_proyecto`, `numero`, `id_cuenta_destino`, `id_empresa`, `fecha_emitida`, `fecha_enviada`, `id_condicion_pago`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario`, `id_estado`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)";
-		$q = $pdo->prepare($sql);		   
-		$q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['id_proyecto'],$_POST['numero'],$_POST['id_cuenta_destino'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_enviada'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_SESSION['user']['id']]);
-		$idFactura = $pdo->lastInsertId();
-		
+    $ql = $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link)
+                          VALUES (now(), ?, 'Nueva Factura de Venta ID #$idFactura', 'Facturas de Venta', '')");
+    $ql->execute([$_SESSION['user']['id']]);
 
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva Factura de Venta ID #$idFactura','Facturas de Venta','')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
-
-		
-        Database::disconnect();
-        header("Location: nuevoDetalleFacturaVenta.php?id=".$idFactura);
-		
-    }
-    
+    Database::disconnect();
+    header("Location: nuevoDetalleFacturaVenta.php?id=" . $idFactura);
+    exit;
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <?php include('head_forms.php');?>
+<html lang="es">
+<head>
+  <?php include('head_forms.php'); ?>
   <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-  </head>
-  <body>
-    <!-- Loader ends-->
-    <!-- page-wrapper Start-->
-    <div class="page-wrapper">
-    <?php include('header.php');?>
-    
-      <!-- Page Header Start-->
-      <div class="page-body-wrapper">
-    <?php include('menu.php');?>
-        <!-- Page Sidebar Start-->
-        <!-- Right sidebar Ends-->
-        <div class="page-body"><?php
-          $ubicacion="Nueva Factura Venta";
-          include_once("head_page.php")?>
-          <!-- Container-fluid starts-->
-          <div class="container-fluid">
-            <div class="row">
-              <div class="col-sm-12">
-                <div class="card">
-                  <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
-                  </div>
-				<form class="form theme-form" role="form" method="post" action="nuevaFacturaVenta.php">
-                    <div class="card-body">
-                      <div class="row">
-                        <div class="col"><?php
-                        if(isset($_GET["id"])){?>
-                          <input type="hidden" name="id_certificado_avance_detalle" value="<?=$_GET["id"]?>"><?php
-                        }?>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Empresa(*)</label>
-							<div class="col-sm-9">
-							<select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `empresa` FROM `empresas` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['empresa']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Cliente(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_destino" id="id_cuenta_destino" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (1) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Tipo Comprobante(*)</label>
-							<div class="col-sm-9">
-							<select name="id_tipo_comprobante" id="id_tipo_comprobante" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `tipo` FROM `tipos_comprobante` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['tipo']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>	
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Letra(*)</label>
-							<div class="col-sm-9">
-							<select name="id_letra_comprobante" id="id_letra_comprobante" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `letra` FROM `letras_comprobante` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['letra']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>	
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Número(*)</label>
-							<div class="col-sm-9"><input name="numero" id="customInput" oninput="applyMask(this)" placeholder="000x-0000xxxx" type="text" maxlength="99" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Proyecto(*)</label>
-							<div class="col-sm-9">
-							<select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "select p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>	
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Descripción(*)</label>
-							<div class="col-sm-9"><textarea name="descripcion" class="form-control" autofocus required="required"></textarea></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Emitida(*)</label>
-							<div class="col-sm-9"><input name="fecha_emitida" id="fecha_emitida" type="date" onfocus="this.showPicker()" maxlength="99" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha Enviada(*)</label>
-							<div class="col-sm-9"><input name="fecha_enviada" id="fecha_enviada" type="date" onfocus="this.showPicker()" maxlength="99" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Forma de Pago</label>
-							<div class="col-sm-9">
-							<select name="id_condicion_pago" id="id_condicion_pago" class="js-example-basic-single col-sm-12">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `forma_pago` FROM `formas_pago` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['forma_pago']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Moneda(*)</label>
-							<div class="col-sm-9">
-							<select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `moneda` FROM `monedas` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['moneda']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Cotización(*)</label>
-							<div class="col-sm-9"><input name="cotizacion" type="number" step="0.01" class="form-control" required="required"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Observaciones</label>
-							<div class="col-sm-9"><textarea name="observaciones" class="form-control"></textarea></div>
-							</div>							
+  <style>
+    .select2-container { width: 100% !important; }
+    .select2-container--default .select2-selection--single {
+      height: calc(1.5em + .75rem + 2px) !important;
+      padding: .375rem .75rem !important;
+      font-size: 1rem !important; line-height: 1.5 !important;
+      color: #495057 !important; background-color: #fff !important;
+      border: 1px solid #ced4da !important; border-radius: .25rem !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: calc(1.5em + .75rem + 2px) !important; top: 0 !important; right: 8px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+      line-height: calc(1.5em + .75rem) !important; padding-left: 0 !important; color: #495057 !important;
+    }
+  </style>
+</head>
+<body>
+<div class="page-wrapper">
+  <?php include('header.php'); ?>
+  <div class="page-body-wrapper">
+    <?php include('menu.php'); ?>
+    <div class="page-body">
+      <?php $ubicacion = "Nueva Factura Venta"; include_once("head_page.php"); ?>
+      <div class="container-fluid">
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="card">
+              <div class="card-header">
+                <h5><?= $ubicacion ?></h5>
+              </div>
+              <form class="form theme-form" role="form" method="post" action="nuevaFacturaVenta.php">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col">
+
+                      <!-- Empresa -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Empresa(*)</label>
+                        <div class="col-sm-9">
+                          <select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" required>
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, empresa FROM empresas WHERE 1");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                $sel = (!empty($proyectoDatos['id_empresa']) && $proyectoDatos['id_empresa'] == $f['id']) ? ' selected' : '';
+                                echo "<option value='{$f['id']}'$sel>".htmlspecialchars($f['empresa'])."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
                         </div>
                       </div>
-                    </div>
-                    <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3">
-                        <button class="btn btn-primary" type="submit">Crear</button>
-						<a href="listarFacturasVenta.php" class="btn btn-light">Volver</a>
+
+                      <!-- Cliente -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Cliente(*)</label>
+                        <div class="col-sm-9">
+                          <select name="id_cuenta_destino" id="id_cuenta_destino" class="js-example-basic-single col-sm-12" required>
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (1) AND activo = 1 AND anulado = 0");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                $sel = (!empty($proyectoDatos['id_cliente']) && $proyectoDatos['id_cliente'] == $f['id']) ? ' selected' : '';
+                                echo "<option value='{$f['id']}'$sel>".htmlspecialchars($f['nombre'])."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
                       </div>
+
+                      <!-- Tipo Comprobante -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Tipo Comprobante(*)</label>
+                        <div class="col-sm-9">
+                          <select name="id_tipo_comprobante" id="id_tipo_comprobante" class="js-example-basic-single col-sm-12" required>
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, tipo FROM tipos_comprobante WHERE 1");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='{$f['id']}'>".htmlspecialchars($f['tipo'])."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Letra -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Letra(*)</label>
+                        <div class="col-sm-9">
+                          <select name="id_letra_comprobante" id="id_letra_comprobante" class="js-example-basic-single col-sm-12" required>
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, letra FROM letras_comprobante WHERE 1");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='{$f['id']}'>".htmlspecialchars($f['letra'])."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Número -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Número(*)</label>
+                        <div class="col-sm-9">
+                          <input name="numero" id="numero" oninput="applyMask(this)"
+                            placeholder="0001-00000001" type="text" maxlength="20"
+                            class="form-control" required>
+                        </div>
+                      </div>
+
+                      <!-- Proyecto (pre-seleccionado) -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Proyecto(*)</label>
+                        <div class="col-sm-9">
+                          <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" required>
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT p.id, s.nro_sitio, s.nro_subsitio, p.nro, p.nombre
+                                                  FROM proyectos p
+                                                  INNER JOIN sitios s ON s.id = p.id_sitio
+                                                  WHERE p.anulado = 0
+                                                  ORDER BY p.nro DESC");
+                            $q->execute();
+                            $idProyectoGet = !empty($_GET['id_proyecto']) ? intval($_GET['id_proyecto']) : 0;
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                $sel = ($idProyectoGet && $idProyectoGet == $f['id']) ? ' selected' : '';
+                                $label = $f['nro_sitio'].'-'.$f['nro_subsitio'].'-'.$f['nro'].': '.htmlspecialchars($f['nombre']);
+                                echo "<option value='{$f['id']}'$sel>$label</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Descripción -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Descripción(*)</label>
+                        <div class="col-sm-9">
+                          <textarea name="descripcion" class="form-control" rows="3" required
+                          ><?= !empty($proyectoDatos['nombre']) ? htmlspecialchars($proyectoDatos['nombre']) : '' ?></textarea>
+                        </div>
+                      </div>
+
+                      <!-- Fecha Emitida -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Fecha Emitida(*)</label>
+                        <div class="col-sm-9">
+                          <input name="fecha_emitida" id="fecha_emitida" type="date"
+                            onfocus="this.showPicker()" class="form-control" required>
+                        </div>
+                      </div>
+
+                      <!-- Fecha Enviada -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Fecha Enviada(*)</label>
+                        <div class="col-sm-9">
+                          <input name="fecha_enviada" id="fecha_enviada" type="date"
+                            onfocus="this.showPicker()" class="form-control" required>
+                        </div>
+                      </div>
+
+                      <!-- Forma de Pago -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Forma de Pago</label>
+                        <div class="col-sm-9">
+                          <select name="id_condicion_pago" id="id_condicion_pago" class="js-example-basic-single col-sm-12">
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, forma_pago FROM formas_pago WHERE 1");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='{$f['id']}'>".htmlspecialchars($f['forma_pago'])."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Moneda -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Moneda(*)</label>
+                        <div class="col-sm-9">
+                          <select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" required>
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, moneda FROM monedas WHERE 1");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                $esDolar = (stripos($f['moneda'], 'dolar') !== false ||
+                                            stripos($f['moneda'], 'dólar') !== false ||
+                                            stripos($f['moneda'], 'usd')   !== false ||
+                                            stripos($f['moneda'], 'u$d')   !== false ||
+                                            stripos($f['moneda'], 'u$s')   !== false) ? 'true' : 'false';
+                                echo "<option value='{$f['id']}' data-esusd='$esDolar'>".htmlspecialchars($f['moneda'])."</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Cotización -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Cotización(*)</label>
+                        <div class="col-sm-9">
+                          <div class="input-group">
+                            <input name="cotizacion" id="cotizacion" type="number" step="0.01"
+                              class="form-control" required placeholder="Seleccione una moneda...">
+                            <div class="input-group-append">
+                              <span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;">
+                                Esperando moneda...
+                              </span>
+                            </div>
+                          </div>
+                          <small id="infoCotizacion" class="text-muted"></small>
+                        </div>
+                      </div>
+
+                      <!-- Regímenes de Facturación -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Otros Regímenes</label>
+                        <div class="col-sm-9">
+                          <select name="regimenes[]" id="regimenes" multiple="multiple"
+                            class="js-example-basic-multiple col-sm-12">
+                            <?php
+                            $pdo = Database::connect();
+                            $q   = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='{$f['id']}'>".htmlspecialchars($f['regimen'])." ({$f['porcentaje']}%)</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Observaciones -->
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Observaciones</label>
+                        <div class="col-sm-9">
+                          <textarea name="observaciones" class="form-control" rows="3"></textarea>
+                        </div>
+                      </div>
+
                     </div>
-                  </form>
+                  </div>
                 </div>
-              </div>
+                <div class="card-footer">
+                  <div class="col-sm-9 offset-sm-3">
+                    <button class="btn btn-primary" type="submit">Crear y Agregar Detalle</button>
+                    <a href="listarFacturasVenta.php" class="btn btn-light">Volver</a>
+                  </div>
+                </div>
+              </form>
             </div>
           </div>
-          <!-- Container-fluid Ends-->
         </div>
-        <!-- footer start-->
-    <?php include("footer.php"); ?>
       </div>
     </div>
-    <!-- latest jquery-->
-    <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
-    <script src="assets/js/bootstrap/popper.min.js"></script>
-    <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
-    <script src="assets/js/icons/feather-icon/feather.min.js"></script>
-    <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
-    <script src="assets/js/sidebar-menu.js"></script>
-    <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
-    <!-- Plugins JS Ends-->
-    <!-- Theme js-->
-    <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
-	<script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
-	<script>
-		$("#fecha_enviada").change(function () {
-			var startDate = document.getElementById("fecha_emitida").value;
-			var endDate = document.getElementById("fecha_enviada").value;
+    <?php include("footer.php"); ?>
+  </div>
+</div>
 
-			if ((Date.parse(startDate) > Date.parse(endDate))) {
-				alert("La fecha de fin debe ser mayor a la fecha de inicio");
-				document.getElementById("fecha_enviada").value = "";
-			}
-		});
-		</script>
-		
-		<script>
-        function applyMask(input) {
-            let value = input.value.replace(/\D/g, ''); // Eliminar cualquier caracter que no sea un número
-            if (value.length > 4) {
-                value = value.substring(0, 4) + '-' + value.substring(4, 12); // Agregar guion después de 4 números y limitar a 8 más
-            }
-            input.value = value;
-        }
-		</script>
-		<script src="https://cdn.jsdelivr.net/npm/autonumeric@4.5.4"></script>
-  </body>
+<script src="assets/js/jquery-3.2.1.min.js"></script>
+<script src="assets/js/bootstrap/popper.min.js"></script>
+<script src="assets/js/bootstrap/bootstrap.js"></script>
+<script src="assets/js/icons/feather-icon/feather.min.js"></script>
+<script src="assets/js/icons/feather-icon/feather-icon.js"></script>
+<script src="assets/js/sidebar-menu.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/chat-menu.js"></script>
+<script src="assets/js/tooltip-init.js"></script>
+<script src="assets/js/script.js"></script>
+<script src="assets/js/select2/select2.full.min.js"></script>
+<script src="assets/js/select2/select2-custom.js"></script>
+
+<script>
+  // Validación fecha enviada >= fecha emitida
+  $('#fecha_enviada').on('change', function () {
+    var desde = $('#fecha_emitida').val();
+    var hasta = $(this).val();
+    if (desde && hasta && Date.parse(hasta) < Date.parse(desde)) {
+      alert('La fecha enviada debe ser mayor o igual a la fecha emitida');
+      $(this).val('');
+    }
+  });
+
+  // Máscara número comprobante XXXX-XXXXXXXX
+  function applyMask(input) {
+    var v = input.value.replace(/\D/g, '');
+    if (v.length > 4) v = v.substring(0, 4) + '-' + v.substring(4, 12);
+    input.value = v;
+  }
+
+  // Cotización automática para dólar
+  $('#id_moneda').on('change', function () {
+    var opcion   = $(this).find('option:selected');
+    var esDolar  = (opcion.data('esusd') === true || opcion.data('esusd') === 'true');
+    var input    = $('#cotizacion');
+    var badge    = $('#estadoDolar');
+    var info     = $('#infoCotizacion');
+
+    if (esDolar) {
+      badge.text('Cargando...').removeClass('text-danger text-success').addClass('text-secondary');
+      input.prop('readonly', true);
+      fetch('https://dolarapi.com/v1/dolares/oficial', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (d) {
+          if (!d.venta) throw new Error('Sin venta');
+          input.val(parseFloat(d.venta).toFixed(2));
+          badge.html('Dólar Oficial').removeClass('text-secondary text-danger').addClass('text-success');
+          var fecha = d.fechaActualizacion ? ' — Act: ' + new Date(d.fechaActualizacion).toLocaleString('es-AR') : '';
+          info.html('Compra: <strong>$' + parseFloat(d.compra).toLocaleString('es-AR', {minimumFractionDigits:2}) + '</strong>'
+            + ' | Venta: <strong>$' + parseFloat(d.venta).toLocaleString('es-AR', {minimumFractionDigits:2}) + '</strong>' + fecha);
+          input.prop('readonly', false);
+        })
+        .catch(function () {
+          badge.text('Error al obtener').removeClass('text-secondary text-success').addClass('text-danger');
+          info.html('<span class="text-danger">No se pudo obtener la cotización. Ingrésela manualmente.</span>');
+          input.val('').prop('readonly', false);
+        });
+    } else if (opcion.val() === '') {
+      input.val('').prop('readonly', false);
+      badge.text('Esperando moneda...').removeClass('text-danger text-success').addClass('text-secondary');
+      info.html('');
+    } else {
+      input.val(1).prop('readonly', false);
+      badge.text('Ingreso manual').removeClass('text-danger text-success').addClass('text-secondary');
+      info.html('<span class="text-muted">Ingrese la cotización manualmente.</span>');
+    }
+  });
+</script>
+</body>
 </html>

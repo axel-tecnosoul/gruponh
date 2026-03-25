@@ -1,4 +1,24 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+set_exception_handler(function($e) {
+  http_response_code(500);
+  echo "<div style='padding:20px; background:#f2dede; border:1px solid red; color:red;'>";
+  echo "<h3>[DEBUG] Excepcion no manejada</h3>";
+  echo "<p><b>Archivo:</b> " . htmlspecialchars($e->getFile()) . " linea " . $e->getLine() . "</p>";
+  echo "<p><b>Mensaje:</b> " . htmlspecialchars($e->getMessage()) . "</p>";
+  echo "<pre>" . htmlspecialchars($e->getTraceAsString()) . "</pre>";
+  echo "</div>";
+  exit();
+});
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+  echo "<div style='padding:10px; background:#fff3cd; border:1px solid orange; color:#856404;'>";
+  echo "<b>[DEBUG] Error PHP ($errno):</b> " . htmlspecialchars($errstr);
+  echo " en " . htmlspecialchars($errfile) . " linea $errline";
+  echo "</div>";
+  return true;
+});
+
 require("config.php");
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
@@ -171,10 +191,18 @@ if (!empty($_POST)) {
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   
-  if ($data && ($data['id_estado'] == 1 || $data['id_estado'] == 5)) {
+  if ($data && $data['id_estado'] == 1) {
     header("Location: listarComputos.php");
     die("Redirigiendo a la lista de computos.");
   }
+
+  $estadosGestionables = [3, 4];
+  if ($data && !in_array((int)$data['id_estado'], $estadosGestionables)) {
+    header("Location: listarComputos.php");
+    die("Redirigiendo a la lista de computos.");
+  }
+
+  $computoAprobado = ($data && $data['id_estado'] == 5);
 
   Database::disconnect();
 }
@@ -199,6 +227,9 @@ if (!empty($_POST)) {
         z-index: 2100 !important;
       }
       .abrirModalCancelarReservaItem {
+        cursor: pointer;
+      }
+      .cantidad-reservada-visual {
         cursor: pointer;
       }
       #dataTables-example667 {
@@ -285,6 +316,11 @@ if (!empty($_POST)) {
                 <div class="card">
                   <div class="card-header">
                     <h5><?= $ubicacion . " N° " . $data["nro_computo"] . " Rev. N° " . $data["nro_revision"] . " (" . $data["sitio"] . "_" . $data["subsitio"] . "_" . $data["nro_proyecto"] . ")" ?></h5>
+                    <?php if ($computoAprobado): ?>
+                      <div class="alert alert-warning mt-2 mb-0" role="alert">
+                        <strong>Cómputo aprobado/terminado.</strong> No se pueden realizar modificaciones.
+                      </div>
+                    <?php endif; ?>
                   </div>
                   <form class="form theme-form" role="form" method="post" name="form1" id="form1" action="modificarComputo.php?id=<?= $data['id_computo']; ?>">
                     <div class="card-body">
@@ -382,24 +418,24 @@ if (!empty($_POST)) {
                                       $inputReservar = "";
                                       $inputPedir    = "";
 
-                                      if ($aprobado == 1) {
-                                        $maxReservar  = $saldo;
+                                      if ($aprobado == 1 && !$computoAprobado) {
+                                        $maxReservar  = min($saldo, $enStock);
 
-                                        if ($tienePermisoParaReservar) {
+                                         if ($tienePermisoParaReservar) {
 
                                           $inputReservar = "
-                                            <div class='input-group input-group-sm'>
-                                              <input type='text' readonly class='form-control form-control-sm text-center cantidad-reservada-visual' id='txt_reserva_vis_$id_computo_detalle' value='0' style='width:50px; background:#fff;'>
-                                              <div class='input-group-append'>
-                                              <button type='button' class='btn btn-primary btn-sm' onclick='abrirModalStock($id_computo_detalle, $id_material, $maxReservar)' title='Elegir Lote (Disp: $enStock)'><i class='fa fa-search'></i></button>
-                                            </div>
+                                            <div style='width:110px; margin:auto;'>
+                                              <input type='text' readonly class='form-control form-control-sm text-center cantidad-reservada-visual' id='txt_reserva_vis_$id_computo_detalle' value='0'
+                                                style='background:#fff; cursor:pointer;'
+                                                onclick='abrirModalStock($id_computo_detalle, $id_material, $maxReservar)'
+                                                title='Elegir Lote (Disp: $enStock)'>
                                             <div id='container_reservas_$id_computo_detalle'></div>";
                                         }
 
                                         if ($tienePermisoParaPedir) {
                                           $valorPedir = $saldo;
 
-                                          $inputPedir = "<input type='number' class='form-control' name='cantidad_pedir[$id_computo_detalle]' min='0' max='$saldo' step='1' value='$valorPedir' onkeyup='validateMax(this)' required>";
+                                          $inputPedir = "<input type='number' class='form-control form-control-sm text-center' style='width:110px; margin:auto;' name='cantidad_pedir[$id_computo_detalle]' min='0' max='$saldo' step='1' value='$valorPedir' onkeyup='validateMax(this)' required>";
                                         }
                                       } ?>
                                       <tr>
@@ -425,7 +461,7 @@ if (!empty($_POST)) {
                                         } ?>
                                         <td>
                                           <?php
-                                          if (!empty(tienePermiso(311))) {
+                                          if (!empty(tienePermiso(311)) && !$computoAprobado) {
                                             if ($reservado > 0) { ?>
                                               <span class='abrirModalCancelarReservaItem' data-id_computo='<?= $_GET['id'] ?>' data-id_computo_detalle='<?= $id_computo_detalle ?>'><img src="img/neg.png" width="24" height="25" border="0" alt="Cancelar Reserva" title="Cancelar Reserva"></span>
                                               &nbsp;&nbsp;
@@ -456,7 +492,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <input type="hidden" name="modo_debug" value="1">
-                        <?php if (tienePermiso(290)) { ?> <button class="btn btn-success" type="submit">Ejecutar</button><?php } ?>
+                        <?php if (tienePermiso(290) && !$computoAprobado) { ?> <button class="btn btn-success" type="submit">Ejecutar</button><?php } ?>
                         <?php /*if(tienePermiso(295)){?> <a class="btn btn-warning" id="pedido-masivo" onclick="pedir();">Hacer Pedido</a><?php }*/ ?>
                         <?php /*if(tienePermiso(310)){?> <a class="btn btn-danger" id="reserva-masivo" onclick="reservar();">Hacer Reserva</a><?php }*/ ?>
                         <a class="btn btn-primary" target="_blank" href="imprimirComputo.php?id=<?= $data['id_computo']; ?>">Imprimir</a>

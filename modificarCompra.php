@@ -353,7 +353,7 @@ if ($data) {
     [$data['nro_sitio'] ?? null, $data['nro_subsitio'] ?? null, $data['proyecto_nro'] ?? null],
     function($v){ return $v !== null && $v !== ''; }
   );
-  $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+  $codigoObra = !empty($codigoObraPartes) ? implode('_', $codigoObraPartes) : '';
   $tieneComputo = !empty($data['id_computo']);
   $tipoPedido   = $tieneComputo ? 'de Cómputo' : 'Directo';
 

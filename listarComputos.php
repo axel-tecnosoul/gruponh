@@ -579,25 +579,13 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
         $("#link_ver_computo").on("click", function(e) {
           e.preventDefault();
 
-          let l = document.location.href;
-          if (this.href == l || this.href == l + "#") {
-            alert("Por favor seleccione un cómputo para ver detalle")
+          const href = $(this).attr("href");
+          if (!href || href === "#" || href === window.location.href || href === window.location.href + "#") {
+            alert("Por favor seleccione un cómputo para ver detalle");
             return;
           }
 
-          const estado_id = parseInt($(this).data("estado-id"), 10);
-
-          //console.log("estado_id:", estado_id);
-
-          let id_estado = getIdEstadoComputoSeleccionado();
-
-          console.log("id_estado:", id_estado);
-
-          if (id_estado == 3 || id_estado == 4) {
-            window.location.href = this.href;
-          } else {
-            alert("No se puede gestionar el cómputo en este estado.");
-          }
+          window.location.href = href;
         })
 
         $("#link_imprimir_computo").on("click", function() {
@@ -1042,6 +1030,15 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
         });
 
         $(document).on("click", ".abrirModalCancelarReservaItem", function() {
+          const filaSeleccionada = $("#dataTables-example666 tbody tr.selected");
+          if (filaSeleccionada.length > 0) {
+            const estadoId = parseInt(filaSeleccionada.data("estado-id"), 10);
+            const ID_ESTADO_TERMINADO = 5;
+            if (estadoId === ID_ESTADO_TERMINADO) {
+              alert("No se puede cancelar una reserva de un cómputo terminado.");
+              return;
+            }
+          }
           let id_computo_detalle = this.dataset.id_computo_detalle;
           let id_computo = this.dataset.id_computo;
           let modal = $("#cancelarReservaModal");
