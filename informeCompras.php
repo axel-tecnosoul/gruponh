@@ -303,8 +303,8 @@ require 'database.php'; ?>
                               CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                               m.concepto,
                               m.descripcion,
-                              (pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,
-                              /*COALESCE((pd.cantidad - (SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id)), 0) AS cantidad_pendiente,*/
+                              /*(pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,*/
+                              COALESCE((pd.cantidad - (SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id)), 0) AS cantidad_pendiente,
                               um.unidad_medida AS unidad,
                               DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
                               DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
