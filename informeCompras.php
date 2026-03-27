@@ -153,41 +153,42 @@ require 'database.php'; ?>
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                                   $sql = "SELECT
-                                      p.id AS nro_pedido,
-                                      c.id AS nro_op,
-                                      ec.estado AS estado_compra,
-                                      prov.nombre AS proveedor,
-                                      CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
-                                      m.concepto,
-                                      m.descripcion,
-                                      cd.cantidad,
-                                      um.unidad_medida AS unidad,
-                                      cd.cantidad AS comprado,
-                                      COALESCE(cd.entregado, 0) AS entregado,
-                                      DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                                      DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
-                                      DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_pactada,
-                                      DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega
-                                  FROM compras c
-                                      INNER JOIN compras_detalle cd ON cd.id_compra = c.id
-                                      INNER JOIN materiales m ON m.id = cd.id_material
-                                      INNER JOIN pedidos p ON p.id = c.id_pedido
-                                      LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = m.id
-                                      INNER JOIN proyectos pr ON pr.id = p.id_proyecto
-                                      INNER JOIN sitios si ON si.id = pr.id_sitio
-                                      LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
-                                      LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
-                                      LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                                  WHERE c.id_estado_compra IN (3, 6)
-                                      AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
-                                  ORDER BY p.id DESC, c.id DESC";
+                                              p.id AS nro_pedido,
+                                              c.id AS nro_op,
+                                              epd.estado AS estado_pedido,
+                                              prov.nombre AS proveedor,
+                                              CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                                              m.concepto,
+                                              m.descripcion,
+                                              cd.cantidad,
+                                              um.unidad_medida AS unidad,
+                                              cd.cantidad AS comprado,
+                                              COALESCE(cd.entregado, 0) AS entregado,
+                                              DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
+                                              DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                                              DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_pactada,
+                                              DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega
+                                          FROM compras c
+                                              INNER JOIN compras_detalle cd ON cd.id_compra = c.id
+                                              INNER JOIN materiales m ON m.id = cd.id_material
+                                              INNER JOIN pedidos p ON p.id = c.id_pedido
+                                              LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = m.id
+                                              INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                                              INNER JOIN sitios si ON si.id = pr.id_sitio
+                                              LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
+                                              LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
+                                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado  -- NUEVO
+                                              LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                          WHERE c.id_estado_compra IN (3, 6)
+                                              AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
+                                          ORDER BY p.id DESC, c.id DESC";
 
                                   try {
                                     foreach ($pdo->query($sql) as $row) { ?>
                                 <tr>
                                   <td><?= $row['nro_pedido'] ?></td>
                                   <td><a href="verCompra.php?id=<?= $row['nro_op'] ?>"><?= $row['nro_op'] ?></a></td>
-                                  <td><?= $row['estado_compra'] ?></td>
+                                  <td><?= $row['estado_pedido'] ?></td>
                                   <td><?= $row['proveedor'] ?></td>
                                   <td><?= $row['obra'] ?></td>
                                   <td><?= $row['concepto'] ?></td>
@@ -203,7 +204,7 @@ require 'database.php'; ?>
                                 </tr><?php
                                     }
                                   } catch (PDOException $e) {
-                                    echo "<tr><td colspan='15'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                                    echo "<tr><td colspan='16'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
                                   } ?>
                           </tbody>
                         </table>
@@ -227,7 +228,7 @@ require 'database.php'; ?>
                             </tr>
                           </thead>
                           <tbody><?php
-                                $sql = "SELECT
+                                  $sql = "SELECT
                                     p.id AS nro_pedido,
                                     CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                     m.concepto,

@@ -582,7 +582,12 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                               <option value="">Seleccione...</option>
                               <?php foreach ($monedas as $m) {
                                 $sel = ($m['id'] == $form['moneda']) ? 'selected' : '';
-                                echo "<option value='{$m['id']}' $sel>{$m['moneda']}</option>";
+                                $esDolar = (stripos($m['moneda'], 'dolar') !== false ||
+                                            stripos($m['moneda'], 'dólar') !== false ||
+                                            stripos($m['moneda'], 'usd')   !== false ||
+                                            stripos($m['moneda'], 'u$d')   !== false ||
+                                            stripos($m['moneda'], 'u$s')   !== false) ? 'true' : 'false';
+                                echo "<option value='{$m['id']}' data-esusd='$esDolar' $sel>{$m['moneda']}</option>";
                               } ?>
                             </select>
                           </div>
@@ -596,7 +601,9 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                           </label>
                           <div class="col-sm-8">
                             <input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number"
-                                   step="0.01" class="form-control" value="<?= $form['tc'] ?>">
+                                  step="0.01" class="form-control" value="<?= $form['tc'] ?>">
+                            <small id="estadoDolar" class="text-secondary"></small>
+                            <div id="infoCotizacion" style="font-size:11px; margin-top:3px;"></div>
                           </div>
                         </div>
 
@@ -1159,11 +1166,66 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
       }
     });
 
-    // ── Moneda → tipo de cambio obligatorio si USD ──────────────────────────
-    $("#id_moneda").on("change", function() {
-      var esUSD = $(this).val() == 1;
-      $('#tipo_cambio_dia').prop('required', esUSD);
-      $('#tc_required_star').toggle(esUSD);
+    $('#id_moneda').on('change', function () {
+      var opcion  = $(this).find('option:selected');
+      var esDolar = (opcion.data('esusd') === true || opcion.data('esusd') === 'true');
+      var input   = $('#tipo_cambio_dia');
+      var badge   = $('#estadoDolar');
+      var info    = $('#infoCotizacion');
+
+      if (esDolar) {
+        input.prop('required', true);
+        $('#tc_required_star').show();
+        badge.text('Cargando...')
+            .removeClass('text-danger text-success')
+            .addClass('text-secondary');
+        input.prop('readonly', true);
+
+        fetch('https://dolarapi.com/v1/dolares/oficial', {
+          headers: { 'Accept': 'application/json' }
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (d) {
+          if (!d.venta) throw new Error('Sin venta');
+          input.val(parseFloat(d.venta).toFixed(2));
+          badge.html('Dólar Oficial')
+              .removeClass('text-secondary text-danger')
+              .addClass('text-success');
+          var fecha = d.fechaActualizacion
+            ? ' — Act: ' + new Date(d.fechaActualizacion).toLocaleString('es-AR')
+            : '';
+          info.html(
+            'Compra: <strong>$' + parseFloat(d.compra).toLocaleString('es-AR', {minimumFractionDigits:2}) + '</strong>'
+            + ' | Venta: <strong>$' + parseFloat(d.venta).toLocaleString('es-AR', {minimumFractionDigits:2}) + '</strong>'
+            + fecha
+          );
+          input.prop('readonly', false);
+        })
+        .catch(function () {
+          badge.text('Error al obtener')
+              .removeClass('text-secondary text-success')
+              .addClass('text-danger');
+          info.html('<span class="text-danger">No se pudo obtener la cotización. Ingrésela manualmente.</span>');
+          input.val('').prop('readonly', false);
+        });
+
+      } else if (opcion.val() === '') {
+        input.val('').prop('readonly', false).prop('required', false);
+        $('#tc_required_star').hide();
+        badge.text('').removeClass('text-danger text-success text-secondary');
+        info.html('');
+
+      } else {
+        input.val(1).prop('readonly', false).prop('required', false);
+        $('#tc_required_star').hide();
+        badge.text('Ingreso manual')
+            .removeClass('text-danger text-success')
+            .addClass('text-secondary');
+        info.html('<span class="text-muted">Ingrese la cotización manualmente.</span>');
+      }
     }).trigger('change');
 
     // ── Sincronizar controles generales con campos hidden y con la tabla ────
