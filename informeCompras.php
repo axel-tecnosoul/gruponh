@@ -92,6 +92,12 @@ require 'database.php'; ?>
       width: 14px;
       height: 14px;
     }
+
+    .table-scroll-wrapper .table-bordered th,
+    .table-scroll-wrapper .table-bordered td {
+        border-color: #dee2e6;
+        border-width: 1px;
+    }
   </style>
 </head>
 
@@ -128,7 +134,7 @@ require 'database.php'; ?>
 
                     <div class="tab-pane fade show active" id="comprando" role="tabpanel">
                       <div class="table-scroll-wrapper">
-                        <table class="display" id="tablaComprando" style="width:100%">
+                        <table class="display table-bordered table-bordered table-bordered" id="tablaComprando" style="width:100%">
                           <thead>
                             <tr>
                               <th>Nº Pedido</th>
@@ -213,7 +219,7 @@ require 'database.php'; ?>
 
                     <div class="tab-pane fade" id="aprobar" role="tabpanel">
                       <div class="table-scroll-wrapper">
-                        <table class="display" id="tablaAprobar" style="width:100%">
+                        <table class="display table-bordered table-bordered" id="tablaAprobar" style="width:100%">
                           <thead>
                             <tr>
                               <th>Nº Pedido</th>
@@ -274,7 +280,7 @@ require 'database.php'; ?>
 
                     <div class="tab-pane fade" id="pendiente" role="tabpanel">
                       <div class="table-scroll-wrapper">
-                        <table class="display" id="tablaPendiente" style="width:100%">
+                        <table class="display table-bordered" id="tablaPendiente" style="width:100%">
                           <thead>
                             <tr>
                               <th>Nº Pedido</th>
@@ -292,46 +298,48 @@ require 'database.php'; ?>
                             </tr>
                           </thead>
                           <tbody><?php
-                                  $sql = "SELECT 
-                                  p.id AS nro_pedido,
-                                  epd.estado AS estado_pedido,
-                                  CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
-                                  m.concepto,
-                                  m.descripcion,
-                                  (pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,
-                                  um.unidad_medida AS unidad,
-                                  DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                                  DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
-                                  ult.ultimo_proveedor,
-                                  ult.ultimo_precio,
-                                  ult.ultima_fecha
-                                FROM pedidos p
-                                  INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
-                                  INNER JOIN materiales m ON m.id = pd.id_material
-                                  INNER JOIN proyectos pr ON pr.id = p.id_proyecto
-                                  INNER JOIN sitios si ON si.id = pr.id_sitio
-                                  LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
-                                  LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                                  LEFT JOIN (
-                                    SELECT
-                                      cd.id_material,
-                                      prov.nombre AS ultimo_proveedor,
-                                      cd.precio   AS ultimo_precio,
-                                      DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS ultima_fecha,
-                                      ROW_NUMBER() OVER (PARTITION BY cd.id_material ORDER BY c.fecha_emision DESC) AS rn
-                                    FROM compras_detalle cd
-                                      INNER JOIN compras c ON c.id = cd.id_compra
-                                      LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
-                                  ) ult ON ult.id_material = m.id AND ult.rn = 1
-                                WHERE pd.cancelado = 0
-                                  AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
-                                  AND p.id_estado NOT IN (1, 7)
-                                ORDER BY p.id DESC, m.concepto";
+                            $sql = "SELECT 
+                              p.id AS nro_pedido,
+                              epd.estado AS estado_pedido,
+                              CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                              m.concepto,
+                              m.descripcion,
+                              /*(pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,*/
+                              COALESCE((pd.cantidad - (SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id)), 0) AS cantidad_pendiente,
+                              um.unidad_medida AS unidad,
+                              DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
+                              DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                              ult.ultimo_proveedor,
+                              ult.ultimo_precio,
+                              ult.ultima_fecha
+                            FROM pedidos p
+                              INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
+                              INNER JOIN materiales m ON m.id = pd.id_material
+                              INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                              INNER JOIN sitios si ON si.id = pr.id_sitio
+                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
+                              LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                              LEFT JOIN (
+                                SELECT
+                                  cd.id_material,
+                                  prov.nombre AS ultimo_proveedor,
+                                  cd.precio   AS ultimo_precio,
+                                  DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS ultima_fecha,
+                                  ROW_NUMBER() OVER (PARTITION BY cd.id_material ORDER BY c.fecha_emision DESC) AS rn
+                                FROM compras_detalle cd
+                                  INNER JOIN compras c ON c.id = cd.id_compra
+                                  LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
+                              ) ult ON ult.id_material = m.id AND ult.rn = 1
+                            WHERE pd.cancelado = 0
+                              AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
+                              AND p.id_estado NOT IN (1, 7)
+                            ORDER BY p.id DESC, m.concepto";
 
-                                  try {
-                                    foreach ($pdo->query($sql) as $row) {
-                                      //ejemplo: If ultimo_precio != null $val = row[]
-                                  ?>
+                            try {
+                              foreach ($pdo->query($sql) as $row) {
+                                //ejemplo: If ultimo_precio != null $val = row[]
+                                //var_dump($row);
+                                ?>
                                 <tr>
                                   <td><?= $row['nro_pedido'] ?></td>
                                   <td><?= $row['obra'] ?></td>
@@ -346,12 +354,12 @@ require 'database.php'; ?>
                                   <td class="number"><?= $row['ultimo_precio'] !== null ? number_format($row['ultimo_precio'], 2, ",", ".") : '' ?></td>
                                   <td><?= $row['ultima_fecha'] ?></td>
                                 </tr><?php
-                                    }
-                                  } catch (PDOException $e) {
-                                    echo "<tr><td colspan='12'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
-                                  }
+                              }
+                            } catch (PDOException $e) {
+                              echo "<tr><td colspan='12'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                            }
 
-                                  Database::disconnect(); ?>
+                            Database::disconnect(); ?>
                           </tbody>
                         </table>
                       </div>
