@@ -305,7 +305,7 @@ require 'database.php'; ?>
                               m.concepto,
                               m.descripcion,
                               /*(pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,*/
-                              COALESCE((pd.cantidad - (SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id)), 0) AS cantidad_pendiente,
+                              (pd.cantidad - COALESCE((SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id), 0)) AS cantidad_pendiente,
                               um.unidad_medida AS unidad,
                               DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
                               DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
@@ -332,7 +332,7 @@ require 'database.php'; ?>
                               ) ult ON ult.id_material = m.id AND ult.rn = 1
                             WHERE pd.cancelado = 0
                               AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
-                              AND p.id_estado NOT IN (1, 7)
+                              AND p.id_estado NOT IN (1, 2, 7)
                             ORDER BY p.id DESC, m.concepto";
 
                             try {
