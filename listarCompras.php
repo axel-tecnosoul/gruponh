@@ -281,7 +281,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
 
                             <tr data-id="<?=$row['id']?>" data-estado-id="<?=$row['id_estado_compra']?>" data-nro-revision="<?=$row['nro_revision']?>" data-max-revision="<?=$row['max_revision']?>" data-nro-oc="<?=$row['nro_oc']?>">
                               <td class="d-none"><?=$row['id']?></td>
-                              <td><?=$row['nro_oc']?> / <?=$row['nro_revision']?></td>
+                              <td><?=$row['nro_oc']?>/<?=$row['nro_revision']?></td>
                               <td>
                                 <a href="verPedido.php?id=<?=$row['id_pedido']?>" target="_blank" title="Ver Pedido">
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>

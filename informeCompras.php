@@ -138,7 +138,7 @@ require 'database.php'; ?>
                           <thead>
                             <tr>
                               <th>Nº Pedido</th>
-                              <th>Nº OC</th>
+                              <th>Nº OC/Rev</th>
                               <th>Estado</th>
                               <th>Proveedor</th>
                               <th>Obra</th>
@@ -155,45 +155,47 @@ require 'database.php'; ?>
                             </tr>
                           </thead>
                           <tbody><?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            $pdo = Database::connect();
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                                  $sql = "SELECT
-                                              p.id AS nro_pedido,
-                                              c.id AS nro_op,
-                                              epd.estado AS estado_pedido,
-                                              prov.nombre AS proveedor,
-                                              CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
-                                              m.concepto,
-                                              m.descripcion,
-                                              cd.cantidad,
-                                              um.unidad_medida AS unidad,
-                                              cd.cantidad AS comprado,
-                                              COALESCE(cd.entregado, 0) AS entregado,
-                                              DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                                              DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
-                                              DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_pactada,
-                                              DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega
-                                          FROM compras c
-                                              INNER JOIN compras_detalle cd ON cd.id_compra = c.id
-                                              INNER JOIN materiales m ON m.id = cd.id_material
-                                              INNER JOIN pedidos p ON p.id = c.id_pedido
-                                              LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = m.id
-                                              INNER JOIN proyectos pr ON pr.id = p.id_proyecto
-                                              INNER JOIN sitios si ON si.id = pr.id_sitio
-                                              LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
-                                              LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
-                                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado  -- NUEVO
-                                              LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                                          WHERE c.id_estado_compra IN (3, 6)
-                                              AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
-                                          ORDER BY p.id DESC, c.id DESC";
+                            $sql = "SELECT
+                              p.id AS nro_pedido,
+                              c.id AS nro_op,
+                              c.nro_oc,
+                              c.nro_revision,
+                              epd.estado AS estado_pedido,
+                              prov.nombre AS proveedor,
+                              CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                              m.concepto,
+                              m.descripcion,
+                              cd.cantidad,
+                              um.unidad_medida AS unidad,
+                              cd.cantidad AS comprado,
+                              COALESCE(cd.entregado, 0) AS entregado,
+                              DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
+                              DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                              DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_pactada,
+                              DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega
+                            FROM compras c
+                              INNER JOIN compras_detalle cd ON cd.id_compra = c.id
+                              INNER JOIN materiales m ON m.id = cd.id_material
+                              INNER JOIN pedidos p ON p.id = c.id_pedido
+                              LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = m.id
+                              INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                              INNER JOIN sitios si ON si.id = pr.id_sitio
+                              LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
+                              LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
+                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado  -- NUEVO
+                              LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                            WHERE c.id_estado_compra IN (3, 6)
+                              AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
+                            ORDER BY p.id DESC, c.id DESC";
 
-                                  try {
-                                    foreach ($pdo->query($sql) as $row) { ?>
+                            try {
+                              foreach ($pdo->query($sql) as $row) { ?>
                                 <tr>
                                   <td><?= $row['nro_pedido'] ?></td>
-                                  <td><a href="verCompra.php?id=<?= $row['nro_op'] ?>"><?= $row['nro_op'] ?></a></td>
+                                  <td><a href="verCompra.php?id=<?= $row['nro_op'] ?>"><?=$row['nro_oc']?>/<?=$row['nro_revision']?></a></td>
                                   <td><?= $row['estado_pedido'] ?></td>
                                   <td><?= $row['proveedor'] ?></td>
                                   <td><?= $row['obra'] ?></td>
@@ -208,10 +210,10 @@ require 'database.php'; ?>
                                   <td><?= $row['fecha_pactada'] ?></td>
                                   <td><?= $row['fecha_entrega'] ?></td>
                                 </tr><?php
-                                    }
-                                  } catch (PDOException $e) {
-                                    echo "<tr><td colspan='16'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
-                                  } ?>
+                              }
+                            } catch (PDOException $e) {
+                              echo "<tr><td colspan='16'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                            } ?>
                           </tbody>
                         </table>
                       </div>
@@ -234,30 +236,30 @@ require 'database.php'; ?>
                             </tr>
                           </thead>
                           <tbody><?php
-                                  $sql = "SELECT
-                                    p.id AS nro_pedido,
-                                    CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
-                                    m.concepto,
-                                    m.descripcion,
-                                    pd.cantidad,
-                                    um.unidad_medida AS unidad,
-                                    DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                                    DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
-                                    cu.nombre AS solicitante
-                                  FROM pedidos p
-                                    INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
-                                    INNER JOIN materiales m ON m.id = pd.id_material
-                                    INNER JOIN proyectos pr ON pr.id = p.id_proyecto
-                                    INNER JOIN sitios si ON si.id = pr.id_sitio
-                                    LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                                    LEFT JOIN computos co ON co.id = p.id_computo
-                                    LEFT JOIN cuentas cu ON cu.id = co.id_cuenta_solicitante
-                                  WHERE p.id_estado = 2
-                                    AND pd.cancelado = 0
-                                  ORDER BY p.id DESC, m.concepto";
+                            $sql = "SELECT
+                              p.id AS nro_pedido,
+                              CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                              m.concepto,
+                              m.descripcion,
+                              pd.cantidad,
+                              um.unidad_medida AS unidad,
+                              DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
+                              DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                              cu.nombre AS solicitante
+                            FROM pedidos p
+                              INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
+                              INNER JOIN materiales m ON m.id = pd.id_material
+                              INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                              INNER JOIN sitios si ON si.id = pr.id_sitio
+                              LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                              LEFT JOIN computos co ON co.id = p.id_computo
+                              LEFT JOIN cuentas cu ON cu.id = co.id_cuenta_solicitante
+                            WHERE p.id_estado = 2
+                              AND pd.cancelado = 0
+                            ORDER BY p.id DESC, m.concepto";
 
-                                  try {
-                                    foreach ($pdo->query($sql) as $row) { ?>
+                            try {
+                              foreach ($pdo->query($sql) as $row) { ?>
                                 <tr>
                                   <td><a href="#" onclick="postPedido(<?= $row['nro_pedido'] ?>);return false;"><?= $row['nro_pedido'] ?></a></td>
                                   <td><?= $row['obra'] ?></td>
@@ -269,10 +271,10 @@ require 'database.php'; ?>
                                   <td><?= $row['fecha_requerido'] ?></td>
                                   <td><?= $row['solicitante'] ?></td>
                                 </tr><?php
-                                    }
-                                  } catch (PDOException $e) {
-                                    echo "<tr><td colspan='9'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
-                                  } ?>
+                              }
+                            } catch (PDOException $e) {
+                              echo "<tr><td colspan='9'>Error: " . htmlspecialchars($e->getMessage()) . "</td></tr>";
+                            } ?>
                           </tbody>
                         </table>
                       </div>
@@ -298,42 +300,44 @@ require 'database.php'; ?>
                             </tr>
                           </thead>
                           <tbody><?php
-                            $sql = "SELECT 
-                              p.id AS nro_pedido,
-                              epd.estado AS estado_pedido,
-                              CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
-                              m.concepto,
-                              m.descripcion,
-                              /*(pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,*/
-                              (pd.cantidad - COALESCE((SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id), 0)) AS cantidad_pendiente,
-                              um.unidad_medida AS unidad,
-                              DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
-                              DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
-                              ult.ultimo_proveedor,
-                              ult.ultimo_precio,
-                              ult.ultima_fecha
-                            FROM pedidos p
-                              INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
-                              INNER JOIN materiales m ON m.id = pd.id_material
-                              INNER JOIN proyectos pr ON pr.id = p.id_proyecto
-                              INNER JOIN sitios si ON si.id = pr.id_sitio
-                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
-                              LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
-                              LEFT JOIN (
-                                SELECT
-                                  cd.id_material,
-                                  prov.nombre AS ultimo_proveedor,
-                                  cd.precio   AS ultimo_precio,
-                                  DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS ultima_fecha,
-                                  ROW_NUMBER() OVER (PARTITION BY cd.id_material ORDER BY c.fecha_emision DESC) AS rn
-                                FROM compras_detalle cd
-                                  INNER JOIN compras c ON c.id = cd.id_compra
-                                  LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
-                              ) ult ON ult.id_material = m.id AND ult.rn = 1
-                            WHERE pd.cancelado = 0
-                              AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
-                              AND p.id_estado NOT IN (1, 2, 7)
-                            ORDER BY p.id DESC, m.concepto";
+                            $sql = "SELECT * FROM (
+                              SELECT 
+                                p.id AS nro_pedido,
+                                epd.estado AS estado_pedido,
+                                CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                                m.concepto,
+                                m.descripcion,
+                                /*(pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,*/
+                                (pd.cantidad - COALESCE((SELECT SUM(cantidad) FROM compras_detalle cd JOIN compras c ON cd.id_compra=c.id WHERE c.id_pedido=p.id AND cd.id_material=m.id), 0)) AS cantidad_pendiente,
+                                um.unidad_medida AS unidad,
+                                DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_pedido,
+                                DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
+                                ult.ultimo_proveedor,
+                                ult.ultimo_precio,
+                                ult.ultima_fecha
+                              FROM pedidos p
+                                INNER JOIN pedidos_detalle pd ON pd.id_pedido = p.id
+                                INNER JOIN materiales m ON m.id = pd.id_material
+                                INNER JOIN proyectos pr ON pr.id = p.id_proyecto
+                                INNER JOIN sitios si ON si.id = pr.id_sitio
+                                LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
+                                LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
+                                LEFT JOIN (
+                                  SELECT
+                                    cd.id_material,
+                                    prov.nombre AS ultimo_proveedor,
+                                    cd.precio   AS ultimo_precio,
+                                    DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS ultima_fecha,
+                                    ROW_NUMBER() OVER (PARTITION BY cd.id_material ORDER BY c.fecha_emision DESC) AS rn
+                                  FROM compras_detalle cd
+                                    INNER JOIN compras c ON c.id = cd.id_compra
+                                    LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
+                                ) ult ON ult.id_material = m.id AND ult.rn = 1
+                              WHERE pd.cancelado = 0
+                                AND (pd.cantidad - COALESCE(pd.comprado, 0)) > 0
+                                AND p.id_estado NOT IN (1, 2, 7)
+                            ) AS subquery
+                            WHERE cantidad_pendiente > 0 ORDER BY nro_pedido DESC, concepto";
 
                             try {
                               foreach ($pdo->query($sql) as $row) {
