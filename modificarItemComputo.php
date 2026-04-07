@@ -22,6 +22,7 @@ if (!$id) {
 
 $idOrigen   = !empty($_REQUEST['idOrigen']) ? (int)$_REQUEST['idOrigen'] : $id;
 $modoActual = $_REQUEST['modo'] ?? 'nuevo';
+$idRetorno  = !empty($_GET['idRetorno']) ? (int)$_GET['idRetorno'] : null;
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -69,12 +70,12 @@ if (!empty($_POST)) {
     $cantidadOriginal = (float)$stmtCantOrig->fetchColumn();
 
     if ($cantidad > $cantidadOriginal) {
-      Database::disconnect();
-      header("Location: modificarItemComputo.php?id=$id&idRetorno=" . (int)$_GET['idRetorno']
-        . "&modo=$modoPost&revision=$nro_revision&idOrigen=$idOrigen&error=cantidad_aumentada$prodParam");
-      exit;
-    }
+    Database::disconnect();
+    header("Location: modificarItemComputo.php?id=$id&idRetorno=" . ($idRetorno ?? $id)
+      . "&modo=$modoPost&revision=$nro_revision&idOrigen=$idOrigen&error=cantidad_aumentada$prodParam");
+    exit;
   }
+}
 
   $sql = "UPDATE computos_detalle 
             SET id_material = ?, cantidad = ?, saldo = ?, fecha_necesidad = ?, aprobado = 0, comentarios = ? 
@@ -89,8 +90,15 @@ if (!empty($_POST)) {
     $id
   ]);
 
+  $idComputoRetorno = $idRetorno ?? (int)$_POST['idRetorno'] ?? null;
+  if (!$idComputoRetorno) {
+    $stmtComp = $pdo->prepare("SELECT id_computo FROM computos_detalle WHERE id = ?");
+    $stmtComp->execute([$id]);
+    $idComputoRetorno = (int)$stmtComp->fetchColumn();
+  }
+
   Database::disconnect();
-  header("Location: itemsComputo.php?id=" . (int)$_GET['idRetorno']
+  header("Location: itemsComputo.php?id=" . $idComputoRetorno
     . "&modo=$modoPost&revision=$nro_revision&idOrigen=$idOrigen$prodParam");
   exit;
 } else {
@@ -144,7 +152,7 @@ if (!empty($_POST)) {
                   </h5>
                 </div>
                 <form class="form theme-form" role="form" method="post"
-                  action="modificarItemComputo.php?id=<?= $id ?>&idRetorno=<?= (int)$_GET['idRetorno'] ?>&modo=<?= htmlspecialchars($modoActual) ?>&revision=<?= htmlspecialchars($_GET['revision'] ?? '0') ?>&idOrigen=<?= $idOrigen ?><?= $prodParam ?>">
+                  action="modificarItemComputo.php?id=<?= $id ?>&idRetorno=<?= $idRetorno ?? $data['id_computo'] ?>&modo=<?= htmlspecialchars($modoActual) ?>&revision=<?= htmlspecialchars($_GET['revision'] ?? '0') ?>&idOrigen=<?= $idOrigen ?><?= $prodParam ?>">
                   <div class="card-body">
                     <div class="row">
                       <div class="col">
@@ -225,7 +233,7 @@ if (!empty($_POST)) {
                   <div class="card-footer">
                     <div class="col-sm-9 offset-sm-3">
                       <button class="btn btn-primary" type="submit">Modificar</button>
-                      <a href="itemsComputo.php?id=<?= (int)$_GET['idRetorno'] ?>&modo=<?= $modoActual ?>&revision=<?= $_GET['revision'] ?? '0' ?>&idOrigen=<?= $idOrigen ?><?= $prodParam ?>"
+                      <a href="itemsComputo.php?id=<?= $idRetorno ?? $data['id_computo'] ?>&modo=<?= $modoActual ?>&revision=<?= $_GET['revision'] ?? '0' ?>&idOrigen=<?= $idOrigen ?><?= $prodParam ?>"
                         class="btn btn-light">Volver</a>
                     </div>
                   </div>

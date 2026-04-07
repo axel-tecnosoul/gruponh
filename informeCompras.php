@@ -492,8 +492,14 @@ require 'database.php'; ?>
       $('a[data-toggle="tab"]').on('shown.bs.tab', function(e) {
         var target = $(e.target).attr("href");
 
-        if (target === '#aprobar' && !$.fn.DataTable.isDataTable('#tablaAprobar')) {
+      if (target === '#aprobar' && !$.fn.DataTable.isDataTable('#tablaAprobar')) {
           $('#tablaAprobar').DataTable(dtOptions);
+
+          $('#tablaAprobar tbody').on('contextmenu', 'td:first-child a', function(e) {
+            e.preventDefault();
+            var id = $(this).attr('onclick').match(/\d+/)[0];
+            postPedido(parseInt(id));
+          });
         }
 
         if (target === '#pendiente' && !$.fn.DataTable.isDataTable('#tablaPendiente')) {

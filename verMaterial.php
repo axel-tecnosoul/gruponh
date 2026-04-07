@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
+  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -28,6 +28,12 @@ if (!empty($_POST)) {
   Database::disconnect();
 }
 
+$origen = isset($_GET['origen']) ? $_GET['origen'] : '';
+$urlVolver = "listarMateriales.php";
+
+if ($origen == 'pedidos') {
+  $urlVolver = "listarPedidos.php";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -35,6 +41,7 @@ if (!empty($_POST)) {
 <head>
   <?php include('head_forms.php'); ?>
   <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+  <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
 </head>
 
 <body>
@@ -134,6 +141,13 @@ if (!empty($_POST)) {
                           <div class="col-sm-9"><input name="stock_minimo" type="number" step="0.01" class="form-control" value="<?php echo $data['stock_minimo']; ?>" required="required"></div>
                         </div>
                         <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Perímetro (mm)</label>
+                          <div class="col-sm-9">
+                            <input name="perimetro" type="number" step="0.01" class="form-control" value="<?php echo $data['perimetro']; ?>">
+                            <small class="form-text text-muted">Ingrese el perímetro en <strong>milímetros (mm)</strong></small>
+                          </div>
+                        </div>
+                        <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Calidad</label>
                           <div class="col-sm-9"><input name="calidad" type="text" maxlength="99" class="form-control" value="<?php echo $data['calidad']; ?>"></div>
                         </div>
@@ -151,13 +165,46 @@ if (!empty($_POST)) {
                             </select>
                           </div>
                         </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Histórico de Compras</label>
+                          <div class="col-sm-9">
+                            <table class="display" id="dataTables-example666">
+                              <thead>
+                                <tr>
+                                  <th>Nro. OC</th>
+                                  <th>Nro. Proy</th>
+                                  <th>Fecha</th>
+                                  <th>Precio</th>
+                                  <th>Proveedor</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <?php
+                                $pdo = Database::connect();
+                                $sql = " SELECT c.nro_oc, date_format(c.fecha_emision,'%d/%m/%y') f, d.`precio`,p.nro, cu.nombre,s.nro_sitio, s.nro_subsitio FROM `compras_detalle` d inner join compras c on c.id = d.id_compra inner join pedidos pe on pe.id = c.id_pedido inner join computos co on co.id = pe.id_computo inner join tareas t on t.id = co.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join cuentas cu on cu.id = c.id_cuenta_proveedor inner join sitios s on s.id = p.id_sitio WHERE d.`id_material` = " . $_GET['id'];
+
+                                foreach ($pdo->query($sql) as $row) {
+                                  echo '<tr>';
+                                  echo '<td>' . $row[0] . '</td>';
+                                  echo '<td>' . $row[5] . "-" . $row[6] . "-" . $row[3] . '</td>';
+                                  echo '<td>' . $row[1] . '</td>';
+                                  echo '<td>$' . number_format($row[2], 2) . '</td>';
+                                  echo '<td>' . $row[4] . '</td>';
+                                  echo '</tr>';
+                                }
+                                Database::disconnect();
+                                ?>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
 
                       </div>
                     </div>
                   </div>
                   <div class="card-footer">
                     <div class="col-sm-9 offset-sm-3">
-                      <a onclick="document.location.href='listarMateriales.php'" class="btn btn-light">Volver</a>
+                      <a href="<?= $urlVolver ?>" class="btn btn-light">Volver</a>
                     </div>
                   </div>
                 </form>
@@ -196,6 +243,59 @@ if (!empty($_POST)) {
   <!-- Plugin used-->
   <script src="assets/js/select2/select2.full.min.js"></script>
   <script src="assets/js/select2/select2-custom.js"></script>
+  <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/custom.js"></script>
+  <script src="assets/js/chat-menu.js"></script>
+  <script src="assets/js/tooltip-init.js"></script>
+  <!-- Theme js-->
+  <script src="assets/js/script.js"></script>
+  <script>
+    $(document).ready(function() {
+      $('#dataTables-example666').DataTable({
+        stateSave: false,
+        responsive: false,
+        language: {
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
+            "first": "Primero",
+            "last": "Ultimo",
+            "next": "Siguiente",
+            "previous": "Anterior"
+          }
+        }
+      });
+    });
+  </script>
+  <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
 </body>
 
 </html>

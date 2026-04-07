@@ -21,7 +21,7 @@
   } else {
       $pdo = Database::connect();
       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $sql = "SELECT `id`, `codigo`, `concepto`, `descripcion`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
+      $sql = "SELECT `id`, `codigo`, `concepto`, `descripcion`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `perimetro`, `anulado` FROM `materiales` WHERE id = ? ";
       $q = $pdo->prepare($sql);
       $q->execute([$id]);
       $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -138,6 +138,13 @@
 						  <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Stock Mínimo</label>
 							<div class="col-sm-9"><input name="stock_minimo" type="number" step="0.01" class="form-control" value="<?php echo $data['stock_minimo']; ?>" required="required"></div>
+						  </div>
+						  <div class="form-group row">
+							<label class="col-sm-3 col-form-label">Perímetro (mm)</label>
+							<div class="col-sm-9">
+							  <input name="perimetro" type="number" step="0.01" class="form-control" value="<?php echo $data['perimetro']; ?>">
+							  <small class="form-text text-muted">Perímetro de la sección transversal en milímetros.</small>
+							</div>
 						  </div>
 						  <div class="form-group row">
 								<label class="col-sm-3 col-form-label">Activo</label>

@@ -32,21 +32,27 @@ if (!empty($_POST)) {
     $sql = "INSERT INTO facturas_venta
               (descripcion, id_tipo_comprobante, id_letra_comprobante, id_proyecto,
                numero, id_cuenta_destino, id_empresa, fecha_emitida, fecha_enviada,
+
                id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1)";
     $q = $pdo->prepare($sql);
+    $idCondicionPago = !empty($_POST['id_condicion_pago']) ? intval($_POST['id_condicion_pago']) : null;
+    $idProyecto      = !empty($_POST['id_proyecto'])       ? intval($_POST['id_proyecto'])       : null;
+    $idEmpresa       = !empty($_POST['id_empresa'])        ? intval($_POST['id_empresa'])        : null;
+    $idCuentaDest    = !empty($_POST['id_cuenta_destino']) ? intval($_POST['id_cuenta_destino']) : null;
+
     $q->execute([
         $_POST['descripcion'],
-        $_POST['id_tipo_comprobante'],
-        $_POST['id_letra_comprobante'],
-        $_POST['id_proyecto'],
+        intval($_POST['id_tipo_comprobante']),
+        intval($_POST['id_letra_comprobante']),
+        $idProyecto,
         $_POST['numero'],
-        $_POST['id_cuenta_destino'],
-        $_POST['id_empresa'],
+        $idCuentaDest,
+        $idEmpresa,
         $_POST['fecha_emitida'],
         $_POST['fecha_enviada'],
-        $_POST['id_condicion_pago'],
-        $_POST['id_moneda'],
+        $idCondicionPago,
+        intval($_POST['id_moneda']),
         $_POST['cotizacion'],
         $_POST['observaciones'],
         $_SESSION['user']['id']
@@ -63,6 +69,21 @@ if (!empty($_POST)) {
 
             $qi = $pdo->prepare("INSERT INTO facturas_venta_otros (id_factura_venta, id_regimen, porcentaje) VALUES (?,?,?)");
             $qi->execute([$idFactura, $idRegimen, $porcentaje]);
+        }
+    }
+
+    // Certificados seleccionados → vincular via id_comprobante en certificados_avances_detalle
+    if (!empty($_POST['certificados'])) {
+        foreach ($_POST['certificados'] as $idCert) {
+            $idCert = intval($idCert);
+            if ($idCert > 0) {
+                $qc = $pdo->prepare(
+                    "UPDATE certificados_avances_detalle
+                     SET id_comprobante = ?
+                     WHERE id_certificado_avance = ?"
+                );
+                $qc->execute([$idFactura, $idCert]);
+            }
         }
     }
 
@@ -229,6 +250,56 @@ if (!empty($_POST)) {
                           </select>
                         </div>
                       </div>
+
+                      <!-- Certificados vinculados -->
+                      <?php
+                      $certIds = [];
+                      if (!empty($_GET['certificados'])) {
+                          $certIds = array_filter(array_map('intval', (array)$_GET['certificados']));
+                      }
+                      if (!empty($certIds)):
+                          $pdo = Database::connect();
+                          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                          $placeholders = implode(',', array_fill(0, count($certIds), '?'));
+                          $qCert = $pdo->prepare(
+                              "SELECT ca.id, cm.numero, cm.revision,
+                                      DATE_FORMAT(ca.fecha_emision,'%d/%m/%Y') AS fecha_emision,
+                                      ca.monto_total, ca.aprobado_cliente
+                               FROM certificados_avances_cabecera ca
+                               INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
+                               WHERE ca.id IN ($placeholders)"
+                          );
+                          $qCert->execute($certIds);
+                          $certRows = $qCert->fetchAll(PDO::FETCH_ASSOC);
+                          Database::disconnect();
+                      ?>
+                      <div class="form-group row">
+                        <label class="col-sm-3 col-form-label">Certificados vinculados</label>
+                        <div class="col-sm-9">
+                          <?php foreach ($certIds as $cid): ?>
+                            <input type="hidden" name="certificados[]" value="<?= $cid ?>">
+                          <?php endforeach; ?>
+                          <div class="list-group">
+                            <?php foreach ($certRows as $cr): ?>
+                              <div class="list-group-item py-2">
+                                <div class="d-flex align-items-center justify-content-between">
+                                  <div>
+                                    <strong class="badge-success">Cert. #<?= htmlspecialchars($cr['numero']) ?></strong>
+                                    <span class="badge <?= $cr['aprobado_cliente'] ? 'badge-success' : 'badge-secondary' ?> ml-1">
+                                      <?= $cr['aprobado_cliente'] ? 'Aprobado' : 'Pendiente' ?>
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">Rev. <?= htmlspecialchars($cr['revision']) ?> &nbsp;|&nbsp; <?= htmlspecialchars($cr['fecha_emision']) ?></small>
+                                  </div>
+                                  <span class="font-weight-bold">$ <?= number_format($cr['monto_total'], 2, ',', '.') ?></span>
+                                </div>
+                              </div>
+                            <?php endforeach; ?>
+                          </div>
+                          <small class="text-muted">Estos certificados quedarán vinculados a la factura al crearla.</small>
+                        </div>
+                      </div>
+                      <?php endif; ?>
 
                       <!-- Descripción -->
                       <div class="form-group row">

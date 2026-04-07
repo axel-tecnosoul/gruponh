@@ -20,70 +20,61 @@ $id_estado = $filters['id_estado'] ?? [];?>
 <html lang="en">
   <head>
     <?php include('head_tables.php');?>
-    <style>
-      .truncate {
-        max-width:50px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .truncate-project {
-        width: 20%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .truncate-provider {
-        width: 25%;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      #dataTables-example666 {
-        table-layout: fixed;
-        width: 100% !important;
-      }
-      #dataTables-example666 td.truncate-project {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      #dataTables-example666 td.truncate-provider {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      
-      /* Tabla de conceptos de compras */
-      #dataTables-example667 {
-        table-layout: fixed;
-        width: 100% !important;
-      }
-      .truncate-concepto {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      #dataTables-example667 td.truncate-concepto {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      #dataTables-example667 th {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .truncate-header {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .proyecto-truncado {
-        cursor: help;
-        border-bottom: 1px dotted #999;
-      }
-    </style>
+  <style>
+    .truncate {
+      max-width: 50px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #dataTables-example666 {
+      width: 100% !important;
+    }
+
+    .truncate-project {
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .truncate-provider {
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #dataTables-example667 {
+      width: 100% !important;
+    }
+    .truncate-concepto {
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #dataTables-example667 td.truncate-concepto {
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #dataTables-example667 th {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .truncate-header {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .proyecto-truncado {
+      cursor: help;
+      border-bottom: 1px dotted #999;
+    }
+  </style>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
@@ -193,18 +184,18 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
                           <tr>
-                            <th class="d-none">ID</th>
-                            <th style="width: 80px;">Nro.OC / Rev</th>
-                            <th style="width: 80px;">Nro Pedido</th>
-                            <th style="width: 100px;">Proyecto</th>
-                            <th class="truncate-project">Nombre Proyecto</th>
-                            <th class="truncate-provider">Proveedor</th>
-                            <th style="width: 90px;">Total</th>
-                            <th style="width: 80px;">Estado</th>
-                            <th style="width: 85px;">F. Emisión</th>
-                            <th style="width: 85px;">F. Entrega</th>
-                            <th style="display: none;">Proy</th>
-                            <th style="display: none;">Estado ID</th>
+                              <th>ID</th>
+                              <th style="width: 80px;">Nro.OC / Rev</th>
+                              <th style="width: 80px;">Nro Pedido</th>
+                              <th style="width: 100px;">Proyecto</th>
+                              <th class="truncate-project">Nombre Proyecto</th>
+                              <th class="truncate-provider">Proveedor</th>
+                              <th style="width: 90px;">Total</th>
+                              <th style="width: 80px;">Estado</th>
+                              <th style="width: 85px;">F. Emisión</th>
+                              <th style="width: 85px;">F. Entrega</th>
+                              <th>Proy</th>
+                              <th>Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
@@ -294,26 +285,26 @@ $id_estado = $filters['id_estado'] ?? [];?>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_entrega"]?></span><?=$row["fecha_entrega_formatted"]?></td>
-                              <td style="display: none;"><?=$row['id_proyecto']?></td>
-                              <td style="display: none;"><?=$row['id_estado_compra']?></td>
+                              <td><?=$row['id_proyecto']?></td>
+                              <td><?=$row['id_estado_compra']?></td>
                             </tr><?php
                           }
                           Database::disconnect();?>
                         </tbody>
                         <tfoot>
                           <tr>
-                            <th class="d-none">ID</th>
-                            <th style="width: 80px;">Nro.OC / Rev</th>
-                            <th style="width: 80px;">Nro Pedido</th>
-                            <th style="width: 100px;">Proyecto</th>
-                            <th class="truncate-project">Nombre Proyecto</th>
-                            <th class="truncate-provider">Proveedor</th>
-                            <th style="width: 90px;">Total</th>
-                            <th style="width: 80px;">Estado</th>
-                            <th style="width: 85px;">F. Emisión</th>
-                            <th style="width: 85px;">F. Entrega</th>
-                            <th style="display: none;">Proy</th>
-                            <th style="display: none;">Estado ID</th>
+                              <th>ID</th>
+                              <th style="width: 80px;">Nro.OC / Rev</th>
+                              <th style="width: 80px;">Nro Pedido</th>
+                              <th style="width: 100px;">Proyecto</th>
+                              <th class="truncate-project">Nombre Proyecto</th>
+                              <th class="truncate-provider">Proveedor</th>
+                              <th style="width: 90px;">Total</th>
+                              <th style="width: 80px;">Estado</th>
+                              <th style="width: 85px;">F. Emisión</th>
+                              <th style="width: 85px;">F. Entrega</th>
+                              <th>Proy</th>
+                              <th>Estado ID</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -760,11 +751,14 @@ $id_estado = $filters['id_estado'] ?? [];?>
 
       // Inicializar DataTable Principal
       var table = $('#dataTables-example666').DataTable({
-        stateSave: false,
-        responsive: false,
-        autoWidth: false,
-        dom: 'Bfrtp<"bottom"l>',
-        buttons: ['excel'],
+          stateSave: false,
+          responsive: false,
+          autoWidth: false,
+          dom: 'Bfrtp<"bottom"l>',
+          buttons: ['excel'],
+          columnDefs: [
+            { targets: [0, 10, 11], visible: false }
+          ],
         lengthMenu: [
           [10, 25, 50, 100, 500, 1000],
           [10, 25, 50, 100, 500, 1000]

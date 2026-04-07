@@ -45,16 +45,17 @@ foreach ($pdo->query($sql) as $row) {
   if ($row["id_estado"] == 2) {
     if (!empty(tienePermiso(294))) {
       if ($aprobado !== 'Si') {
-        $acciones .= "<span class='abrirModalAprobarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/aprobar.png' width='24' height='25' border='0' alt='Aprobar' title='Aprobar'></span>&nbsp;&nbsp;";
+        $acciones .= "<span class='btn-accion abrirModalAprobarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/aprobar.png' width='24' height='25' border='0' alt='Aprobar' title='Aprobar'></span>&nbsp;&nbsp;";
       }
       if ($cancelado == "No") {
-        $acciones .= "<span class='abrirModalCancelarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/cancelar.png' width='24' height='25' border='0' alt='Cancelar' title='Cancelar' style='filter: invert(20%) sepia(100%) saturate(7000%) hue-rotate(0deg) brightness(90%) contrast(110%);'></span>&nbsp;&nbsp;";
+        // CAMBIO 1: inline style → clase reutilizable img-recolor-rojo
+        $acciones .= "<span class='btn-accion abrirModalCancelarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/cancelar.png' width='24' height='25' border='0' alt='Desaprobar' title='Desaprobar' class='img-recolor-rojo'></span>&nbsp;&nbsp;";
       }
     }
   }
   if (!empty(tienePermiso(311))) {
     if ($reservado > 0) {
-      $acciones .= "<span class='abrirModalCancelarReservaItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/neg.png' width='24' height='25' border='0' alt='Cancelar Reserva' title='Cancelar Reserva'></span>";
+      $acciones .= "<span class='btn-accion abrirModalCancelarReservaItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/cancelar.png' width='24' height='25' border='0' alt='Cancelar Reserva' title='Cancelar Reserva' class='img-recolor-rojo'></span>";
     }
   }
 

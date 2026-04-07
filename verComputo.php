@@ -293,6 +293,15 @@ if (!empty($_POST)) {
         font-size: 16px !important;
         font-weight: bold !important;
       }
+      #modalStockBody .fila-total-reserva {
+        display: none !important;
+      }
+      #modalStockTotales {
+        font-size: 14px;
+      }
+      #modalStockTotales strong {
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
@@ -427,7 +436,7 @@ if (!empty($_POST)) {
                                             <div style='width:110px; margin:auto;'>
                                               <input type='text' readonly class='form-control form-control-sm text-center cantidad-reservada-visual' id='txt_reserva_vis_$id_computo_detalle' value='0'
                                                 style='background:#fff; cursor:pointer;'
-                                                onclick='abrirModalStock($id_computo_detalle, $id_material, $maxReservar)'
+                                                onclick='abrirModalStock($id_computo_detalle, $id_material, $maxReservar, $saldo)'
                                                 title='Elegir Lote (Disp: $enStock)'>
                                             <div id='container_reservas_$id_computo_detalle'></div>";
                                         }
@@ -615,15 +624,26 @@ if (!empty($_POST)) {
       <div class="modal-dialog modal-xl">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Seleccionar ingresos/devoluciones</h5>
+            <h5 class="modal-title">
+              Seleccionar ingresos/devoluciones
+              <small class="text-muted ml-2" id="modalStockSaldo" style="font-size:14px;"></small>
+            </h5>
             <button class="close" type="button" data-dismiss="modal">×</button>
           </div>
           <div class="modal-body" id="modalStockBody">
             Cargando...
           </div>
-          <div class="modal-footer">
-            <button class="btn btn-primary" type="button" onclick="confirmarStock()">Confirmar</button>
-            <button class="btn btn-light" type="button" data-dismiss="modal">Cerrar</button>
+          <div class="modal-footer d-flex align-items-center justify-content-between w-100">
+            <div id="modalStockTotales" style="font-size:14px;">
+              <strong>Totales:</strong>
+              <span class="ml-2">Disponibles: <strong id="totalDisponibleLive">0.00</strong></span>
+              <span class="ml-3">Total a reservar: <strong id="totalReservaLive2">0.00</strong></span>
+              <span class="ml-3" id="pendienteFooter"></span>
+            </div>
+            <div>
+              <button class="btn btn-primary" type="button" onclick="confirmarStock()">Confirmar</button>
+              <button class="btn btn-light" type="button" data-dismiss="modal">Cerrar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -897,10 +917,54 @@ if (!empty($_POST)) {
 
       let curDetalle = 0; 
       let curMax = 0;
+      let curSaldo = 0;
 
-      function abrirModalStock(idDetalle, idMaterial, maximo) {
+      function recalcularTotalesModal() {
+        let totalDisponible = 0;
+        let totalReserva    = 0;
+
+        let dispColIndex = -1;
+        $('#modalStockBody table thead tr th').each(function(i) {
+          let txt = $(this).text().trim().toLowerCase();
+          if (txt === 'disponible') {
+            dispColIndex = i;
+            return false;
+          }
+        });
+
+        $('#modalStockBody table tbody tr').not('.fila-total-reserva').each(function() {
+          if (dispColIndex >= 0) {
+            let dispTxt = $(this).find('td').eq(dispColIndex).text().trim().replace(',','.');
+            totalDisponible += parseFloat(dispTxt) || 0;
+          } else {
+            let dispTxt = $(this).find('td[data-disponible], td.disponible-col').text().trim().replace(',','.');
+            totalDisponible += parseFloat(dispTxt) || 0;
+          }
+
+          let inp = $(this).find('.input-reserva');
+          if (inp.length) {
+            totalReserva += parseFloat(inp.val()) || 0;
+          }
+        });
+
+        $('#totalDisponibleLive').text(totalDisponible.toFixed(2));
+        $('#totalReservaLive2').text(totalReserva.toFixed(2));
+
+        let pendiente = curSaldo - totalReserva;
+        $('#pendienteFooter').html('Pendiente: ' + pendiente.toFixed(2));
+      }
+
+      function abrirModalStock(idDetalle, idMaterial, maximo, saldoComputo) {
         curDetalle = idDetalle;
         curMax = maximo;
+        curSaldo = (saldoComputo !== undefined) ? parseFloat(saldoComputo) : parseFloat(maximo);
+
+        $('#modalStockSaldo').text('(saldo a reservar: ' + curSaldo + ')');
+
+        $('#totalDisponibleLive').text('0.00');
+        $('#totalReservaLive2').text('0.00');
+        $('#pendienteFooter').html('Pendiente: <strong style="color:#856404">' + curSaldo.toFixed(2) + ' - 0.00 = ' + curSaldo.toFixed(2) + '</strong>');
+
         $('#modalStock').modal('show');
         $('#modalStockBody').html('Cargando lotes...');
         
@@ -909,6 +973,23 @@ if (!empty($_POST)) {
           id_detalle_computo: idDetalle
         }, function(resp){
           $('#modalStockBody').html(resp);
+
+          $('#modalStockBody tr').each(function() {
+            let txt = $(this).text().toLowerCase();
+            if (txt.indexOf('total a reservar') !== -1 || $(this).find('#totalReservaLive').length) {
+              $(this).addClass('fila-total-reserva').hide();
+            }
+          });
+
+          $('#modalStockBody #totalReservaLive').closest('tr, p, div').filter(function() {
+            return !$(this).is('#modalStockBody');
+          }).hide();
+
+          recalcularTotalesModal();
+
+          $('#modalStockBody').off('input', '.input-reserva').on('input', '.input-reserva', function() {
+            recalcularTotalesModal();
+          });
         });
       }
 

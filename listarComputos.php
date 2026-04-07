@@ -12,33 +12,40 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
 <html lang="en">
 
 <head><?php
-      include('head_tables.php'); ?>
+  include('head_tables.php'); ?>
   <style>
-    .truncate {
-      max-width: 50px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+      .truncate {
+        max-width: 50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
 
-    .faClass {
-      width: 24px;
-      height: 20px;
-      color: midnightblue;
-    }
+      .faClass {
+        width: 24px;
+        height: 20px;
+        color: midnightblue;
+      }
 
-    .editable {
-      text-decoration: underline;
-      cursor: default;
-    }
+      .editable {
+        text-decoration: underline;
+        cursor: default;
+      }
 
-    .abrirModalAprobarItem,
-    .abrirModalCancelarItem,
-    .abrirModalCancelarReservaItem {
-      cursor: pointer;
-    }
+      .abrirModalAprobarItem,
+      .abrirModalCancelarItem,
+      .abrirModalCancelarReservaItem {
+        cursor: pointer;
+      }
+
+      /* Clase reutilizable para recolorar iconos a rojo */
+      .img-recolor-rojo {
+        filter: invert(20%) sepia(100%) saturate(7000%) hue-rotate(0deg) brightness(90%) contrast(110%);
+      }
+  </style>
   </style>
   <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+  <link rel="stylesheet" type="text/css" href="assets/css/botones-acciones.css">
 </head>
 
 <body>
@@ -994,7 +1001,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
         $(document).on("click", ".abrirModalCancelarItem", function() {
           let id_computo_detalle = this.dataset.id_computo_detalle;
           let id_computo = this.dataset.id_computo;
-          let modal = $("#cancelarModal")
+          let modal = $("#0Modal")
           modal.modal("show");
           $("#id_computo_detalle").val(id_computo_detalle);
           $("#id_computo").val(id_computo);

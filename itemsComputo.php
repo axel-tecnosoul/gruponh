@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     exit;
   }
 
-  if ($estadoPadre === ID_ESTADO_TERMINADO_COMPUTO) {
+  if ($estadoPadre === ID_ESTADO_TERMINADO_COMPUTO && $modo !== 'update') {
     $tokenOk = isset($_SESSION['revision_autorizada']) && $_SESSION['revision_autorizada'] === $id;
     if (!$tokenOk) {
       header("Location: listarComputos.php$prodQuery");
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   }
 }
 
-$esModoRestringido = ($modo === 'update' && $estadoPadre === ID_ESTADO_TERMINADO_COMPUTO);
+$esModoRestringido = ($modo === 'update');
 
 if ($esModoRestringido) {
   validarProyectoNoTerminado($pdo, $idComputoPadre, $prodQuery);
@@ -510,7 +510,7 @@ Database::disconnect();
           </div>
           <div class="modal-body">¿Está seguro que desea eliminar el ítem del cómputo?</div>
           <div class="modal-footer">
-            <a href="eliminarItemComputo.php?id=<?= $row["id"] ?>&idComputo=<?= $row["id_computo"] ?>&revision=<?= $revision ?>&idOrigen=<?= $idComputoPadre ?><?= $prodParam ?>"
+            <a href="eliminarItemComputo.php?id=<?= $row["id"] ?>&idComputo=<?= $row["id_computo"] ?>&revision=<?= $revision ?>&idOrigen=<?= $idComputoPadre ?>&modo=<?= $modo ?><?= $prodParam ?>"
               class="btn btn-primary">Eliminar</a>
             <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
           </div>
