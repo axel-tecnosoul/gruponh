@@ -547,10 +547,10 @@ include 'database.php';
               html += '<div class="list-group-item p-0 border-0 mb-1">';
               html += '<div class="d-flex align-items-center p-2 bg-light rounded" style="cursor:pointer;" data-toggle="collapse" data-target="#collapse_' + cert.id + '">';
               html += '<input type="checkbox" class="chk-certificado mr-2" id="' + certId + '" value="' + cert.id + '" onclick="event.stopPropagation()">';
-              html += '<label for="' + certId + '" class="mb-0 mr-2 font-weight-bold" style="cursor:pointer;" onclick="event.stopPropagation()">Cert. #' + htmlEsc(cert.numero) + '</label>';
+              html += '<label for="' + certId + '" class="mb-0 mr-2 font-weight-bold text-dark" style="cursor:pointer;" onclick="event.stopPropagation()">Cert. #' + cert.id + '</label>';
               html += '<span class="badge ' + badgeClass + ' mr-2">' + badgeText + '</span>';
-              html += '<small class="text-muted mr-auto">Rev. ' + htmlEsc(cert.revision) + ' | ' + htmlEsc(cert.fecha_emision) + '</small>';
-              html += '<small class="text-muted ml-2">$ ' + parseFloat(cert.monto_total).toLocaleString('es-AR', {
+              html += '<small class="text-dark mr-auto">Rev. ' + htmlEsc(cert.revision) + ' | ' + htmlEsc(cert.fecha_emision) + '</small>';
+              html += '<small class="text-dark ml-2">$ ' + parseFloat(cert.monto_total).toLocaleString('es-AR', {
                 minimumFractionDigits: 2
               }) + '</small>';
               html += '<i class="feather icon-chevron-down ml-2"></i>';

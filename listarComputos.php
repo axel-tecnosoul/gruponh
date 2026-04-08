@@ -1001,7 +1001,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
         $(document).on("click", ".abrirModalCancelarItem", function() {
           let id_computo_detalle = this.dataset.id_computo_detalle;
           let id_computo = this.dataset.id_computo;
-          let modal = $("#0Modal")
+          let modal = $("#cancelarModal")
           modal.modal("show");
           $("#id_computo_detalle").val(id_computo_detalle);
           $("#id_computo").val(id_computo);

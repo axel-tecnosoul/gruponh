@@ -20,61 +20,70 @@ $id_estado = $filters['id_estado'] ?? [];?>
 <html lang="en">
   <head>
     <?php include('head_tables.php');?>
-  <style>
-    .truncate {
-      max-width: 50px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #dataTables-example666 {
-      width: 100% !important;
-    }
-
-    .truncate-project {
-      max-width: 200px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .truncate-provider {
-      max-width: 250px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    #dataTables-example667 {
-      width: 100% !important;
-    }
-    .truncate-concepto {
-      max-width: 250px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    #dataTables-example667 td.truncate-concepto {
-      max-width: 250px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    #dataTables-example667 th {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .truncate-header {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .proyecto-truncado {
-      cursor: help;
-      border-bottom: 1px dotted #999;
-    }
-  </style>
+    <style>
+      .truncate {
+        max-width:50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-project {
+        width: 20%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-provider {
+        width: 25%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      #dataTables-example666 td.truncate-project {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example666 td.truncate-provider {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      /* Tabla de conceptos de compras */
+      #dataTables-example667 {
+        table-layout: fixed;
+        width: 100% !important;
+      }
+      .truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 td.truncate-concepto {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #dataTables-example667 th {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .truncate-header {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .proyecto-truncado {
+        cursor: help;
+        border-bottom: 1px dotted #999;
+      }
+    </style>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
@@ -184,18 +193,18 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
                           <tr>
-                              <th>ID</th>
-                              <th style="width: 80px;">Nro.OC / Rev</th>
-                              <th style="width: 80px;">Nro Pedido</th>
-                              <th style="width: 100px;">Proyecto</th>
-                              <th class="truncate-project">Nombre Proyecto</th>
-                              <th class="truncate-provider">Proveedor</th>
-                              <th style="width: 90px;">Total</th>
-                              <th style="width: 80px;">Estado</th>
-                              <th style="width: 85px;">F. Emisión</th>
-                              <th style="width: 85px;">F. Entrega</th>
-                              <th>Proy</th>
-                              <th>Estado ID</th>
+                            <th class="d-none">ID</th>
+                            <th style="width: 80px;">Nro.OC / Rev</th>
+                            <th style="width: 80px;">Nro Pedido</th>
+                            <th style="width: 100px;">Proyecto</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th class="truncate-provider">Proveedor</th>
+                            <th style="width: 90px;">Total</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th style="width: 85px;">F. Emisión</th>
+                            <th style="width: 85px;">F. Entrega</th>
+                            <th style="display: none;">Proy</th>
+                            <th style="display: none;">Estado ID</th>
                           </tr>
                         </thead>
                         <tbody><?php
@@ -285,26 +294,26 @@ $id_estado = $filters['id_estado'] ?? [];?>
                               <td><?=$row['estado']?></td>
                               <td><span style="display: none;"><?=$row["fecha_emision"]?></span><?=$row["fecha_emision_formatted"]?></td>
                               <td><span style="display: none;"><?=$row["fecha_entrega"]?></span><?=$row["fecha_entrega_formatted"]?></td>
-                              <td><?=$row['id_proyecto']?></td>
-                              <td><?=$row['id_estado_compra']?></td>
+                              <td style="display: none;"><?=$row['id_proyecto']?></td>
+                              <td style="display: none;"><?=$row['id_estado_compra']?></td>
                             </tr><?php
                           }
                           Database::disconnect();?>
                         </tbody>
                         <tfoot>
                           <tr>
-                              <th>ID</th>
-                              <th style="width: 80px;">Nro.OC / Rev</th>
-                              <th style="width: 80px;">Nro Pedido</th>
-                              <th style="width: 100px;">Proyecto</th>
-                              <th class="truncate-project">Nombre Proyecto</th>
-                              <th class="truncate-provider">Proveedor</th>
-                              <th style="width: 90px;">Total</th>
-                              <th style="width: 80px;">Estado</th>
-                              <th style="width: 85px;">F. Emisión</th>
-                              <th style="width: 85px;">F. Entrega</th>
-                              <th>Proy</th>
-                              <th>Estado ID</th>
+                            <th class="d-none">ID</th>
+                            <th style="width: 80px;">Nro.OC / Rev</th>
+                            <th style="width: 80px;">Nro Pedido</th>
+                            <th style="width: 100px;">Proyecto</th>
+                            <th class="truncate-project">Nombre Proyecto</th>
+                            <th class="truncate-provider">Proveedor</th>
+                            <th style="width: 90px;">Total</th>
+                            <th style="width: 80px;">Estado</th>
+                            <th style="width: 85px;">F. Emisión</th>
+                            <th style="width: 85px;">F. Entrega</th>
+                            <th style="display: none;">Proy</th>
+                            <th style="display: none;">Estado ID</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -751,14 +760,11 @@ $id_estado = $filters['id_estado'] ?? [];?>
 
       // Inicializar DataTable Principal
       var table = $('#dataTables-example666').DataTable({
-          stateSave: false,
-          responsive: false,
-          autoWidth: false,
-          dom: 'Bfrtp<"bottom"l>',
-          buttons: ['excel'],
-          columnDefs: [
-            { targets: [0, 10, 11], visible: false }
-          ],
+        stateSave: false,
+        responsive: false,
+        autoWidth: false,
+        dom: 'Bfrtp<"bottom"l>',
+        buttons: ['excel'],
         lengthMenu: [
           [10, 25, 50, 100, 500, 1000],
           [10, 25, 50, 100, 500, 1000]
@@ -797,82 +803,70 @@ $id_estado = $filters['id_estado'] ?? [];?>
         });
       });
 
-      // SELECCIÓN DE FILA (CLICK)
       $(document).on("click", "#dataTables-example666 tbody tr td", function() {
-        var t = $(this).parent();
+          var t = $(this).parent();
 
-        // Índices de columnas (ajustar si agregas/quitas columnas en HTML)
-        // 0: ID (hidden), 1: OC, 2: Proy, 3: Prov, 4: Estado, 5: F.Emis, 6: F.Entr, 7: Total, 8: ID Proy, 9: ID Estado
-        let id_compra = t.find("td:eq(0)").html();
-        let estado = t.find("td:eq(7)").html();
-        let id_proyecto = t.find("td:eq(10)").html();
-        let id_estado_compra = t.find("td:eq(11)").html();
-
-        if (t.hasClass('selected')) {
-          // DESELECCIONAR
-          deselectRow(t);
-          $('#dataTables-example667').DataTable().clear().draw();
+          let id_compra = t.data('id');
+          let id_estado_compra = t.data('estado-id');
           
-          // Resetear links a "#"
-          $("#link_ver_compra, #link_imprimir_compra, #link_modificar_compra, #link_ingresar_compra, #link_adjuntar_factura, #link_nuevo_suceso, #link_nuevo_pago").attr("href", "#");
-          
-          // Resetear Modales
-          $("#link_aprobar_compra, #link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
-          
-          selectedCompraInfo = null;
-        } else {
-          // SELECCIONAR
-          table.rows().nodes().each(function(rowNode, index) {
-            $(rowNode).removeClass("selected");
-          });
-          selectRow(t);
-          get_conceptos(id_compra);
+          var rowData = table.row(t).data();
+          let estado = rowData[7];
+          let id_proyecto = rowData[10];
 
-          // Asignar links básicos
-          $("#link_ver_compra").attr("href", "verCompra.php?id=" + id_compra);
-          $("#link_imprimir_compra").attr("href", "imprimirCompra.php?id=" + id_compra);
-          $("#link_modificar_compra").attr("href", "modificarCompra.php?id_compra=" + id_compra);
-          $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=compras&entidad_id=" + id_compra);
-
-          // Lógica Ingresar Stock
-          if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
-            $("#link_ingresar_compra").attr("href", "ingresarCompra.php?id=" + id_compra);
+          if (t.hasClass('selected')) {
+              deselectRow(t);
+              $('#dataTables-example667').DataTable().clear().draw();
+              
+              $("#link_ver_compra, #link_imprimir_compra, #link_modificar_compra, #link_ingresar_compra, #link_adjuntar_factura, #link_nuevo_suceso, #link_nuevo_pago").attr("href", "#");
+              $("#link_aprobar_compra, #link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+              
+              selectedCompraInfo = null;
           } else {
-            $("#link_ingresar_compra").attr("href", "#");
-          }
+              table.rows().nodes().each(function(rowNode, index) {
+                  $(rowNode).removeClass("selected");
+              });
+              selectRow(t);
+              get_conceptos(id_compra);
 
-          // Lógica Factura/Pago
-          if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
-            $("#link_adjuntar_factura").attr("href", "adjuntarFactura.php?id=" + id_compra);
-            $("#link_nuevo_pago").attr("href", "nuevoPago.php?id=" + id_compra);
-          } else {
-            $("#link_adjuntar_factura, #link_nuevo_pago").attr("href", "#");
-          }
+              $("#link_ver_compra").attr("href", "verCompra.php?id=" + id_compra);
+              $("#link_imprimir_compra").attr("href", "imprimirCompra.php?id=" + id_compra);
+              $("#link_modificar_compra").attr("href", "modificarCompra.php?id_compra=" + id_compra);
+              $("#link_nuevo_suceso").attr("href", "nuevoSuceso.php?entidad_tipo=compras&entidad_id=" + id_compra);
 
-          // Lógica Aprobar (ID Estado 2 = Elaboracion/Pendiente Aprobacion)
-          if (id_estado_compra == 2) {
-            $("#link_aprobar_compra").attr("data-toggle", "modal").attr("data-target", "#aprobarModal");
-            $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
-          } else {
-            $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
-          }
+              if ([3, 5, 6].includes(parseInt(id_estado_compra))) {
+                  $("#link_ingresar_compra").attr("href", "ingresarCompra.php?id=" + id_compra);
+              } else {
+                  $("#link_ingresar_compra").attr("href", "#");
+              }
 
-          // Lógica Rechazar
-          if (id_estado_compra == 2) {
-            $("#link_rechazar_compra").attr("data-toggle", "modal").attr("data-target", "#rechazarModal");
-            $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
-          } else {
-            $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
-          }
+              if ([3, 5, 6, 7, 8, 9].includes(parseInt(id_estado_compra))) {
+                  $("#link_adjuntar_factura").attr("href", "adjuntarFactura.php?id=" + id_compra);
+                  $("#link_nuevo_pago").attr("href", "nuevoPago.php?id=" + id_compra);
+              } else {
+                  $("#link_adjuntar_factura, #link_nuevo_pago").attr("href", "#");
+              }
 
-          // Guardar info en variable global
-          selectedCompraInfo = {
-            id: id_compra,
-            estado: estado,
-            id_proyecto: id_proyecto,
-            id_estado: id_estado_compra
-          };
-        }
+              if (id_estado_compra == 2) {
+                  $("#link_aprobar_compra").attr("data-toggle", "modal").attr("data-target", "#aprobarModal");
+                  $("#btnAprobarCompra").attr("href", "aprobarCompra.php?id=" + id_compra);
+              } else {
+                  $("#link_aprobar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+              }
+
+              if (id_estado_compra == 2) {
+                  $("#link_rechazar_compra").attr("data-toggle", "modal").attr("data-target", "#rechazarModal");
+                  $("#btnRechazarCompra").attr("href", "rechazarCompra.php?id=" + id_compra);
+              } else {
+                  $("#link_rechazar_compra").removeAttr("data-toggle").removeAttr("data-target").attr("href", "#");
+              }
+
+              selectedCompraInfo = {
+                  id: id_compra,
+                  estado: estado,
+                  id_proyecto: id_proyecto,
+                  id_estado: id_estado_compra
+              };
+          }
       });
     });
 
@@ -951,7 +945,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
               },
               {
                 "width": "70px",
-                "targets": 9
+                "targets": 9,
+                "className": "text-right"
               },
               {
                 "width": "70px",

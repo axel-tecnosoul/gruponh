@@ -48,7 +48,6 @@ foreach ($pdo->query($sql) as $row) {
         $acciones .= "<span class='btn-accion abrirModalAprobarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/aprobar.png' width='24' height='25' border='0' alt='Aprobar' title='Aprobar'></span>&nbsp;&nbsp;";
       }
       if ($cancelado == "No") {
-        // CAMBIO 1: inline style → clase reutilizable img-recolor-rojo
         $acciones .= "<span class='btn-accion abrirModalCancelarItem' data-id_computo='$id_computo' data-id_computo_detalle='$id_computo_detalle'><img src='img/cancelar.png' width='24' height='25' border='0' alt='Desaprobar' title='Desaprobar' class='img-recolor-rojo'></span>&nbsp;&nbsp;";
       }
     }
