@@ -211,12 +211,13 @@ try {
         }
       }
       
-      $sql3 = "SELECT s.nro_sitio,s.nro_subsitio,p.nro from pedidos pe inner join proyectos p on p.id = pe.id_proyecto inner join sitios s on s.id = p.id_sitio where pe.id = ? ";
+      $sql3 = "SELECT s.nro_sitio,s.nro_subsitio,p.nro, em.empresa from pedidos pe inner join proyectos p on p.id = pe.id_proyecto inner join sitios s on s.id = p.id_sitio LEFT JOIN empresas em ON em.id = s.id_empresa where pe.id = ? ";
 
       $q3 = $pdo->prepare($sql3);
       $q3->execute([$idPedido]);
       $data3 = $q3->fetch(PDO::FETCH_ASSOC);
-      $colada = $data3['nro_sitio']."/".$data3['nro_subsitio']."/".$data3['nro']."-".$count;
+      $empresa_corta = !empty($data3['empresa']) ? ' ('.substr($data3['empresa'], 0, 4).')' : '';
+      $colada = $data3['nro_sitio']."/".$data3['nro_subsitio']."/".$data3['nro']."-".$count.$empresa_corta;
             
       $sql = "INSERT INTO ingresos_detalle 
               (id_ingreso, id_material, id_unidad_medida, cantidad, cantidad_egresada, saldo, 

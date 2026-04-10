@@ -10,6 +10,9 @@ $idEmpresa = 0;
 $idProveedor = 0;
 $idFormaPago = 0;
 $idMoneda = 0;
+$ocPreseleccionada = !empty($_GET['oc']);
+$disabledAttr = $ocPreseleccionada ? 'disabled' : '';
+
 if (!empty($_POST)) {
   
 	// insert data
@@ -132,7 +135,7 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Orden de Compra(*)</label>
 							<div class="col-sm-9">
-							<select name="id_orden_compra" id="id_orden_compra" class="js-example-basic-single col-sm-12" required="required" onchange="jsRecargar();">
+							<select name="id_orden_compra" id="id_orden_compra" class="js-example-basic-single col-sm-12" required="required" onchange="jsRecargar();" <?=$disabledAttr?>>
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -141,13 +144,11 @@ if (!empty($_POST)) {
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ((!empty($_GET['oc'])) && ($_GET['oc']==$fila['id'])) {
-									echo " selected ";
-								}
-								echo ">".$fila['nro_oc']."</option>";
+								$sel = ($ocPreseleccionada && $_GET['oc'] == $fila['id']) ? ' selected ' : '';
+								echo "<option value='{$fila['id']}'{$sel}>{$fila['nro_oc']}</option>";
 							}
 							Database::disconnect();
+							if ($ocPreseleccionada) echo '<input type="hidden" name="id_orden_compra" value="'.htmlspecialchars($_GET['oc']).'">';
 							?>
 							</select>
 							</div>
@@ -155,7 +156,7 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Empresa(*)</label>
 							<div class="col-sm-9">
-							<select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" required="required" <?=$disabledAttr?>>
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -164,13 +165,11 @@ if (!empty($_POST)) {
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (($idEmpresa != 0) && ($fila['id']==$idEmpresa)){
-									echo " selected ";
-								}
-								echo ">".$fila['empresa']."</option>";
+								$sel = ($idEmpresa != 0 && $fila['id'] == $idEmpresa) ? ' selected ' : '';
+								echo "<option value='{$fila['id']}'{$sel}>{$fila['empresa']}</option>";
 							}
 							Database::disconnect();
+							if ($ocPreseleccionada) echo '<input type="hidden" name="id_empresa" value="'.(int)$idEmpresa.'">';
 							?>
 							</select>
 							</div>
@@ -178,7 +177,7 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Proveedor(*)</label>
 							<div class="col-sm-9">
-							<select name="id_cuenta_origen" id="id_cuenta_origen" class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_cuenta_origen" id="id_cuenta_origen" class="js-example-basic-single col-sm-12" required="required" <?=$disabledAttr?>>
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -187,13 +186,11 @@ if (!empty($_POST)) {
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (($idProveedor != 0) && ($fila['id']==$idProveedor)){
-									echo " selected ";
-								}
-								echo ">".$fila['razon_social']." (".$fila['cuit'].") - Iva: ".$fila['condicion_iva']."</option>";
+								$sel = ($idProveedor != 0 && $fila['id'] == $idProveedor) ? ' selected ' : '';
+								echo "<option value='{$fila['id']}'{$sel}>{$fila['razon_social']} ({$fila['cuit']}) - Iva: {$fila['condicion_iva']}</option>";
 							}
 							Database::disconnect();
+							if ($ocPreseleccionada) echo '<input type="hidden" name="id_cuenta_origen" value="'.(int)$idProveedor.'">';
 							?>
 							</select>
 							</div>
@@ -201,7 +198,7 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Forma de Pago</label>
 							<div class="col-sm-9">
-							<select name="id_condicion_pago" id="id_condicion_pago" class="js-example-basic-single col-sm-12">
+							<select name="id_condicion_pago" id="id_condicion_pago" class="js-example-basic-single col-sm-12" <?=$disabledAttr?>>
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -210,13 +207,11 @@ if (!empty($_POST)) {
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (($idFormaPago != 0) && ($fila['id']==$idFormaPago)){
-									echo " selected ";
-								}
-								echo ">".$fila['forma_pago']."</option>";
+								$sel = ($idFormaPago != 0 && $fila['id'] == $idFormaPago) ? ' selected ' : '';
+								echo "<option value='{$fila['id']}'{$sel}>{$fila['forma_pago']}</option>";
 							}
 							Database::disconnect();
+							if ($ocPreseleccionada) echo '<input type="hidden" name="id_condicion_pago" value="'.(int)$idFormaPago.'">';
 							?>
 							</select>
 							</div>
@@ -224,7 +219,7 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Moneda(*)</label>
 							<div class="col-sm-9">
-							<select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" required="required" <?=$disabledAttr?>>
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -233,13 +228,11 @@ if (!empty($_POST)) {
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if (($idMoneda != 0) && ($fila['id']==$idMoneda)){
-									echo " selected ";
-								}
-								echo ">".$fila['moneda']."</option>";
+								$sel = ($idMoneda != 0 && $fila['id'] == $idMoneda) ? ' selected ' : '';
+								echo "<option value='{$fila['id']}'{$sel}>{$fila['moneda']}</option>";
 							}
 							Database::disconnect();
+							if ($ocPreseleccionada) echo '<input type="hidden" name="id_moneda" value="'.(int)$idMoneda.'">';
 							?>
 							</select>
 							</div>

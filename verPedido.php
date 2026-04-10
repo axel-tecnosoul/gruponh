@@ -29,14 +29,16 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
-  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante_computo, cu2.nombre AS cuenta_solicitante_pedido, cu3.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido 
+  $sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, COALESCE(ec.empresa, ed.empresa) AS empresa, cu.nombre AS cuenta_solicitante_computo, cu2.nombre AS cuenta_solicitante_pedido, cu3.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido 
   FROM pedidos pe 
   LEFT JOIN computos c ON c.id = pe.id_computo 
   LEFT JOIN tareas t ON t.id = c.id_tarea 
   LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
   LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
+  LEFT JOIN empresas ec ON ec.id = sc.id_empresa 
   LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
   LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
+  LEFT JOIN empresas ed ON ed.id = sd.id_empresa 
   LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante 
   LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_solicitante 
   LEFT JOIN cuentas cu3 ON cu3.id = pe.id_cuenta_recibe 
@@ -61,7 +63,7 @@ if (!empty($_POST)) {
     ], function ($valor) {
       return $valor !== null && $valor !== '';
     });
-    $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+    $codigoObra = !empty($codigoObraPartes) ? implode('_', $codigoObraPartes) : '';
 
     $tieneComputo = !empty($data['id_computo']);
     $tipoPedido = "Directo";
@@ -78,6 +80,9 @@ if (!empty($_POST)) {
       } elseif (!empty($data['proyecto_nombre'])) {
         $proyectoDisplay = $data['proyecto_nombre'];
       }
+    }
+    if (!empty($data['empresa'])) {
+      $proyectoDisplay .= ' (' . substr($data['empresa'], 0, 4) . ')';
     }
   } else {
     $data = [];
@@ -182,7 +187,7 @@ if (!empty($_POST)) {
                                 
                                 $precio = "";
                                 if (!empty($data2['precio'])) {
-                                  $precio = "$".number_format($data2['precio'],2);
+                                  $precio = "$".number_format($data2['precio'],2,',','.');
                                 }
                                 ?>
 
@@ -391,11 +396,11 @@ if (!empty($_POST)) {
             { width: "180px", targets: 0, orderable: true },
             { width: "85px", targets: 1, orderable: true },
             { width: "85px", targets: 2, orderable: true },
-            { width: "90px", targets: 3, orderable: true },
-            { width: "90px", targets: 4, orderable: true },
-            { width: "60px", targets: 5, orderable: true, className: "text-center" },
-            { width: "65px", targets: 6, orderable: true, className: "text-center" },
-            { width: "80px", targets: 7, orderable: true, className: "text-center" },
+            { width: "90px", targets: 3, orderable: true, className: "text-right" },
+            { width: "90px", targets: 4, orderable: true, className: "text-right" },
+            { width: "60px", targets: 5, orderable: true, className: "text-right" },
+            { width: "65px", targets: 6, orderable: true, className: "text-right" },
+            { width: "80px", targets: 7, orderable: true, className: "text-right" },
           ],
           language: {
             "decimal": "",

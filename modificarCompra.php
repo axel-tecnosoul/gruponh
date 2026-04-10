@@ -125,8 +125,8 @@ if (!empty($_POST)) {
         $subtotalBruto = $cantidad * $precio;
       }
 
-      $subtotalLinea  = $subtotalBruto * (1 - ($descItem / 100));
-      $totalNeto     += $subtotalLinea;
+      $totalLinea     = $subtotalBruto * (1 - ($descItem / 100));
+      $totalNeto     += $totalLinea;
 
       $items_procesar[] = [
         'id_material'   => $id_material,
@@ -134,7 +134,8 @@ if (!empty($_POST)) {
         'id_unidad'     => $id_unidad,
         'precio'        => $precioGuardar,
         'precio_kg'     => $precioKg,
-        'subtotal'      => $subtotalLinea,
+        'subtotal'      => $subtotalBruto,
+        'total'         => $totalLinea,
         'descuento'     => $descItem,
         'fecha_entrega' => $fechaEnt
       ];
@@ -224,9 +225,9 @@ if (!empty($_POST)) {
         "ID OC: #$targetId - $estado_texto",
         "Compras - Nueva OC #$targetId ($estado_texto)",
         "Nueva compra generada.\nOC: #$targetId\nEstado: $estado_texto\n"
-          . "Neto: $" . number_format($totalNeto, 2)
-          . "\nIVA: $" . number_format($monto_iva, 2)
-          . "\nTotal: $" . number_format($totalFinal, 2)
+          . "Neto: $" . number_format($totalNeto, 2, ',', '.')
+          . "\nIVA: $" . number_format($monto_iva, 2, ',', '.')
+          . "\nTotal: $" . number_format($totalFinal, 2, ',', '.')
       );
     }
 
@@ -235,8 +236,8 @@ if (!empty($_POST)) {
     $stmtDetalle = $pdo->prepare(
       "INSERT INTO compras_detalle
          (id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg,
-          subtotal, descuento, fecha_entrega, entregado)
-       VALUES (?,?,?,?,?,?,?,?,?,0)"
+          subtotal, total, descuento, fecha_entrega, entregado)
+       VALUES (?,?,?,?,?,?,?,?,?,?,0)"
     );
     foreach ($items_procesar as $item) {
       $stmtDetalle->execute([
@@ -247,6 +248,7 @@ if (!empty($_POST)) {
         $item['precio'],
         $item['precio_kg'],
         $item['subtotal'],
+        $item['total'],
         $item['descuento'],
         $item['fecha_entrega']
       ]);
@@ -305,7 +307,9 @@ if (!empty($_POST)) {
 
     $_SESSION['flash_message'] = [
       'type'    => 'success',
-      'message' => $esCompra ? 'Orden de Compra modificada exitosamente.' : 'Orden de Compra creada exitosamente.'
+      'message' => $esCompra
+        ? 'Orden de Compra modificada exitosamente.'
+        : 'Orden de Compra creada exitosamente (Nro/Revisión: ' . $nroOC . '/0).'
     ];
     header("Location: listarCompras.php");
     exit();
@@ -369,8 +373,8 @@ if ($data) {
       $proyectoDisplay = $data['proyecto_nombre'];
     }
   }
-  if (!$esCompra && !empty($data['empresa'])) {
-    $proyectoDisplay .= ' (' . $data['empresa'] . ')';
+  if (!empty($data['empresa'])) {
+    $proyectoDisplay .= ' (' . substr($data['empresa'], 0, 4) . ')';
   }
 }
 
@@ -423,6 +427,18 @@ $urlVolver = $esCompra ? "listarCompras.php" : "listarPedidos.php";
 $tienePermisoCompra = function_exists('tienePermiso') ? tienePermiso(298) : true;
 $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
 
+// Obtener montos mínimos de aprobación de OC para el modal de confirmación
+$pdo_params = Database::connect();
+$pdo_params->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$q_params = $pdo_params->prepare("SELECT id, valor FROM parametros WHERE id IN (10, 11)");
+$q_params->execute();
+$montos_minimos = ['pesos' => 0, 'usd' => 0];
+while ($fp = $q_params->fetch(PDO::FETCH_ASSOC)) {
+  if ($fp['id'] == 10) $montos_minimos['pesos'] = (float)$fp['valor'];
+  if ($fp['id'] == 11) $montos_minimos['usd'] = (float)$fp['valor'];
+}
+Database::disconnect();
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -473,6 +489,10 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
 
     .btn-eliminar-item { cursor: pointer; display: inline-block; }
     .btn-eliminar-item img { pointer-events: none; }
+    #dataTables-example667 .cantidad-input,
+    #dataTables-example667 .precio-input,
+    #dataTables-example667 .preciokg-input,
+    #dataTables-example667 .descuento-input { text-align: right; }
   </style>
 </head>
 <body>
@@ -698,11 +718,11 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                               <tr>
                                 <th>Concepto</th>
                                 <th>Fec. Necesidad</th>
-                                <th>Fec. Últ. Compra</th>
-                                <th>Último Precio</th>
+                                <!-- <th>Fec. Últ. Compra</th> -->
+                                <!-- <th>Último Precio</th> -->
                                 <th>Requerido</th>
-                                <th>Stock</th>
-                                <th>Reserv.</th>
+                                <!-- <th>Stock</th> -->
+                                <!-- <th>Reserv.</th> -->
                                 <th>Comprado</th>
                                 <?php if ($puedeEditar) { ?>
                                   <th>Cant. Solic.</th>
@@ -735,7 +755,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                                   FROM pedidos_detalle pd
                                   JOIN materiales m ON m.id = pd.id_material
                                   JOIN unidades_medida u ON u.id = pd.id_unidad_medida
-                                  LEFT JOIN compras_detalle cd
+                                  INNER JOIN compras_detalle cd
                                     ON cd.id_compra = ? AND cd.id_material = pd.id_material
                                   WHERE pd.id_pedido = ?";
                                 $qItems = $pdo->prepare($sqlItems);
@@ -766,7 +786,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                                 $pendiente    = (float)$row['pd_cantidad'] - (float)$row['pd_comprado'];
 
                                 if ($esCompra && $row['cd_id']) {
-                                  $saldo_max       = $pendiente + (float)$row['cd_cantidad'];
+                                  $saldo_max       = max($pendiente + (float)$row['cd_cantidad'], (float)$row['cd_cantidad']);
                                   $cant_actual     = (float)$row['cd_cantidad'];
                                   $precio_actual   = (float)$row['cd_precio'];
                                   $preciokg_actual = (float)$row['cd_precio_kg'];
@@ -792,7 +812,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                                 $q2->execute([$id_material]);
                                 $data2 = $q2->fetch(PDO::FETCH_ASSOC);
                                 $fecha_ult_compra = !empty($data2['fecha_emision']) ? $data2['fecha_emision'] : '';
-                                $precio_ult       = !empty($data2['precio']) ? "$" . number_format($data2['precio'], 2) : '';
+                                $precio_ult       = !empty($data2['precio']) ? "$" . number_format($data2['precio'], 2, ',', '.') : '';
 
                                 $qStock = $pdo->prepare("SELECT SUM(saldo) FROM ingresos_detalle WHERE id_material = ?");
                                 $qStock->execute([$id_material]);
@@ -814,16 +834,24 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                                   <?php } ?>
                                 </td>
                                 <td class="text-center"><?= $row['fecha_necesidad'] ?></td>
-                                <td class="text-center"><?= $fecha_ult_compra ?></td>
-                                <td class="text-right"><?= $precio_ult ?></td>
-                                <td class="text-center"><?= (float)$row['pd_cantidad'] . ' ' . $row['unidad_medida'] ?></td>
-                                <td class="text-center"><?= $disponible ?></td>
-                                <td class="text-center"><?= $row['reservado'] ?></td>
-                                <td class="text-center"><?= (float)$row['pd_comprado'] ?></td>
+                                <!-- <td class="text-center"><?= $fecha_ult_compra ?></td> -->
+                                <!-- <td class="text-right"><?= $precio_ult ?></td> -->
+                                <td class="text-right"><?= (float)$row['pd_cantidad'] . ' ' . $row['unidad_medida'] ?></td>
+                                <!-- <td class="text-right"><?= $disponible ?></td> -->
+                                <!-- <td class="text-right"><?= $row['reservado'] ?></td> -->
+                                <td class="text-right"><?= (float)$row['pd_comprado'] ?></td>
 
                                 <?php if ($puedeEditar) { ?>
-                                  <td class="text-center">
-                                    <?= ($cancelado == 1) ? '0' : (float)$pendiente ?>
+                                  <td class="text-right">
+                                    <?php
+                                      if ($cancelado == 1) {
+                                        echo '0';
+                                      } elseif ($esCompra && $row['cd_id']) {
+                                        echo (float)$row['cd_cantidad'];
+                                      } else {
+                                        echo max(0, (float)$pendiente);
+                                      }
+                                    ?>
                                   </td>
 
                                   <td class="cantidad-col"
@@ -935,12 +963,37 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
                   <div class="card-footer">
                     <div class="col-sm-12 text-center">
                       <?php if ($puedeEditar) { ?>
-                        <button class="btn btn-success" type="submit"><?= $btnTxt ?></button>
+                        <?php if (!$esCompra) { ?>
+                          <button class="btn btn-success" type="button" id="btn-crear-oc"><?= $btnTxt ?></button>
+                        <?php } else { ?>
+                          <button class="btn btn-success" type="submit"><?= $btnTxt ?></button>
+                        <?php } ?>
                       <?php } ?>
                       <a href="<?= $urlVolver ?>" class="btn btn-light">Volver</a>
                     </div>
                   </div>
                 </form>
+
+                <?php if (!$esCompra && $puedeEditar) { ?>
+                <div class="modal fade" id="modalConfirmarOC" tabindex="-1" role="dialog" aria-labelledby="modalConfirmarOCLabel" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="modalConfirmarOCLabel">Confirmar Creación de Orden de Compra</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                          <span aria-hidden="true">&times;</span>
+                        </button>
+                      </div>
+                      <div class="modal-body" id="modalConfirmarOCBody"></div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btn-confirmar-crear-oc">Confirmar</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <?php } ?>
+
               </div>
             </div>
           </div>
@@ -1071,33 +1124,33 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
       colDefs = [
         { width: "180px", targets: 0,  orderable: true },
         { width: "80px",  targets: 1,  orderable: true,  className: "text-center" },
-        { width: "80px",  targets: 2,  orderable: true,  className: "text-center" },
-        { width: "85px",  targets: 3,  orderable: true,  className: "text-right"  },
-        { width: "85px",  targets: 4,  orderable: true,  className: "text-center" },
-        { width: "55px",  targets: 5,  orderable: true,  className: "text-center" },
-        { width: "55px",  targets: 6,  orderable: true,  className: "text-center" },
-        { width: "70px",  targets: 7,  orderable: true,  className: "text-center" },
-        { width: "70px",  targets: 8,  orderable: true,  className: "text-center" },
-        { width: "85px",  targets: 9,  orderable: false },
-        { width: "80px",  targets: 10, orderable: false },
-        { width: "80px",  targets: 11, orderable: false },
-        { width: "65px",  targets: 12, orderable: false, className: "text-center" },
-        { width: "85px",  targets: 13, orderable: false, className: "text-right"  },
-        { width: "95px",  targets: 14, orderable: false }
+        // { width: "80px",  targets: 2,  orderable: true,  className: "text-center" }, // Fec. Últ. Compra
+        // { width: "85px",  targets: 3,  orderable: true,  className: "text-right"  }, // Último Precio
+        { width: "85px",  targets: 2,  orderable: true,  className: "text-right"  },
+        // { width: "55px",  targets: 5,  orderable: true,  className: "text-right"  }, // Stock
+        // { width: "55px",  targets: 6,  orderable: true,  className: "text-right"  }, // Reserv.
+        { width: "70px",  targets: 3,  orderable: true,  className: "text-right"  },
+        { width: "70px",  targets: 4,  orderable: true,  className: "text-right"  },
+        { width: "85px",  targets: 5,  orderable: false },
+        { width: "80px",  targets: 6, orderable: false },
+        { width: "80px",  targets: 7, orderable: false },
+        { width: "65px",  targets: 8, orderable: false, className: "text-center" },
+        { width: "85px",  targets: 9, orderable: false, className: "text-right"  },
+        { width: "95px",  targets: 10, orderable: false }
       ];
       if (esCompra) {
-        colDefs.push({ width: "40px", targets: 15, orderable: false, className: "text-center" });
+        colDefs.push({ width: "40px", targets: 11, orderable: false, className: "text-center" });
       }
     } else {
       colDefs = [
         { width: "250px", targets: 0, orderable: true },
         { width: "90px",  targets: 1, orderable: true, className: "text-center" },
-        { width: "90px",  targets: 2, orderable: true, className: "text-center" },
-        { width: "90px",  targets: 3, orderable: true, className: "text-right"  },
-        { width: "90px",  targets: 4, orderable: true, className: "text-center" },
-        { width: "70px",  targets: 5, orderable: true, className: "text-center" },
-        { width: "70px",  targets: 6, orderable: true, className: "text-center" },
-        { width: "80px",  targets: 7, orderable: true, className: "text-center" }
+        // { width: "90px",  targets: 2, orderable: true, className: "text-center" }, // Fec. Últ. Compra
+        // { width: "90px",  targets: 3, orderable: true, className: "text-right"  }, // Último Precio
+        { width: "90px",  targets: 2, orderable: true, className: "text-right"  },
+        // { width: "70px",  targets: 5, orderable: true, className: "text-right"  }, // Stock
+        // { width: "70px",  targets: 6, orderable: true, className: "text-right"  }, // Reserv.
+        { width: "80px",  targets: 3, orderable: true, className: "text-right"  }
       ];
     }
 
@@ -1230,7 +1283,7 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
         badge.text('Ingreso manual')
             .removeClass('text-danger text-success')
             .addClass('text-secondary');
-        info.html('<span class="text-muted">Ingrese la cotización manualmente.</span>');
+        info.html('<span class="text-muted"></span>');
       }
     }).trigger('change');
 
@@ -1381,6 +1434,60 @@ $puedeEditar = $esCompra || ($data['aprobado'] == 1 && $tienePermisoCompra);
 
     return true;
   }
+
+  <?php if (!$esCompra && $puedeEditar) { ?>
+  var montosMinimos = {
+    pesos: <?= $montos_minimos['pesos'] ?>,
+    usd: <?= $montos_minimos['usd'] ?>
+  };
+
+  $('#btn-crear-oc').on('click', function() {
+    if (!validarFormularioCompra()) return;
+
+    var totalNeto = 0;
+    $('#dataTables-example667 tbody tr').each(function() {
+      var sub = $(this).data('subtotal') || 0;
+      totalNeto += sub;
+    });
+    var descGral = parseFloat($('#descuento_general_ctrl').val()) || 0;
+    var baseIva = totalNeto * (1 - (descGral / 100));
+    var opcionIva = $('#id_tipo_iva').find(':selected');
+    var tasaIva = parseFloat(opcionIva.data('tasa')) || 0;
+    var montoIva = baseIva * (tasaIva / 100);
+    var totalFinal = baseIva + montoIva;
+
+    var idMoneda = $('#id_moneda').val();
+    var monedaTexto = $('#id_moneda option:selected').text();
+    var montoLimite = (idMoneda == 1) ? montosMinimos.usd : montosMinimos.pesos;
+    var simbolo = (idMoneda == 1) ? 'U$S' : '$';
+
+    var totalFormateado = simbolo + ' ' + totalFinal.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    var limiteFormateado = simbolo + ' ' + montoLimite.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+
+    var mensaje = '';
+    if (totalFinal < montoLimite) {
+      mensaje = '<div class="alert alert-success mb-0">' +
+        '<strong>Total de la OC:</strong> ' + totalFormateado + '<br>' +
+        '<strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong> ' + limiteFormateado + '<br><br>' +
+        'El monto es <strong>menor</strong> al mínimo de aprobación. La OC se <strong>aprobará automáticamente</strong>.' +
+        '</div>';
+    } else {
+      mensaje = '<div class="alert alert-info mb-0">' +
+        '<strong>Total de la OC:</strong> ' + totalFormateado + '<br>' +
+        '<strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong> ' + limiteFormateado + '<br><br>' +
+        'El monto es <strong>igual o superior</strong> al mínimo de aprobación. La OC deberá ser <strong>enviada a aprobación</strong>.' +
+        '</div>';
+    }
+
+    $('#modalConfirmarOCBody').html(mensaje);
+    $('#modalConfirmarOC').modal('show');
+  });
+
+  $('#btn-confirmar-crear-oc').on('click', function() {
+    $('#modalConfirmarOC').modal('hide');
+    $('#form-unificado').submit();
+  });
+  <?php } ?>
   </script>
 
   <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>

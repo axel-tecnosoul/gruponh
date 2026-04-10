@@ -132,9 +132,9 @@ while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
     $aConceptos[] = [
         0 => $row["concepto"],
         1 => $requerido,
-        2 => $reservado,
-        3 => $compradoDisplay,
-        4 => $cantidadEntregada,
+        2 => $compradoDisplay,
+        3 => $cantidadEntregada,
+        4 => $reservado,
         5 => "<span style='display: none;'>". $row["fecha_necesidad_iso"] . "</span>" . $row["fecha_necesidad_formatted"],
         6 => $fechaEmision,
         7 => $precio,

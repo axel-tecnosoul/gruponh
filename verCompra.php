@@ -27,7 +27,7 @@ if (!empty($_POST)) {
           c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura,
           c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre,
           fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre,
-          COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio), pe.id_computo
+          COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio), COALESCE(emc.empresa, emd.empresa) AS empresa, pe.id_computo
           FROM compras c 
           INNER JOIN pedidos pe ON pe.id = c.id_pedido 
           LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
@@ -38,8 +38,10 @@ if (!empty($_POST)) {
           LEFT JOIN tareas t ON t.id = co.id_tarea 
           LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
           LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
+          LEFT JOIN empresas emc ON emc.id = sc.id_empresa 
           LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
           LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
+          LEFT JOIN empresas emd ON emd.id = sd.id_empresa 
           WHERE c.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
@@ -72,7 +74,7 @@ if (!empty($_POST)) {
     ], function ($valor) {
       return $valor !== null && $valor !== '';
     });
-    $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+    $codigoObra = !empty($codigoObraPartes) ? implode('_', $codigoObraPartes) : '';
     
     if (!empty($data['proyecto_id'])) {
       if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
@@ -82,6 +84,9 @@ if (!empty($_POST)) {
       } elseif (!empty($data['proyecto_nombre'])) {
         $proyectoDisplay = $data['proyecto_nombre'];
       }
+    }
+    if (!empty($data['empresa'])) {
+      $proyectoDisplay .= ' (' . substr($data['empresa'], 0, 4) . ')';
     }
   }
   
@@ -226,7 +231,7 @@ if (!empty($_POST)) {
                             <label class="col-sm-2 font-weight-bold">Lugar de Entrega</label>
                             <div class="col-sm-4"><?=$data['lugar_entrega'];?></div>
                             <label class="col-sm-2 font-weight-bold">Moneda</label>
-                            <div class="col-sm-4"><?=$moneda;?><?= $data['tipo_cambio_dia'] ? ' (TC: '.$data['tipo_cambio_dia'].')' : '' ?></div>
+                            <div class="col-sm-4"><?=$moneda;?><?= ($data['tipo_cambio_dia'] && $moneda !== '$') ? ' (TC: '.$data['tipo_cambio_dia'].')' : '' ?></div>
                           </div>
                           <div class="form-group row mt-1">
                             <label class="col-sm-2 font-weight-bold">Tipo de IVA</label>
@@ -262,7 +267,7 @@ if (!empty($_POST)) {
                               $sumaSubtotal = 0;
                               $sumaDescuento = 0;
                               $pdo = Database::connect();
-                              $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,d.subtotal,d.descuento,d.fecha_entrega,m.peso_metro,m.largo FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
+                              $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,d.subtotal,d.total,d.descuento,d.fecha_entrega,m.peso_metro,m.largo FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
                               foreach ($pdo->query($sql) as $row) {
                                 $cantidad = (float) $row["cantidad"];
                                 $precio_unitario = (float) $row["precio"];
@@ -270,6 +275,7 @@ if (!empty($_POST)) {
                                 $porcentajeDescuento = (float) $row["descuento"];
                                 $fechaEntrega = $row["fecha_entrega"];
                                 $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
+                                $totalGuardado = isset($row["total"]) ? (float) $row["total"] : 0;
                                 
                                 $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
                                 $peso_total_linea = $peso_por_unidad * $cantidad;
@@ -284,12 +290,17 @@ if (!empty($_POST)) {
                                   }
                                 }
 
-                                $descuento = 0;
-                                if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
-                                  $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                if ($totalGuardado > 0) {
+                                  $subtotalConDescuento = $totalGuardado;
+                                } else {
+                                  $descuento = 0;
+                                  if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+                                    $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                  }
+                                  $subtotalConDescuento = $subtotalSinDescuento - $descuento;
                                 }
                                 
-                                $subtotalConDescuento = $subtotalSinDescuento - $descuento;
+                                $descuento = $subtotalSinDescuento - $subtotalConDescuento;
 
                                 $sumaSubtotal += $subtotalSinDescuento;
                                 $sumaDescuento += $descuento;
@@ -301,7 +312,8 @@ if (!empty($_POST)) {
 
                                 $precio_unitario_mostrar = number_format($precio_unitario, 2,",",".");
                                 $precio_kg_mostrar = number_format($precio_kg, 2,",",".");
-                                $peso_total_mostrar = number_format($peso_total_linea, 2,",",".");?>
+                                $peso_total_mostrar = number_format($peso_total_linea, 2,",",".");
+                                $subtotalSinDescuentoMostrar = $moneda.number_format($subtotalSinDescuento,2,',','.');?>
                                 <tr>
                                   <td class="text-left"><?=$row["concepto"]?></td>
                                   <td class="text-center"><?=$cantidad . ' ' . $row["unidad_medida"]?></td>
@@ -309,7 +321,7 @@ if (!empty($_POST)) {
                                   <td class="text-right"><?=$peso_total_mostrar?></td>
                                   <td class="text-right"><?=$precio_unitario_mostrar?></td>
                                   <td class="text-right"><?=$precio_kg_mostrar?></td>
-                                  <td class="text-right"><?=$subtotalConDescuentoMostrar?></td>
+                                  <td class="text-right"><?=$subtotalSinDescuentoMostrar?></td>
                                   <td class="text-right"><?=$porcentajeDescuentoMostrar?></td>
                                   <td class="text-right"><?=$subtotalConDescuentoMostrar?></td>
                                   <td class="text-center"><?=$row["entregado"]?></td>
@@ -494,7 +506,7 @@ if (!empty($_POST)) {
                                 </div>
                                 <div class="media-body">
                                   <h6>
-                                    Monto: $<?=number_format($row["monto"],2)?> <span class="pull-right f-14"><?=$row[1]?></span>
+                                    Monto: $<?=number_format($row["monto"],2,',','.')?> <span class="pull-right f-14"><?=$row[1]?></span>
                                   </h6>
                                   <p>Usuario: <?=$row["usuario"]?></p>
                                   <p>Observaciones: <?=$row["comentarios"]?></p>

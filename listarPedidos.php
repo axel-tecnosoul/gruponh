@@ -254,7 +254,7 @@ if (in_array("todos", $id_estado)) {
                           WHERE 1 ".$filtroNroPedido.$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
 
                           foreach ($pdo->query($sql1) as $row) {
-                            $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 6).')' : '';
+                            $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 4).')' : '';
                             $obra = htmlspecialchars($row['nro_sitio']).'_'.htmlspecialchars($row['nro_subsitio']).'_'.htmlspecialchars($row['nro']).$empresa_corta;
                             $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
                             $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
@@ -306,7 +306,7 @@ if (in_array("todos", $id_estado)) {
                           WHERE pe.id_computo IS NULL ".$filtroNroPedido.$filtroNro.$filtroFecha.$filtroFechah.$filtroEstado;
                             
                           foreach ($pdo->query($sql2) as $row) {
-                            $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 6).')' : '';
+                            $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 4).')' : '';
                             $obra=htmlspecialchars($row['nro_sitio']).'_'.htmlspecialchars($row['nro_subsitio']).'_'.htmlspecialchars($row['nro']).$empresa_corta;
                             $fecha_entrega_valida = ($row['fecha_entrega'] && $row['fecha_entrega'] != '0000-00-00');
                             $fecha_pactada_valida = ($row['fecha_pactada_prov'] && $row['fecha_pactada_prov'] != '0000-00-00');
@@ -373,9 +373,9 @@ if (in_array("todos", $id_estado)) {
                           <tr>
                             <th class="truncate-concepto">Concepto</th>
                             <th style="width: 70px;">Requerido</th>
-                            <th style="width: 70px;">Reservado</th>
                             <th style="width: 70px;">Comprado</th>
                             <th style="width: 70px;">Entregado</th>
+                            <th style="width: 70px;">Reservado</th>
                             <th style="width: 85px;">F. Necesidad</th>
                             <th style="width: 100px;">F. Última Compra</th>
                             <th style="width: 90px;">Costo Último Precio</th>
@@ -388,9 +388,9 @@ if (in_array("todos", $id_estado)) {
                           <tr>
                             <th class="truncate-concepto">Concepto</th>
                             <th style="width: 70px;">Requerido</th>
-                            <th style="width: 70px;">Reservado</th>
                             <th style="width: 70px;">Comprado</th>
                             <th style="width: 70px;">Entregado</th>
+                            <th style="width: 70px;">Reservado</th>
                             <th style="width: 85px;">F. Necesidad</th>
                             <th style="width: 100px;">F. Última Compra</th>
                             <th style="width: 90px;">Costo Último Precio</th>
@@ -729,13 +729,13 @@ if (in_array("todos", $id_estado)) {
             },
             columnDefs: [
               { targets: 0, className: 'truncate-concepto', width: '30%' },
-              { targets: 1, width: '12%' },
-              { targets: 2, width: '10%' },
-              { targets: 3, width: '10%' },
-              { targets: 4, width: '10%' },
+              { targets: 1, width: '12%', className: 'text-right' },
+              { targets: 2, width: '10%', className: 'text-right' },
+              { targets: 3, width: '10%', className: 'text-right' },
+              { targets: 4, width: '10%', className: 'text-right' },
               { targets: 5, width: '12%' },
               { targets: 6, width: '10%' },
-              { targets: 7, width: '8%' },
+              { targets: 7, width: '8%', className: 'text-right' },
               { targets: 8, width: '12%' },
               { targets: 9, width: '8%', className: 'text-center' } 
             ],

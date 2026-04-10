@@ -46,7 +46,7 @@ try {
     if ($quedanItems == 0) {
         $pdo->prepare("UPDATE compras SET id_estado_compra = 4 WHERE id = ?")->execute([$id_compra]);
     } else {
-        $sqlTotales = "SELECT SUM(subtotal) as total_neto FROM compras_detalle WHERE id_compra = ?";
+        $sqlTotales = "SELECT SUM(total) as total_neto FROM compras_detalle WHERE id_compra = ?";
         $qTotales = $pdo->prepare($sqlTotales);
         $qTotales->execute([$id_compra]);
         $totalNeto = (float)($qTotales->fetchColumn() ?: 0);

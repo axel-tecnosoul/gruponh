@@ -151,7 +151,6 @@ require 'database.php'; ?>
                               <th>Fecha Pedido</th>
                               <th>Fecha Requerido</th>
                               <th>Fecha Pactada</th>
-                              <th>Fecha Entrega</th>
                             </tr>
                           </thead>
                           <tbody><?php
@@ -166,6 +165,7 @@ require 'database.php'; ?>
                               epd.estado AS estado_pedido,
                               prov.nombre AS proveedor,
                               CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                              COALESCE(em.empresa, '') AS empresa,
                               m.concepto,
                               m.descripcion,
                               cd.cantidad,
@@ -183,9 +183,9 @@ require 'database.php'; ?>
                               LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = m.id
                               INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                               INNER JOIN sitios si ON si.id = pr.id_sitio
+                              LEFT JOIN empresas em ON em.id = si.id_empresa
                               LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor
-                              LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra
-                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado  -- NUEVO
+                              LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
                               LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                             WHERE c.id_estado_compra IN (3, 6)
                               AND (cd.cantidad - COALESCE(cd.entregado, 0)) > 0
@@ -198,7 +198,7 @@ require 'database.php'; ?>
                                   <td><a href="verCompra.php?id=<?= $row['nro_op'] ?>"><?=$row['nro_oc']?>/<?=$row['nro_revision']?></a></td>
                                   <td><?= $row['estado_pedido'] ?></td>
                                   <td><?= $row['proveedor'] ?></td>
-                                  <td><?= $row['obra'] ?></td>
+                                  <td><?= $row['obra'] . (!empty($row['empresa']) ? ' (' . substr($row['empresa'], 0, 4) . ')' : '') ?></td>
                                   <td><?= $row['concepto'] ?></td>
                                   <td><?= $row['descripcion'] ?></td>
                                   <td class="number"><?= number_format($row['cantidad'], 2, ",", ".") ?></td>
@@ -207,7 +207,6 @@ require 'database.php'; ?>
                                   <td class="number"><?= number_format($row['entregado'], 2, ",", ".") ?></td>
                                   <td><?= $row['fecha_pedido'] ?></td>
                                   <td><?= $row['fecha_requerido'] ?></td>
-                                  <td><?= $row['fecha_pactada'] ?></td>
                                   <td><?= $row['fecha_entrega'] ?></td>
                                 </tr><?php
                               }
@@ -239,6 +238,7 @@ require 'database.php'; ?>
                             $sql = "SELECT
                               p.id AS nro_pedido,
                               CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                              COALESCE(em.empresa, '') AS empresa,
                               m.concepto,
                               m.descripcion,
                               pd.cantidad,
@@ -251,6 +251,7 @@ require 'database.php'; ?>
                               INNER JOIN materiales m ON m.id = pd.id_material
                               INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                               INNER JOIN sitios si ON si.id = pr.id_sitio
+                              LEFT JOIN empresas em ON em.id = si.id_empresa
                               LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                               LEFT JOIN computos co ON co.id = p.id_computo
                               LEFT JOIN cuentas cu ON cu.id = co.id_cuenta_solicitante
@@ -262,7 +263,7 @@ require 'database.php'; ?>
                               foreach ($pdo->query($sql) as $row) { ?>
                                 <tr>
                                   <td><a href="#" onclick="postPedido(<?= $row['nro_pedido'] ?>);return false;"><?= $row['nro_pedido'] ?></a></td>
-                                  <td><?= $row['obra'] ?></td>
+                                  <td><?= $row['obra'] . (!empty($row['empresa']) ? ' (' . substr($row['empresa'], 0, 4) . ')' : '') ?></td>
                                   <td><?= $row['concepto'] ?></td>
                                   <td><?= $row['descripcion'] ?></td>
                                   <td class="number"><?= number_format($row['cantidad'], 2, ",", ".") ?></td>
@@ -305,6 +306,7 @@ require 'database.php'; ?>
                                 p.id AS nro_pedido,
                                 epd.estado AS estado_pedido,
                                 CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
+                                COALESCE(em.empresa, '') AS empresa,
                                 m.concepto,
                                 m.descripcion,
                                 /*(pd.cantidad - COALESCE(pd.comprado, 0)) AS cantidad_pendiente,*/
@@ -320,6 +322,7 @@ require 'database.php'; ?>
                                 INNER JOIN materiales m ON m.id = pd.id_material
                                 INNER JOIN proyectos pr ON pr.id = p.id_proyecto
                                 INNER JOIN sitios si ON si.id = pr.id_sitio
+                                LEFT JOIN empresas em ON em.id = si.id_empresa
                                 LEFT JOIN estados_pedidos_detalle epd ON epd.id = pd.id_estado
                                 LEFT JOIN unidades_medida um ON um.id = m.id_unidad_medida
                                 LEFT JOIN (
@@ -346,7 +349,7 @@ require 'database.php'; ?>
                                 ?>
                                 <tr>
                                   <td><?= $row['nro_pedido'] ?></td>
-                                  <td><?= $row['obra'] ?></td>
+                                  <td><?= $row['obra'] . (!empty($row['empresa']) ? ' (' . substr($row['empresa'], 0, 4) . ')' : '') ?></td>
                                   <td><?= $row['estado_pedido'] ?></td>
                                   <td class='concepto-col'><?= $row['concepto'] ?></td>
                                   <td class='descripcion-col'><?= $row['descripcion'] ?></td>

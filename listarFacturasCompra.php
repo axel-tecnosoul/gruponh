@@ -89,7 +89,7 @@ include 'database.php';
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(336))) { ?><a href="nuevaFacturaCompra.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva" title="Nueva"></a><?php } ?>
+                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(336))) { ?><a href="#" id="btn_nueva_factura_compra" title="Nueva Factura"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva" title="Nueva"></a><?php } ?>
 					&nbsp;&nbsp;
 					<?php 
 					if (!empty(tienePermiso(338))) {
@@ -271,6 +271,54 @@ include 'database.php';
     }
     Database::disconnect();
     ?>
+
+<!-- Modal Elegir Proveedor y OC para Nueva Factura de Compra -->
+<div class="modal fade" id="modalElegirProveedorOC" tabindex="-1" role="dialog" aria-labelledby="modalElegirProveedorOCLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalElegirProveedorOCLabel">Seleccionar Proveedor y Orden de Compra</h5>
+        <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body">
+
+        <!-- PASO 1: Selección de Proveedor -->
+        <div id="pasoProveedor">
+          <div class="form-group">
+            <input type="text" id="buscarProveedor" class="form-control" placeholder="Filtrar proveedores...">
+          </div>
+          <div id="listaProveedores" style="max-height: 400px; overflow-y: auto;">
+            <div class="text-center py-3"><i>Cargando proveedores...</i></div>
+          </div>
+        </div>
+
+        <!-- PASO 2: Selección de OC (oculto inicialmente) -->
+        <div id="pasoOC" style="display:none;">
+          <div class="d-flex align-items-center mb-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary mr-2" id="btnVolverProveedores">
+              &larr; Volver
+            </button>
+            <div>
+              <strong id="labelProveedorSeleccionado"></strong><br>
+              <small class="text-muted">Seleccione una orden de compra para crear la factura</small>
+            </div>
+          </div>
+          <div id="listaOC" style="max-height: 400px; overflow-y: auto;">
+            <div class="text-center py-3"><i>Cargando órdenes de compra...</i></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnContinuarConOC" style="display:none;">
+          Continuar con OC seleccionada
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -569,6 +617,176 @@ include 'database.php';
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
 	<script src="assets/js/select2/select2.full.min.js"></script>
 <script src="assets/js/select2/select2-custom.js"></script>
+
+<script>
+// --- Modal elegir proveedor y OC para nueva factura de compra ---
+function htmlEsc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+var idOCSeleccionada = null;
+
+$('#btn_nueva_factura_compra').on('click', function(e) {
+  e.preventDefault();
+  idOCSeleccionada = null;
+  $('#pasoProveedor').show();
+  $('#pasoOC').hide();
+  $('#btnContinuarConOC').hide();
+  $('#buscarProveedor').val('');
+  $('#listaProveedores').html('<div class="text-center py-3"><i>Cargando proveedores...</i></div>');
+  $('#modalElegirProveedorOC').modal('show');
+
+  // Cargar proveedores con OC pendientes
+  $.ajax({
+    url: 'get_oc_pendientes_proveedor.php',
+    method: 'POST',
+    dataType: 'json',
+    success: function(proveedores) {
+      if (!proveedores || proveedores.length === 0) {
+        $('#listaProveedores').html('<div class="alert alert-info mb-0">No hay proveedores con órdenes de compra pendientes de facturar.</div>');
+        return;
+      }
+      var html = '<table class="table table-hover table-sm" id="tablaProveedores"><thead class="thead-light"><tr>';
+      html += '<th>Proveedor</th><th>CUIT</th><th class="text-center">OC Pendientes</th>';
+      html += '</tr></thead><tbody>';
+      $.each(proveedores, function(i, prov) {
+        html += '<tr class="fila-proveedor" style="cursor:pointer;" data-id="' + prov.id + '" data-nombre="' + htmlEsc(prov.razon_social) + '">';
+        html += '<td>' + htmlEsc(prov.razon_social) + '</td>';
+        html += '<td>' + htmlEsc(prov.cuit) + '</td>';
+        html += '<td class="text-center"><span class="badge badge-primary">' + prov.cant_oc + '</span></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      $('#listaProveedores').html(html);
+    },
+    error: function() {
+      $('#listaProveedores').html('<div class="alert alert-danger">Error al cargar proveedores.</div>');
+    }
+  });
+});
+
+// Filtro de búsqueda de proveedores
+$('#buscarProveedor').on('keyup', function() {
+  var val = $(this).val().toLowerCase();
+  $('.fila-proveedor').each(function() {
+    $(this).toggle($(this).text().toLowerCase().indexOf(val) !== -1);
+  });
+});
+
+// Click en un proveedor: cargar sus OC pendientes
+$(document).on('click', '.fila-proveedor', function() {
+  var idProveedor = $(this).data('id');
+  var nombreProveedor = $(this).data('nombre');
+  idOCSeleccionada = null;
+
+  $('#labelProveedorSeleccionado').text(nombreProveedor);
+  $('#listaOC').html('<div class="text-center py-3"><i>Cargando órdenes de compra...</i></div>');
+  $('#pasoProveedor').hide();
+  $('#pasoOC').show();
+  $('#btnContinuarConOC').show().prop('disabled', true);
+
+  $.ajax({
+    url: 'get_oc_pendientes_proveedor.php',
+    method: 'POST',
+    data: { id_proveedor: idProveedor },
+    dataType: 'json',
+    success: function(ordenes) {
+      if (!ordenes || ordenes.length === 0) {
+        $('#listaOC').html('<div class="alert alert-info mb-0">Este proveedor no tiene órdenes de compra pendientes de facturar.</div>');
+        $('#btnContinuarConOC').hide();
+        return;
+      }
+
+      var html = '<div class="list-group">';
+      $.each(ordenes, function(i, oc) {
+        var ocId = 'oc_' + oc.id;
+        html += '<div class="list-group-item p-0 border-0 mb-1">';
+
+        // Cabecera con radio button y datos principales
+        html += '<div class="d-flex align-items-center p-2 bg-light rounded" style="cursor:pointer;" data-toggle="collapse" data-target="#collapse_oc_' + oc.id + '">';
+        html += '<input type="radio" name="oc_seleccionada" class="radio-oc mr-2" id="' + ocId + '" value="' + oc.id + '" onclick="event.stopPropagation()">';
+        html += '<label for="' + ocId + '" class="mb-0 mr-2 font-weight-bold" style="color:#000;" onclick="event.stopPropagation()">OC #' + htmlEsc(oc.nro_oc) + '</label>';
+        html += '<span class="badge badge-secondary mr-2">' + htmlEsc(oc.estado) + '</span>';
+        html += '<small class="text-dark mr-auto">' + htmlEsc(oc.fecha_emision);
+        if (oc.fecha_entrega) {
+          html += ' &rarr; ' + htmlEsc(oc.fecha_entrega);
+        }
+        html += '</small>';
+        if (oc.total) {
+          html += '<small class="text-dark ml-2"><strong>' + htmlEsc(oc.moneda) + ' ' + parseFloat(oc.total).toLocaleString('es-AR', {minimumFractionDigits: 2}) + '</strong></small>';
+        }
+        html += '<i class="feather icon-chevron-down ml-2"></i>';
+        html += '</div>';
+
+        // Panel colapsable con detalle de items
+        html += '<div id="collapse_oc_' + oc.id + '" class="collapse">';
+        html += '<div class="p-2 border rounded mt-1 bg-white">';
+        if (oc.detalles && oc.detalles.length > 0) {
+          html += '<table class="table table-sm table-bordered mb-0">';
+          html += '<thead class="thead-light"><tr>';
+          html += '<th>Material</th>';
+          html += '<th class="text-right">Cantidad</th>';
+          html += '<th class="text-right">Entregado</th>';
+          html += '<th>Unidad</th>';
+          html += '<th class="text-right">Precio</th>';
+          html += '<th class="text-right">Subtotal</th>';
+          html += '</tr></thead><tbody>';
+          $.each(oc.detalles, function(j, det) {
+            html += '<tr>';
+            html += '<td>' + htmlEsc(det.descripcion) + '</td>';
+            html += '<td class="text-right">' + parseFloat(det.cantidad).toLocaleString('es-AR', {minimumFractionDigits: 2}) + '</td>';
+            html += '<td class="text-right">' + parseFloat(det.entregado).toLocaleString('es-AR', {minimumFractionDigits: 2}) + '</td>';
+            html += '<td>' + htmlEsc(det.unidad_medida) + '</td>';
+            html += '<td class="text-right">$ ' + parseFloat(det.precio).toLocaleString('es-AR', {minimumFractionDigits: 2}) + '</td>';
+            html += '<td class="text-right">$ ' + parseFloat(det.subtotal).toLocaleString('es-AR', {minimumFractionDigits: 2}) + '</td>';
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+        } else {
+          html += '<small class="text-muted">Sin detalles disponibles.</small>';
+        }
+        if (oc.comentarios) {
+          html += '<div class="mt-1"><small><strong>Comentarios:</strong> ' + htmlEsc(oc.comentarios) + '</small></div>';
+        }
+        html += '</div></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      $('#listaOC').html(html);
+    },
+    error: function() {
+      $('#listaOC').html('<div class="alert alert-danger">Error al cargar órdenes de compra.</div>');
+    }
+  });
+});
+
+// Habilitar botón Continuar al seleccionar una OC
+$(document).on('change', '.radio-oc', function() {
+  idOCSeleccionada = $(this).val();
+  $('#btnContinuarConOC').prop('disabled', false);
+});
+
+// Volver a la lista de proveedores
+$('#btnVolverProveedores').on('click', function() {
+  $('#pasoOC').hide();
+  $('#btnContinuarConOC').hide();
+  $('#pasoProveedor').show();
+  idOCSeleccionada = null;
+});
+
+// Continuar: ir al formulario de nueva factura con la OC seleccionada
+$('#btnContinuarConOC').on('click', function() {
+  if (!idOCSeleccionada) {
+    alert('Por favor seleccione una orden de compra.');
+    return;
+  }
+  $('#modalElegirProveedorOC').modal('hide');
+  window.location.href = 'nuevaFacturaCompra.php?oc=' + idOCSeleccionada;
+});
+</script>
 
     <!-- Plugin used-->
   </body>

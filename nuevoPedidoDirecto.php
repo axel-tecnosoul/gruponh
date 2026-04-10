@@ -20,6 +20,7 @@ if (!empty($_POST)) {
   $id = $pdo->lastInsertId();
   
   Database::disconnect();
+  $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Pedido Directo N° ' . $id . ' creado exitosamente.'];
   header("Location: itemsPedidoDirecto.php?id=".$id);
 }
 
@@ -83,7 +84,7 @@ $direccion = $data['valor'];?>
                                       $selected = " selected ";
                                     }
                                   }
-                                  $empresa_corta = !empty($fila['empresa']) ? ' ('.substr($fila['empresa'], 0, 6).')' : '';
+                                  $empresa_corta = !empty($fila['empresa']) ? ' ('.substr($fila['empresa'], 0, 4).')' : '';
                                   ?>
                                   <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['nro_sitio'].'-'.$fila['nro_subsitio'].'-'.$fila['nro'].': '.$fila['nombre'].$empresa_corta?></option><?php
                                 }

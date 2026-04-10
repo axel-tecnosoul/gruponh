@@ -167,7 +167,7 @@ if (!empty($_POST)) {
                               </thead>
                               <tbody><?php
                                 $pdo = Database::connect();
-                                $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo, d.descuento, d.subtotal, d.fecha_entrega FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
+                                $sql = " SELECT d.id, m.concepto, d.cantidad, u.unidad_medida,d.id_material,d.precio,d.entregado,d.precio_kg,m.peso_metro,m.largo, d.descuento, d.subtotal, d.total, d.fecha_entrega FROM compras_detalle d inner join materiales m on m.id = d.id_material inner join unidades_medida u on u.id = d.id_unidad_medida WHERE d.id_compra = ".$_GET['id'];
                                 $b=1;
                                 $sumaSubtotal = 0;
                                 $sumaDescuento = 0;
@@ -178,6 +178,7 @@ if (!empty($_POST)) {
                                   $porcentajeDescuento = (float) $row["descuento"];
                                   $fechaEntrega = $row["fecha_entrega"];
                                   $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
+                                  $totalGuardado = isset($row["total"]) ? (float) $row["total"] : 0;
                                   
                                   $peso_por_unidad = $row["peso_metro"] * ($row["largo"] / 1000);
                                   $peso_total_linea = $peso_por_unidad * $cantidad;
@@ -192,12 +193,15 @@ if (!empty($_POST)) {
                                     }
                                   }
                                   
-                                  $descuento = 0;
-                                  if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
-                                    $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                  if ($totalGuardado > 0) {
+                                    $subtotalConDescuento = $totalGuardado;
+                                  } else {
+                                    $descuento = 0;
+                                    if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+                                      $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+                                    }
+                                    $subtotalConDescuento = $subtotalSinDescuento - $descuento;
                                   }
-                                  
-                                  $subtotalConDescuento = $subtotalSinDescuento - $descuento;
 
                                   $sumaSubtotal += $subtotalSinDescuento;
                                   $sumaDescuento += $descuento;

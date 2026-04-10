@@ -214,7 +214,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                           AS fecha_emision_formatted, e.estado, c.nro_oc, c.total, pe.lugar_entrega, s.nro_sitio, p.nro, p.nombre 
                           AS nombre_proyecto, mo.moneda, pe.id AS id_pedido, c.nro_revision, DATE_FORMAT(c.fecha_entrega,'%d/%m/%y') 
                           AS fecha_entrega_formatted, DATE_FORMAT(c.fecha_emision,'%y%m%d') AS fecha_emision, DATE_FORMAT(c.fecha_entrega,'%y%m%d') 
-                          AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, c.nro_oc, (SELECT MAX(c2.nro_revision) 
+                          AS fecha_entrega, t.id_proyecto, s.nro_subsitio, c.id_estado_compra, c.nro_oc, em.empresa, (SELECT MAX(c2.nro_revision) 
                           FROM compras c2 WHERE c2.nro_oc = c.nro_oc) AS max_revision FROM compras c 
                           LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_proveedor 
                           LEFT JOIN estados_compra e ON e.id = c.id_estado_compra 
@@ -223,6 +223,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                           LEFT JOIN tareas t ON t.id = co.id_tarea 
                           INNER JOIN proyectos p ON p.id = pe.id_proyecto 
                           INNER JOIN sitios s ON s.id = p.id_sitio 
+                          LEFT JOIN empresas em ON em.id = s.id_empresa 
                           LEFT JOIN monedas mo ON mo.id = c.id_moneda 
                           WHERE 1 ";
                           $params = [];
@@ -287,7 +288,8 @@ $id_estado = $filters['id_estado'] ?? [];?>
                                   <i class="fa fa-file-text-o" style="margin-right: 5px;"></i><?=$row['id_pedido']?>
                                 </a>
                               </td>
-                              <td><?=$row['nro_sitio'].'_'.$row['nro_subsitio'].'_'.$row['nro']?></td>
+                              <?php $empresa_corta = !empty($row['empresa']) ? ' ('.substr($row['empresa'], 0, 4).')' : ''; ?>
+                              <td><?=$row['nro_sitio'].'_'.$row['nro_subsitio'].'_'.$row['nro'].$empresa_corta?></td>
                               <td class="truncate-project"><?=htmlspecialchars($row['nombre_proyecto'])?></td>
                               <td class="truncate-provider"><?=$row['nombre']?></td>
                               <td><?=$row['moneda'] . ' ' . number_format($row['total'], 2, ',', '.')?></td>
@@ -765,6 +767,9 @@ $id_estado = $filters['id_estado'] ?? [];?>
         autoWidth: false,
         dom: 'Bfrtp<"bottom"l>',
         buttons: ['excel'],
+        columnDefs: [
+          { targets: 6, className: "text-right" }
+        ],
         lengthMenu: [
           [10, 25, 50, 100, 500, 1000],
           [10, 25, 50, 100, 500, 1000]

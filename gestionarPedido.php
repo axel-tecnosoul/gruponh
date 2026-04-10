@@ -108,13 +108,13 @@ if (!empty($_POST)) {
 
             $precioParaGuardar = 0;
 
-            $subtotalLinea = $subtotalBruto * (1 - ($descuentoItem / 100));
+            $totalLinea = $subtotalBruto * (1 - ($descuentoItem / 100));
           } else {
             $subtotalBruto = $cantidadPedir * $precioUnitario;
-            $subtotalLinea = $subtotalBruto * (1 - ($descuentoItem / 100));
+            $totalLinea = $subtotalBruto * (1 - ($descuentoItem / 100));
           }
 
-          $totalNeto += $subtotalLinea;
+          $totalNeto += $totalLinea;
 
           $fechaEntregaItem = $_POST['fecha_entrega_' . $row['id']] ?? $_POST['fecha_entrega'];
 
@@ -124,7 +124,8 @@ if (!empty($_POST)) {
             'id_unidad_medida' => $row['id_unidad_medida'],
             'precio' => $precioParaGuardar,
             'precio_kg' => $precioKg,
-            'subtotal' => $subtotalLinea,
+            'subtotal' => $subtotalBruto,
+            'total' => $totalLinea,
             'descuento' => $descuentoItem,
             'fecha_entrega' => $fechaEntregaItem,
             'id_pedido_detalle' => $row['id']
@@ -192,8 +193,8 @@ if (!empty($_POST)) {
         $q->execute([$nroOC, $idCompra]);
 
         foreach ($items_para_comprar as $item) {
-          $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, subtotal, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?,?)";
-          $params2 = [$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['subtotal'], $item['descuento'], $item['fecha_entrega']];
+          $sql2 = "INSERT INTO compras_detalle(id_compra, id_material, cantidad, id_unidad_medida, precio, precio_kg, subtotal, total, descuento, fecha_entrega) VALUES (?,?,?,?,?,?,?,?,?,?)";
+          $params2 = [$idCompra, $item['id_material'], $item['cantidad'], $item['id_unidad_medida'], $item['precio'], $item['precio_kg'], $item['subtotal'], $item['total'], $item['descuento'], $item['fecha_entrega']];
           $q2 = $pdo->prepare($sql2);
           $q2->execute($params2);
 
@@ -242,7 +243,7 @@ if (!empty($_POST)) {
 
         $estado_texto = ($id_estado_compra == 3) ? "APROBADA (Automática)" : "Pendiente de Aprobación";
         $asuntoEmail = "Compras - Nueva OC #$idCompra ($estado_texto)";
-        $cuerpoEmail = "Nueva compra generada.\nOC: #$idCompra\nEstado: $estado_texto\nNeto: $" . number_format($totalNeto, 2) . "\nIVA: $" . number_format($monto_iva, 2) . "\nTotal: $" . number_format($totalFinal, 2);
+        $cuerpoEmail = "Nueva compra generada.\nOC: #$idCompra\nEstado: $estado_texto\nNeto: $" . number_format($totalNeto, 2, ',', '.') . "\nIVA: $" . number_format($monto_iva, 2, ',', '.') . "\nTotal: $" . number_format($totalFinal, 2, ',', '.');
 
         crearNotificacion($pdo, 4, $idCompra, "ID OC: #$idCompra - $estado_texto", $asuntoEmail, $cuerpoEmail);
 
@@ -273,7 +274,7 @@ if (!empty($_POST)) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha_formatted, pe.fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
+$sql = "SELECT pe.id, pe.id_computo, pe.id_proyecto, DATE_FORMAT(pe.fecha, '%d/%m/%Y') AS fecha_formatted, pe.fecha, pe.lugar_entrega, pe.id_cuenta_recibe, pe.aprobado, c.id_tarea, c.id_cuenta_solicitante, c.nro_revision AS computo_revision, c.nro AS computo_numero, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, COALESCE(ec.empresa, ed.empresa) AS empresa, cu.nombre AS cuenta_solicitante, cu2.nombre AS cuenta_recibe, pe.id_estado, ep.estado AS estado_pedido FROM pedidos pe LEFT JOIN computos c ON c.id = pe.id_computo LEFT JOIN tareas t ON t.id = c.id_tarea LEFT JOIN proyectos pc ON pc.id = t.id_proyecto LEFT JOIN sitios sc ON sc.id = pc.id_sitio LEFT JOIN empresas ec ON ec.id = sc.id_empresa LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto LEFT JOIN sitios sd ON sd.id = pd.id_sitio LEFT JOIN empresas ed ON ed.id = sd.id_empresa LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN cuentas cu2 ON cu2.id = pe.id_cuenta_recibe LEFT JOIN estados_pedidos ep ON ep.id = pe.id_estado WHERE pe.id = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -285,7 +286,7 @@ if ($data) {
   $codigoObraPartes = array_filter([$data['nro_sitio'] ?? null, $data['nro_subsitio'] ?? null, $data['proyecto_nro'] ?? null], function ($v) {
     return $v !== null && $v !== '';
   });
-  $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+  $codigoObra = !empty($codigoObraPartes) ? implode('_', $codigoObraPartes) : '';
   $tieneComputo = !empty($data['id_computo']);
   $tipoPedido = $tieneComputo ? 'de Cómputo' : 'Directo';
 
@@ -297,6 +298,9 @@ if ($data) {
     } elseif (!empty($data['proyecto_nombre'])) {
       $proyectoDisplay = $data['proyecto_nombre'];
     }
+  }
+  if (!empty($data['empresa'])) {
+    $proyectoDisplay .= ' (' . substr($data['empresa'], 0, 4) . ')';
   }
 }
 
@@ -906,7 +910,7 @@ if (isset($id_compra)) {
 
                                 $precio = "";
                                 if (!empty($data2['precio'])) {
-                                  $precio = "$" . number_format($data2['precio'], 2);
+                                  $precio = "$" . number_format($data2['precio'], 2, ',', '.');
                                 }
 
                                 // Obtener stock disponible
@@ -1109,36 +1113,38 @@ if (isset($id_compra)) {
           {
             width: "90px",
             targets: 3,
-            orderable: true
+            orderable: true,
+            className: "text-right"
           },
           {
             width: "90px",
             targets: 4,
-            orderable: true
+            orderable: true,
+            className: "text-right"
           },
           {
             width: "60px",
             targets: 5,
             orderable: true,
-            className: "text-center"
+            className: "text-right"
           },
           {
             width: "65px",
             targets: 6,
             orderable: true,
-            className: "text-center"
+            className: "text-right"
           },
           {
             width: "80px",
             targets: 7,
             orderable: true,
-            className: "text-center"
+            className: "text-right"
           },
           {
             width: "75px",
             targets: 8,
             orderable: true,
-            className: "text-center"
+            className: "text-right"
           },
           {
             width: "95px",

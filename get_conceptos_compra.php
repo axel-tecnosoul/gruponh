@@ -13,7 +13,7 @@ $qMoneda = $pdo->prepare($sqlMoneda);
 $qMoneda->execute([$id_compra]);
 $simboloMoneda = $qMoneda->fetchColumn() ?: '$';
 
-$sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, cd.subtotal, cd.descuento, cd.fecha_entrega, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
+$sql = " SELECT cd.id AS id_compra_detalle, m.concepto, cd.cantidad, u.unidad_medida, cd.id_material, cd.precio, cd.entregado, cd.precio_kg, cd.subtotal, cd.total, cd.descuento, cd.fecha_entrega, m.peso_metro, m.largo FROM compras_detalle cd inner join materiales m on m.id = cd.id_material inner join unidades_medida u on u.id = cd.id_unidad_medida WHERE cd.id_compra = ".$id_compra;
 $aConceptos=[];
 
 foreach ($pdo->query($sql) as $row) {
@@ -45,8 +45,9 @@ foreach ($pdo->query($sql) as $row) {
   $pesoTotalRaw = $pesoUnitario * (float) $cantidad;
   $peso = number_format($pesoTotalRaw,2,",",".");
   
-  // Usar subtotal guardado si existe, sino calcularlo (compatibilidad con registros antiguos)
+  // Usar subtotal y total guardados directamente
   $subtotalGuardado = isset($row["subtotal"]) ? (float) $row["subtotal"] : 0;
+  $totalGuardado = isset($row["total"]) ? (float) $row["total"] : 0;
   
   if ($subtotalGuardado > 0) {
     $subtotalSinDescuento = $subtotalGuardado;
@@ -59,15 +60,16 @@ foreach ($pdo->query($sql) as $row) {
     }
   }
   
-  // Calcular % de descuento
-  $descuento = 0;
-  if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
-    $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
-    //$descuento = ($subtotalSinDescuento * 100) / $porcentajeDescuento;
+  if ($totalGuardado > 0) {
+    $subtotalConDescuento = $totalGuardado;
+  } else {
+    // Fallback: calcular para registros antiguos sin columna total
+    $descuento = 0;
+    if ($subtotalSinDescuento > 0 && $porcentajeDescuento > 0) {
+      $descuento = ($porcentajeDescuento * $subtotalSinDescuento) / 100;
+    }
+    $subtotalConDescuento = $subtotalSinDescuento - $descuento;
   }
-  
-  // Aplicar descuento al subtotal
-  $subtotalConDescuento = $subtotalSinDescuento - $descuento;
 
   $subtotalConDescuento = $simboloMoneda.number_format($subtotalConDescuento,2,',','.');
   $subtotalSinDescuento = $simboloMoneda.number_format($subtotalSinDescuento,2,',','.');

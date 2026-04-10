@@ -922,7 +922,7 @@ if (!empty($_GET['certificados'])) {
         } else {
           input.val(1).prop('readonly', false);
           badge.text('Ingreso manual').removeClass('text-danger text-success').addClass('text-secondary');
-          info.html('<span class="text-muted">Ingrese la cotización manualmente.</span>');
+          info.html('<span class="text-muted"></span>');
         }
       });
 

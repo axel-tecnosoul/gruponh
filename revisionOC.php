@@ -97,14 +97,14 @@ try {
 
     $sqlDet = "INSERT INTO compras_detalle (
                   id_compra, id_material, cantidad, id_unidad_medida,
-                  precio, precio_kg, subtotal, descuento, fecha_entrega
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                  precio, precio_kg, subtotal, total, descuento, fecha_entrega
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     $stmtDet = $pdo->prepare($sqlDet);
 
     foreach ($detalles as $det) {
         $stmtDet->execute([
             $id_nueva_oc, $det['id_material'], $det['cantidad'], $det['id_unidad_medida'],
-            $det['precio'], $det['precio_kg'], $det['subtotal'], $det['descuento'], $det['fecha_entrega']
+            $det['precio'], $det['precio_kg'], $det['subtotal'], $det['total'] ?? $det['subtotal'], $det['descuento'], $det['fecha_entrega']
         ]);
     }
 

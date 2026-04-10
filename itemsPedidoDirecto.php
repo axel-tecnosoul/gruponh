@@ -86,7 +86,16 @@ if (!empty($_POST)) {
           $ubicacion="Ver/Añadir Items Pedido Directo N° ".$id;
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
-          <div class="container-fluid">
+          <div class="container-fluid"><?php
+            if (isset($_SESSION['flash_message'])) {
+              $flash_message = $_SESSION['flash_message'];
+              $alert_class = ($flash_message['type'] == 'success') ? 'alert-success' : 'alert-danger';?>
+              <div class="alert <?= $alert_class ?> alert-dismissible fade show" role="alert">
+                <?= $flash_message['message'] ?>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div><?php
+              unset($_SESSION['flash_message']);
+            }?>
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">

@@ -67,7 +67,7 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   // Consulta igual a verCompra.php para consistencia
-  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio
+  $sql = "SELECT c.id, c.id_pedido, c.id_cuenta_proveedor, DATE_FORMAT(c.fecha_emision, '%d/%m/%Y') AS fecha_emision_formatted, DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_entrega_formatted, c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura, c.id_moneda, c.tipo_cambio_dia, c.iva, c.descuento, prov.nombre AS proveedor_nombre, fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre, COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio) AS nro_subsitio, COALESCE(emc.empresa, emd.empresa) AS empresa
   FROM compras c 
     INNER JOIN pedidos pe ON pe.id = c.id_pedido 
     LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
@@ -78,8 +78,10 @@ if (!empty($_POST)) {
     LEFT JOIN tareas t ON t.id = co.id_tarea 
     LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
     LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
+    LEFT JOIN empresas emc ON emc.id = sc.id_empresa 
     LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
     LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
+    LEFT JOIN empresas emd ON emd.id = sd.id_empresa 
   WHERE c.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
@@ -96,7 +98,7 @@ if (!empty($_POST)) {
     ], function ($valor) {
       return $valor !== null && $valor !== '';
     });
-    $codigoObra = !empty($codigoObraPartes) ? implode('-', $codigoObraPartes) : '';
+    $codigoObra = !empty($codigoObraPartes) ? implode('_', $codigoObraPartes) : '';
 
     if (!empty($data['proyecto_id'])) {
       if (!empty($codigoObra) && !empty($data['proyecto_nombre'])) {
@@ -106,6 +108,9 @@ if (!empty($_POST)) {
       } elseif (!empty($data['proyecto_nombre'])) {
         $proyectoDisplay = $data['proyecto_nombre'];
       }
+    }
+    if (!empty($data['empresa'])) {
+      $proyectoDisplay .= ' (' . substr($data['empresa'], 0, 4) . ')';
     }
   }
 
@@ -297,7 +302,7 @@ if (!empty($_POST)) {
                             </div>
                             <div class="form-group row">
                               <label class="col-sm-3 font-weight-bold">Total s/IVA</label>
-                              <div class="col-sm-9"><?= $data['moneda'] ?: '$' ?><?= number_format($data['total'], 2); ?></div>
+                              <div class="col-sm-9"><?= $data['moneda'] ?: '$' ?><?= number_format($data['total'], 2, ',', '.'); ?></div>
                             </div><?php
                                   if (!empty($data['lugar_entrega'])) { ?>
                               <div class="form-group row mt-2">
@@ -375,13 +380,14 @@ if (!empty($_POST)) {
                                       $stock = $data['stock'];
                                     }
 
-                                    $sql2 = "SELECT s.nro_sitio,s.nro_subsitio,p.nro FROM compras_detalle cd inner join compras c on c.id = cd.id_compra inner join pedidos pe on pe.id = c.id_pedido inner join proyectos p on p.id = pe.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE cd.id_compra = ? ";
+                                    $sql2 = "SELECT s.nro_sitio,s.nro_subsitio,p.nro,em.empresa FROM compras_detalle cd inner join compras c on c.id = cd.id_compra inner join pedidos pe on pe.id = c.id_pedido inner join proyectos p on p.id = pe.id_proyecto inner join sitios s on s.id = p.id_sitio LEFT JOIN empresas em ON em.id = s.id_empresa WHERE cd.id_compra = ? ";
                                     $q2 = $pdo->prepare($sql2);
                                     $q2->execute([$_GET['id']]);
                                     $data3 = $q2->fetch(PDO::FETCH_ASSOC);
 
                                     if ($data3) {
-                                      $colada = $data3['nro_sitio'] . "/" . $data3['nro_subsitio'] . "/" . $data3['nro'] . "-" . $count;
+                                      $empresa_corta = !empty($data3['empresa']) ? ' ('.substr($data3['empresa'], 0, 4).')' : '';
+                                      $colada = $data3['nro_sitio'] . "/" . $data3['nro_subsitio'] . "/" . $data3['nro'] . "-" . $count . $empresa_corta;
                                     } else {
                                       $colada = "S/D-" . $count;
                                     } ?>
@@ -389,10 +395,10 @@ if (!empty($_POST)) {
                               <tr data-id="<?= $row["id"] ?>" <?= ($row["cancelado"] == 1) ? 'class="table-secondary"' : '' ?>>
                                 <td><?= $row["concepto"] ?></td>
                                 <td><?= $colada ?></td>
-                                <td>$<?= number_format($precio, 2) ?></td>
-                                <td>$<?= number_format($row["precio_kg"], 2) ?></td>
+                                <td>$<?= number_format($precio, 2, ',', '.') ?></td>
+                                <td>$<?= number_format($row["precio_kg"], 2, ',', '.') ?></td>
                                 <td><?= $cantidad ?></td>
-                                <td>$<?= number_format($precio * $cantidad, 2) ?></td>
+                                <td>$<?= number_format($precio * $cantidad, 2, ',', '.') ?></td>
                                 <td><?= $entregado ?></td>
                                 <td><?= $stock ?></td>
                                 <td>
@@ -642,6 +648,9 @@ if (!empty($_POST)) {
         stateSave: false,
         responsive: false,
         paging: false,
+        columnDefs: [
+          { targets: [2, 3, 4, 5, 6, 7], className: "text-right" }
+        ],
         language: {
           "decimal": "",
           "emptyTable": "No hay información",
