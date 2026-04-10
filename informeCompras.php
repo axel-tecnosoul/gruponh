@@ -232,7 +232,7 @@ require 'database.php'; ?>
                               <th>Unidad</th>
                               <th>Fecha Pedido</th>
                               <th>Fecha Requerido</th>
-                              <th>Solicitante a</th>
+                              <th>Solicitante</th>
                             </tr>
                           </thead>
                           <tbody><?php
