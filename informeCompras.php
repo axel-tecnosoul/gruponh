@@ -177,7 +177,7 @@ require 'database.php'; ?>
                               DATE_FORMAT(pd.fecha_necesidad, '%d/%m/%Y') AS fecha_requerido,
                               DATE_FORMAT(c.fecha_entrega, '%d/%m/%Y') AS fecha_pactada,
                               DATE_FORMAT(cd.fecha_entrega, '%d/%m/%Y') AS fecha_entrega
-                            FROM compras c
+                            FROM compras c 
                               INNER JOIN compras_detalle cd ON cd.id_compra = c.id
                               INNER JOIN materiales m ON m.id = cd.id_material
                               INNER JOIN pedidos p ON p.id = c.id_pedido
@@ -232,7 +232,7 @@ require 'database.php'; ?>
                               <th>Unidad</th>
                               <th>Fecha Pedido</th>
                               <th>Fecha Requerido</th>
-                              <th>Solicitante</th>
+                              <th>Solicitante a</th>
                             </tr>
                           </thead>
                           <tbody><?php
