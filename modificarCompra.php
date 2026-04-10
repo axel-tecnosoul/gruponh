@@ -1466,13 +1466,13 @@ Database::disconnect();
 
     var mensaje = '';
     if (totalFinal < montoLimite) {
-      mensaje = '<div class="alert alert-success mb-0">' +
+      mensaje = '<div class="alert mb-0">' +
         '<strong>Total de la OC:</strong> ' + totalFormateado + '<br>' +
         '<strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong> ' + limiteFormateado + '<br><br>' +
         'El monto es <strong>menor</strong> al mínimo de aprobación. La OC se <strong>aprobará automáticamente</strong>.' +
         '</div>';
     } else {
-      mensaje = '<div class="alert alert-info mb-0">' +
+      mensaje = '<div class="alert mb-0">' +
         '<strong>Total de la OC:</strong> ' + totalFormateado + '<br>' +
         '<strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong> ' + limiteFormateado + '<br><br>' +
         'El monto es <strong>igual o superior</strong> al mínimo de aprobación. La OC deberá ser <strong>enviada a aprobación</strong>.' +

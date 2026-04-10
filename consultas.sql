@@ -19,3 +19,31 @@ ALTER TABLE materiales ADD COLUMN perimetro DECIMAL(10,2) NULL; -- CORRECCIÓN 6
 ALTER TABLE materiales ADD `fecha_hora_alta` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, ADD `fecha_hora_ultima_modificacion` DATETIME on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `fecha_hora_alta`;
 
 --TODO APLICADO HASTA ACA
+
+-- CORRECCIÓN 6: Colores para estados_pedidos_detalle (para usar en badges en el frontend)
+
+ALTER TABLE `estados_pedidos_detalle` ADD COLUMN `color` VARCHAR(30) NULL DEFAULT NULL AFTER `descripcion`;
+
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-secondary' WHERE `id` = 1; -- Pendiente
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-warning'   WHERE `id` = 2; -- Comprando
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-info'      WHERE `id` = 3; -- Comprando Parcial
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-primary'   WHERE `id` = 4; -- Comprando y Entregando
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-success'   WHERE `id` = 5; -- Comprando Total
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-success'   WHERE `id` = 6; -- Entregado Parcial
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-success'   WHERE `id` = 7; -- Entregado
+UPDATE `estados_pedidos_detalle` SET `color` = 'badge-danger'    WHERE `id` = 8; -- Cancelado
+
+
+--- CORRECCIÓN 7: Agregar columnas subtotal y total separadas en compras_detalle.
+ALTER TABLE compras_detalle ADD COLUMN total DOUBLE NOT NULL DEFAULT 0 AFTER subtotal;
+
+UPDATE compras_detalle SET total = ROUND(subtotal, 2);
+
+UPDATE compras_detalle 
+SET subtotal = ROUND(CASE 
+    WHEN descuento > 0 AND descuento < 100 THEN subtotal / (1 - descuento / 100)
+    ELSE subtotal 
+END, 2)
+WHERE descuento > 0;
+
+UPDATE compras_detalle SET subtotal = ROUND(subtotal, 2), total = ROUND(total, 2);
