@@ -163,6 +163,7 @@ require 'database.php'; ?>
                               c.nro_oc,
                               c.nro_revision,
                               epd.estado AS estado_pedido,
+                              COALESCE(epd.color, 'badge-light') AS color_estado,
                               prov.nombre AS proveedor,
                               CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                               COALESCE(em.empresa, '') AS empresa,
@@ -196,7 +197,7 @@ require 'database.php'; ?>
                                 <tr>
                                   <td><?= $row['nro_pedido'] ?></td>
                                   <td><a href="verCompra.php?id=<?= $row['nro_op'] ?>"><?=$row['nro_oc']?>/<?=$row['nro_revision']?></a></td>
-                                  <td><?= $row['estado_pedido'] ?></td>
+                                  <td><span class="badge <?= htmlspecialchars($row['color_estado']) ?>"><?= htmlspecialchars($row['estado_pedido'] ?? '') ?></span></td>
                                   <td><?= $row['proveedor'] ?></td>
                                   <td><?= $row['obra'] . (!empty($row['empresa']) ? ' (' . substr($row['empresa'], 0, 4) . ')' : '') ?></td>
                                   <td><?= $row['concepto'] ?></td>
@@ -305,6 +306,7 @@ require 'database.php'; ?>
                               SELECT 
                                 p.id AS nro_pedido,
                                 epd.estado AS estado_pedido,
+                                COALESCE(epd.color, 'badge-light') AS color_estado,
                                 CONCAT(si.nro_sitio, '_', si.nro_subsitio, '_', pr.nro) AS obra,
                                 COALESCE(em.empresa, '') AS empresa,
                                 m.concepto,
@@ -350,7 +352,7 @@ require 'database.php'; ?>
                                 <tr>
                                   <td><?= $row['nro_pedido'] ?></td>
                                   <td><?= $row['obra'] . (!empty($row['empresa']) ? ' (' . substr($row['empresa'], 0, 4) . ')' : '') ?></td>
-                                  <td><?= $row['estado_pedido'] ?></td>
+                                  <td><span class="badge <?= htmlspecialchars($row['color_estado']) ?>"><?= htmlspecialchars($row['estado_pedido'] ?? '') ?></span></td>
                                   <td class='concepto-col'><?= $row['concepto'] ?></td>
                                   <td class='descripcion-col'><?= $row['descripcion'] ?></td>
                                   <td class="number"><?= number_format($row['cantidad_pendiente'], 2, ",", ".") ?></td>
