@@ -308,10 +308,10 @@ include 'database.php';
               <table class="table table-hover table-sm" id="tablaProyectos">
                 <thead class="thead-light">
                   <tr>
-                    <th>Código</th>
+                    <th>Obra</th>
                     <th>Nombre</th>
                     <th>Cliente</th>
-                    <th>Sitio</th>
+                    <!-- <th>Sitio</th> -->
                   </tr>
                 </thead>
                 <tbody>
@@ -329,7 +329,7 @@ include 'database.php';
                   $q = $pdo->prepare($sql);
                   $q->execute();
                   while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                    $codigo = $fila['nro_sitio'] . '-' . $fila['nro_subsitio'] . '-' . $fila['nro'];
+                    $codigo = $fila['nro_sitio'] . '_' . $fila['nro_subsitio'] . '_' . $fila['nro'];
                     echo '<tr class="fila-proyecto" style="cursor:pointer;"
                                data-id="' . $fila['id'] . '"
                                data-codigo="' . htmlspecialchars($codigo) . '"
@@ -339,7 +339,7 @@ include 'database.php';
                     echo '<td>' . htmlspecialchars($codigo) . '</td>';
                     echo '<td>' . htmlspecialchars($fila['nombre']) . '</td>';
                     echo '<td>' . htmlspecialchars($fila['nombre_cliente']) . '</td>';
-                    echo '<td>' . $fila['nro_sitio'] . '</td>';
+                    // echo '<td>' . $fila['nro_sitio'] . '</td>';
                     echo '</tr>';
                   }
                   Database::disconnect();
