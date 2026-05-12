@@ -160,7 +160,7 @@ include 'database.php';
                                 echo '<td>'. $row[5] . '</td>';
                                 echo '<td><span style="display: none;">'. $row[11] . '</span>'. $row[6] . '</td>';
                                 echo '<td>'. $row[7] . '</td>';
-                                echo '<td>'. number_format($row[8],2) . '</td>';
+                                echo '<td>'. number_format($row[8] ?? 0,2) . '</td>';
                                 echo '<td>'. $row[9] . '</td>';
                                 echo '<td>'. $row[10] . '</td>';
                                 echo '</tr>';

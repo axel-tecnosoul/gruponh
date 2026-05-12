@@ -172,23 +172,36 @@ if (!empty($_POST)) {
                               
                               foreach ($pdo->query($sql) as $row) {
                                 $stockInfo = obtenerStockYReservado($pdo, $row[5]);
-                                
                                 $disponible = $stockInfo['stock'];
 
-                                $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') AS fecha_emision FROM compras_detalle d inner join compras c on c.id = d.id_compra WHERE d.id_material = ".$row[5]." order by c.id desc limit 0,1 ";
+                                $sql2 = "SELECT d.precio, date_format(c.fecha_emision,'%d/%m/%y') AS fecha_emision 
+                                        FROM compras_detalle d 
+                                        INNER JOIN compras c ON c.id = d.id_compra 
+                                        WHERE d.id_material = ".$row[5]." 
+                                        ORDER BY c.id DESC LIMIT 0,1";
                                 $q2 = $pdo->prepare($sql2);
                                 $q2->execute();
                                 $data2 = $q2->fetch(PDO::FETCH_ASSOC);
 
-                                $fecha_emision="";
+                                $fecha_emision = "";
                                 if (!empty($data2['fecha_emision'])) {
-                                  $fecha_emision = $data2['fecha_emision'];
+                                    $fecha_emision = $data2['fecha_emision'];
                                 }
-                                
                                 $precio = "";
                                 if (!empty($data2['precio'])) {
-                                  $precio = "$".number_format($data2['precio'],2,',','.');
+                                    $precio = "$" . number_format($data2['precio'], 2, ',', '.');
                                 }
+
+                                $sqlComprado = "SELECT SUM(cd.cantidad) AS total_comprado
+                                                FROM compras_detalle cd
+                                                INNER JOIN compras c ON c.id = cd.id_compra
+                                                WHERE c.id_pedido = ?
+                                                  AND cd.id_material = ?
+                                                  AND c.id_estado_compra != 6";
+                                $qComprado = $pdo->prepare($sqlComprado);
+                                $qComprado->execute([$id, $row['id_material']]);
+                                $dataComprado = $qComprado->fetch(PDO::FETCH_ASSOC);
+                                $comprado = $dataComprado['total_comprado'] ?? 0;
                                 ?>
 
                                 <tr>
@@ -199,7 +212,7 @@ if (!empty($_POST)) {
                                   <td><?=$row["cantidad"] .' '.$row["unidad_medida"]?></td>
                                   <td><?=$disponible?></td>
                                   <td><?=$row["reservado"]?></td>
-                                  <td><?=$row["comprado"]?></td>
+                                  <td><?=$comprado?></td>
                                 </tr><?php
                               }
                               Database::disconnect();?>

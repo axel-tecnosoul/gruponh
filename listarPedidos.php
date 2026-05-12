@@ -653,7 +653,7 @@ if (in_array("todos", $id_estado)) {
           get_conceptos(id_pedido);
 
           if (tipo === 'Directo' && ['1','2'].includes(String(estadoId))) {
-            $("#link_modificar_pedido").attr("href", "itemsPedidoDirecto.php?id=" + id_pedido);
+            $("#link_modificar_pedido").attr("href", "modificarPedidoDirecto.php?id=" + id_pedido);
             $("#link_ver_pedido").attr("href", "verPedido.php?id=" + id_pedido);
           } else {
             $("#link_modificar_pedido").attr("href", "#");

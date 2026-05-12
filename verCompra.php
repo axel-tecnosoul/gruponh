@@ -26,22 +26,17 @@ if (!empty($_POST)) {
           c.fecha_emision, c.fecha_entrega, c.id_forma_pago, c.id_estado_compra, 
           c.nro_revision, c.total, c.comentarios, pe.lugar_entrega, c.adjunto_factura,
           c.id_moneda, c.tipo_cambio_dia, c.id_tipo_iva, c.iva, c.descuento, prov.nombre AS proveedor_nombre,
-          fp.forma_pago, ec.estado AS estado_compra, m.moneda, COALESCE(pc.id, pd.id) AS proyecto_id, COALESCE(pc.nombre, pd.nombre) AS proyecto_nombre,
-          COALESCE(pc.nro, pd.nro) AS proyecto_nro, COALESCE(sc.nro_sitio, sd.nro_sitio) AS nro_sitio, COALESCE(sc.nro_subsitio, sd.nro_subsitio), COALESCE(emc.empresa, emd.empresa) AS empresa, pe.id_computo
+          fp.forma_pago, ec.estado AS estado_compra, m.moneda, pd.id AS proyecto_id, pd.nombre AS proyecto_nombre,
+          pd.nro AS proyecto_nro, sd.nro_sitio, sd.nro_subsitio, em.empresa, pe.id_computo
           FROM compras c 
           INNER JOIN pedidos pe ON pe.id = c.id_pedido 
           LEFT JOIN cuentas prov ON prov.id = c.id_cuenta_proveedor 
           LEFT JOIN formas_pago fp ON fp.id = c.id_forma_pago 
           LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra 
           LEFT JOIN monedas m ON m.id = c.id_moneda
-          LEFT JOIN computos co ON co.id = pe.id_computo 
-          LEFT JOIN tareas t ON t.id = co.id_tarea 
-          LEFT JOIN proyectos pc ON pc.id = t.id_proyecto 
-          LEFT JOIN sitios sc ON sc.id = pc.id_sitio 
-          LEFT JOIN empresas emc ON emc.id = sc.id_empresa 
           LEFT JOIN proyectos pd ON pd.id = pe.id_proyecto 
           LEFT JOIN sitios sd ON sd.id = pd.id_sitio 
-          LEFT JOIN empresas emd ON emd.id = sd.id_empresa 
+          LEFT JOIN empresas em ON em.id = sd.id_empresa 
           WHERE c.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);

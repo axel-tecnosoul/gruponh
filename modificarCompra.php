@@ -986,7 +986,7 @@ Database::disconnect();
                       </div>
                       <div class="modal-body" id="modalConfirmarOCBody"></div>
                       <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-success" id="btn-confirmar-crear-oc">Confirmar</button>
                       </div>
                     </div>
@@ -1463,19 +1463,39 @@ Database::disconnect();
 
     var totalFormateado = simbolo + ' ' + totalFinal.toLocaleString('es-AR', { minimumFractionDigits: 2 });
     var limiteFormateado = simbolo + ' ' + montoLimite.toLocaleString('es-AR', { minimumFractionDigits: 2 });
+    var filaTotal =
+      '<div class="d-flex justify-content-between mb-1">' +
+        '<span><strong>Total de la OC:</strong></span>' +
+        '<span><strong>' + totalFormateado + '</strong></span>' +
+      '</div>';
 
+    var filaLimite =
+      '<div class="d-flex justify-content-between mb-1">' +
+        '<span><strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong></span>' +
+        '<span><strong>' + limiteFormateado + '</strong></span>' +
+      '</div>';
     var mensaje = '';
     if (totalFinal < montoLimite) {
-      mensaje = '<div class="alert mb-0">' +
-        '<strong>Total de la OC:</strong> ' + totalFormateado + '<br>' +
-        '<strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong> ' + limiteFormateado + '<br><br>' +
-        'El monto es <strong>menor</strong> al mínimo de aprobación. La OC se <strong>aprobará automáticamente</strong>.' +
+      mensaje =
+        '<div class="alert mb-0">' +
+          filaTotal +
+          filaLimite +
+          '<hr class="my-2">' +
+          '<div class="text-left">' +
+            'El monto es <strong>menor</strong> al mínimo de aprobación. ' +
+            'La OC se <strong>aprobará automáticamente</strong>.' +
+          '</div>' +
         '</div>';
     } else {
-      mensaje = '<div class="alert mb-0">' +
-        '<strong>Total de la OC:</strong> ' + totalFormateado + '<br>' +
-        '<strong>Monto mínimo de aprobación (' + monedaTexto + '):</strong> ' + limiteFormateado + '<br><br>' +
-        'El monto es <strong>igual o superior</strong> al mínimo de aprobación. La OC deberá ser <strong>enviada a aprobación</strong>.' +
+      mensaje =
+        '<div class="alert mb-0">' +
+          filaTotal +
+          filaLimite +
+          '<hr class="my-2">' +
+          '<div class="text-left">' +
+            'El monto es <strong>igual o superior</strong> al mínimo de aprobación. ' +
+            'La OC deberá ser <strong>enviada a aprobación</strong>.' +
+          '</div>' +
         '</div>';
     }
 
