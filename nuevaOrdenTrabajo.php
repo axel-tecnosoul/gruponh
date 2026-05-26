@@ -109,8 +109,6 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
     $posiciones=[];
     $saldo_conj=$conj['cantidad'];
     while($pos=$qPos->fetch(PDO::FETCH_ASSOC)){
-      //var_dump($pos);
-      
       $cant_total=$conj['cantidad']*$pos['cant_pos'];
       $saldo=$cant_total-$pos['cant_bajada_total'];
       $pos['cant_total']=$cant_total;
@@ -127,7 +125,6 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
     $conj['cant_bajada']=$conj['cantidad']-$saldo_conj;
     $conj['saldo']=$saldo_conj;
     $conjuntos[]=$conj;
-    //die();
   }
   return $conjuntos;
 }
@@ -138,6 +135,7 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   $redirect="listarOrdenesTrabajo.php";
 
+  // ─── BLOQUE EDICIÓN ───────────────────────────────────────────────────────
   if(!empty($_POST['id_orden_trabajo'])){
     $id_orden_trabajo=intval($_POST['id_orden_trabajo']);
     $enviarAprobacion = !empty($_POST['enviar_aprobacion']);
@@ -205,7 +203,6 @@ if (!empty($_POST)) {
       $q = $pdo->prepare($sql);
       $q->execute([$id_orden_trabajo]);
 
-      // Actualizar estado de todas las posiciones
       $sql = "UPDATE ordenes_trabajo_detalle SET id_estado_orden_trabajo_posicion = 2 WHERE id_orden_trabajo = ?";
       $q = $pdo->prepare($sql);
       $q->execute([$id_orden_trabajo]);
@@ -236,6 +233,7 @@ if (!empty($_POST)) {
     exit;
   }
 
+  // ─── BLOQUE CREACIÓN ──────────────────────────────────────────────────────
   $id_lista_corte = filter_input(INPUT_POST, 'id_lista_corte', FILTER_VALIDATE_INT);
 
   if(!LCPermiteOR($pdo, $id_lista_corte)){
@@ -288,7 +286,6 @@ if (!empty($_POST)) {
     echo "cant_ot_actuales: ".$cant_ot_actuales."<br><br>";
   }
 
-  //if ($cant_ot_previas == 0 && $estadoLC['id_estado_lista_corte'] == 3) {
   if ($cant_ot_previas == 0 && LCPermiteOR($pdo, $id_lista_corte)) {
     $sql = "UPDATE listas_corte SET id_estado_lista_corte = 4 WHERE id = ?";
     $q = $pdo->prepare($sql);
@@ -312,7 +309,6 @@ if (!empty($_POST)) {
   foreach ($_POST["cantidad_bajar"] as $key => $cantidad) {
     if($cantidad!=""){
       $id_posicion = intval($_POST['id_posicion'][$key]);
-      //$saldo = obtenerSaldoPosicion($pdo,$id_posicion);
 
       $id_posicion = intval($id_posicion);
       $sql = "SELECT lcp.cantidad AS cant_pos, lcc.cantidad AS cant_conj, COALESCE(SUM(otd.cantidad),0) AS cant_bajada FROM lista_corte_posiciones lcp INNER JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto=lcc.id LEFT JOIN ordenes_trabajo_detalle otd ON otd.id_posicion=lcp.id AND EXISTS (SELECT 1 FROM ordenes_trabajo ot WHERE ot.id = otd.id_orden_trabajo AND ot.id_estado_orden_trabajo != 5) WHERE lcp.id = ? GROUP BY lcp.id,lcc.cantidad";
@@ -320,7 +316,6 @@ if (!empty($_POST)) {
       $params = [$id_posicion];
       $q->execute($params);
       $data = $q->fetch(PDO::FETCH_ASSOC);
-      //return $data ? ($data['cant_pos']*$data['cant_conj']) - $data['cant_bajada'] : 0;
       $saldo = $data ? ($data['cant_pos']*$data['cant_conj']) - $data['cant_bajada'] : 0;
 
       if ($modoDebug==1) {
@@ -348,20 +343,29 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute($params);
 
-  /*$sql = "SELECT id_proyecto FROM listas_corte WHERE id = ? ";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lista_corte]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
+  if (!empty($_POST['enviar_aprobacion'])) {
+    $sql = "UPDATE ordenes_trabajo SET id_estado_orden_trabajo = 2 WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_orden_trabajo]);
 
-  $descProyecto = getDescripcionProyecto($pdo, $data["id_proyecto"]);
-  $descripcion_orden_trabajo = " LC".$id_lista_corte."-OT".$id_orden_trabajo.$descProyecto;
+    $sql = "UPDATE ordenes_trabajo_detalle SET id_estado_orden_trabajo_posicion = 2 WHERE id_orden_trabajo = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_orden_trabajo]);
 
-  $idTipoNotificacion=8;
-  $idEntidad=$id_orden_trabajo;
-  $detalleNotificacion="ID Orden de Trabajo: #".$idEntidad;
-  $asuntoEmail="Módulo Producción - Nueva Orden de Trabajo $descripcion_orden_trabajo";
-  $cuerpoEmail="Nueva orden de trabajo dada de alta en el sistema: $descripcion_orden_trabajo";
-  crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);*/
+    $sql = "SELECT l.numero AS numero_lc, l.id_proyecto, ot.nro_orden_trabajo FROM ordenes_trabajo ot JOIN listas_corte l ON l.id = ot.id_lista_corte WHERE ot.id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_orden_trabajo]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $descProyecto = getDescripcionProyecto($pdo, $data['id_proyecto']);
+    $descripcion_orden_trabajo = " LC".$data['numero_lc']."-OT".$data['nro_orden_trabajo'].$descProyecto;
+
+    $idTipoNotificacion = 19;
+    $idEntidad = $id_orden_trabajo;
+    $detalleNotificacion = "ID Orden de Trabajo: #".$idEntidad;
+    $asuntoEmail = "Producción - Aprobación de Orden de Trabajo $descripcion_orden_trabajo";
+    $cuerpoEmail = "La orden de trabajo $descripcion_orden_trabajo está lista para aprobación.";
+    crearNotificacion($pdo, $idTipoNotificacion, $idEntidad, $detalleNotificacion, $asuntoEmail, $cuerpoEmail);
+  }
 
   if ($modoDebug==1) {
     $pdo->rollBack();
@@ -557,9 +561,7 @@ Database::disconnect();
                     <div class="card-footer">
                       <div class="col-12">
                         <button type="submit" class="btn btn-success"><?=$editing ? 'Modificar' : 'Crear'?></button>
-                        <?php if($editing){?>
-                          <button type="button" id="btn_enviar_aprobacion" class="btn btn-primary">Enviar a aprobación</button>
-                        <?php }?>
+                        <button type="button" id="btn_enviar_aprobacion" class="btn btn-primary">Enviar a aprobación</button>
                         <a href='listarOrdenesTrabajo.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -572,7 +574,7 @@ Database::disconnect();
           <!-- Container-fluid Ends-->
         </div>
 
-        <!-- Modal para eliminas conjuntos -->
+        <!-- Modal para eliminar conjuntos -->
         <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
           <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -682,7 +684,6 @@ Database::disconnect();
           columnDefs: [
             { width: '50px', targets: [1,2,3] },
             { width: '100px', targets: [0] },
-            //{ width: '300px', targets: [6] }
           ],
         });
 
@@ -787,7 +788,6 @@ Database::disconnect();
             { orderable:false, targets:[5,6]},
             { width: '50px', targets: [0,2,3,4] },
             { width: '80px', targets: [1,5] },
-            //{ width: '300px', targets: [6] }
           ],
         });
 
@@ -890,12 +890,33 @@ Database::disconnect();
           dtOT.cell(tr,6).data(posHtml).draw(false);
         });
 
+        // ── Validación: al menos un conjunto en la OT ─────────────────────
+        function validarConjuntos() {
+          if (dtOT.rows().count() === 0) {
+            alert('Debe agregar al menos un conjunto a la Orden de Trabajo antes de continuar.');
+            return false;
+          }
+          return true;
+        }
+
+        $('#form_ot').on('submit', function(e){
+          if (!validarConjuntos()) {
+            e.preventDefault();
+            return false;
+          }
+        });
+        // ─────────────────────────────────────────────────────────────────
+
         $('#btn_enviar_aprobacion').on('click',function(){
           $('#enviar_aprobacion').val('');
           $('#enviarAprobacionModal').modal('show');
         });
 
         $('#confirm_enviar_aprobacion').on('click',function(){
+          if (!validarConjuntos()) {
+            $('#enviarAprobacionModal').modal('hide');
+            return;
+          }
           $('#enviar_aprobacion').val('1');
           $('#form_ot').submit();
         });

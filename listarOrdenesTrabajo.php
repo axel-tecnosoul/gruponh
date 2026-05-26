@@ -7,6 +7,14 @@ if (empty($_SESSION['user'])) {
 include 'database.php';*/
 include 'config.php';
 include 'database.php';
+require_once 'manejarFiltros.php';
+
+$filters = gestionarFiltros('listarOrdenesTrabajo');
+
+$nro       = $filters['nro']       ?? "";
+$fecha     = $filters['fecha']     ?? "";
+$fechah    = $filters['fechah']    ?? "";
+$id_estado = $filters['id_estado'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,10 +60,10 @@ include 'database.php';
                   <div class="card-body">
                     <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarOrdenesTrabajo.php">
                       <div class="form-group mb-0">
-                        N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" autofocus name="nro">
+                        N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?=htmlspecialchars($nro)?>" autofocus name="nro">
                       </div>
                       <div class="form-group mb-0">
-                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
+                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=htmlspecialchars($fecha)?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=htmlspecialchars($fechah)?>" name="fechah">
                       </div>
                       <div class="form-group mb-0">
                         Estado:&nbsp;
@@ -67,19 +75,15 @@ include 'database.php';
                           $q = $pdo->prepare($sqlZon);
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                            $selected = '';
-                            if (isset($_POST['id_estado'])) {
-                              if (in_array($fila['id'],$_POST['id_estado'])) {
-                                $selected = " selected ";
-                              }
-                            }?>
+                            $selected = in_array($fila['id'], $id_estado) ? " selected" : "";?>
                             <option value='<?=$fila['id']?>'<?=$selected?>><?=$fila['estado']?></option><?php
                           }
-							            Database::disconnect();?>
+                          Database::disconnect();?>
                         </select>
                       </div>
                       <div class="form-group mb-0">
-                        <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarOrdenesTrabajo.php'">Buscar</button>
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                        <a href="listarOrdenesTrabajo.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                       </div>
                     </form>
                   </div>
@@ -110,6 +114,8 @@ include 'database.php';
                         &nbsp;&nbsp;<?php
                       }?>
                       <a href="#" id="link_nuevo_consumo" title="Nuevo Consumo"><i style="width: 24px; height: 20px;color: midnightblue;" class='fa fa-lg fa-shopping-basket'></i></a>
+                      &nbsp;&nbsp;
+                      <a href="#" id="link_imprimir_ot" title="Imprimir"><i style="width: 24px; height: 20px;color: midnightblue;" class='fa fa-lg fa-print'></i></a>
                     </h5>
                   </div>
                   <div class="card-body">
@@ -130,50 +136,57 @@ include 'database.php';
                             <th>Estado</th>
                           </tr>
                         </thead>
-                        <tbody><?php 
-                          if (!empty($_POST)) {
-                            $pdo = Database::connect();
-                            //$sql = "SELECT otr.id, otr.numero, otr.nro_revision, otr.titulo, lcr.id_lista_corte, lcr.nombre ,p.nombre AS proyecto, date_format(otr.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio AS sitio,s.nro_subsitio AS subsitio,u.usuario,p.nro nro FROM ordenes_trabajo otr INNER JOIN ordenes_trabajo ot ON ot.id=otr.id_orden_trabajo INNER JOIN listas_corte_revisiones lcr ON otr.id_lista_corte=lcr.id inner join estados_orden_trabajo e on e.id = otr.id_estado_orden_trabajo inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON otr.id_usuario=u.id WHERE ot.anulado = 0";
-                            $sql = "SELECT ot.id, ot.numero, ot.nro_orden_trabajo, ot.nro_revision, ot.titulo, lc.id AS id_lista_corte, lc.nombre, lc.numero AS nro_lc ,p.nombre AS proyecto, date_format(ot.fecha,'%d/%m/%y') AS fecha, e.estado,s.nro_sitio, s.nro_subsitio, u.usuario,p.nro nro FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = ot.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON ot.id_usuario=u.id WHERE ot.anulado = 0";
-                            if (!empty($_POST['nro'])) {
-                              $nro=$_POST['nro'];
-                              $ex=explode("/", $nro);
-                              if(count($ex)>1){
-                                $sitio = $ex[0];
-                                $proyecto = $ex[1];
-                                $sql .= " AND (p.nro = ".$proyecto." AND s.nro_sitio = ".$sitio.") ";
-                              }else{
-                                $sql .= " AND (p.nro = ".$nro." OR s.nro_sitio = ".$nro.") ";
-                              }
+                        <tbody><?php
+                          $pdo = Database::connect();
+                          $sql = "SELECT ot.id, ot.numero, ot.nro_orden_trabajo, ot.nro_revision, ot.titulo, lc.id AS id_lista_corte, lc.nombre, lc.numero AS nro_lc ,p.nombre AS proyecto, date_format(ot.fecha,'%Y-%m-%d') AS fecha, e.estado,s.nro_sitio, s.nro_subsitio, u.usuario,p.nro nro FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte=lc.id inner join estados_orden_trabajo e on e.id = ot.id_estado_orden_trabajo inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio INNER JOIN usuarios u ON ot.id_usuario=u.id WHERE ot.anulado = 0";
+                          $params = [];
+                          if (!empty($nro)) {
+                            $ex = explode("/", $nro);
+                            if (count($ex) > 1) {
+                              $sitio   = intval($ex[0]);
+                              $proyecto = intval($ex[1]);
+                              $sql .= " AND (p.nro = ? AND s.nro_sitio = ?)";
+                              $params[] = $proyecto;
+                              $params[] = $sitio;
+                            } else {
+                              $sql .= " AND (p.nro = ? OR s.nro_sitio = ?)";
+                              $params[] = intval($nro);
+                              $params[] = intval($nro);
                             }
-                            if (!empty($_POST['fecha'])) {
-                              $sql .= " AND otr.fecha >= '".$_POST['fecha']."' ";
-                            }
-                            if (!empty($_POST['fechah'])) {
-                              $sql .= " AND otr.fecha <= '".$_POST['fechah']."' ";
-                            }
-                            if (!empty($_POST['id_estado'][0])) {
-                              $sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
-                            }else{
-                              $sql .= " AND e.id in (1,2,3,4) ";
-                            }
-                            foreach ($pdo->query($sql) as $row) {?>
-                              <tr>
-                                <td class="d-none"><?=$row["id"]?></td>
-                                <td><?=$row["nro_sitio"]?></td>
-                                <td><?=$row["nro_subsitio"]?></td>
-                                <td><?=$row["nro"]?></td>
-                                <td><?=$row["nro_lc"]?></td>
-                                <td><?=$row["nombre"]?></td>
-                                <!-- <td><?=$row["nro_orden_trabajo"].' / '.$row["nro_revision"]?></td> -->
-                                 <td><?=$row["nro_orden_trabajo"]?></td>
-                                <td><?=$row["fecha"]?></td>
-                                <td><?=$row["usuario"]?></td>
-                                <td><?= $row["estado"]?></td>
-                              </tr><?php
-                            }
-                            Database::disconnect();
-                          }?>
+                          }
+                          if (!empty($fecha)) {
+                            $sql .= " AND ot.fecha >= ?";
+                            $params[] = $fecha;
+                          }
+                          if (!empty($fechah)) {
+                            $sql .= " AND ot.fecha <= ?";
+                            $params[] = $fechah;
+                          }
+                          if (!empty($id_estado) && !empty($id_estado[0])) {
+                            $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
+                            $sql .= " AND e.id IN (" . $placeholders . ")";
+                            $params = array_merge($params, $id_estado);
+                          } else {
+                            $sql .= " AND e.id IN (1,2,3,4)";
+                          }
+                          $q = $pdo->prepare($sql);
+                          $q->execute($params);
+                          foreach ($q->fetchAll(PDO::FETCH_ASSOC) as $row) {?>
+                            <tr>
+                              <td class="d-none"><?=$row["id"]?></td>
+                              <td><?=$row["nro_sitio"]?></td>
+                              <td><?=$row["nro_subsitio"]?></td>
+                              <td><?=$row["nro"]?></td>
+                              <td><?=$row["nro_lc"]?></td>
+                              <td><?=$row["nombre"]?></td>
+                              <!-- <td><?=$row["nro_orden_trabajo"].' / '.$row["nro_revision"]?></td> -->
+                               <td><?=$row["nro_orden_trabajo"]?></td>
+                              <td><?=$row["fecha"]?></td>
+                              <td><?=$row["usuario"]?></td>
+                              <td><?= $row["estado"]?></td>
+                            </tr><?php
+                          }
+                          Database::disconnect();?>
                         </tbody>
 						            <tfoot>
                           <tr>
@@ -426,9 +439,6 @@ include 'database.php';
               "previous": "Anterior"
             }
           },
-		      /*"fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            $('td:eq(9)', nRow).addClass("editable1").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[4]).attr("title","Doble click para editar");
-          },*/
           initComplete: function(){
             $('[title]').tooltip();
           }
@@ -446,7 +456,6 @@ include 'database.php';
           });
         });
         
-        //$('#tablaOT').find("tbody tr td").not(":last-child").on( 'click', function () {
         $(document).on("click","#tablaOT tbody tr td", function(){
           var t=$(this).parent();
 
@@ -460,6 +469,7 @@ include 'database.php';
             $("#link_ver_ot").attr("href","#");
             $("#link_enviar_produccion_ot").attr("href","#");
             $("#link_nuevo_consumo").attr("href","#");
+            $("#link_imprimir_ot").attr("href","#");
             $("#link_cancelar_ot").attr("data-target","#");
             $("#btnEliminarOT").attr("href","#");
             $("#id_orden_trabajo").val('');
@@ -467,7 +477,6 @@ include 'database.php';
             $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
             $("#btnDetalle").attr("href","#");
           }else{
-            //t.parent().find("tr").removeClass("selected");
             table.rows().nodes().each( function (rowNode, index) {
               $(rowNode).removeClass("selected");
             });
@@ -502,6 +511,7 @@ include 'database.php';
               $("#link_cancelar_ot").attr("data-target","#");
               $("#btnEliminarOT").attr("href","#");
             }
+            $("#link_imprimir_ot").attr("href","imprimirOrdenTrabajo.php?id="+id_ot);
           }
         });
 
@@ -547,6 +557,13 @@ include 'database.php';
           }
         })
 
+        $("#link_imprimir_ot").on("click",function(){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            alert("Por favor seleccione una orden de trabajo para imprimir")
+          }
+        })
+
         $("#btnAbrirModalModificarCantidades").on("click",function(){
           let id_posicion=$(this).data("id");
           let estadoPos=$(this).data("estado");
@@ -563,9 +580,6 @@ include 'database.php';
         });
 
         $("#modificarCantidades").on('shown.bs.modal',function(){
-          /*let now=new Date();
-          let local=new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,16);
-          $(this).find("input[name='fecha']").val(local);*/
           $(this).find("input[name='reproceso'],input[name='rechazadas'],input[name='liberadas'],input[name='motivo']").val("");
           $(this).find("input[name='motivo']").prop('required',false);
           let max=parseInt($("#cantMaxima").html())||0;
@@ -588,7 +602,6 @@ include 'database.php';
             alert("Por favor seleccione una posicion para ver el historial");
           }
         });
-		
 		
         $("#btnModificarCantidades").on("click",function(e){
           e.preventDefault();
@@ -653,8 +666,6 @@ include 'database.php';
               ],
               columnDefs: [
                 { targets: [0], className: 'd-none'},
-                { targets: [2], visible: false },
-                //{ targets: [13], className: 'd-none', visible: false }
               ],
               data: data,
               language: {
@@ -677,11 +688,6 @@ include 'database.php';
                     "previous": "Anterior"
                 }
               },
-              /*"fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-                console.log(nRow);
-                console.log(aData);
-                $('td:eq(7)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[10]).attr("title","Doble click para editar");
-              },*/
               initComplete: function(){
                 $('[title]').tooltip();
               }
@@ -700,9 +706,7 @@ include 'database.php';
             });
         
             $('#tablaDetalleOT').find("tbody tr td").not(":last-child").not(":nth-last-child(2)").on( 'click', function () {
-            //$(document).on("click","#tablaDetalleOT tbody tr td", function(){
               var t=$(this).parent();
-              //t.parent().find("tr").removeClass("selected");
 
               let rowData = table.row(t).data();
               let id_detalle_ot = rowData[0];
