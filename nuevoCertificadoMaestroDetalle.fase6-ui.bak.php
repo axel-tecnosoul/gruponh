@@ -26,11 +26,7 @@ if (!empty($_POST)) {
   $id_certificado_maestro_post = (int) ($_GET['id_certificado_maestro'] ?? 0);
   if ($id_certificado_maestro_post <= 0) {
     Database::disconnect();
-    if (isset($_POST['btn_crear_otro_aperturado'])) {
-      header("Location: nuevoCertificadoMaestroDetalle.php?id_certificado_maestro=" . $id_certificado_maestro_post);
-    } else {
-      header("Location: listarCertificadosMaestros.php");
-    }
+    header("Location: listarCertificadosMaestros.php");
     exit;
   }
 
@@ -159,7 +155,6 @@ if (!empty($_POST)) {
 
     $subtotal_lote_anterior = 0.0;
     $monto_base_lote_anterior = 0.0;
-    $occ_ids_lote_anterior = [];
     if ($id_lote_edicion !== '') {
       $sql = "SELECT COALESCE(SUM(subtotal),0) AS subtotal_lote, COALESCE(MAX(monto_base_occ),0) AS monto_base_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
       $q = $pdo->prepare($sql);
@@ -171,34 +166,15 @@ if (!empty($_POST)) {
       }
 
       $subtotal_lote_anterior = (float) ($loteData['subtotal_lote'] ?? 0);
-      $monto_base_lote_anterior = (float) ($loteData['monto_base_lote'] ?? 0);
-
-      $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
-      $occ_rows_lote = $q->fetchAll(PDO::FETCH_COLUMN, 0);
-      foreach ($occ_rows_lote as $occ_id_row) {
-        $tmp_occ = (int) $occ_id_row;
-        if ($tmp_occ > 0) {
-          $occ_ids_lote_anterior[$tmp_occ] = $tmp_occ;
-        }
-      }
+  $monto_base_lote_anterior = (float) ($loteData['monto_base_lote'] ?? 0);
 
       $sql = "UPDATE certificados_maestros SET monto_acumulado_avances = monto_acumulado_avances - ? WHERE id = ?";
       $q = $pdo->prepare($sql);
       $q->execute([round($subtotal_lote_anterior, 6), $id_certificado_maestro_post]);
 
-      $sql = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
-
       $sql = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
       $q = $pdo->prepare($sql);
       $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
-    }
-
-    if (empty($ids_occ_detalle) && $permite_sin_items_occ && !empty($occ_ids_lote_anterior)) {
-      $ids_occ_detalle = array_values($occ_ids_lote_anterior);
     }
 
     $sql = "SELECT id_occ FROM certificados_maestros WHERE id = ?";
@@ -244,9 +220,6 @@ if (!empty($_POST)) {
     $sqlInsert = "INSERT INTO certificados_maestros_detalles (id_certificado_maestro, id_occ_detalle, id_proyecto, id_tipo_item_certificado, descripcion, cantidad, id_unidad_medida, precio_unitario, subtotal, incidencia_porcentaje, monto_base_occ, lote_aperturado, modo_generacion) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
     $qInsert = $pdo->prepare($sqlInsert);
 
-    $sqlInsertRel = "INSERT IGNORE INTO certificados_maestros_lotes_occ_detalle (id_certificado_maestro, lote_aperturado, id_occ_detalle, modo_generacion) VALUES (?,?,?,?)";
-    $qInsertRel = $pdo->prepare($sqlInsertRel);
-
     if ($modo_generacion === 'agrupar') {
       $loteAperturado = $id_lote_edicion !== '' ? $loteBase : ($loteBase . '-AGR');
       foreach ($aperturadoRows as $apRow) {
@@ -271,15 +244,6 @@ if (!empty($_POST)) {
 
         $rowsInserted++;
         $montoTotalInsertado += $subtotalFila;
-      }
-
-      foreach ($ids_occ_detalle as $occIdRel) {
-        $qInsertRel->execute([
-          $id_certificado_maestro_post,
-          $loteAperturado,
-          (int) $occIdRel,
-          $modo_generacion,
-        ]);
       }
     } else {
       if ($id_lote_edicion !== '' && count($ids_occ_detalle) !== 1) {
@@ -312,13 +276,6 @@ if (!empty($_POST)) {
           $rowsInserted++;
           $montoTotalInsertado += $subtotalFila;
         }
-
-        $qInsertRel->execute([
-          $id_certificado_maestro_post,
-          $loteAperturado,
-          (int) $occId,
-          $modo_generacion,
-        ]);
       }
     }
 
@@ -394,27 +351,15 @@ $lotes_base = $q->fetchAll(PDO::FETCH_ASSOC);
 foreach ($lotes_base as $lote_row) {
   $lote_id = $lote_row['lote_aperturado'];
 
-  $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ? ORDER BY id_occ_detalle";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_certificado_maestro, $lote_id]);
-  $occ_rows_rel = $q->fetchAll(PDO::FETCH_COLUMN, 0);
-
   $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ? ORDER BY id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_certificado_maestro, $lote_id]);
   $rows_lote = $q->fetchAll(PDO::FETCH_ASSOC);
 
   $occ_ids = [];
-  foreach ($occ_rows_rel as $occ_rel) {
-    $tmp_rel = (int) $occ_rel;
-    if ($tmp_rel > 0) {
-      $occ_ids[$tmp_rel] = $tmp_rel;
-    }
-  }
-
   $ap_rows = [];
   foreach ($rows_lote as $r) {
-    if (empty($occ_ids) && !empty($r['id_occ_detalle'])) {
+    if (!empty($r['id_occ_detalle'])) {
       $occ_ids[(int) $r['id_occ_detalle']] = (int) $r['id_occ_detalle'];
     }
     $ap_rows[] = [
@@ -433,7 +378,6 @@ foreach ($lotes_base as $lote_row) {
     'subtotal_lote' => (float) ($lote_row['subtotal_lote'] ?? 0),
     'cantidad_filas' => (int) ($lote_row['cantidad_filas'] ?? 0),
     'occ_ids' => array_values($occ_ids),
-    'aplica_global' => empty($occ_ids),
     'aperturado_rows' => $ap_rows,
   ];
 }
@@ -446,38 +390,6 @@ Database::disconnect();
     <?php include('head_forms.php');?>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
-    <style>
-      #tabla_occ_detalles tbody tr.occ-grouped-member td {
-        background-color: #eef8ff;
-      }
-
-      #tabla_occ_detalles tbody tr.occ-grouped-start td,
-      #tabla_occ_detalles tbody tr.occ-grouped-middle td,
-      #tabla_occ_detalles tbody tr.occ-grouped-end td,
-      #tabla_occ_detalles tbody tr.occ-grouped-single td {
-        border-left: 3px solid #2b8dbf;
-      }
-
-      #tabla_occ_detalles tbody tr.occ-grouped-start td {
-        border-top: 2px solid #2b8dbf;
-      }
-
-      #tabla_occ_detalles tbody tr.occ-grouped-end td {
-        border-bottom: 2px solid #2b8dbf;
-      }
-
-      #tabla_occ_detalles tbody tr.occ-grouped-single td {
-        border-top: 2px solid #2b8dbf;
-        border-bottom: 2px solid #2b8dbf;
-      }
-
-      .occ-group-aperturado-wrap {
-        border-left: 4px solid #2b8dbf;
-        background: #f7fcff;
-        border-radius: 4px;
-        padding: 8px 10px;
-      }
-    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -543,9 +455,9 @@ Database::disconnect();
                                       <th>ID</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
-                                      <th class="text-right">Precio unitario</th>
-                                      <th class="text-right">Descuento</th>
-                                      <th class="text-right">Subtotal</th>
+                                      <th>Precio unitario</th>
+                                      <th>Descuento</th>
+                                      <th>Subtotal</th>
                                       <th class="text-center occ-desglose-col" style="width:150px;">Acciones</th>
                                     </tr>
                                   </thead>
@@ -560,9 +472,9 @@ Database::disconnect();
                                           <td><?=$row['id']?></td>
                                           <td><?=htmlspecialchars($row['descripcion'])?></td>
                                           <td><?=number_format($row['cantidad'],2,',','.')?></td>
-                                          <td class="text-right"><?=$moneda_occ?> <?=number_format($row['precio_unitario'],2,',','.')?></td>
-                                          <td class="text-right"><?=$moneda_occ?> <?=number_format($row['descuento'],2,',','.')?></td>
-                                          <td class="text-right"><?=$moneda_occ?> <?=number_format($row['subtotal'],2,',','.')?></td>
+                                          <td><?=$moneda_occ?> <?=number_format($row['precio_unitario'],2,',','.')?></td>
+                                          <td><?=$moneda_occ?> <?=number_format($row['descuento'],2,',','.')?></td>
+                                          <td><?=$moneda_occ?> <?=number_format($row['subtotal'],2,',','.')?></td>
                                           <td class="text-center occ-desglose-cell"></td>
                                         </tr><?php
                                       }
@@ -579,6 +491,46 @@ Database::disconnect();
                             </div>
                           </div>
 
+                          <div class="form-group row mt-2">
+                            <div class="col-sm-12">
+                              <h6 class="mb-2 font-weight-bold">Lotes cargados (edicion por lote)</h6>
+                              <div class="table-responsive">
+                                <table class="table table-sm table-bordered" id="tabla_lotes_existentes" style="width:100%">
+                                  <thead>
+                                    <tr>
+                                      <th>Lote</th>
+                                      <th>Modo</th>
+                                      <th>Proyecto</th>
+                                      <th>Base OCC</th>
+                                      <th>Subtotal</th>
+                                      <th>Filas</th>
+                                      <th>Accion</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody><?php
+                                    if (empty($lotes_editables)) {?>
+                                      <tr>
+                                        <td colspan="7">No hay lotes editables cargados para este certificado.</td>
+                                      </tr><?php
+                                    } else {
+                                      foreach ($lotes_editables as $lote_item) {?>
+                                        <tr>
+                                          <td><?=htmlspecialchars($lote_item['lote_aperturado'], ENT_QUOTES)?></td>
+                                          <td><?=htmlspecialchars($lote_item['modo_generacion'], ENT_QUOTES)?></td>
+                                          <td><?=$lote_item['id_proyecto']?></td>
+                                          <td><?=$moneda_occ?> <?=number_format((float) $lote_item['monto_base_occ'], 2, ',', '.')?></td>
+                                          <td><?=$moneda_occ?> <?=number_format((float) $lote_item['subtotal_lote'], 2, ',', '.')?></td>
+                                          <td><?=$lote_item['cantidad_filas']?></td>
+                                          <td><button type="button" class="btn btn-primary btn-sm btn-editar-lote" data-lote="<?=htmlspecialchars($lote_item['lote_aperturado'], ENT_QUOTES)?>">Editar lote</button></td>
+                                        </tr><?php
+                                      }
+                                    }?>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
                           <hr class="mt-4 mb-4">
 
                           <div class="form-group row">
@@ -588,7 +540,7 @@ Database::disconnect();
                             </div>
                             <label class="col-sm-3 col-form-label font-weight-bold">Base total OCC seleccionada</label>
                             <div class="col-sm-3">
-                              <span class="form-control-plaintext text-right d-block" id="base_total_occ_seleccionada"><?=$moneda_occ?> 0,00</span>
+                              <span class="form-control-plaintext" id="base_total_occ_seleccionada"><?=$moneda_occ?> 0,00</span>
                             </div>
                           </div>
 
@@ -651,8 +603,8 @@ Database::disconnect();
                                       <th style="width:11%;">Unidad</th>
                                       <th style="width:11%;">Cantidad</th>
                                       <th style="width:13%;">Incidencia (%)</th>
-                                      <th class="text-right" style="width:11%;">Precio Unitario</th>
-                                      <th class="text-right" style="width:11%;">Total</th>
+                                      <th style="width:11%;">Precio Unitario</th>
+                                      <th style="width:11%;">Total</th>
                                       <th style="width:8%;">Accion</th>
                                     </tr>
                                   </thead>
@@ -693,8 +645,7 @@ Database::disconnect();
                     <div class="card-footer">
                       <div class="col-12">
 
-                        <button type="submit" class="btn btn-primary" name="btn_crear_otro_aperturado" value="1" id="btn_guardar_detalle">Crear y agregar otro aperturado</button>
-                        <button type="submit" class="btn btn-success" name="btn_ir_certificado" value="1">Crear e ir al listado</button>
+                        <button type="submit" class="btn btn-primary" id="btn_guardar_detalle">Crear</button>
                         <button type="button" class="btn btn-secondary" id="btn_cancelar_edicion_lote" style="display:none;">Cancelar edicion de lote</button>
                         <a href='listarCertificadosMaestros.php' class="btn btn-light">Volver</a>
 
@@ -769,32 +720,6 @@ Database::disconnect();
           lote.aperturado_rows = lote.aperturado_rows || [];
         });
 
-        function preloadSelectedOccItemsFromExistingLots() {
-          const hasGlobalLots = lotesEditablesData.some(function (lote) {
-            return !!lote.aplica_global;
-          });
-
-          if (hasGlobalLots) {
-            $('#tabla_occ_detalles tbody tr.occ-item-row').each(function () {
-              const rowId = String($(this).data('id') || '');
-              const subtotal = parseFloat($(this).data('subtotal')) || 0;
-              if (rowId) {
-                selectedOccItems[rowId] = subtotal;
-              }
-            });
-            return;
-          }
-
-          lotesEditablesData.forEach(function (lote) {
-            (lote.occ_ids || []).forEach(function (occId) {
-              const key = String(occId);
-              if (occSubtotalPorId[key] !== undefined) {
-                selectedOccItems[key] = parseFloat(occSubtotalPorId[key]) || 0;
-              }
-            });
-          });
-        }
-
         function getLoteEditableById(loteId) {
           for (let i = 0; i < lotesEditablesData.length; i++) {
             if (String(lotesEditablesData[i].lote_aperturado) === String(loteId)) {
@@ -827,16 +752,6 @@ Database::disconnect();
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
-        }
-
-        function getProyectoLabelById(idProyecto) {
-          const key = String(idProyecto || '');
-          if (!key) {
-            return '';
-          }
-          const text = $('#id_proyecto option[value="' + key + '"]').first().text() || '';
-          const clean = String(text).trim();
-          return clean || key;
         }
 
         function updateOccBreakdownControls() {
@@ -876,7 +791,9 @@ Database::disconnect();
 
           if (!keepRows) {
             $('#body_aperturado').empty();
-            addAperturadoRow(false);
+            const nuevaFila = $(buildAperturadoRow());
+            $('#body_aperturado').append(nuevaFila);
+            nuevaFila.find('.aper-desc').trigger('focus');
           }
 
           $('#id_proyecto').val('').trigger('change');
@@ -938,7 +855,7 @@ Database::disconnect();
           });
 
           if (!$('#body_aperturado tr').length) {
-            addAperturadoRow(false);
+            $('#btn_agregar_fila_aperturado').trigger('click');
           }
 
           syncOccRowStyles();
@@ -953,204 +870,57 @@ Database::disconnect();
             return;
           }
           const modoSeleccionado = $('input[name="modo_generacion"]:checked').val() || '';
-          const showAcciones = modoSeleccionado === 'separar' || (lotesEditablesData.length > 0 && Object.keys(selectedOccItems).length > 0) || (isEditandoLote() && Object.keys(selectedOccItems).length > 0);
+          const showAcciones = modoSeleccionado === 'separar';
           occDataTable.column(6).visible(showAcciones, false);
           occDataTable.columns.adjust().draw(false);
         }
 
-        function getSelectedOccIdsInTableOrder() {
-          const ids = [];
-          $('#tabla_occ_detalles tbody tr.occ-item-row').each(function () {
-            const occId = String($(this).data('id') || '');
-            if (!occId) {
-              return;
-            }
-            if (selectedOccItems[occId] !== undefined) {
-              ids.push(occId);
-            }
+        function buildOccBreakdownHtml(occId, baseIndividual) {
+          const rows = [];
+          let subtotalCalculado = 0;
+
+          $('#body_aperturado tr').each(function () {
+            const desc = ($(this).find('.aper-desc').val() || '').trim() || '(sin descripcion)';
+            const unidad = ($(this).find('.aper-unidad option:selected').text() || '').trim();
+            const cantidad = parseFloat($(this).find('.aper-cantidad').val()) || 0;
+            const incidencia = parseFloat($(this).find('.aper-incidencia').val()) || 0;
+            const totalFila = baseIndividual * (incidencia / 100);
+            const precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
+
+            subtotalCalculado += totalFila;
+            rows.push(`
+              <tr>
+                <td>${escapeHtml(desc)}</td>
+                <td>${escapeHtml(unidad)}</td>
+                <td class="text-right">${formatNumber(cantidad)}</td>
+                <td class="text-right">${formatNumber(incidencia)}%</td>
+                <td class="text-right">${simboloMonedaOcc} ${formatNumber(precioUnitario)}</td>
+                <td class="text-right">${simboloMonedaOcc} ${formatNumber(totalFila)}</td>
+              </tr>
+            `);
           });
-          return ids;
-        }
-
-        function buildGroupedRenderContext() {
-          const selectedIdsInOrder = getSelectedOccIdsInTableOrder();
-          const groupedByOwner = {};
-          const groupedMembershipByItem = {};
-          const groupedRowClassByItem = {};
-
-          lotesEditablesData
-            .filter(function (lote) {
-              return String(lote.modo_generacion || '') === 'agrupar';
-            })
-            .forEach(function (lote) {
-              const loteOccIds = Array.isArray(lote.occ_ids) ? lote.occ_ids.map(String) : [];
-              const idsDeGrupo = loteOccIds.length
-                ? selectedIdsInOrder.filter(function (id) { return loteOccIds.indexOf(id) >= 0; })
-                : selectedIdsInOrder.slice();
-
-              if (!idsDeGrupo.length) {
-                return;
-              }
-
-              const ownerOccId = idsDeGrupo[idsDeGrupo.length - 1];
-              if (!groupedByOwner[ownerOccId]) {
-                groupedByOwner[ownerOccId] = [];
-              }
-              groupedByOwner[ownerOccId].push({
-                lote: lote,
-                ids_grupo: idsDeGrupo,
-              });
-
-              idsDeGrupo.forEach(function (id, idx) {
-                if (!groupedMembershipByItem[id]) {
-                  groupedMembershipByItem[id] = [];
-                }
-                groupedMembershipByItem[id].push({
-                  lote_aperturado: lote.lote_aperturado,
-                  ids_grupo: idsDeGrupo,
-                  is_owner: id === ownerOccId,
-                });
-
-                if (!groupedRowClassByItem[id]) {
-                  if (idsDeGrupo.length === 1) {
-                    groupedRowClassByItem[id] = 'occ-grouped-single';
-                  } else if (idx === 0) {
-                    groupedRowClassByItem[id] = 'occ-grouped-start';
-                  } else if (idx === idsDeGrupo.length - 1) {
-                    groupedRowClassByItem[id] = 'occ-grouped-end';
-                  } else {
-                    groupedRowClassByItem[id] = 'occ-grouped-middle';
-                  }
-                }
-              });
-            });
-
-          return {
-            groupedByOwner: groupedByOwner,
-            groupedMembershipByItem: groupedMembershipByItem,
-            groupedRowClassByItem: groupedRowClassByItem,
-          };
-        }
-
-        function buildOccBreakdownHtml(occId, baseIndividual, groupedContext) {
-          const groupMemberInfo = (groupedContext && groupedContext.groupedMembershipByItem && groupedContext.groupedMembershipByItem[String(occId)]) || [];
-          const groupedLotesForThisItem = (groupedContext && groupedContext.groupedByOwner && groupedContext.groupedByOwner[String(occId)]) || [];
-          const hasGroupedOwnership = groupedLotesForThisItem.length > 0;
-
-          const lotesSeparados = lotesEditablesData.filter(function (lote) {
-            if (String(lote.modo_generacion || '') === 'agrupar') {
-              return false;
-            }
-            const occIds = Array.isArray(lote.occ_ids) ? lote.occ_ids.map(String) : [];
-            return occIds.indexOf(String(occId)) >= 0;
-          });
-
-          function renderLoteHtml(lote) {
-                const rowsLote = Array.isArray(lote.aperturado_rows) ? lote.aperturado_rows : [];
-                const proyectoLabel = getProyectoLabelById(lote.id_proyecto);
-                const filasHtml = rowsLote.length
-                  ? rowsLote.map(function (row) {
-                      const cantidad = parseFloat(row.cantidad) || 0;
-                      const incidencia = parseFloat(row.incidencia) || 0;
-                      const baseLote = parseFloat(lote.monto_base_occ) || 0;
-                      const totalFila = baseLote * (incidencia / 100);
-                      const precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
-                      return `
-                        <tr>
-                          <td>${escapeHtml(row.descripcion)}</td>
-                          <td>${escapeHtml((unidadesMedida.find(function (u) { return String(u.id) === String(row.id_unidad_medida); }) || {}).unidad_medida || '')}</td>
-                          <td class="text-right">${formatNumber(cantidad)}</td>
-                          <td class="text-right">${formatNumber(incidencia)}%</td>
-                          <td class="text-right">${simboloMonedaOcc} ${formatNumber(precioUnitario)}</td>
-                          <td class="text-right">${simboloMonedaOcc} ${formatNumber(totalFila)}</td>
-                        </tr>`;
-                    }).join('')
-                  : '<tr><td colspan="6" class="text-muted">Sin filas de aperturado guardadas para este lote.</td></tr>';
-
-                return `
-                <div class="border rounded px-2 py-2 mb-2 occ-lote-inline-row">
-                  <div class="table-responsive mb-2">
-                    <table class="table table-sm table-bordered mb-0 occ-lote-summary-table">
-                      <thead>
-                        <tr>
-                          <th>Lote</th>
-                          <th>Proyecto</th>
-                          <th class="text-right">Monto lote</th>
-                          <th class="text-center">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>${escapeHtml(lote.lote_aperturado)}</td>
-                          <td>${escapeHtml(proyectoLabel)}</td>
-                          <td class="text-right">${simboloMonedaOcc} ${formatNumber(parseFloat(lote.subtotal_lote) || 0)}</td>
-                          <td class="text-center">
-                            <a href="#" class="btn-editar-lote-inline mr-2" data-lote="${escapeHtml(lote.lote_aperturado)}" title="Editar lote" style="color: midnightblue;">
-                              <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Modificar" title="Modificar">
-                            </a>
-                            <a href="#" class="btn-eliminar-lote-inline" data-lote="${escapeHtml(lote.lote_aperturado)}" title="Eliminar lote" style="color: #dc3545;">
-                              <img src="img/icon_baja.png" width="20" height="21" border="0" alt="Eliminar" title="Eliminar">
-                            </a>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  <div class="table-responsive">
-                    <table class="table table-sm table-bordered mb-0 occ-breakdown-table">
-                      <thead>
-                        <tr>
-                          <th>Descripcion</th>
-                          <th>Unidad</th>
-                          <th class="text-right">Cantidad</th>
-                          <th class="text-right">Incidencia</th>
-                          <th class="text-right">Precio Unitario</th>
-                          <th class="text-right">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${filasHtml}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>`;
-          }
-
-          const loteAgrupadoDetalleHtml = groupedLotesForThisItem.length
-            ? groupedLotesForThisItem.map(function (entry) {
-                const idsGrupo = entry.ids_grupo || [];
-                return `
-                  <div class="occ-group-aperturado-wrap mb-2">
-                    <small class="d-block font-weight-bold text-info mb-1">Aperturado agrupado (lote ${escapeHtml(entry.lote.lote_aperturado)})</small>
-                    <small class="d-block text-muted mb-2">Aplica al grupo OCC: ${escapeHtml(idsGrupo.join(', '))}</small>
-                    ${renderLoteHtml(entry.lote)}
-                  </div>`;
-              }).join('')
-            : '';
-
-          if (!hasGroupedOwnership && groupMemberInfo.length === 0 && lotesSeparados.length === 0) {
-            return '';
-          }
-
-          if (!hasGroupedOwnership && groupMemberInfo.length > 0 && lotesSeparados.length === 0) {
-            return '';
-          }
-
-          const lotesSeparadosHtml = lotesSeparados.length
-            ? `<small class="d-block font-weight-bold text-primary mb-1">Lotes por item</small>${lotesSeparados.map(renderLoteHtml).join('')}`
-            : '';
-
-          const lotesHtml = (groupedLotesForThisItem.length || lotesSeparados.length)
-            ? `
-              ${loteAgrupadoDetalleHtml}
-              ${lotesSeparadosHtml}
-            `
-            : '<small class="text-muted d-block mb-2">Sin lotes asociados todavia para este item OCC.</small>';
 
           return `
             <div class="occ-breakdown-panel">
-              <div class="occ-lote-inline-actions mb-2">
-                ${lotesHtml}
+              <div class="occ-breakdown-header d-flex justify-content-between align-items-center mb-2">
+                <small class="font-weight-bold">Desglose item OCC #${occId} - Base: ${simboloMonedaOcc} ${formatNumber(baseIndividual)} - Subtotal: ${simboloMonedaOcc} ${formatNumber(subtotalCalculado)}</small>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0 occ-breakdown-table">
+                  <thead>
+                    <tr>
+                      <th>Descripcion</th>
+                      <th>Unidad</th>
+                      <th class="text-right">Cantidad</th>
+                      <th class="text-right">Incidencia</th>
+                      <th class="text-right">Precio Unitario</th>
+                      <th class="text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${rows.join('')}
+                  </tbody>
+                </table>
               </div>
             </div>`;
         }
@@ -1161,9 +931,8 @@ Database::disconnect();
           }
 
           const separar = isModoSeparar();
-          const mostrarEnEdicion = lotesEditablesData.length > 0 || isEditandoLote();
+          const hasAperturadoRows = $('#body_aperturado tr').length > 0;
           const selectedIds = Object.keys(selectedOccItems);
-          const groupedContext = buildGroupedRenderContext();
 
           updateOccBreakdownControls();
 
@@ -1178,18 +947,13 @@ Database::disconnect();
             const isSelected = selectedOccItems[occId] !== undefined;
             const isHidden = ocultarTodosDesgloses || !!hiddenDesglosePorItem[occId];
 
-            if ((!separar && !mostrarEnEdicion) || !isSelected || isHidden) {
+            if (!separar || !hasAperturadoRows || !isSelected || isHidden) {
               this.child.hide();
               return;
             }
 
             const baseIndividual = parseFloat(selectedOccItems[occId]) || 0;
-            const breakdownHtml = buildOccBreakdownHtml(occId, baseIndividual, groupedContext);
-            if (!breakdownHtml) {
-              this.child.hide();
-              return;
-            }
-            this.child(breakdownHtml).show();
+            this.child(buildOccBreakdownHtml(occId, baseIndividual)).show();
           });
         }
 
@@ -1219,25 +983,16 @@ Database::disconnect();
               <input type="number" class="form-control form-control-sm aper-incidencia" name="aperturado_incidencia[]" step="0.01" min="0" max="100" required>
             </td>
             <td>
-              <span class="form-control-plaintext aper-precio-unitario text-right d-block">${simboloMonedaOcc} 0,00</span><input type="hidden" class="aper-precio-unitario-hidden" name="aperturado_precio_unitario[]" value="0">
+              <span class="form-control-plaintext aper-precio-unitario">${simboloMonedaOcc} 0,00</span><input type="hidden" class="aper-precio-unitario-hidden" name="aperturado_precio_unitario[]" value="0">
             </td>
             <td>
-              <span class="form-control-plaintext aper-total text-right d-block">${simboloMonedaOcc} 0,00</span>
+              <span class="form-control-plaintext aper-total">${simboloMonedaOcc} 0,00</span>
               <input type="hidden" class="aper-total-hidden" name="aperturado_total[]" value="0">
             </td>
             <td>
               <button type="button" class="btn btn-sm btn-danger btn-eliminar-fila-aperturado">X</button>
             </td>
           </tr>`;
-        }
-
-        function addAperturadoRow(shouldFocus) {
-          const nuevaFila = $(buildAperturadoRow());
-          $('#body_aperturado').append(nuevaFila);
-          if (shouldFocus) {
-            nuevaFila.find('.aper-desc').trigger('focus');
-          }
-          return nuevaFila;
         }
 
         function syncLegacyFieldsFromFirstRow() {
@@ -1312,36 +1067,19 @@ Database::disconnect();
         }
 
         function syncOccRowStyles() {
-          const groupedContext = buildGroupedRenderContext();
-
           $('#tabla_occ_detalles tbody tr.occ-item-row').each(function () {
             const rowId = String($(this).data('id') || '');
             const isSelected = !!selectedOccItems[rowId];
             const isHidden = ocultarTodosDesgloses || !!hiddenDesglosePorItem[rowId];
             const actionCell = $(this).find('td.occ-desglose-cell');
 
-            $(this)
-              .toggleClass('selected', isSelected)
-              .removeClass('occ-grouped-member occ-grouped-start occ-grouped-middle occ-grouped-end occ-grouped-single');
+            $(this).toggleClass('selected', isSelected);
             actionCell.find('.btn-toggle-desglose-item').remove();
 
-            if (isSelected) {
-              const breakdownHtml = buildOccBreakdownHtml(rowId, parseFloat(selectedOccItems[rowId]) || 0, groupedContext);
-              if (!breakdownHtml) {
-                return;
-              }
-
+            if (isSelected && isModoSeparar()) {
               const textBtn = isHidden ? 'Mostrar desglose' : 'Ocultar desglose';
               actionCell.append('<button type="button" class="btn btn-secondary btn-sm btn-toggle-desglose-item" data-occ-id="' + rowId + '">' + textBtn + '</button>');
             }
-          });
-          $('#tabla_occ_detalles tbody tr.occ-item-row').each(function () {
-            const rowId = String($(this).data('id') || '');
-            const rowClass = groupedContext.groupedRowClassByItem[rowId] || '';
-            if (!rowClass) {
-              return;
-            }
-            $(this).addClass('occ-grouped-member ' + rowClass);
           });
         }
 
@@ -1363,9 +1101,7 @@ Database::disconnect();
           updateOccSelectionSummary();
         });
 
-        $(document).on('click', '.btn-editar-lote-inline', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
+        $(document).on('click', '.btn-editar-lote', function () {
           const loteId = String($(this).data('lote') || '');
           if (!loteId) {
             return;
@@ -1373,25 +1109,16 @@ Database::disconnect();
           cargarLoteParaEdicion(loteId);
         });
 
-        $(document).on('click', '.btn-eliminar-lote-inline', function (e) {
-          e.preventDefault();
-          e.stopPropagation();
-          const loteId = String($(this).data('lote') || '');
-          if (!loteId) {
-            return;
-          }
-          if (!confirm('¿Eliminar este lote completo?')) {
-            return;
-          }
-          window.location.href = 'eliminarDetalleCertificadoMaestro.php?id_lote=' + encodeURIComponent(loteId);
-        });
-
         $('#btn_cancelar_edicion_lote').on('click', function () {
           resetFormCreateMode(false);
         });
 
+        updateOccSelectionSummary();
+
         $('#btn_agregar_fila_aperturado').on('click', function () {
-          addAperturadoRow(true);
+          const nuevaFila = $(buildAperturadoRow());
+          $('#body_aperturado').append(nuevaFila);
+          nuevaFila.find('.aper-desc').trigger('focus');
         });
 
         $(document).on('click', '.btn-eliminar-fila-aperturado', function () {
@@ -1456,7 +1183,7 @@ Database::disconnect();
           renderOccBreakdowns();
         });
 
-        addAperturadoRow(false);
+        $('#btn_agregar_fila_aperturado').trigger('click');
 
         occDataTable = $('#tabla_occ_detalles').DataTable({
           stateSave: false,
@@ -1487,10 +1214,6 @@ Database::disconnect();
 
         updateOccActionsColumnVisibility();
 
-        if (window.feather) {
-          feather.replace();
-        }
-
         $('#tabla_occ_detalles tbody tr.occ-item-row').each(function () {
           const rowId = String($(this).data('id') || '');
           const subtotal = parseFloat($(this).data('subtotal')) || 0;
@@ -1498,12 +1221,6 @@ Database::disconnect();
             occSubtotalPorId[rowId] = subtotal;
           }
         });
-
-        preloadSelectedOccItemsFromExistingLots();
-        updateOccActionsColumnVisibility();
-        updateOccSelectionSummary();
-        syncOccRowStyles();
-        renderOccBreakdowns();
 
         $('#tabla_occ_detalles').on('draw.dt', function () {
           syncOccRowStyles();

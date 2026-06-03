@@ -24,3 +24,118 @@ body {
   background-color: #515151;
   color: #FFF;
 }
+
+/* Reutilizable para grillas dinamicas en formularios */
+.dynamic-grid-table {
+  width: 100%;
+  margin-bottom: 0;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.dynamic-grid-table thead th {
+  background: #f8f9fa;
+  color: #495057;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  border-top: 1px solid #e9ecef;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.dynamic-grid-table tbody td,
+.dynamic-grid-table tfoot td {
+  vertical-align: middle;
+}
+
+.dynamic-grid-table tbody tr:hover {
+  background: #e7f1ff;
+}
+
+.dynamic-grid-table .form-control-sm,
+.dynamic-grid-table .btn-sm {
+  min-height: calc(1.5em + 0.5rem + 2px);
+}
+
+.dynamic-grid-table .aper-precio-unitario,
+.dynamic-grid-table .aper-total {
+  margin: 0;
+  font-weight: 600;
+  color: #2c323f;
+}
+
+.dynamic-grid-table tfoot td {
+  background: #f8fafc;
+  border-top: 2px solid #dee2e6;
+}
+
+.dynamic-grid-summary-total {
+  display: inline-block;
+  background: #e9f3ff;
+  color: #004a99;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.dynamic-grid-summary-state {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-weight: 600;
+}
+
+.dynamic-grid-table .btn-eliminar-fila-aperturado {
+  min-width: 34px;
+}
+
+.dynamic-grid-wrap {
+  border: 1px solid #e6e9ef;
+  border-radius: 0.35rem;
+  /*background: #fff;*/
+}
+
+@media (max-width: 767.98px) {
+  .dynamic-grid-table tfoot td {
+    font-size: 12px;
+  }
+}
+
+.occ-breakdown-panel {
+  padding: 0.6rem;
+  background: #f7f9fc;
+  border: 2px solid #c7d2e2;
+  border-radius: 0.35rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.occ-breakdown-header {
+  border-bottom: 1px dashed #aebbd0;
+  padding-bottom: 0.4rem;
+}
+
+.occ-breakdown-table {
+  border: 2px solid #7f93ad !important;
+  border-collapse: collapse !important;
+}
+
+.occ-breakdown-table thead th {
+  background: #ebe8df;
+  border: 2px solid #a7a99e !important;
+  font-weight: 700;
+}
+
+.occ-breakdown-table td,
+.occ-breakdown-table th {
+  border: 2px solid #9aabc2 !important;
+}
+
+.btn-toggle-desglose-item {
+  white-space: nowrap;
+}
+
+#tabla_occ_detalles_wrapper .btn-toggle-desglose-item,
+#tabla_occ_detalles_wrapper .btn-toggle-desglose-item.btn-sm {
+  font-size: 0.775rem !important;
+  line-height: 1.5 !important;
+  padding: 0.25rem 0.5rem !important;
+}

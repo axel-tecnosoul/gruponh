@@ -1,5 +1,12 @@
 <?php
-require("config.php");
+// Compatibilidad: mantener ruta historica de modificacion apuntando al formulario unificado.
+if (!isset($_GET['id']) || (int) $_GET['id'] <= 0) {
+  header("Location: listarCertificadosMaestros.php");
+  exit;
+}
+
+require __DIR__ . '/nuevoCertificadoMaestro.php';
+/*require("config.php");
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
@@ -261,4 +268,4 @@ if (!empty($_POST)) {
 	<!-- Plugin used-->
 
   </body>
-</html>
+</html>*/

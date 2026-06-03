@@ -34,130 +34,143 @@ if (isset($_POST['action']) && $_POST['action'] == 'get_stock') {
 }
 
 if (!empty($_POST)) {
-    
-  // insert data
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  try {
+    // insert data
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $modoDebug=0;
+    $modoDebug=0;
 
-  if($modoDebug==1){
-    $pdo->beginTransaction();
-    var_dump($_POST);
-    var_dump($_GET);
-  }
-
-  $redirect="listarConsumos.php";
-
-  $nro_revision=0;
-  $descripcion="Emision original";
-
-  $sql = "INSERT INTO consumos (fecha,id_orden_trabajo_revision,nro_revision,descripcion,id_usuario,anulado) VALUES (NOW(),?,?,?,?,0)";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST["id_orden_trabajo"],$nro_revision,$descripcion,$_SESSION["user"]["id"]]);
-  $id_consumo = $pdo->lastInsertId();
-
-  $aEgresos=[];
-  $aIngresos=[];
-  foreach ($_POST["id_material"] as $key => $id_material) {
-
-    $situacion=$_POST['situacion'][$key];
-    $id_detalle_ingreso = $_POST['id_detalle_ingreso'][$key] ?? null;
-    $id_egreso_detalle = $_POST['id_egreso_detalle'][$key] ?? null;
-
-    $id_colada_val = !empty($_POST['id_colada'][$key]) ? $_POST['id_colada'][$key] : null;
-
-    $sql = "INSERT INTO consumos_detalle (id_consumo, id_material, id_colada, situacion, cantidad, id_unidad_medida, observacion) VALUES (?,?,?,?,?,?,?)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_consumo, $id_material, $id_colada_val, $situacion, $_POST['cantidad'][$key], $_POST['id_unidad_medida'][$key], $_POST['observacion'][$key]]);
-
-    $aux=[
-      "id_material"=>$id_material,
-      "id_unidad_medida"=>$_POST['id_unidad_medida'][$key],
-      "cantidad"=>$_POST['cantidad'][$key],
-      "id_colada"=>$id_colada_val,
-      "observacion"=>$_POST['observacion'][$key],
-      "id_detalle_ingreso" => $id_detalle_ingreso,
-      "id_egreso_detalle" => $id_egreso_detalle
-    ];
-    if($situacion=="Consumo"){
-      //cargamos los datos para registrar un egreso
-      $aEgresos[]=$aux;
-    }else{//Sobrante
-      //cargamos los datos para registrar un ingreso
-      $aIngresos[]=$aux;
-    }
-  }
-
-  if(count($aEgresos)>0){
-    
-    $sqlUpdEgresoDetalle = "UPDATE egresos_detalle SET cantidad_reservada = cantidad_reservada - ?, cantidad_efectivizada = cantidad_efectivizada + ? WHERE id = ?";
-    $qUpdEgresoDetalle = $pdo->prepare($sqlUpdEgresoDetalle);
-    
-    $sqlUpdIngreso = "UPDATE ingresos_detalle SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? WHERE id = ?";
-    $qUpdIngreso = $pdo->prepare($sqlUpdIngreso);
-		
-    foreach ($aEgresos as $key => $value) {
-        
-        $id_origen = $value['id_detalle_ingreso'];
-        $id_egreso_det = $value['id_egreso_detalle'];
-        $cantidad = $value["cantidad"];
-        
-        if($id_egreso_det){
-            $qUpdEgresoDetalle->execute([$cantidad, $cantidad, $id_egreso_det]);
-        } else {
-            if($id_origen){
-                $qUpdIngreso->execute([$cantidad, $cantidad, $id_origen]);
-            }
-        }
+    if($modoDebug==1){
+      $pdo->beginTransaction();
+      var_dump($_POST);
+      var_dump($_GET);
     }
 
-    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Consumo efectivizado de reserva','Egresos','')";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
-  }
+    $redirect="listarConsumos.php";
 
-  if(count($aIngresos)>0){
-    $id_tipo_ingreso=2;
-    $nro=1;
-    $lugar_entrega="";
-    $id_cuenta_recibe = !empty($_POST['id_cuenta_recibe_sobrante']) ? intval($_POST['id_cuenta_recibe_sobrante']) : 1;
-    
-    $observaciones="Ingreso por sobrante de consumo";
+    $nro_revision=0;
+    $descripcion="Emision original";
 
-    $sql = "INSERT INTO ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones) VALUES (now(),?,?,?,?,?)";
+    $sql = "INSERT INTO consumos (fecha,id_orden_trabajo_revision,nro_revision,descripcion,id_usuario,anulado) VALUES (NOW(),?,?,?,?,0)";
     $q = $pdo->prepare($sql);
-    $q->execute([$id_tipo_ingreso, $nro, $id_cuenta_recibe, $lugar_entrega, $observaciones]);
-    $idIngreso = $pdo->lastInsertId();
-    
-    foreach ($aIngresos as $key => $value) {
-      $sql = "INSERT INTO ingresos_detalle (id_ingreso, id_material, id_unidad_medida, cantidad, cantidad_egresada, saldo) VALUES (?,?,?,?,?,?)";
+    $q->execute([$_POST["id_orden_trabajo"],$nro_revision,$descripcion,$_SESSION["user"]["id"]]);
+    $id_consumo = $pdo->lastInsertId();
+
+    $aEgresos=[];
+    $aIngresos=[];
+    foreach ($_POST["id_material"] as $key => $id_material) {
+
+      $situacion=$_POST['situacion'][$key];
+      $id_detalle_ingreso = $_POST['id_detalle_ingreso'][$key] ?? null;
+      $id_egreso_detalle = $_POST['id_egreso_detalle'][$key] ?? null;
+
+      $id_colada_val = !empty($_POST['id_colada'][$key]) ? intval($_POST['id_colada'][$key]) : null;
+
+      $sql = "INSERT INTO consumos_detalle (id_consumo, id_material, id_colada, situacion, cantidad, id_unidad_medida, observacion) VALUES (?,?,?,?,?,?,?)";
       $q = $pdo->prepare($sql);
-      $q->execute([$idIngreso,$value["id_material"],$value["id_unidad_medida"],$value['cantidad'],0,$value['cantidad']]);
+      $q->execute([$id_consumo, $id_material, $id_colada_val, $situacion, $_POST['cantidad'][$key], $_POST['id_unidad_medida'][$key], $_POST['observacion'][$key]]);
 
-      if (!empty($value['id_egreso_detalle'])) {
-        $sqlUpdReservaDev = "UPDATE egresos_detalle SET cantidad_reservada = cantidad_reservada - ? WHERE id = ?";
-        $qUpdReservaDev = $pdo->prepare($sqlUpdReservaDev);
-        $qUpdReservaDev->execute([$value['cantidad'], $value['id_egreso_detalle']]);
+      $aux=[
+        "id_material"=>$id_material,
+        "id_unidad_medida"=>$_POST['id_unidad_medida'][$key],
+        "cantidad"=>$_POST['cantidad'][$key],
+        "id_colada"=>$id_colada_val,
+        "observacion"=>$_POST['observacion'][$key],
+        "id_detalle_ingreso" => $id_detalle_ingreso,
+        "id_egreso_detalle" => $id_egreso_detalle
+      ];
+      if($situacion=="Consumo"){
+        //cargamos los datos para registrar un egreso
+        $aEgresos[]=$aux;
+      }else{//Sobrante
+        //cargamos los datos para registrar un ingreso
+        $aIngresos[]=$aux;
       }
     }
+
+    if(count($aEgresos)>0){
     
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo ingreso por devolución','Ingresos','verIngreso.php?id=$idIngreso')";
+      $sqlUpdEgresoDetalle = "UPDATE egresos_detalle SET cantidad_reservada = cantidad_reservada - ?, cantidad_efectivizada = cantidad_efectivizada + ? WHERE id = ?";
+      $qUpdEgresoDetalle = $pdo->prepare($sqlUpdEgresoDetalle);
+      
+      $sqlUpdIngreso = "UPDATE ingresos_detalle SET saldo = saldo - ?, cantidad_egresada = cantidad_egresada + ? WHERE id = ?";
+      $qUpdIngreso = $pdo->prepare($sqlUpdIngreso);
+      
+      foreach ($aEgresos as $key => $value) {
+          
+          $id_origen = $value['id_detalle_ingreso'];
+          $id_egreso_det = $value['id_egreso_detalle'];
+          $cantidad = $value["cantidad"];
+          
+          if($id_egreso_det){
+              $qUpdEgresoDetalle->execute([$cantidad, $cantidad, $id_egreso_det]);
+          } else {
+              if($id_origen){
+                  $qUpdIngreso->execute([$cantidad, $cantidad, $id_origen]);
+              }
+          }
+      }
+
+      $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Consumo efectivizado de reserva','Egresos','')";
+      $q = $pdo->prepare($sql);
+      $q->execute(array($_SESSION['user']['id']));
+    }
+
+    if(count($aIngresos)>0){
+      $id_tipo_ingreso=2;
+      $nro=1;
+      $lugar_entrega="";
+      $id_cuenta_recibe = !empty($_POST['id_cuenta_recibe_sobrante']) ? intval($_POST['id_cuenta_recibe_sobrante']) : 1;
+      
+      $observaciones="Ingreso por sobrante de consumo";
+
+      $sql = "INSERT INTO ingresos (fecha_hora, id_tipo_ingreso, nro, id_cuenta_recibe, lugar_entrega, observaciones) VALUES (now(),?,?,?,?,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_tipo_ingreso, $nro, $id_cuenta_recibe, $lugar_entrega, $observaciones]);
+      $idIngreso = $pdo->lastInsertId();
+      
+      foreach ($aIngresos as $key => $value) {
+        $sql = "INSERT INTO ingresos_detalle (id_ingreso, id_material, id_unidad_medida, cantidad, cantidad_egresada, saldo) VALUES (?,?,?,?,?,?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$idIngreso,$value["id_material"],$value["id_unidad_medida"],$value['cantidad'],0,$value['cantidad']]);
+
+        if (!empty($value['id_egreso_detalle'])) {
+          $sqlUpdReservaDev = "UPDATE egresos_detalle SET cantidad_reservada = cantidad_reservada - ? WHERE id = ?";
+          $qUpdReservaDev = $pdo->prepare($sqlUpdReservaDev);
+          $qUpdReservaDev->execute([$value['cantidad'], $value['id_egreso_detalle']]);
+        }
+      }
+      
+      $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo ingreso por devolución','Ingresos','verIngreso.php?id=$idIngreso')";
+      $q = $pdo->prepare($sql);
+      $q->execute(array($_SESSION['user']['id']));
+    }
+
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Consumo','Consumos','verConsumo.php?id=$id_consumo')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
-  }
 
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Consumo','Consumos','verConsumo.php?id=$id_consumo')";
-  $q = $pdo->prepare($sql);
-  $q->execute(array($_SESSION['user']['id']));
+    if ($modoDebug==1) {
+      echo "redirect: ".$redirect;
+      $pdo->rollBack();
+      die();
+    } else {
+      Database::disconnect();
+      header("Location: ".$redirect);
+    }
+  } catch (Throwable $e) {
+    if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+      $pdo->rollBack();
+    }
 
-  if ($modoDebug==1) {
-    echo "redirect: ".$redirect;
-    $pdo->rollBack();
-    die();
-  } else {
+    $idOrdenTrabajoErr = isset($_POST['id_orden_trabajo']) ? intval($_POST['id_orden_trabajo']) : 0;
+    error_log('Error nuevoConsumo.php: '.$e->getMessage());
+
+    $_SESSION['error_message'] = 'No se pudo crear el consumo. Revise si la reserva seleccionada tiene colada.';
     Database::disconnect();
-    header("Location: ".$redirect);
+    header('Location: nuevoConsumo.php?id_orden_trabajo='.$idOrdenTrabajoErr);
+    exit;
   }
 }
 
@@ -265,7 +278,13 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                 <div class="card mb-0">
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
-                  </div>
+                  </div><?php
+                  if (!empty($_SESSION['error_message'])){?>
+                    <div class="alert alert-warning" role="alert" style="margin:15px; padding:8px 12px; font-size:13px;">
+                      <?=htmlspecialchars($_SESSION['error_message'])?>
+                    </div><?php
+                    unset($_SESSION['error_message']);
+                  }?>
                   <form id="formInput">
                     <input type="hidden" id="id_proyecto_ajax" value="<?=$id_proyecto_vista?>">
                     <div class="card-body">
@@ -301,6 +320,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                               <select id="id_ingreso_seleccionado" class="js-example-basic-single col-sm-12" required>
                                 <option value="">Seleccione material primero...</option>
                               </select>
+                              <small id="msgSinColada" class="form-text text-muted" style="display:none;">Esta reserva no tiene colada asignada.</small>
                             </div>
                           </div>
                           <div class="form-group row">
@@ -581,6 +601,24 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
         // Select2 para ingreso
         $('#id_ingreso_seleccionado').select2();
 
+        function actualizarAvisoColada() {
+          let idColadaSeleccionada = $('#id_ingreso_seleccionado').find('option:selected').data('id-colada') || '';
+          if (idColadaSeleccionada) {
+            $('#msgSinColada').hide();
+          } else {
+            let textoSeleccionado = $('#id_ingreso_seleccionado').find('option:selected').text() || '';
+            if (textoSeleccionado && textoSeleccionado.indexOf('Seleccione') !== 0 && textoSeleccionado.indexOf('No hay reservas') !== 0 && textoSeleccionado.indexOf('Error al cargar') !== 0 && textoSeleccionado.indexOf('Todas las reservas') !== 0) {
+              $('#msgSinColada').show();
+            } else {
+              $('#msgSinColada').hide();
+            }
+          }
+        }
+
+        $('#id_ingreso_seleccionado').on('change', function () {
+          actualizarAvisoColada();
+        });
+
         function getUsedReserves() {
           let used = [];
           $("#tablaConsumos tbody input[name='id_egreso_detalle[]']").each(function () {
@@ -627,14 +665,17 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                   selectIngresos.append(new Option("No hay reservas para este proyecto", ""));
                 }
                 selectIngresos.trigger('change');
+                actualizarAvisoColada();
               },
               error: function () {
                 selectIngresos.empty();
                 selectIngresos.append(new Option("Error al cargar datos", ""));
+                actualizarAvisoColada();
               }
             });
           } else {
             selectIngresos.append(new Option("Seleccione material primero...", ""));
+            actualizarAvisoColada();
           }
         });
 
@@ -691,7 +732,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
           let select_ingreso = $('#id_ingreso_seleccionado');
           let id_detalle_ingreso = select_ingreso.val();
           let nro_colada = select_ingreso.find('option:selected').data('nro-colada') || "(Sin Colada)";
-          let id_colada = select_ingreso.find('option:selected').data('id-colada') || 0;
+          let id_colada = select_ingreso.find('option:selected').data('id-colada') || '';
           let id_egreso_detalle = select_ingreso.find('option:selected').data('id-egreso-detalle') || 0;
           let cantidad_reservada = select_ingreso.find('option:selected').data('cantidad-reservada') || 0;
 
@@ -814,6 +855,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
         $("input[name='cantidad']").val("");
         $("input[name='observacion']").val("");
         $("#id_ingreso_seleccionado").val("").trigger("change");
+        $('#msgSinColada').hide();
       }
 
       function selectRow(t) {
