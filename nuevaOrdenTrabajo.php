@@ -129,6 +129,29 @@ function obtenerDatosConjuntos($pdo,$id_lista_corte){
   return $conjuntos;
 }
 
+function actualizarEstadoLCGestionada($pdo, $id_lista_corte){
+  $sql = "SELECT COUNT(*) AS total, SUM(CASE WHEN ((lcp.cantidad * lcc.cantidad) - COALESCE(otd.total_bajada,0)) > 0 THEN 1 ELSE 0 END) AS pendientes
+            FROM lista_corte_posiciones lcp
+            JOIN listas_corte_conjuntos lcc ON lcp.id_lista_corte_conjunto = lcc.id
+            LEFT JOIN (
+              SELECT otd.id_posicion, SUM(otd.cantidad) AS total_bajada
+              FROM ordenes_trabajo_detalle otd
+              JOIN ordenes_trabajo ot ON ot.id = otd.id_orden_trabajo
+              WHERE ot.id_estado_orden_trabajo != 5
+              GROUP BY otd.id_posicion
+            ) otd ON otd.id_posicion = lcp.id
+            WHERE lcc.id_lista_corte = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lista_corte]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  if ($data && $data['total'] > 0 && (int)$data['pendientes'] === 0) {
+    $sql = "UPDATE listas_corte SET id_estado_lista_corte = 8 WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_lista_corte]);
+  }
+}
+
 if (!empty($_POST)) {
 
   $pdo = Database::connect();
@@ -197,6 +220,8 @@ if (!empty($_POST)) {
     $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Orden de Trabajo','Orden de Trabajo')";
     $q = $pdo->prepare($sql);
     $q->execute([$_SESSION['user']['id']]);
+
+    actualizarEstadoLCGestionada($pdo, $id_lista_corte);
 
     if ($enviarAprobacion) {
       $sql = "UPDATE ordenes_trabajo SET id_estado_orden_trabajo = 2 WHERE id = ?";
@@ -337,6 +362,8 @@ if (!empty($_POST)) {
       $q->execute($params);
     }
   }
+
+  actualizarEstadoLCGestionada($pdo, $id_lista_corte);
 
   $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Nueva Orden de Trabajo','Orden de Trabajo')";
   $params = [$_SESSION['user']['id']];
@@ -880,14 +907,29 @@ Database::disconnect();
         });
 
         tablaOT.on('input','.cant-conj',function(){
-          var val=parseInt($(this).val(),10);
-          var max=parseInt($(this).data('max'),10);
-          if(isNaN(val)||val<0) val=0;
-          if(val>max){val=max;$(this).val(max);}
-          var tr=$(this).closest('tr');
-          var posiciones=tr.data('posiciones');
-          var posHtml=formatPosicionesOT(posiciones,val);
+          var input = $(this);
+          var val = parseInt(input.val(),10);
+          var max = parseInt(input.data('max'),10);
+          if(isNaN(val) || val < 0) val = 0;
+          if(val > max){
+            val = max;
+            input.val(max);
+          }
+          var tr = input.closest('tr');
+          var rowIndex = dtOT.row(tr).index();
+          var start = input[0] ? input[0].selectionStart : null;
+          var end = input[0] ? input[0].selectionEnd : null;
+          var posiciones = tr.data('posiciones');
+          var posHtml = formatPosicionesOT(posiciones,val);
           dtOT.cell(tr,6).data(posHtml).draw(false);
+          var newTr = $(dtOT.row(rowIndex).node());
+          var newInput = newTr.find('.cant-conj');
+          if(newInput.length){
+            newInput.focus();
+            if(start !== null && end !== null && newInput[0].setSelectionRange){
+              newInput[0].setSelectionRange(start, end);
+            }
+          }
         });
 
         // ── Validación: al menos un conjunto en la OT ─────────────────────

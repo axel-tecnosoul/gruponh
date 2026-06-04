@@ -226,37 +226,21 @@ $id_estado = $filters['id_estado'] ?? [];
                       <table class="display truncate" id="tablaDetalleOT">
                         <thead>
                           <tr>
-                            <th class="d-none">ID Posición</th>
                             <th>Conjunto</th>
-                            <th>Cant. Conjuntos</th>
-                            <th>Posicion</th>
-                            <th>Cant. Pedida</th>
-                            <th>Material</th>
-                            <th>Procesos</th>
-                            <th>Estado</th>
-                            <th>Liberados</th>
-                            <th>Reproceso</th>
-                            <th>Rechazados</th>
-                            <th>F.Revisión</th>
-                            <th>Usuario</th>
+                            <th>Cant. conj.</th>
+                            <th>Cant. bajada</th>
+                            <th>Saldo</th>
+                            <th>Posiciones</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th class="d-none">ID Posición</th>
                             <th>Conjunto</th>
-                            <th>Cant. Conjuntos</th>
-                            <th>Posicion</th>
-                            <th>Cant. Pedida</th>
-                            <th>Material</th>
-                            <th>Procesos</th>
-                            <th>Estado</th>
-                            <th>Liberados</th>
-                            <th>Reproceso</th>
-                            <th>Rechazados</th>
-                            <th>F.Revisión</th>
-                            <th>Usuario</th>
+                            <th>Cant. conj.</th>
+                            <th>Cant. bajada</th>
+                            <th>Saldo</th>
+                            <th>Posiciones</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -630,6 +614,16 @@ $id_estado = $filters['id_estado'] ?? [];
         t.removeClass('selected');
       }
     
+      function escapeHtml(text){
+        text = text == null ? '' : text.toString();
+        return text
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
       function get_detalle_orden_trabajo(id_ot){
         let datosUpdate = new FormData();
         datosUpdate.append('id_ot', id_ot);
@@ -640,34 +634,51 @@ $id_estado = $filters['id_estado'] ?? [];
           cache: false,
           contentType: false,
           processData: false,
-          
           success: function(data){
-            data = JSON.parse(data);
-          
-            $('#tablaDetalleOT').DataTable().destroy();
+            let conjuntos = JSON.parse(data);
+            let html = '';
+
+            conjuntos.forEach(function(conj){
+              let posicionesHtml = '<table class="table table-sm mb-0"><thead><tr><th class="d-none">ID</th><th>Posición</th><th>Material</th><th>Procesos</th><th>Cant. pos.</th><th>Total</th><th>Bajadas</th><th>Saldo</th><th>Cant. pedida</th><th>Estado</th><th>Liberados</th><th>Reproceso</th><th>Rechazados</th></tr></thead><tbody>';
+
+              conj.posiciones.forEach(function(pos){
+                let rowClass = pos.id_detalle_ot ? 'ot-posicion-row' : 'lc-posicion-row';
+                posicionesHtml += '<tr class="' + rowClass + '" data-id-detalle-ot="' + (pos.id_detalle_ot ? pos.id_detalle_ot : '') + '" data-id-posicion="' + pos.id + '" data-cant-pedida="' + (pos.cant_pedida ? pos.cant_pedida : 0) + '" data-cant-liberadas="' + (pos.cant_liberadas ? pos.cant_liberadas : 0) + '" data-cant-reproceso="' + (pos.cant_reproceso ? pos.cant_reproceso : 0) + '" data-cant-rechazadas="' + (pos.cant_rechazadas ? pos.cant_rechazadas : 0) + '" data-estado="' + escapeHtml(pos.estado ? pos.estado : '') + '" data-posicion="' + escapeHtml(pos.posicion) + '" data-material="' + escapeHtml(pos.concepto) + '">';
+                posicionesHtml += '<td class="d-none">' + pos.id + '</td>';
+                posicionesHtml += '<td>' + escapeHtml(pos.posicion) + '</td>';
+                posicionesHtml += '<td>' + escapeHtml(pos.concepto) + '</td>';
+                posicionesHtml += '<td>' + escapeHtml(pos.procesos) + '</td>';
+                posicionesHtml += '<td class="text-end">' + pos.cant_pos + '</td>';
+                posicionesHtml += '<td class="text-end">' + pos.cant_total + '</td>';
+                posicionesHtml += '<td class="text-end">' + pos.cant_bajada + '</td>';
+                posicionesHtml += '<td class="text-end">' + pos.saldo + '</td>';
+                posicionesHtml += '<td class="text-end">' + (pos.cant_pedida ? pos.cant_pedida : '') + '</td>';
+                posicionesHtml += '<td>' + escapeHtml(pos.estado ? pos.estado : '') + '</td>';
+                posicionesHtml += '<td class="text-end">' + (pos.cant_liberadas ? pos.cant_liberadas : '') + '</td>';
+                posicionesHtml += '<td class="text-end">' + (pos.cant_reproceso ? pos.cant_reproceso : '') + '</td>';
+                posicionesHtml += '<td class="text-end">' + (pos.cant_rechazadas ? pos.cant_rechazadas : '') + '</td>';
+                posicionesHtml += '</tr>';
+              });
+
+              posicionesHtml += '</tbody></table>';
+
+              html += '<tr>';
+              html += '<td>' + escapeHtml(conj.nombre) + '</td>';
+              html += '<td class="text-end">' + conj.cantidad + '</td>';
+              html += '<td class="text-end">' + conj.cant_bajada + '</td>';
+              html += '<td class="text-end">' + conj.saldo + '</td>';
+              html += '<td>' + posicionesHtml + '</td>';
+              html += '</tr>';
+            });
+
+            if ($.fn.DataTable.isDataTable('#tablaDetalleOT')) {
+              $('#tablaDetalleOT').DataTable().destroy();
+            }
+            $('#tablaDetalleOT tbody').html(html);
             $('#tablaDetalleOT').DataTable({
               stateSave: false,
               responsive: false,
               order: [[0, 'asc']],
-              columns: [
-                { data: 14 },
-                { data: 1 },
-                { data: 2 },
-                { data: 3 },
-                { data: 4 },
-                { data: 5 },
-                { data: 6 },
-                { data: 7 },
-                { data: 8 },
-                { data: 9 },
-                { data: 10 },
-                { data: 11 },
-                { data: 12 },
-              ],
-              columnDefs: [
-                { targets: [0], className: 'd-none'},
-              ],
-              data: data,
               language: {
                 "decimal": "",
                 "emptyTable": "No hay información",
@@ -692,10 +703,8 @@ $id_estado = $filters['id_estado'] ?? [];
                 $('[title]').tooltip();
               }
             });
-        
-            // DataTable
+
             var table = $('#tablaDetalleOT').DataTable();
-            // Apply the search
             table.columns().every( function () {
               var that = this;
               $( 'input', this.footer() ).on( 'keyup change', function () {
@@ -704,23 +713,22 @@ $id_estado = $filters['id_estado'] ?? [];
                 }
               });
             });
-        
-            $('#tablaDetalleOT').find("tbody tr td").not(":last-child").not(":nth-last-child(2)").on( 'click', function () {
-              var t=$(this).parent();
 
-              let rowData = table.row(t).data();
-              let id_detalle_ot = rowData[0];
-              let id_pos_ot = rowData[14];
-              let cantPedida = rowData[4];
-              let cantLibAct = rowData[8];
-              let cantRepAct = rowData[9];
-              let cantRechAct = rowData[10];
-              let estadoPos = rowData[7];
-              let posicion = rowData[3];
-              let material = rowData[5];
-              let cantDisponible = cantPedida - cantLibAct - cantRechAct;
-              if(t.hasClass('selected')){
-                deselectRow(t);
+            $('#tablaDetalleOT').off('click', 'tbody tr.ot-posicion-row td').on('click', 'tbody tr.ot-posicion-row td', function () {
+              var row = $(this).closest('tr.ot-posicion-row');
+              var id_detalle_ot = row.data('id-detalle-ot');
+              var id_pos_ot = row.data('id-posicion');
+              var cantPedida = parseInt(row.data('cant-pedida')) || 0;
+              var cantLibAct = parseInt(row.data('cant-liberadas')) || 0;
+              var cantRepAct = parseInt(row.data('cant-reproceso')) || 0;
+              var cantRechAct = parseInt(row.data('cant-rechazadas')) || 0;
+              var estadoPos = row.data('estado');
+              var posicion = row.data('posicion');
+              var material = row.data('material');
+              var cantDisponible = cantPedida - cantLibAct - cantRechAct;
+
+              if(row.hasClass('selected')){
+                row.removeClass('selected');
                 $("#btnAbrirModalModificarCantidades").data("id","").data("estado","");
                 $("#btnDetalle").attr("href","#");
                 $("#cantMaxima").html("");
@@ -735,10 +743,8 @@ $id_estado = $filters['id_estado'] ?? [];
                 $("#info_cant_reproceso").html("");
                 $("#info_cant_en_produccion").html("");
               }else{
-                table.rows().nodes().each( function (rowNode, index) {
-                  $(rowNode).removeClass("selected");
-                });
-                selectRow(t);
+                $('#tablaDetalleOT tbody tr.ot-posicion-row').removeClass('selected');
+                row.addClass('selected');
                 $("#btnAbrirModalModificarCantidades").data("id",id_pos_ot).data("estado",estadoPos);
                 $("#btnDetalle").attr("href","verHistorialOT.php?id_detalle_ot="+id_detalle_ot);
                 $("#cantMaxima").html(cantDisponible);
@@ -746,14 +752,14 @@ $id_estado = $filters['id_estado'] ?? [];
                 $("#liberadas_actual").val(cantLibAct);
                 $("#rechazadas_actual").val(cantRechAct);
                 $("#reproceso_actual").val(cantRepAct);
-                let conjunto = rowData[1];
-                let infoPos = "Material: "+material+'<br>Conjunto: '+conjunto+'<br>Posicion: '+posicion;
+                var conjunto = row.closest('table').closest('tr').find('td:first').text();
+                var infoPos = "Material: "+material+"<br>Conjunto: "+conjunto+"<br>Posicion: "+posicion;
                 $("#info_pos_titulo").html(infoPos);
                 $("#info_cant_pedida").text(cantPedida);
                 $("#info_cant_liberadas").text(cantLibAct);
                 $("#info_cant_rechazadas").text(cantRechAct);
                 $("#info_cant_reproceso").text(cantRepAct);
-                let cantEnProd = cantPedida - cantLibAct - cantRechAct;
+                var cantEnProd = cantPedida - cantLibAct - cantRechAct;
                 $("#info_cant_en_produccion").text(cantEnProd);
               }
             });

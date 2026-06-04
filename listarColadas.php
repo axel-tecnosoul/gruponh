@@ -4,6 +4,80 @@ if (empty($_SESSION['user'])) {
     header("Location: index.php");
     die("Redirecting to index.php");
 }
+require 'database.php';
+
+$materials = [];
+$alertMessage = '';
+$alertType = '';
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === 'internas') {
+    header('Content-Type: application/json; charset=utf-8');
+    $id_material = isset($_GET['id_material']) ? intval($_GET['id_material']) : 0;
+    if ($id_material <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Concepto inválido']);
+        exit;
+    }
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $sql = "SELECT id, nro_colada_interna, cantidad, saldo FROM ingresos_detalle WHERE id_material = ? AND nro_colada_interna IS NOT NULL AND nro_colada_interna <> '' AND id_colada_origen IS NULL";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_material]);
+    $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+    Database::disconnect();
+    echo json_encode(['success' => true, 'data' => $rows]);
+    exit;
+}
+
+if (!empty($_POST['accion']) && $_POST['accion'] === 'nueva_colada_origen') {
+    $id_material = intval($_POST['id_material'] ?? 0);
+    $fecha = trim($_POST['fecha'] ?? '');
+    $cod_fabricante = trim($_POST['cod_fabricante'] ?? '');
+    $nro_colada = trim($_POST['nro_colada'] ?? '');
+    $adjunto = trim($_POST['adjunto'] ?? '');
+    $internalIds = !empty($_POST['id_coladas_internas']) && is_array($_POST['id_coladas_internas']) ? $_POST['id_coladas_internas'] : [];
+
+    if ($id_material <= 0 || $fecha === '' || $cod_fabricante === '' || $nro_colada === '' || $adjunto === '') {
+        $alertMessage = 'Complete todos los datos obligatorios antes de crear la colada de origen.';
+        $alertType = 'danger';
+    } else {
+        $pdo = Database::connect();
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $sql = "INSERT INTO `coladas` (`id_material`, `id_proveedor`, `id_compra`, `cod_fabricante`, `nro_colada`, `adjunto`, `fecha`, `es_origen`) VALUES (?, NULL, NULL, ?, ?, ?, ?, 1)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id_material, $cod_fabricante, $nro_colada, $adjunto, $fecha]);
+        $idColada = $pdo->lastInsertId();
+
+        if (!empty($internalIds)) {
+            $sql = "UPDATE ingresos_detalle SET id_colada_origen = ? WHERE id = ?";
+            $q = $pdo->prepare($sql);
+            foreach ($internalIds as $detalleId) {
+                $detalleId = intval($detalleId);
+                if ($detalleId > 0) {
+                    $q->execute([$idColada, $detalleId]);
+                }
+            }
+        }
+
+        $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nueva colada de origen ID #$idColada creada','Coladas','verColada.php?id=$idColada')";
+        $q = $pdo->prepare($sql);
+        $q->execute([$_SESSION['user']['id']]);
+
+        Database::disconnect();
+        header('Location: listarColadas.php?created=1');
+        exit;
+    }
+}
+
+if (!empty($_GET['created'])) {
+    $alertMessage = 'Colada de origen creada con éxito.';
+    $alertType = 'success';
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sql = "SELECT id, concepto FROM materiales ORDER BY concepto";
+$materials = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+Database::disconnect();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -46,8 +120,10 @@ if (empty($_SESSION['user'])) {
 					&nbsp;&nbsp;
 					<?php 
 					if (!empty(tienePermiso(325))) {
+						echo '<a href="nuevaColadaOrigen.php" id="btnNuevaColadaOrigen"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva Colada de Origen" title="Nueva Colada de Origen"></a>';
+						echo '&nbsp;&nbsp;';
 						echo '<a href="#" id="link_modificar_colada"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Actualizar Colada" title="Actualizar Colada"></a>';
-						echo '&nbsp;&nbsp;';										
+						echo '&nbsp;&nbsp;';
 					}
 					?>
 					</h5>
@@ -70,9 +146,8 @@ if (empty($_SESSION['user'])) {
                         </thead>
                         <tbody>
                           <?php
-                            include 'database.php';
                             $pdo = Database::connect();
-                            $sql = " SELECT c.`id`, m.`codigo`, m.`concepto`, ca.categoria, cu.`nombre`, co.`nro_oc`, c.`id_compra`, c.`cod_fabricante`, c.`nro_colada`, id.nro_colada_interna FROM `coladas` c inner join materiales m on m.id = c.`id_material` inner join categorias ca on ca.id = m.`id_categoria` inner join cuentas cu on cu.id = c.`id_proveedor` inner join compras co on co.id = c.id_compra left join ingresos_detalle id on id.id_colada = c.id WHERE 1 ";
+                            $sql = " SELECT c.`id`, m.`codigo`, m.`concepto`, ca.categoria, cu.`nombre`, co.`nro_oc`, c.`id_compra`, c.`cod_fabricante`, c.`nro_colada`, id.nro_colada_interna FROM `coladas` c inner join materiales m on m.id = c.`id_material` inner join categorias ca on ca.id = m.`id_categoria` left join cuentas cu on cu.id = c.`id_proveedor` left join compras co on co.id = c.id_compra left join ingresos_detalle id on id.id_colada = c.id WHERE 1 ";
                             
                             foreach ($pdo->query($sql) as $row) {
                                 echo '<tr>';
@@ -114,6 +189,7 @@ if (empty($_SESSION['user'])) {
           </div>
           <!-- Container-fluid Ends-->
         </div>
+
         <!-- footer start-->
         <?php include("footer.php"); ?>
       </div>

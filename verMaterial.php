@@ -202,6 +202,70 @@ if ($origen == 'pedidos') {
                       </div>
                     </div>
                   </div>
+
+                  <div class="card">
+                    <div class="card-header">
+                      <h5>Detalle de Reservas</h5>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="display" id="dataTables-reservas-material">
+                          <thead>
+                            <tr>
+                              <th>Nro. Egreso</th>
+                              <th>Fecha</th>
+                              <th>Tipo</th>
+                              <th>Proyecto</th>
+                              <th>Sitio</th>
+                              <th>Cuenta</th>
+                              <th>Cant. Reservada</th>
+                              <th>Cant. Efectivizada</th>
+                              <th>Origen</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <?php
+                            $pdo = Database::connect();
+                            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                            $sqlReservas = "SELECT ed.id, e.nro, DATE_FORMAT(e.fecha_hora, '%d/%m/%y') AS fecha, te.tipo, COALESCE(p.nombre, '') AS proyecto, COALESCE(s.nombre, '') AS sitio, COALESCE(cu.nombre, '') AS cuenta, ed.cantidad_reservada, ed.cantidad_efectivizada, ed.cantidad, ing.id AS id_ingreso_origen, ing.nro AS ingreso_nro
+                                            FROM egresos_detalle ed
+                                            INNER JOIN egresos e ON e.id = ed.id_egreso
+                                            INNER JOIN tipos_egreso te ON te.id = e.id_tipo_egreso
+                                            LEFT JOIN proyectos p ON p.id = e.id_proyecto
+                                            LEFT JOIN sitios s ON s.id = e.id_sitio_destino
+                                            LEFT JOIN cuentas cu ON cu.id = e.id_cuenta_retira
+                                            LEFT JOIN ingresos_detalle idet ON idet.id = ed.id_detalle_ingreso
+                                            LEFT JOIN ingresos ing ON ing.id = idet.id_ingreso
+                                            WHERE ed.id_material = ? AND ed.cantidad_reservada > 0";
+                            $qReservas = $pdo->prepare($sqlReservas);
+                            $qReservas->execute([$id]);
+                            while ($row = $qReservas->fetch(PDO::FETCH_ASSOC)) {
+                              echo '<tr>';
+                              echo '<td>'. $row['nro'] . '</td>';
+                              echo '<td>'. $row['fecha'] . '</td>';
+                              echo '<td>'. $row['tipo'] . '</td>';
+                              echo '<td>'. $row['proyecto'] . '</td>';
+                              echo '<td>'. $row['sitio'] . '</td>';
+                              echo '<td>'. $row['cuenta'] . '</td>';
+                              echo '<td>'. $row['cantidad_reservada'] . '</td>';
+                              echo '<td>'. $row['cantidad_efectivizada'] . '</td>';
+                              echo '<td>';
+                              if (!empty($row['id_ingreso_origen'])) {
+                                echo '<a href="verIngreso.php?id='.$row['id_ingreso_origen'].'" target="_blank">Ingreso #'.$row['ingreso_nro'].'</a>';
+                              } else {
+                                echo '<span class="badge badge-secondary">Sin ingreso</span>';
+                              }
+                              echo '</td>';
+                              echo '</tr>';
+                            }
+                            Database::disconnect();
+                            ?>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="card-footer">
                     <div class="col-sm-9 offset-sm-3">
                       <a href="<?= $urlVolver ?>" class="btn btn-light">Volver</a>
@@ -269,7 +333,7 @@ if ($origen == 'pedidos') {
   <script src="assets/js/script.js"></script>
   <script>
     $(document).ready(function() {
-      $('#dataTables-example666').DataTable({
+      $('#dataTables-example666, #dataTables-reservas-material').DataTable({
         stateSave: false,
         responsive: false,
         language: {

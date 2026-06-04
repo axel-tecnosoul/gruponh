@@ -44,6 +44,19 @@ UPDATE compras_detalle SET total = ROUND(subtotal, 2);
 
 UPDATE compras_detalle SET subtotal = ROUND(CASE WHEN descuento > 0 AND descuento < 100 THEN subtotal / (1 - descuento / 100) ELSE subtotal END, 2) WHERE descuento > 0;
 
-UPDATE compras_detalle SET subtotal = ROUND(subtotal, 2), total = ROUND(total, 2);
+-- CORRECCIÓN 9: Agregar fecha y tipo de colada de origen en coladas, y vincular coladas internas a una colada de origen.
+ALTER TABLE `coladas`
+  MODIFY `id_compra` int(11) NULL,
+  MODIFY `id_proveedor` int(11) NULL,
+  ADD `fecha` DATE NULL,
+  ADD `es_origen` TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE `ingresos_detalle`
+  ADD `id_colada_origen` int(11) NULL AFTER `id_colada`;
+
+ALTER TABLE `ingresos_detalle`
+  ADD CONSTRAINT `ingresos_detalle_ibfk_3` FOREIGN KEY (`id_colada_origen`) REFERENCES `coladas` (`id`);
 
 --TODO APLICADO HASTA ACA
+
+INSERT INTO `estados_lista_corte` (`id`, `estado`) VALUES (NULL, 'Gestionada');

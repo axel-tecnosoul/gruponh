@@ -198,9 +198,14 @@ include 'database.php';
       // Setup - add a text input to each footer cell
       $('#dataTables-example666 tfoot th').each(function() {
         var title = $(this).text();
-        $(this).html('<input type="text" size="' + title.length + '" placeholder="' + title + '" />');
+        var placeholder = title;
+        if (title === 'Stock' || title === 'Reservado') {
+          placeholder = title;
+        }
+        $(this).html('<input type="text" size="' + title.length + '" placeholder="' + placeholder + '" />');
       });
-      $('#dataTables-example666').DataTable({
+
+      var table = $('#dataTables-example666').DataTable({
         stateSave: false,
         responsive: false,
         language: {
@@ -225,19 +230,73 @@ include 'database.php';
         }
       });
 
-      // DataTable
-      var table = $('#dataTables-example666').DataTable();
+      function parseNumericFilter(value) {
+        value = (value || '').trim();
+        if (value === '') {
+          return null;
+        }
+        var match = value.match(/^\s*([<>]=?)?\s*(-?\d+(?:[\.,]\d+)?)\s*$/);
+        if (match) {
+          var op = match[1] || '=';
+          var num = parseFloat(match[2].replace(',', '.'));
+          return { op: op, num: num };
+        }
+        return null;
+      }
+
+      function numericCompare(cellValue, filter) {
+        if (!filter) {
+          return true;
+        }
+        var cellNum = parseFloat((cellValue || '').toString().replace(/,/g, '.'));
+        if (isNaN(cellNum)) {
+          return false;
+        }
+        switch (filter.op) {
+          case '>': return cellNum > filter.num;
+          case '<': return cellNum < filter.num;
+          case '>=': return cellNum >= filter.num;
+          case '<=': return cellNum <= filter.num;
+          case '=': return cellNum === filter.num;
+          default: return false;
+        }
+      }
+
+      $.fn.dataTable.ext.search.push(function(settings, data) {
+        if (settings.nTable !== $('#dataTables-example666')[0]) {
+          return true;
+        }
+
+        var stockFilter = parseNumericFilter($('#dataTables-example666 tfoot th').eq(4).find('input').val());
+        var reservadoFilter = parseNumericFilter($('#dataTables-example666 tfoot th').eq(5).find('input').val());
+
+        if (stockFilter && !numericCompare(data[4], stockFilter)) {
+          return false;
+        }
+        if (reservadoFilter && !numericCompare(data[5], reservadoFilter)) {
+          return false;
+        }
+        return true;
+      });
 
       // Apply the search
       table.columns().every(function() {
         var that = this;
+        var columnIndex = that.index();
 
         $('input', this.footer()).on('keyup change', function() {
-          if (that.search() !== this.value) {
-            that
-              .search(this.value)
-              .draw();
+          var value = this.value || '';
+          var isNumericOperator = (columnIndex === 4 || columnIndex === 5) && parseNumericFilter(value);
+
+          if (isNumericOperator) {
+            if (that.search() !== '') {
+              that.search('');
+            }
+          } else if (that.search() !== value) {
+            that.search(value);
           }
+
+          table.draw();
         });
       });
 
