@@ -14,12 +14,21 @@ if ($id_material <= 0) {
     exit;
 }
 
+$edit_id = isset($_GET['edit_id']) ? intval($_GET['edit_id']) : 0;
+
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT id, id_material, nro_colada_interna, cantidad, saldo FROM ingresos_detalle WHERE id_material = ? AND nro_colada_interna IS NOT NULL AND nro_colada_interna <> '' AND id_colada_origen IS NULL";
+
+$sql = "SELECT id, id_material, nro_colada_interna, cantidad, saldo 
+        FROM ingresos_detalle 
+        WHERE id_material = ? 
+          AND nro_colada_interna IS NOT NULL 
+          AND nro_colada_interna <> '' 
+          AND (id_colada_origen IS NULL OR id_colada_origen = ?)";
 $q = $pdo->prepare($sql);
-$q->execute([$id_material]);
+$q->execute([$id_material, $edit_id]);
 $rows = $q->fetchAll(PDO::FETCH_ASSOC);
+
 if (!empty($rows)) {
     $sqlConcepto = "SELECT concepto FROM materiales WHERE id = ? LIMIT 1";
     $qConcepto = $pdo->prepare($sqlConcepto);
