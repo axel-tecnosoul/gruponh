@@ -51,6 +51,86 @@ ALTER TABLE `coladas`
   ADD `fecha` DATE NULL,
   ADD `es_origen` TINYINT(1) NOT NULL DEFAULT 0;
 
+--TODO APLICADO HASTA ACA
+
+-- CORRECCIÓN 9: Registrar el porcentaje de anticipo en certificados maestros.
+ALTER TABLE `certificados_maestros`
+ADD COLUMN IF NOT EXISTS `porcentaje_anticipo` DOUBLE NOT NULL DEFAULT 0 AFTER `cotizacion_dolar`;
+
+-- CORRECCIÓN 10: Fase 1 Certificado Maestro Detalle - trazabilidad de origen OCC y aperturado.
+ALTER TABLE `certificados_maestros_detalles`
+ADD COLUMN IF NOT EXISTS `id_occ_detalle` INT(11) NULL AFTER `id_certificado_maestro`;
+
+ALTER TABLE `certificados_maestros_detalles`
+ADD COLUMN IF NOT EXISTS `incidencia_porcentaje` DOUBLE NOT NULL DEFAULT 0 AFTER `subtotal`;
+
+ALTER TABLE `certificados_maestros_detalles`
+ADD COLUMN IF NOT EXISTS `monto_base_occ` DOUBLE NOT NULL DEFAULT 0 AFTER `incidencia_porcentaje`;
+
+ALTER TABLE `certificados_maestros_detalles`
+ADD COLUMN IF NOT EXISTS `lote_aperturado` VARCHAR(64) NULL AFTER `monto_base_occ`;
+
+-- CORRECCIÓN 11: Fase 5 Certificado Maestro Detalle - persistir modo de generacion.
+ALTER TABLE `certificados_maestros_detalles`
+ADD COLUMN IF NOT EXISTS `modo_generacion` VARCHAR(20) NULL AFTER `lote_aperturado`;
+
+-- Compatibilidad con registros existentes previos al aperturado.
+UPDATE `certificados_maestros_detalles`
+SET `modo_generacion` = 'legacy'
+WHERE `modo_generacion` IS NULL OR `modo_generacion` = '';
+
+UPDATE `certificados_maestros_detalles`
+SET `lote_aperturado` = CONCAT('LEGACY-', `id`)
+WHERE (`lote_aperturado` IS NULL OR `lote_aperturado` = '')
+	AND `modo_generacion` = 'legacy';
+
+-- CORRECCIÓN 12: Relación N a N entre lote de aperturado e items OCC.
+-- Esta tabla permite conocer exactamente qué items OCC integra cada lote (agrupado o separado).
+CREATE TABLE IF NOT EXISTS `certificados_maestros_lotes_occ_detalle` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`id_certificado_maestro` INT(11) NOT NULL,
+	`lote_aperturado` VARCHAR(64) NOT NULL,
+	`id_occ_detalle` INT(11) NOT NULL,
+	`modo_generacion` VARCHAR(20) NULL,
+	`fecha_hora_alta` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (`id`),
+	UNIQUE KEY `uq_cm_lote_occ` (`id_certificado_maestro`,`lote_aperturado`,`id_occ_detalle`),
+	KEY `idx_cm_lote` (`id_certificado_maestro`,`lote_aperturado`),
+	KEY `idx_occ_detalle` (`id_occ_detalle`),
+	CONSTRAINT `fk_cm_lote_occ_cm` FOREIGN KEY (`id_certificado_maestro`) REFERENCES `certificados_maestros` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT `fk_cm_lote_occ_det` FOREIGN KEY (`id_occ_detalle`) REFERENCES `occ_detalles` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- MIGRACIÓN 12.1: Poblar membresías exactas para lotes que ya tengan id_occ_detalle informado.
+INSERT IGNORE INTO `certificados_maestros_lotes_occ_detalle`
+(`id_certificado_maestro`, `lote_aperturado`, `id_occ_detalle`, `modo_generacion`)
+SELECT DISTINCT
+	cmd.`id_certificado_maestro`,
+	cmd.`lote_aperturado`,
+	cmd.`id_occ_detalle`,
+	cmd.`modo_generacion`
+FROM `certificados_maestros_detalles` cmd
+WHERE cmd.`lote_aperturado` IS NOT NULL
+	AND cmd.`lote_aperturado` <> ''
+	AND cmd.`id_occ_detalle` IS NOT NULL;
+
+-- MIGRACIÓN 12.2: Backfill para lotes agrupados históricos sin id_occ_detalle.
+-- Criterio: vincular el lote a TODOS los items de la OCC del certificado para mantener el comportamiento actual.
+INSERT IGNORE INTO `certificados_maestros_lotes_occ_detalle`
+(`id_certificado_maestro`, `lote_aperturado`, `id_occ_detalle`, `modo_generacion`)
+SELECT DISTINCT
+	cmd.`id_certificado_maestro`,
+	cmd.`lote_aperturado`,
+	od.`id` AS `id_occ_detalle`,
+	cmd.`modo_generacion`
+FROM `certificados_maestros_detalles` cmd
+INNER JOIN `certificados_maestros` cm ON cm.`id` = cmd.`id_certificado_maestro`
+INNER JOIN `occ_detalles` od ON od.`id_occ` = cm.`id_occ`
+WHERE cmd.`lote_aperturado` IS NOT NULL
+	AND cmd.`lote_aperturado` <> ''
+	AND cmd.`modo_generacion` = 'agrupar'
+	AND cmd.`id_occ_detalle` IS NULL;
+
 ALTER TABLE `ingresos_detalle`
   ADD `id_colada_origen` int(11) NULL AFTER `id_colada`;
 
