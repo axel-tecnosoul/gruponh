@@ -22,7 +22,7 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
   // Obtener datos de la orden de trabajo
-  $sql = "SELECT ot.id, ot.fecha, ot.id_lista_corte, lc.nombre nombre_lc, lc.id_proyecto, u.usuario FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte = lc.id LEFT JOIN usuarios u ON ot.id_usuario = u.id WHERE ot.id = ?";//, ot.fecha_hora_ultima_modificacion
+  $sql = "SELECT ot.id, ot.fecha, ot.fecha_hora_ultima_modificacion, ot.id_lista_corte, lc.nombre nombre_lc, lc.id_proyecto, u.usuario FROM ordenes_trabajo ot INNER JOIN listas_corte lc ON ot.id_lista_corte = lc.id LEFT JOIN usuarios u ON ot.id_usuario = u.id WHERE ot.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
