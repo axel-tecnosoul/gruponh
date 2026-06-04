@@ -30,12 +30,9 @@ if (empty($_SESSION['user'])) {
         <!-- Page Sidebar Start-->
         <?php include('menu.php');?>
         <!-- Page Sidebar Ends-->
-
-        <div class="page-body">
-          <?php
+        <div class="page-body"><?php
           $ubicacion = "Ingresos de Stock ";
-          include_once("head_page.php");
-          ?>
+          include_once("head_page.php");?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
@@ -43,15 +40,11 @@ if (empty($_SESSION['user'])) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>
-                      <?php 
+                    <h5><?php
                       echo $ubicacion; 
-                      if (!empty(tienePermiso(324))) { 
-                      ?>
-                        <a href="nuevaDevolucion.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Ingreso x Devolución" title="Nuevo Ingreso x Devolución"></a>&nbsp;
-                      <?php 
-                      } 
-                      ?>
+                      if (!empty(tienePermiso(324))) { ?>
+                        <a href="nuevaDevolucion.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Ingreso x Devolución" title="Nuevo Ingreso x Devolución"></a>&nbsp;<?php
+                      }?>
                       <a href="exportIngresos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>
                       &nbsp;&nbsp;
                       <a href="#" id="link_ver_ingreso"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
@@ -74,44 +67,25 @@ if (empty($_SESSION['user'])) {
                             <th>Observaciones</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          <?php
+                        <tbody><?php
                           include 'database.php';
                           $pdo = Database::connect();
                           
-                          $sql = " SELECT 
-                                i.`id`, 
-                                date_format(i.`fecha_hora`,'%d/%m/%y %H:%i'), 
-                                ti.`tipo`, 
-                                i.`nro`, 
-                                c.`nombre`, 
-                                i.`lugar_entrega`, 
-                                i.`observaciones`, 
-                                date_format(i.`fecha_remito`,'%d/%m/%Y'), 
-                                i.`nro_remito`, 
-                                date_format(i.`fecha_remito`,'%Y%m%d%H%i'),
-                                date_format(i.`fecha_hora`,'%Y%m%d%H%i')
-                            FROM `ingresos` i 
-                            inner join tipos_ingreso ti on ti.id = i.`id_tipo_ingreso` 
-                            inner join cuentas c on c.id = i.`id_cuenta_recibe` 
-                            WHERE 1 ";
-
-                            foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
-                                echo '<td>' . $row[0] . '</td>';
-                                echo '<td data-order="' . $row[10] . '">' . $row[1] . 'hs</td>';
-                                echo '<td>' . $row[2] . '</td>';
-                                echo '<td>' . $row[3] . '</td>';
-                                echo '<td>' . $row[4] . '</td>';
-                                echo '<td>' . $row[5] . '</td>';
-                                echo '<td data-order="' . $row[9] . '">' . $row[7] . '</td>';
-                                echo '<td>' . $row[8] . '</td>';
-                                echo '<td>' . $row[6] . '</td>';
-                                echo '</tr>';
-                            }
-
-                          Database::disconnect();
-                          ?>
+                          $sql = " SELECT i.id, date_format(i.fecha_hora,'%d/%m/%y %H:%i'), ti.tipo, i.nro, c.nombre, i.lugar_entrega, i.observaciones, date_format(i.fecha_remito,'%d/%m/%Y'), i.nro_remito, date_format(i.fecha_remito,'%Y%m%d%H%i'),date_format(i.fecha_hora,'%Y%m%d%H%i') FROM ingresos i inner join tipos_ingreso ti on ti.id = i.id_tipo_ingreso inner join cuentas c on c.id = i.id_cuenta_recibe WHERE 1 ";
+                          foreach ($pdo->query($sql) as $row) {?>
+                              <tr>
+                                <td><?=$row["id"]?></td>
+                                <td data-order="<?=$row["fecha_hora"]?>"><?=$row["fecha_hora"]?>hs</td>
+                                <td><?=$row["tipo"]?></td>
+                                <td><?=$row["nro"]?></td>
+                                <td><?=$row["nombre"]?></td>
+                                <td><?=$row["lugar_entrega"]?></td>
+                                <td data-order="<?=$row["fecha_remito"]?>"><?=$row["fecha_remito"]?></td>
+                                <td><?=$row["nro_remito"]?></td>
+                                <td><?=$row["observaciones"]?></td>
+                              </tr><?php
+                          }
+                          Database::disconnect();?>
                         </tbody>
                         <tfoot>
                           <tr>
@@ -142,10 +116,11 @@ if (empty($_SESSION['user'])) {
                     <h5>Conceptos
                       &nbsp;&nbsp;
                       <?php
-                      if (!empty(tienePermiso(327))) {
-                        echo '<a href="#" id="link_nueva_colada"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Vincular Colada" title="Vincular Colada"></a>';
-                        echo '&nbsp;&nbsp;';
-                        echo '<button type="button" id="btn_asignar_coladas_internas" class="btn btn-primary btn-sm">Asignar Coladas Internas</button>';
+                      if (!empty(tienePermiso(327))) {?>
+                        <!-- <a href="#" id="link_nueva_colada"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Vincular Colada" title="Vincular Colada"></a> -->
+                        &nbsp;&nbsp;
+                        <a href="#" id="btn_asignar_coladas_internas"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Asignar Coladas Internas" title="Asignar Coladas Internas"></a>
+                        <!-- <button type="button" class="btn btn-primary btn-sm">Asignar Coladas Internas</button> --><?php
                       }
                       ?>
                     </h5>
@@ -168,8 +143,7 @@ if (empty($_SESSION['user'])) {
                             <th>Vinculación Colada</th>
                           </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
+                        <tbody></tbody>
                         <tfoot>
                           <tr>
                             <th>ID</th>
@@ -586,7 +560,7 @@ if (empty($_SESSION['user'])) {
               responsive: false,
               data: data,
               columnDefs: [{
-                targets: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                targets: [0, 5, 6, 7, 8, 9, 10],
                 className: 'text-center'
               }],
               language: {
