@@ -18,7 +18,6 @@
     
     if (!empty($_POST)) {
         
-        // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
@@ -26,10 +25,10 @@
         $q = $pdo->prepare($sql);
         $q->execute([$_POST['cod_fabricante'], $_POST['nro_colada'], $_POST['fecha'], isset($_POST['es_origen']) ? 1 : 0, $_GET['id']]); 
     
-    if (!empty($_POST['adjunto'])) {
-          $sql = "update `coladas` set adjunto = ? where id = ?";
-          $q = $pdo->prepare($sql);
-          $q->execute(array($_POST['adjunto'],$_GET['id']));
+        if (!empty($_POST['adjunto'])) {
+            $sql = "update `coladas` set adjunto = ? where id = ?";
+            $q = $pdo->prepare($sql);
+            $q->execute(array($_POST['adjunto'],$_GET['id']));
         } 
 
         $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de colada','Coladas','verColada.php?id=$id')";
@@ -62,21 +61,25 @@
     <?php include('head_forms.php');?>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      #dataTables-example667 th,
+      #dataTables-example667 td {
+        vertical-align: middle;
+      }
+    </style>
   </head>
   <body>
     <div class="page-wrapper">
-    <?php include('header.php');?>
-    
+      <?php include('header.php');?>
       <div class="page-body-wrapper">
-    <?php include('menu.php');?>
-        <div class="page-body"><?php
-          $ubicacion="Actualizar Colada";
-          include_once("head_page.php")?>
+        <?php include('menu.php');?>
+        <div class="page-body">
+          <?php $ubicacion="Actualizar Colada"; include_once('head_page.php'); ?>
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
-                  <div class="card-header pedido-summary">
+                  <div class="card-header">
                     <h5>
                       <?=$ubicacion?>
                       <?php if (!empty($data['adjunto'])) { ?>
@@ -88,45 +91,30 @@
                   </div>
                   <form class="form theme-form" role="form" method="post" action="modificarColada.php?id=<?php echo $id?>" enctype="multipart/form-data">
                     <div class="card-body">
-                      <div class="row">
-                        <div class="col-md-12">
-                          <h6 class="mb-3 font-weight-bold">Datos de la Colada</h6>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Código Fabricante(*)</label>
-                            <div class="col-sm-9"><input name="cod_fabricante" type="text" maxlength="99" class="form-control" autofocus value="<?php echo $data['cod_fabricante']; ?>" required="required"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Nro. Colada(*)</label>
-                            <div class="col-sm-9"><input name="nro_colada" type="text" maxlength="99" class="form-control" value="<?php echo $data['nro_colada']; ?>" required="required"></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Adjuntar nuevo Certificado(*)</label>
-                            <div class="col-sm-9"><input name="adjunto" type="text" value="<?php echo $data['adjunto']; ?>" class="form-control"></div>
-                            <input type="hidden" name="hId" value="1" />
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha</label>
-                            <div class="col-sm-9">
-                              <input name="fecha" type="date" class="form-control" value="<?php echo $data['fecha']; ?>" required>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Colada de Origen</label>
-                            <div class="col-sm-9 col-form-label">
-                              <?php echo $data['es_origen'] ? 'Sí' : 'No'; ?>
-                              <input type="hidden" name="es_origen" value="<?php echo $data['es_origen']; ?>">
-                            </div>
-                          </div>
+                      <div class="form-group row">
+                        <label class="col-sm-2 col-form-label">Fecha</label>
+                        <div class="col-sm-4"><input name="fecha" type="date" class="form-control" value="<?php echo $data['fecha']; ?>" required></div>
+                        <label class="col-sm-2 col-form-label">Colada de Origen</label>
+                        <div class="col-sm-4 col-form-label">
+                          <?php echo $data['es_origen'] ? 'Sí' : 'No'; ?>
+                          <input type="hidden" name="es_origen" value="<?php echo $data['es_origen']; ?>">
                         </div>
                       </div>
-
-                      <hr class="mt-4 mb-4">
-                      
+                      <div class="form-group row">
+                        <label class="col-sm-2 col-form-label">Nombre del fabricante</label>
+                        <div class="col-sm-4"><input name="cod_fabricante" type="text" maxlength="99" class="form-control" autofocus value="<?php echo $data['cod_fabricante']; ?>" required></div>
+                        <label class="col-sm-2 col-form-label">Nro. Colada</label>
+                        <div class="col-sm-4"><input name="nro_colada" type="text" maxlength="99" class="form-control" value="<?php echo $data['nro_colada']; ?>" required></div>
+                      </div>
+                      <div class="form-group row">
+                        <label class="col-sm-2 col-form-label">Link certificado <small class="text-muted">(opcional)</small></label>
+                        <div class="col-sm-10"><input name="adjunto" type="text" maxlength="500" class="form-control" placeholder="Ruta o URL del certificado" value="<?php echo $data['adjunto']; ?>"></div>
+                        <input type="hidden" name="hId" value="1" />
+                      </div>
                       <div class="row">
-                        <div class="col-sm-12">
-                          <h6 class="mb-3 font-weight-bold">Detalle de la Colada de Origen</h6>
-                          <div class="table-responsive">
-                            <table class="display" id="dataTables-example667" style="width:100%">
+                        <div class="col">
+                          <div class="table-responsive mt-2">
+                            <table class="table table-bordered table-sm" id="dataTables-example667" style="width:100%">
                               <thead>
                                 <tr>
                                   <th>ID</th>
@@ -149,11 +137,11 @@
                           </div>
                         </div>
                       </div>
-                      </div>
+                    </div>
                     <div class="card-footer">
-                      <div class="col-sm-9 offset-sm-3 text-center">
+                      <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Actualizar</button>
-                        <a onclick="document.location.href='listarColadas.php'" class="btn btn-light">Volver</a>
+                        <a href="listarColadas.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>
@@ -161,28 +149,24 @@
               </div>
             </div>
           </div>
-          </div>
+        </div>
         <?php include("footer.php"); ?>
       </div>
     </div>
+    <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
+    <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
+    <!-- Sidebar jquery-->
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
-    
+    <!-- Plugins JS start-->
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    
     <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
@@ -202,37 +186,37 @@
     <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
     <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
+    <script src="assets/js/chat-menu.js"></script>
+    <script src="assets/js/tooltip-init.js"></script>
+    <!-- Plugins JS Ends-->
+    <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-
     <script>
       $(document).ready(function() {
-        // Inicialización DataTables con el estilo del segundo componente
         $('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
-          scrollX: false,
-          scrollCollapse: false,
-          autoWidth: false,
           paging: true,
           pageLength: 10,
           language: {
-            "decimal": "",
-            "emptyTable": "No hay información",
-            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-            "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "infoPostFix": "",
-            "thousands": ",",
-            "lengthMenu": "Mostrar _MENU_ Registros",
-            "loadingRecords": "Cargando...",
-            "processing": "Procesando...",
-            "search": "Buscar:",
-            "zeroRecords": "No hay resultados",
-            "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
+            decimal: '',
+            emptyTable: 'No hay información',
+            info: 'Mostrando _START_ a _END_ de _TOTAL_ Registros',
+            infoEmpty: 'Mostrando 0 a 0 de 0 Registros',
+            infoFiltered: '(Filtrado de _MAX_ total registros)',
+            infoPostFix: '',
+            thousands: ',',
+            lengthMenu: 'Mostrar _MENU_ Registros',
+            loadingRecords: 'Cargando...',
+            processing: 'Procesando...',
+            search: 'Buscar:',
+            zeroRecords: 'No hay resultados',
+            paginate: {
+              first: 'Primero',
+              last: 'Ultimo',
+              next: 'Siguiente',
+              previous: 'Anterior'
             }
           }
         });
