@@ -22,9 +22,9 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        $sql = "UPDATE `coladas` set `cod_fabricante` = ?, `nro_colada` = ? where id = ?";
+        $sql = "UPDATE `coladas` set `cod_fabricante` = ?, `nro_colada` = ?, `fecha` = ?, `es_origen` = ? where id = ?";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['cod_fabricante'],$_POST['nro_colada'],$_GET['id']]);
+        $q->execute([$_POST['cod_fabricante'], $_POST['nro_colada'], $_POST['fecha'], isset($_POST['es_origen']) ? 1 : 0, $_GET['id']]); 
     
     if (!empty($_POST['adjunto'])) {
           $sql = "update `coladas` set adjunto = ? where id = ?";
@@ -42,7 +42,7 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `id_material`, `id_proveedor`, `id_compra`, `cod_fabricante`, `nro_colada`, `adjunto` FROM `coladas` WHERE id = ? ";
+        $sql = "SELECT `id`, `id_material`, `id_proveedor`, `id_compra`, `cod_fabricante`, `nro_colada`, `adjunto`, `fecha`, `es_origen` FROM `coladas` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -101,8 +101,21 @@
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Adjuntar nuevo Certificado(*)</label>
-                            <div class="col-sm-9"><input name="adjunto" type="text" value="" class="form-control"></div>
+                            <div class="col-sm-9"><input name="adjunto" type="text" value="<?php echo $data['adjunto']; ?>" class="form-control"></div>
                             <input type="hidden" name="hId" value="1" />
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Fecha</label>
+                            <div class="col-sm-9">
+                              <input name="fecha" type="date" class="form-control" value="<?php echo $data['fecha']; ?>" required>
+                            </div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Colada de Origen</label>
+                            <div class="col-sm-9 col-form-label">
+                              <?php echo $data['es_origen'] ? 'Sí' : 'No'; ?>
+                              <input type="hidden" name="es_origen" value="<?php echo $data['es_origen']; ?>">
+                            </div>
                           </div>
                         </div>
                       </div>
