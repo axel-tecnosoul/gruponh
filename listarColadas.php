@@ -308,7 +308,7 @@ Database::disconnect();
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
-          $("#link_modificar_colada").attr("href","modificarColada.php?id="+id_colada);
+          $("#link_modificar_colada").attr("href","nuevaColadaOrigen.php?id="+id_colada);
         }
       });
 	} );
