@@ -11,8 +11,14 @@ if (!empty($_GET['id'])) {
   $id = $_REQUEST['id'];
 }
 
-if (null==$id) {
+$id_lote = null;
+if (!empty($_GET['id_lote'])) {
+  $id_lote = trim((string) $_GET['id_lote']);
+}
+
+if (null == $id && $id_lote === null) {
   header("Location: listarCertificadosMaestros.php");
+  exit;
 }
 
 $pdo = Database::connect();
@@ -34,24 +40,60 @@ $column_names = [
   5 => "monto_acumulado_ajustes",
 ];
 
-$sql = "SELECT id_certificado_maestro,id_tipo_item_certificado,subtotal FROM certificados_maestros_detalles WHERE id = ?";
-$q = $pdo->prepare($sql);
-$q->execute([$id]);
-$data = $q->fetch(PDO::FETCH_ASSOC);
-$id_certificado_maestro = $data['id_certificado_maestro'];
-$id_tipo_item_old=$data["id_tipo_item_certificado"];
-$subtotal_old=$data["subtotal"];
+$detalle_accion = '';
 
-//obtenemos el nombre de la columna del tipo de detalle en la tabla certificado_maestro para restar el subtotal
-$column_name_old = $column_names[$id_tipo_item_old];
-//restamos el viejo subtotal en la columna segun el viejo tipo de detalle
-$sql = "UPDATE certificados_maestros SET $column_name_old = $column_name_old - ? WHERE id = ?";
-$q = $pdo->prepare($sql);
-$q->execute([$subtotal_old,$id_certificado_maestro]);
+if ($id_lote !== null) {
+  $sql = "SELECT id_certificado_maestro, COALESCE(SUM(subtotal),0) AS subtotal_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE lote_aperturado = ? GROUP BY id_certificado_maestro";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lote]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
 
-$sql = "DELETE from certificados_maestros_detalles WHERE id = ?";
-$q = $pdo->prepare($sql);
-$q->execute([$id]);
+  if (empty($data) || (int) ($data['cantidad_filas'] ?? 0) <= 0) {
+    Database::disconnect();
+    header("Location: listarCertificadosMaestros.php");
+    exit;
+  }
+
+  $id_certificado_maestro = (int) $data['id_certificado_maestro'];
+  $subtotal_lote = (float) $data['subtotal_lote'];
+
+  $pdo->beginTransaction();
+
+  $sql = "UPDATE certificados_maestros SET monto_acumulado_avances = monto_acumulado_avances - ? WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$subtotal_lote, $id_certificado_maestro]);
+
+  $sql = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_certificado_maestro, $id_lote]);
+
+  $sql = "DELETE FROM certificados_maestros_detalles WHERE lote_aperturado = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_lote]);
+
+  $detalle_accion = "Eliminación de lote #$id_lote de Certificado Maestro";
+} else {
+  $sql = "SELECT id_certificado_maestro,id_tipo_item_certificado,subtotal FROM certificados_maestros_detalles WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  $id_certificado_maestro = $data['id_certificado_maestro'];
+  $id_tipo_item_old=$data["id_tipo_item_certificado"];
+  $subtotal_old=$data["subtotal"];
+
+  //obtenemos el nombre de la columna del tipo de detalle en la tabla certificado_maestro para restar el subtotal
+  $column_name_old = $column_names[$id_tipo_item_old];
+  //restamos el viejo subtotal en la columna segun el viejo tipo de detalle
+  $sql = "UPDATE certificados_maestros SET $column_name_old = $column_name_old - ? WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$subtotal_old,$id_certificado_maestro]);
+
+  $sql = "DELETE from certificados_maestros_detalles WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id]);
+
+  $detalle_accion = "Eliminación de detalle ID #$id de Certificado Maestro";
+}
 
 if ($modoDebug==1) {
   $q->debugDumpParams();
@@ -59,9 +101,9 @@ if ($modoDebug==1) {
   echo "<br><br>";
 }
 
-$sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Eliminación de detalle ID #$id de Certificado Maestro','Certificado Maestro','')";
+$sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Certificado Maestro','')";
 $q = $pdo->prepare($sql);
-$q->execute(array($_SESSION['user']['id']));
+$q->execute([$_SESSION['user']['id'], $detalle_accion]);
 
 if ($modoDebug==1) {
   $q->debugDumpParams();
@@ -73,6 +115,9 @@ if ($modoDebug==1) {
   $pdo->rollBack();
   die();
 } else {
+  if ($modoDebug != 1 && $pdo->inTransaction()) {
+    $pdo->commit();
+  }
   Database::disconnect();
   header("Location: nuevoCertificadoMaestroDetalle.php?id_certificado_maestro=".$id_certificado_maestro);
 }

@@ -137,10 +137,6 @@ ALTER TABLE `ingresos_detalle`
 ALTER TABLE `ingresos_detalle`
   ADD CONSTRAINT `ingresos_detalle_ibfk_3` FOREIGN KEY (`id_colada_origen`) REFERENCES `coladas` (`id`);
 
-ALTER TABLE coladas
-  ADD COLUMN fecha DATE NULL,
-  ADD COLUMN es_origen TINYINT(1) NOT NULL DEFAULT 0;
-
 --TODO APLICADO HASTA ACA
 
 INSERT INTO `estados_lista_corte` (`id`, `estado`) VALUES (NULL, 'Gestionada');
