@@ -71,16 +71,16 @@ if (empty($_SESSION['user'])) {
                           include 'database.php';
                           $pdo = Database::connect();
                           
-                          $sql = " SELECT i.id, date_format(i.fecha_hora,'%d/%m/%y %H:%i'), ti.tipo, i.nro, c.nombre, i.lugar_entrega, i.observaciones, date_format(i.fecha_remito,'%d/%m/%Y'), i.nro_remito, date_format(i.fecha_remito,'%Y%m%d%H%i'),date_format(i.fecha_hora,'%Y%m%d%H%i') FROM ingresos i inner join tipos_ingreso ti on ti.id = i.id_tipo_ingreso inner join cuentas c on c.id = i.id_cuenta_recibe WHERE 1 ";
+                          $sql = " SELECT i.id, date_format(i.fecha_hora,'%d/%m/%y %H:%i') AS fecha_hora, ti.tipo, i.nro, c.nombre, i.lugar_entrega, i.observaciones, date_format(i.fecha_remito,'%d/%m/%Y') AS fecha_remito, i.nro_remito, date_format(i.fecha_remito,'%Y%m%d%H%i') AS fecha_remito_order, date_format(i.fecha_hora,'%Y%m%d%H%i') AS fecha_hora_order FROM ingresos i inner join tipos_ingreso ti on ti.id = i.id_tipo_ingreso inner join cuentas c on c.id = i.id_cuenta_recibe WHERE 1 ";
                           foreach ($pdo->query($sql) as $row) {?>
                               <tr>
                                 <td><?=$row["id"]?></td>
-                                <td data-order="<?=$row["fecha_hora"]?>"><?=$row["fecha_hora"]?>hs</td>
+                                <td data-order="<?=$row["fecha_hora_order"]?>"><?=$row["fecha_hora"]?>hs</td>
                                 <td><?=$row["tipo"]?></td>
                                 <td><?=$row["nro"]?></td>
                                 <td><?=$row["nombre"]?></td>
                                 <td><?=$row["lugar_entrega"]?></td>
-                                <td data-order="<?=$row["fecha_remito"]?>"><?=$row["fecha_remito"]?></td>
+                                <td data-order="<?=$row["fecha_remito_order"]?>"><?=$row["fecha_remito"]?></td>
                                 <td><?=$row["nro_remito"]?></td>
                                 <td><?=$row["observaciones"]?></td>
                               </tr><?php
@@ -117,8 +117,8 @@ if (empty($_SESSION['user'])) {
                       &nbsp;&nbsp;
                       <?php
                       if (!empty(tienePermiso(327))) {?>
-                        <!-- <a href="#" id="link_nueva_colada"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Vincular Colada" title="Vincular Colada"></a> -->
-                        &nbsp;&nbsp;
+                        <!-- <a href="#" id="link_nueva_colada"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Vincular Colada" title="Vincular Colada"></a>
+                        &nbsp;&nbsp; -->
                         <a href="#" id="btn_asignar_coladas_internas"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Asignar Coladas Internas" title="Asignar Coladas Internas"></a>
                         <!-- <button type="button" class="btn btn-primary btn-sm">Asignar Coladas Internas</button> --><?php
                       }
