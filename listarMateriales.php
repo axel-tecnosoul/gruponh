@@ -198,11 +198,22 @@ include 'database.php';
       // Setup - add a text input to each footer cell
       $('#dataTables-example666 tfoot th').each(function() {
         var title = $(this).text();
-        var placeholder = title;
         if (title === 'Stock' || title === 'Reservado') {
-          placeholder = title;
+          $(this).html(
+            '<select class="numeric-operator">' +
+            '<option value=""></option>' +
+            '<option value="<">&lt;</option>' +
+            '<option value="<=">&lt;=</option>' +
+            '<option value=">">&gt;</option>' +
+            '<option value=">=">&gt;=</option>' +
+            '<option value="==">==</option>' +
+            '<option value="!=">!=</option>' +
+            '</select>' +
+            '<input type="text" class="numeric-value" size="' + title.length + '" placeholder="' + title + '" />'
+          );
+        } else {
+          $(this).html('<input type="text" size="' + title.length + '" placeholder="' + title + '" />');
         }
-        $(this).html('<input type="text" size="' + title.length + '" placeholder="' + placeholder + '" />');
       });
 
       var table = $('#dataTables-example666').DataTable({
@@ -235,7 +246,7 @@ include 'database.php';
         if (value === '') {
           return null;
         }
-        var match = value.match(/^\s*([<>]=?)?\s*(-?\d+(?:[\.,]\d+)?)\s*$/);
+        var match = value.match(/^\s*(!=|==|[<>]=?)?\s*(-?\d+(?:[\.,]\d+)?)\s*$/);
         if (match) {
           var op = match[1] || '=';
           var num = parseFloat(match[2].replace(',', '.'));
@@ -257,7 +268,9 @@ include 'database.php';
           case '<': return cellNum < filter.num;
           case '>=': return cellNum >= filter.num;
           case '<=': return cellNum <= filter.num;
+          case '==':
           case '=': return cellNum === filter.num;
+          case '!=': return cellNum !== filter.num;
           default: return false;
         }
       }
@@ -267,8 +280,15 @@ include 'database.php';
           return true;
         }
 
-        var stockFilter = parseNumericFilter($('#dataTables-example666 tfoot th').eq(4).find('input').val());
-        var reservadoFilter = parseNumericFilter($('#dataTables-example666 tfoot th').eq(5).find('input').val());
+        function getNumericFilter(colIndex) {
+          var $th = $('#dataTables-example666 tfoot th').eq(colIndex);
+          var op = $th.find('select.numeric-operator').val() || '';
+          var val = $th.find('input.numeric-value').val() || '';
+          return parseNumericFilter(op + val);
+        }
+
+        var stockFilter = getNumericFilter(4);
+        var reservadoFilter = getNumericFilter(5);
 
         if (stockFilter && !numericCompare(data[4], stockFilter)) {
           return false;
@@ -284,9 +304,19 @@ include 'database.php';
         var that = this;
         var columnIndex = that.index();
 
-        $('input', this.footer()).on('keyup change', function() {
-          var value = this.value || '';
-          var isNumericOperator = (columnIndex === 4 || columnIndex === 5) && parseNumericFilter(value);
+        $('input, select', this.footer()).on('keyup change', function() {
+          var value;
+          var isNumericColumn = (columnIndex === 4 || columnIndex === 5);
+
+          if (isNumericColumn) {
+            var op = $(that.footer()).find('select.numeric-operator').val() || '';
+            var num = $(that.footer()).find('input.numeric-value').val() || '';
+            value = op + num;
+          } else {
+            value = $(that.footer()).find('input').val() || '';
+          }
+
+          var isNumericOperator = isNumericColumn && parseNumericFilter(value);
 
           if (isNumericOperator) {
             if (that.search() !== '') {

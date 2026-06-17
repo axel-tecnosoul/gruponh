@@ -92,10 +92,12 @@ if($_GET["id"]){
             <th>Unidad de Medida</th>
             <th>Precio Unitario</th>
             <th>Subtotal</th>
+            <th>Aperturado</th>
+            <th>Lote</th>
           </tr>
         </thead>
         <tbody><?php
-          $sql = "SELECT cmd.id,s.nombre AS sitio,s2.nombre AS subsitio,cmd.id_proyecto,p.nombre AS proyecto,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario,cmd.subtotal FROM certificados_maestros_detalles cmd INNER JOIN proyectos p ON cmd.id_proyecto=p.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id left join sitios s on s.id = p.id_sitio left join sitios s2 on s2.id = s.id_sitio_superior WHERE id_certificado_maestro = ".$id;
+          $sql = "SELECT cmd.id,s.nombre AS sitio,s2.nombre AS subsitio,cmd.id_proyecto,p.nombre AS proyecto,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario,cmd.subtotal,cmd.aperturado,cmd.lote FROM certificados_maestros_detalles cmd INNER JOIN proyectos p ON cmd.id_proyecto=p.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id left join sitios s on s.id = p.id_sitio left join sitios s2 on s2.id = s.id_sitio_superior WHERE id_certificado_maestro = ".$id;
           //echo $sql;
           foreach ($pdo->query($sql) as $row) {
             echo '<tr>';
@@ -109,6 +111,8 @@ if($_GET["id"]){
             echo '<td>'.$row["unidad_medida"].'</td>';
             echo '<td>'.number_format($row["precio_unitario"],2,",",".")."</td>";
             echo '<td>'.number_format($row["subtotal"],2,",",".")."</td>";
+            echo '<td>'.$row["aperturado"].'</td>';
+            echo '<td>'.$row["lote"].'</td>';
             echo '</tr>';
           }
           Database::disconnect();?>

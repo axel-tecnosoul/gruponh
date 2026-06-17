@@ -81,10 +81,10 @@ if (!empty($_POST)) {
     }
 
     // Fase 6: edicion por lote de aperturado.
-    $id_lote_edicion = trim((string) ($_POST['id_lote_aperturado_edicion'] ?? ''));
+    $id_aperturado_edicion = trim((string) ($_POST['id_aperturado_edicion'] ?? ''));
 
     // Fase 5: persistencia masiva con trazabilidad OCC + modo de generacion.
-    $requiredColumns = ['id_occ_detalle', 'incidencia_porcentaje', 'monto_base_occ', 'lote_aperturado', 'modo_generacion'];
+    $requiredColumns = ['id_occ_detalle', 'incidencia_porcentaje', 'monto_base_occ', 'aperturado', 'lote', 'modo_generacion'];
     foreach ($requiredColumns as $requiredColumn) {
       $safeColumn = preg_replace('/[^a-zA-Z0-9_]/', '', $requiredColumn);
       $sql = "SHOW COLUMNS FROM certificados_maestros_detalles LIKE '$safeColumn'";
@@ -105,6 +105,8 @@ if (!empty($_POST)) {
       throw new Exception("Debe seleccionar un modo de generacion valido.");
     }
 
+    $solo_editar_aperturado = (trim((string) ($_POST['solo_editar_aperturado'] ?? '')) === '1');
+
     $idsRaw = trim((string) ($_POST['ids_occ_detalle_seleccionados'] ?? ''));
     $ids_occ_detalle = [];
     if ($idsRaw !== '') {
@@ -116,22 +118,22 @@ if (!empty($_POST)) {
       }
       $ids_occ_detalle = array_values($ids_occ_detalle);
     }
-    $permite_sin_items_occ = ($id_lote_edicion !== '' && $modo_generacion === 'agrupar');
+    $permite_sin_items_occ = ($id_aperturado_edicion !== '' && ($modo_generacion === 'agrupar' || $solo_editar_aperturado));
     if (empty($ids_occ_detalle) && !$permite_sin_items_occ) {
       throw new Exception("Debe seleccionar al menos un item de la OCC.");
     }
 
-    // ========== NUEVA VALIDACIÓN: evitar duplicidad de items OCC en distintos lotes ==========
-    if (!empty($ids_occ_detalle)) {
-      // Si estamos editando un lote en modo agrupado, eliminamos automáticamente otros lotes que contengan esos ítems
-      if ($id_lote_edicion !== '' && $modo_generacion === 'agrupar') {
+    // ========== VALIDACIÓN: evitar duplicidad de items OCC en distintos lotes ==========
+    if (!empty($ids_occ_detalle) && !$solo_editar_aperturado) {
+      // Si estamos editando, eliminamos automáticamente otros lotes que contengan esos ítems
+      if ($id_aperturado_edicion !== '') {
         // Obtener los lotes conflictivos (excluyendo el lote actual)
-        $sqlConflict = "SELECT DISTINCT lote_aperturado 
+        $sqlConflict = "SELECT DISTINCT aperturado 
                         FROM certificados_maestros_lotes_occ_detalle 
                         WHERE id_certificado_maestro = ? 
                           AND id_occ_detalle IN (" . implode(',', array_fill(0, count($ids_occ_detalle), '?')) . ")
-                          AND lote_aperturado != ?";
-        $paramsConflict = array_merge([$id_certificado_maestro_post], $ids_occ_detalle, [$id_lote_edicion]);
+                          AND aperturado != ?";
+        $paramsConflict = array_merge([$id_certificado_maestro_post], $ids_occ_detalle, [$id_aperturado_edicion]);
         $qConflict = $pdo->prepare($sqlConflict);
         $qConflict->execute($paramsConflict);
         $lotesConflicto = $qConflict->fetchAll(PDO::FETCH_COLUMN, 0);
@@ -140,11 +142,11 @@ if (!empty($_POST)) {
           // Por cada lote conflictivo, restar su subtotal y eliminar sus registros
           $placeholdersLotes = implode(',', array_fill(0, count($lotesConflicto), '?'));
           // Obtener subtotales por lote
-          $sqlSubtotales = "SELECT lote_aperturado, COALESCE(SUM(subtotal),0) AS subtotal_lote 
+          $sqlSubtotales = "SELECT aperturado, COALESCE(SUM(subtotal),0) AS subtotal_lote 
                               FROM certificados_maestros_detalles 
                               WHERE id_certificado_maestro = ? 
-                                AND lote_aperturado IN ($placeholdersLotes)
-                              GROUP BY lote_aperturado";
+                                AND aperturado IN ($placeholdersLotes)
+                              GROUP BY aperturado";
           $qSub = $pdo->prepare($sqlSubtotales);
           $qSub->execute(array_merge([$id_certificado_maestro_post], $lotesConflicto));
           $subtotalesConflictos = $qSub->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -157,25 +159,27 @@ if (!empty($_POST)) {
             $qUpdate->execute([round($sub, 6), $id_certificado_maestro_post]);
 
             // Eliminar relaciones y detalles de ese lote
-            $sqlDelRel = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
+            $sqlDelRel = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ?";
             $qDelRel = $pdo->prepare($sqlDelRel);
             $qDelRel->execute([$id_certificado_maestro_post, $lote]);
 
-            $sqlDelDet = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
+            $sqlDelDet = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ?";
             $qDelDet = $pdo->prepare($sqlDelDet);
             $qDelDet->execute([$id_certificado_maestro_post, $lote]);
           }
         }
       } else {
         // Modo no edición o modo separar: validación estricta (error si ya existen)
-        $sqlCheck = "SELECT cmlod.id_occ_detalle, cmlod.lote_aperturado 
+        $sqlCheck = "SELECT cmlod.id_occ_detalle, cmlod.aperturado 
                      FROM certificados_maestros_lotes_occ_detalle cmlod 
                      WHERE cmlod.id_certificado_maestro = ? 
-                     AND cmlod.id_occ_detalle IN (" . implode(',', array_fill(0, count($ids_occ_detalle), '?')) . ")";
+                     AND cmlod.id_occ_detalle IN (" . implode(',', array_fill(0, count($ids_occ_detalle), '?')) . ")
+                     AND cmlod.aperturado IS NOT NULL 
+                     AND cmlod.aperturado <> ''";
         $paramsCheck = array_merge([$id_certificado_maestro_post], $ids_occ_detalle);
-        if ($id_lote_edicion !== '') {
-          $sqlCheck .= " AND cmlod.lote_aperturado != ?";
-          $paramsCheck[] = $id_lote_edicion;
+        if ($id_aperturado_edicion !== '') {
+          $sqlCheck .= " AND cmlod.aperturado != ?";
+          $paramsCheck[] = $id_aperturado_edicion;
         }
         $qCheck = $pdo->prepare($sqlCheck);
         $qCheck->execute($paramsCheck);
@@ -183,7 +187,7 @@ if (!empty($_POST)) {
         if (!empty($conflicting)) {
           $conflictMsgs = [];
           foreach ($conflicting as $row) {
-            $conflictMsgs[] = "Item OCC ID {$row['id_occ_detalle']} ya está asignado al lote '{$row['lote_aperturado']}'";
+            $conflictMsgs[] = "Item OCC ID {$row['id_occ_detalle']} ya está asignado al aperturado '{$row['aperturado']}'";
           }
           throw new Exception("Los siguientes ítems OCC ya tienen un aperturado asignado. Debe eliminar esos lotes primero:\n" . implode("\n", $conflictMsgs));
         }
@@ -230,10 +234,12 @@ if (!empty($_POST)) {
     $subtotal_lote_anterior = 0.0;
     $monto_base_lote_anterior = 0.0;
     $occ_ids_lote_anterior = [];
-    if ($id_lote_edicion !== '') {
-      $sql = "SELECT COALESCE(SUM(subtotal),0) AS subtotal_lote, COALESCE(MAX(monto_base_occ),0) AS monto_base_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
+    $lote_existente = '';
+    $oldDetalleIds = [];
+    if ($id_aperturado_edicion !== '') {
+      $sql = "SELECT COALESCE(SUM(subtotal),0) AS subtotal_lote, COALESCE(MAX(monto_base_occ),0) AS monto_base_lote, COUNT(*) AS cantidad_filas, MAX(lote) AS lote_existente FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ?";
       $q = $pdo->prepare($sql);
-      $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
+      $q->execute([$id_certificado_maestro_post, $id_aperturado_edicion]);
       $loteData = $q->fetch(PDO::FETCH_ASSOC);
 
       if (empty($loteData) || (int) ($loteData['cantidad_filas'] ?? 0) <= 0) {
@@ -242,10 +248,17 @@ if (!empty($_POST)) {
 
       $subtotal_lote_anterior = (float) ($loteData['subtotal_lote'] ?? 0);
       $monto_base_lote_anterior = (float) ($loteData['monto_base_lote'] ?? 0);
+      $lote_existente = (string) ($loteData['lote_existente'] ?? '');
 
-      $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
+      $sql = "SELECT id FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id";
       $q = $pdo->prepare($sql);
-      $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
+      $q->execute([$id_certificado_maestro_post, $id_aperturado_edicion]);
+      $oldDetalleIds = $q->fetchAll(PDO::FETCH_COLUMN, 0);
+      $oldDetalleIds = array_map('intval', $oldDetalleIds);
+
+      $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_certificado_maestro_post, $id_aperturado_edicion]);
       $occ_rows_lote = $q->fetchAll(PDO::FETCH_COLUMN, 0);
       foreach ($occ_rows_lote as $occ_id_row) {
         $tmp_occ = (int) $occ_id_row;
@@ -258,17 +271,76 @@ if (!empty($_POST)) {
       $q = $pdo->prepare($sql);
       $q->execute([round($subtotal_lote_anterior, 6), $id_certificado_maestro_post]);
 
-      $sql = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
+      $sql = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ?";
       $q = $pdo->prepare($sql);
-      $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
-
-      $sql = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_certificado_maestro_post, $id_lote_edicion]);
+      $q->execute([$id_certificado_maestro_post, $id_aperturado_edicion]);
     }
 
-    if (empty($ids_occ_detalle) && $permite_sin_items_occ && !empty($occ_ids_lote_anterior)) {
+    if ($solo_editar_aperturado && !empty($occ_ids_lote_anterior)) {
       $ids_occ_detalle = array_values($occ_ids_lote_anterior);
+    }
+
+    // Sincronizar otros aperturados del mismo lote: remover items OCC no seleccionados
+    if ($lote_existente !== '' && !$solo_editar_aperturado && !empty($ids_occ_detalle)) {
+      $sqlOtros = "SELECT DISTINCT aperturado FROM certificados_maestros_lotes_occ_detalle 
+                   WHERE id_certificado_maestro = ? AND lote = ? AND aperturado != ?";
+      $qOtros = $pdo->prepare($sqlOtros);
+      $qOtros->execute([$id_certificado_maestro_post, $lote_existente, $id_aperturado_edicion]);
+      $otrosAperturados = $qOtros->fetchAll(PDO::FETCH_COLUMN, 0);
+
+      foreach ($otrosAperturados as $otroAp) {
+        $sqlItems = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle 
+                     WHERE id_certificado_maestro = ? AND aperturado = ?";
+        $qItems = $pdo->prepare($sqlItems);
+        $qItems->execute([$id_certificado_maestro_post, $otroAp]);
+        $itemsOtro = array_map('intval', $qItems->fetchAll(PDO::FETCH_COLUMN, 0));
+        if (empty($itemsOtro)) continue;
+
+        $itemsRemover = array_diff($itemsOtro, $ids_occ_detalle);
+        if (empty($itemsRemover)) continue;
+
+        $placeholdersRm = implode(',', array_fill(0, count($itemsRemover), '?'));
+        $sqlRm = "DELETE FROM certificados_maestros_lotes_occ_detalle 
+                  WHERE id_certificado_maestro = ? AND aperturado = ? 
+                  AND id_occ_detalle IN ($placeholdersRm)";
+        $qRm = $pdo->prepare($sqlRm);
+        $qRm->execute(array_merge([$id_certificado_maestro_post, $otroAp], $itemsRemover));
+
+        $sqlCnt = "SELECT COUNT(*) FROM certificados_maestros_lotes_occ_detalle 
+                   WHERE id_certificado_maestro = ? AND aperturado = ?";
+        $qCnt = $pdo->prepare($sqlCnt);
+        $qCnt->execute([$id_certificado_maestro_post, $otroAp]);
+        $restanItems = (int) $qCnt->fetchColumn() > 0;
+
+        if (!$restanItems) {
+          $sqlAvCheck = "SELECT COUNT(*) FROM certificados_avances_detalle 
+                         WHERE id_certificado_maestro_detalle IN (
+                           SELECT id FROM certificados_maestros_detalles 
+                           WHERE id_certificado_maestro = ? AND aperturado = ?
+                         )";
+          $qAvCheck = $pdo->prepare($sqlAvCheck);
+          $qAvCheck->execute([$id_certificado_maestro_post, $otroAp]);
+          if ((int) $qAvCheck->fetchColumn() > 0) {
+            throw new Exception("No se puede eliminar el aperturado '$otroAp' porque tiene avances registrados.");
+          }
+
+          $sqlSubOtro = "SELECT COALESCE(SUM(subtotal),0) FROM certificados_maestros_detalles 
+                         WHERE id_certificado_maestro = ? AND aperturado = ?";
+          $qSubOtro = $pdo->prepare($sqlSubOtro);
+          $qSubOtro->execute([$id_certificado_maestro_post, $otroAp]);
+          $subtotalOtro = (float) $qSubOtro->fetchColumn();
+
+          if ($subtotalOtro > 0) {
+            $sqlUpd = "UPDATE certificados_maestros SET monto_acumulado_avances = monto_acumulado_avances - ? WHERE id = ?";
+            $qUpd = $pdo->prepare($sqlUpd);
+            $qUpd->execute([$subtotalOtro, $id_certificado_maestro_post]);
+          }
+
+          $sqlDelDet = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ?";
+          $qDelDet = $pdo->prepare($sqlDelDet);
+          $qDelDet->execute([$id_certificado_maestro_post, $otroAp]);
+        }
+      }
     }
 
     $sql = "SELECT id_occ FROM certificados_maestros WHERE id = ?";
@@ -307,23 +379,67 @@ if (!empty($_POST)) {
       $baseTotalOccSeleccionada = $monto_base_lote_anterior;
     }
 
-    $loteBase = $id_lote_edicion !== '' ? $id_lote_edicion : ('CM' . $id_certificado_maestro_post . '-' . date('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8));
+    // Generar o reutilizar lote
+    $loteGenerado = $lote_existente;
+    if ($loteGenerado === '' && $id_aperturado_edicion !== '') {
+      $loteGenerado = $id_aperturado_edicion;
+    }
+    if ($loteGenerado === '') {
+      $sql = "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(lote, '-LOTE-', -1) AS UNSIGNED)), 0) + 1 AS next_lote FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote LIKE 'CM%-LOTE-%'";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_certificado_maestro_post]);
+      $nextLote = (int) $q->fetch(PDO::FETCH_ASSOC)['next_lote'];
+      $loteGenerado = 'CM' . $id_certificado_maestro_post . '-LOTE-' . $nextLote;
+    }
+
+    $aperturadoIdentificador = $id_aperturado_edicion !== '' ? $id_aperturado_edicion : ('CM' . $id_certificado_maestro_post . '-' . date('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8));
     $rowsInserted = 0;
     $montoTotalInsertado = 0.0;
 
-    $sqlInsert = "INSERT INTO certificados_maestros_detalles (id_certificado_maestro, id_occ_detalle, id_proyecto, id_tipo_item_certificado, descripcion, cantidad, id_unidad_medida, precio_unitario, subtotal, incidencia_porcentaje, monto_base_occ, lote_aperturado, modo_generacion) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    // Auto-eliminar lote si se deseleccionaron todos los items OCC
+    if ($id_aperturado_edicion !== '' && empty($ids_occ_detalle) && !$solo_editar_aperturado) {
+      $sqlAvDel = "SELECT COUNT(*) FROM certificados_avances_detalle 
+                   WHERE id_certificado_maestro_detalle IN (
+                     SELECT id FROM certificados_maestros_detalles 
+                     WHERE id_certificado_maestro = ? AND aperturado = ?
+                   )";
+      $qAvDel = $pdo->prepare($sqlAvDel);
+      $qAvDel->execute([$id_certificado_maestro_post, $id_aperturado_edicion]);
+      if ((int) $qAvDel->fetchColumn() > 0) {
+        throw new Exception("No se puede eliminar este lote porque tiene avances registrados.");
+      }
+
+      $sql = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id_certificado_maestro_post, $id_aperturado_edicion]);
+
+      $detalleLog = "Eliminación de lote aperturado $id_aperturado_edicion de Certificado Maestro (sin items OCC).";
+      $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Certificado Maestro','')";
+      $q = $pdo->prepare($sql);
+      $q->execute([$_SESSION['user']['id'], $detalleLog]);
+      $pdo->commit();
+      Database::disconnect();
+      header("Location: listarCertificadosMaestros.php");
+      exit;
+    }
+
+    $sqlInsert = "INSERT INTO certificados_maestros_detalles (id_certificado_maestro, id_occ_detalle, id_proyecto, id_tipo_item_certificado, descripcion, cantidad, id_unidad_medida, precio_unitario, subtotal, incidencia_porcentaje, monto_base_occ, aperturado, lote, modo_generacion) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     $qInsert = $pdo->prepare($sqlInsert);
 
-    $sqlInsertRel = "INSERT IGNORE INTO certificados_maestros_lotes_occ_detalle (id_certificado_maestro, lote_aperturado, id_occ_detalle, modo_generacion) VALUES (?,?,?,?)";
+    $sqlUpdate = "UPDATE certificados_maestros_detalles SET id_certificado_maestro=?, id_occ_detalle=?, id_proyecto=?, id_tipo_item_certificado=?, descripcion=?, cantidad=?, id_unidad_medida=?, precio_unitario=?, subtotal=?, incidencia_porcentaje=?, monto_base_occ=?, aperturado=?, lote=?, modo_generacion=? WHERE id=?";
+    $qUpdate = $pdo->prepare($sqlUpdate);
+
+    $sqlInsertRel = "INSERT IGNORE INTO certificados_maestros_lotes_occ_detalle (id_certificado_maestro, aperturado, lote, id_occ_detalle, modo_generacion) VALUES (?,?,?,?,?)";
     $qInsertRel = $pdo->prepare($sqlInsertRel);
 
+    $rowIdx = 0;
     if ($modo_generacion === 'agrupar') {
-      $loteAperturado = $id_lote_edicion !== '' ? $loteBase : ($loteBase . '-AGR');
+      $aperturadoFinal = $id_aperturado_edicion !== '' ? $aperturadoIdentificador : ($aperturadoIdentificador . '-AGR');
       foreach ($aperturadoRows as $apRow) {
         $subtotalFila = round($baseTotalOccSeleccionada * ($apRow['incidencia'] / 100), 6);
         $precioUnitarioFila = $apRow['cantidad'] > 0 ? round($subtotalFila / $apRow['cantidad'], 6) : 0;
 
-        $qInsert->execute([
+        $commonValues = [
           $id_certificado_maestro_post,
           null,
           $id_proyecto,
@@ -335,18 +451,27 @@ if (!empty($_POST)) {
           $subtotalFila,
           $apRow['incidencia'],
           $baseTotalOccSeleccionada,
-          $loteAperturado,
+          $aperturadoFinal,
+          $loteGenerado,
           $modo_generacion,
-        ]);
+        ];
+
+        if ($id_aperturado_edicion !== '' && $rowIdx < count($oldDetalleIds)) {
+          $qUpdate->execute(array_merge($commonValues, [$oldDetalleIds[$rowIdx]]));
+        } else {
+          $qInsert->execute($commonValues);
+        }
 
         $rowsInserted++;
         $montoTotalInsertado += $subtotalFila;
+        $rowIdx++;
       }
 
       foreach ($ids_occ_detalle as $occIdRel) {
         $qInsertRel->execute([
           $id_certificado_maestro_post,
-          $loteAperturado,
+          $aperturadoFinal,
+          $loteGenerado,
           (int) $occIdRel,
           $modo_generacion,
         ]);
@@ -354,16 +479,17 @@ if (!empty($_POST)) {
     } else {
       foreach ($ids_occ_detalle as $occId) {
         $baseIndividual = (float) ($occSubtotales[$occId] ?? 0);
-        if ($id_lote_edicion !== '') {
-          $loteAperturado = 'CM' . $id_certificado_maestro_post . '-' . date('YmdHis') . '-' . substr(md5(uniqid('', true)), 0, 8) . '-SEP-' . $occId;
-        } else {
-          $loteAperturado = $loteBase . '-SEP-' . $occId;
-        }
+        $aperturadoBaseSep = ($id_aperturado_edicion !== '' && preg_match('/\-SEP-\d+$/', $id_aperturado_edicion))
+          ? preg_replace('/\-SEP-\d+$/', '', $id_aperturado_edicion)
+          : $aperturadoIdentificador;
+        $aperturadoFinal = $id_aperturado_edicion !== ''
+          ? $aperturadoBaseSep . '-SEP-' . $occId
+          : $aperturadoIdentificador . '-SEP-' . $occId;
         foreach ($aperturadoRows as $apRow) {
           $subtotalFila = round($baseIndividual * ($apRow['incidencia'] / 100), 6);
           $precioUnitarioFila = $apRow['cantidad'] > 0 ? round($subtotalFila / $apRow['cantidad'], 6) : 0;
 
-          $qInsert->execute([
+          $commonValues = [
             $id_certificado_maestro_post,
             $occId,
             $id_proyecto,
@@ -375,20 +501,42 @@ if (!empty($_POST)) {
             $subtotalFila,
             $apRow['incidencia'],
             $baseIndividual,
-            $loteAperturado,
+            $aperturadoFinal,
+            $loteGenerado,
             $modo_generacion,
-          ]);
+          ];
+
+          if ($id_aperturado_edicion !== '' && $rowIdx < count($oldDetalleIds)) {
+            $qUpdate->execute(array_merge($commonValues, [$oldDetalleIds[$rowIdx]]));
+          } else {
+            $qInsert->execute($commonValues);
+          }
 
           $rowsInserted++;
           $montoTotalInsertado += $subtotalFila;
+          $rowIdx++;
         }
 
         $qInsertRel->execute([
           $id_certificado_maestro_post,
-          $loteAperturado,
+          $aperturadoFinal,
+          $loteGenerado,
           (int) $occId,
           $modo_generacion,
         ]);
+      }
+    }
+
+    // Eliminar filas viejas que ya no tienen correspondencia en las nuevas
+    // (solo si no tienen avances registrados)
+    if ($id_aperturado_edicion !== '' && $rowIdx < count($oldDetalleIds)) {
+      $excessIds = array_slice($oldDetalleIds, $rowIdx);
+      foreach ($excessIds as $excessId) {
+        $checkAv = $pdo->prepare("SELECT COUNT(*) FROM certificados_avances_detalle WHERE id_certificado_maestro_detalle = ?");
+        $checkAv->execute([$excessId]);
+        if ((int) $checkAv->fetchColumn() === 0) {
+          $pdo->prepare("DELETE FROM certificados_maestros_detalles WHERE id = ?")->execute([$excessId]);
+        }
       }
     }
 
@@ -396,8 +544,8 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute([round($montoTotalInsertado, 6), $id_certificado_maestro_post]);
 
-    $detalleLog = $id_lote_edicion !== ''
-      ? ("Edicion de lote de detalle(s) de Certificado Maestro. Lote: $id_lote_edicion. Modo: $modo_generacion. Items OCC: " . count($ids_occ_detalle) . ". Filas creadas: $rowsInserted")
+    $detalleLog = $id_aperturado_edicion !== ''
+      ? ("Edicion de lote de detalle(s) de Certificado Maestro. Aperturado: $id_aperturado_edicion. Lote: $loteGenerado. Modo: $modo_generacion. Items OCC: " . count($ids_occ_detalle) . ". Filas creadas: $rowsInserted")
       : ("Nuevo lote de detalle(s) de Certificado Maestro. Modo: $modo_generacion. Items OCC: " . count($ids_occ_detalle) . ". Filas creadas: $rowsInserted");
 
     $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Certificado Maestro','')";
@@ -455,20 +603,21 @@ $q = $pdo->prepare($sql);
 $q->execute();
 $unidades_medida = $q->fetchAll(PDO::FETCH_ASSOC);
 
-$sql = "SELECT lote_aperturado, modo_generacion, id_proyecto, COALESCE(MAX(monto_base_occ),0) AS monto_base_occ, COALESCE(SUM(subtotal),0) AS subtotal_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado IS NOT NULL AND lote_aperturado <> '' AND modo_generacion IN ('agrupar','separar') GROUP BY lote_aperturado, modo_generacion, id_proyecto ORDER BY MAX(id) DESC";
+$sql = "SELECT aperturado, lote, modo_generacion, id_proyecto, COALESCE(MAX(monto_base_occ),0) AS monto_base_occ, COALESCE(SUM(subtotal),0) AS subtotal_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado IS NOT NULL AND aperturado <> '' AND modo_generacion IN ('agrupar','separar') GROUP BY aperturado, lote, modo_generacion, id_proyecto ORDER BY MAX(id) DESC";
 $q = $pdo->prepare($sql);
 $q->execute([$id_certificado_maestro]);
 $lotes_base = $q->fetchAll(PDO::FETCH_ASSOC);
 
 foreach ($lotes_base as $lote_row) {
-  $lote_id = $lote_row['lote_aperturado'];
+  $lote_id = $lote_row['aperturado'];
+  $lote_nro = $lote_row['lote'] ?? '';
 
-  $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ? ORDER BY id_occ_detalle";
+  $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id_occ_detalle";
   $q = $pdo->prepare($sql);
   $q->execute([$id_certificado_maestro, $lote_id]);
   $occ_rows_rel = $q->fetchAll(PDO::FETCH_COLUMN, 0);
 
-  $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote_aperturado = ? ORDER BY id";
+  $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_certificado_maestro, $lote_id]);
   $rows_lote = $q->fetchAll(PDO::FETCH_ASSOC);
@@ -495,7 +644,8 @@ foreach ($lotes_base as $lote_row) {
   }
 
   $lotes_editables[] = [
-    'lote_aperturado' => $lote_id,
+    'aperturado' => $lote_id,
+    'lote' => $lote_nro,
     'modo_generacion' => (string) $lote_row['modo_generacion'],
     'id_proyecto' => (int) ($lote_row['id_proyecto'] ?? 0),
     'monto_base_occ' => (float) ($lote_row['monto_base_occ'] ?? 0),
@@ -506,6 +656,22 @@ foreach ($lotes_base as $lote_row) {
     'aperturado_rows' => $ap_rows,
   ];
 }
+
+// Agrupar occ_ids por lote para editar por lote completo (marca todos los items del lote)
+$loteOccGroup = [];
+foreach ($lotes_editables as $le) {
+  $loteKey = $le['lote'];
+  if (!isset($loteOccGroup[$loteKey])) {
+    $loteOccGroup[$loteKey] = [];
+  }
+  foreach ($le['occ_ids'] as $oid) {
+    $loteOccGroup[$loteKey][$oid] = $oid;
+  }
+}
+foreach ($lotes_editables as &$le) {
+  $le['todos_occ_ids'] = array_values($loteOccGroup[$le['lote']] ?? []);
+}
+unset($le);
 
 Database::disconnect();
 ?>
@@ -575,7 +741,8 @@ Database::disconnect();
                   <input type="hidden" name="ids_occ_detalle_seleccionados" id="ids_occ_detalle_seleccionados" value="">
                   <input type="hidden" name="cant_items_occ_seleccionados" id="cant_items_occ_seleccionados_input" value="0">
                   <input type="hidden" name="base_total_occ_seleccionada" id="base_total_occ_seleccionada_input" value="0">
-                  <input type="hidden" name="id_lote_aperturado_edicion" id="id_lote_aperturado_edicion" value="">
+                  <input type="hidden" name="id_aperturado_edicion" id="id_aperturado_edicion" value="">
+                  <input type="hidden" name="solo_editar_aperturado" id="solo_editar_aperturado" value="">
                   <div class="card-body">
                     <div class="row">
                       <div class="col">
@@ -611,6 +778,7 @@ Database::disconnect();
                               <table class="table table-sm table-bordered display" id="tabla_occ_detalles" style="width:100%">
                                 <thead>
                                   <tr>
+                                    <th style="width:40px;"><input type="checkbox" id="check_all_occ_items" title="Seleccionar todos"></th>
                                     <th>ID</th>
                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
@@ -623,11 +791,12 @@ Database::disconnect();
                                 <tbody><?php
                                         if (empty($occ_detalles)) { ?>
                                     <tr>
-                                      <td colspan="7">La Orden de Compra seleccionada no tiene items.</td>
+                                      <td colspan="8">La Orden de Compra seleccionada no tiene items.</td>
                                     </tr><?php
                                         } else {
                                           foreach ($occ_detalles as $row) { ?>
-                                      <tr class="occ-item-row" data-id="<?= $row['id'] ?>" data-subtotal="<?= $row['subtotal'] ?>" style="cursor:pointer;">
+                                      <tr class="occ-item-row" data-id="<?= $row['id'] ?>" data-subtotal="<?= $row['subtotal'] ?>">
+                                        <td class="text-center"><input type="checkbox" class="occ-item-checkbox" data-id="<?= $row['id'] ?>"></td>
                                         <td><?= $row['id'] ?></td>
                                         <td><?= htmlspecialchars($row['descripcion']) ?></td>
                                         <td><?= number_format($row['cantidad'], 2, ',', '.') ?></td>
@@ -868,7 +1037,7 @@ Database::disconnect();
 
       function getLoteEditableById(loteId) {
         for (let i = 0; i < lotesEditablesData.length; i++) {
-          if (String(lotesEditablesData[i].lote_aperturado) === String(loteId)) {
+          if (String(lotesEditablesData[i].aperturado) === String(loteId)) {
             return lotesEditablesData[i];
           }
         }
@@ -887,7 +1056,7 @@ Database::disconnect();
       }
 
       function isEditandoLote() {
-        return ($('#id_lote_aperturado_edicion').val() || '').trim() !== '';
+        return ($('#id_aperturado_edicion').val() || '').trim() !== '';
       }
 
       function isModoSeparar() {
@@ -934,7 +1103,8 @@ Database::disconnect();
       }
 
       function resetFormCreateMode(keepRows) {
-        $('#id_lote_aperturado_edicion').val('');
+        $('#id_aperturado_edicion').val('');
+        $('#solo_editar_aperturado').val('');
         $('#estado_edicion_lote').hide().text('');
         $('#btn_guardar_detalle').text('Crear');
         $('#btn_cancelar_edicion_lote').hide();
@@ -969,11 +1139,12 @@ Database::disconnect();
           return;
         }
 
-        $('#id_lote_aperturado_edicion').val(lote.lote_aperturado);
+        $('#id_aperturado_edicion').val(lote.aperturado);
+        $('#solo_editar_aperturado').val('');
         baseLoteEdicionForzada = parseFloat(lote.monto_base_occ) || 0;
 
         $('#estado_edicion_lote')
-          .text('Editando lote: ' + lote.lote_aperturado + '. Al guardar se reemplazan las filas del lote completo.')
+          .text('Editando lote: ' + (lote.lote || lote.aperturado) + '. Al guardar se reemplazan las filas del lote completo.')
           .show();
         $('#btn_guardar_detalle').text('Guardar cambios de lote');
         $('#btn_cancelar_edicion_lote').show();
@@ -996,9 +1167,70 @@ Database::disconnect();
         });
         ocultarTodosDesgloses = false;
 
-        (lote.occ_ids || []).forEach(function(occId) {
+        (lote.todos_occ_ids || lote.occ_ids || []).forEach(function(occId) {
           const key = String(occId);
           selectedOccItems[key] = parseFloat(occSubtotalPorId[key]) || 0;
+        });
+
+        $('#body_aperturado').empty();
+        (lote.aperturado_rows || []).forEach(function(row) {
+          const nuevaFila = $(buildAperturadoRow());
+          $('#body_aperturado').append(nuevaFila);
+          nuevaFila.find('.aper-desc').val(row.descripcion || '');
+          nuevaFila.find('.aper-unidad').val(String(row.id_unidad_medida || ''));
+          nuevaFila.find('.aper-cantidad').val(row.cantidad || 0);
+          nuevaFila.find('.aper-incidencia').val(row.incidencia || 0);
+        });
+
+        if (!$('#body_aperturado tr').length) {
+          addAperturadoRow(false);
+        }
+
+        syncOccRowStyles();
+        updateOccSelectionSummary();
+        renderOccBreakdowns();
+
+        $('html, body').animate({
+          scrollTop: $('#estado_edicion_lote').offset().top - 80
+        }, 250);
+      }
+
+      function cargarAperturadoParaEdicion(loteId) {
+        const lote = getLoteEditableById(loteId);
+        if (!lote) {
+          alert('No se encontro el aperturado seleccionado para editar.');
+          return;
+        }
+
+        $('#id_aperturado_edicion').val(lote.aperturado);
+        $('#solo_editar_aperturado').val('1');
+        baseLoteEdicionForzada = parseFloat(lote.monto_base_occ) || 0;
+
+        $('#estado_edicion_lote')
+          .text('Editando aperturado: ' + lote.aperturado + ' (lote: ' + (lote.lote || '') + '). Solo se modifican las filas del aperturado, no los items OCC.')
+          .show();
+        $('#btn_guardar_detalle').text('Guardar cambios de aperturado');
+        $('#btn_cancelar_edicion_lote').show();
+
+        $('#id_proyecto').val(String(lote.id_proyecto || '')).trigger('change');
+        $('input[name="modo_generacion"]').prop('checked', false);
+        if (String(lote.modo_generacion) === 'separar') {
+          $('#modo_generacion_separar').prop('checked', true);
+        } else {
+          $('#modo_generacion_agrupar').prop('checked', true);
+        }
+
+        updateOccActionsColumnVisibility();
+
+        // Limpiamos selección actual y cargamos solo los items de este lote
+        Object.keys(selectedOccItems).forEach(function(id) {
+          delete selectedOccItems[id];
+        });
+        (lote.occ_ids || []).forEach(function(occId) {
+          const key = String(occId);
+          if (occSubtotalPorId[key] !== undefined) {
+            selectedOccItems[key] = parseFloat(occSubtotalPorId[key]) || 0;
+          }
         });
 
         $('#body_aperturado').empty();
@@ -1029,7 +1261,7 @@ Database::disconnect();
           return;
         }
 
-        occDataTable.column(6).visible(true, false);
+        occDataTable.column(7).visible(true, false);
         occDataTable.columns.adjust().draw(false);
       }
 
@@ -1083,7 +1315,7 @@ Database::disconnect();
                 groupedMembershipByItem[id] = [];
               }
               groupedMembershipByItem[id].push({
-                lote_aperturado: lote.lote_aperturado,
+                aperturado: lote.aperturado,
                 ids_grupo: idsDeGrupo,
                 is_owner: id === ownerOccId,
               });
@@ -1150,23 +1382,25 @@ Database::disconnect();
                     <table class="table table-sm table-bordered mb-0 occ-lote-summary-table">
                       <thead>
                         <tr>
+                          <th>Aperturado</th>
                           <th>Lote</th>
                           <th>Proyecto</th>
-                          <th class="text-right">Monto lote</th>
+                          <th class="text-right">Monto</th>
                           <th class="text-center">Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td>${escapeHtml(lote.lote_aperturado)}</td>
+                          <td>${escapeHtml(lote.aperturado)}</td>
+                          <td>${escapeHtml(lote.lote || '')}</td>
                           <td>${escapeHtml(proyectoLabel)}</td>
                           <td class="text-right">${simboloMonedaOcc} ${formatNumber(parseFloat(lote.subtotal_lote) || 0)}</td>
                           <td class="text-center">
-                            <a href="#" class="btn-editar-lote-inline mr-2" data-lote="${escapeHtml(lote.lote_aperturado)}" title="Editar lote" style="color: midnightblue;">
-                              <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Modificar" title="Modificar">
+                            <a href="#" class="btn-editar-lote-inline mr-2" data-lote="${escapeHtml(lote.aperturado)}" title="Editar lote (items OCC + aperturado)" style="color: midnightblue;">
+                              <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Modificar" title="Editar lote (items OCC + aperturado)">
                             </a>
-                            <a href="#" class="btn-eliminar-lote-inline" data-lote="${escapeHtml(lote.lote_aperturado)}" title="Eliminar lote" style="color: #dc3545;">
-                              <img src="img/icon_baja.png" width="20" height="21" border="0" alt="Eliminar" title="Eliminar">
+                            <a href="#" class="btn-editar-aperturado-inline" data-lote="${escapeHtml(lote.aperturado)}" title="Editar solo aperturado (sin cambiar items OCC)" style="color: #17a2b8;">
+                              <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Aperturado" title="Editar solo aperturado (sin cambiar items OCC)">
                             </a>
                           </td>
                         </tr>
@@ -1198,7 +1432,8 @@ Database::disconnect();
             const idsGrupo = entry.ids_grupo || [];
             return `
                   <div class="occ-group-aperturado-wrap mb-2">
-                    <small class="d-block font-weight-bold text-info mb-1">Aperturado agrupado (lote ${escapeHtml(entry.lote.lote_aperturado)})</small>
+                    <small class="d-block font-weight-bold text-info mb-1">Aperturado: ${escapeHtml(entry.lote.aperturado)}</small>
+                    <small class="d-block text-muted mb-1">Lote: ${escapeHtml(entry.lote.lote || '')}</small>
                     <small class="d-block text-muted mb-2">Aplica al grupo OCC: ${escapeHtml(idsGrupo.join(', '))}</small>
                     ${renderLoteHtml(entry.lote)}
                   </div>`;
@@ -1496,11 +1731,16 @@ Database::disconnect();
           const isSelected = !!selectedOccItems[rowId];
           const isHidden = ocultarTodosDesgloses || !!hiddenDesglosePorItem[rowId];
           const actionCell = $(this).find('td.occ-desglose-cell');
+          const checkbox = $(this).find('.occ-item-checkbox');
 
           $(this)
             .toggleClass('selected', isSelected)
             .removeClass('occ-grouped-member occ-grouped-start occ-grouped-middle occ-grouped-end occ-grouped-single');
           actionCell.find('.btn-toggle-desglose-item').remove();
+
+          if (checkbox.length && checkbox.is(':checked') !== isSelected) {
+            checkbox.prop('checked', isSelected);
+          }
 
           if (isSelected) {
             const breakdownHtml = buildOccBreakdownHtml(rowId, parseFloat(selectedOccItems[rowId]) || 0, groupedContext);
@@ -1522,22 +1762,29 @@ Database::disconnect();
         });
       }
 
-      $(document).on('click', '#tabla_occ_detalles tbody tr.occ-item-row', function() {
+      $(document).on('change', '.occ-item-checkbox', function() {
         const rowId = String($(this).data('id') || '');
-        const subtotal = parseFloat($(this).data('subtotal')) || 0;
+        const subtotal = parseFloat($(this).closest('tr').data('subtotal')) || 0;
         if (!rowId) {
           return;
         }
 
-        if (selectedOccItems[rowId] !== undefined) {
+        if ($(this).is(':checked')) {
+          selectedOccItems[rowId] = subtotal;
+        } else {
           delete selectedOccItems[rowId];
           delete hiddenDesglosePorItem[rowId];
-        } else {
-          selectedOccItems[rowId] = subtotal;
         }
 
         syncOccRowStyles();
         updateOccSelectionSummary();
+      });
+
+      $(document).on('change', '#check_all_occ_items', function() {
+        const isChecked = $(this).is(':checked');
+        $('.occ-item-checkbox').each(function() {
+          $(this).prop('checked', isChecked).trigger('change');
+        });
       });
 
       $(document).on('click', '.btn-editar-lote-inline', function(e) {
@@ -1550,17 +1797,14 @@ Database::disconnect();
         cargarLoteParaEdicion(loteId);
       });
 
-      $(document).on('click', '.btn-eliminar-lote-inline', function(e) {
+      $(document).on('click', '.btn-editar-aperturado-inline', function(e) {
         e.preventDefault();
         e.stopPropagation();
         const loteId = String($(this).data('lote') || '');
         if (!loteId) {
           return;
         }
-        if (!confirm('¿Eliminar este lote completo?')) {
-          return;
-        }
-        window.location.href = 'eliminarDetalleCertificadoMaestro.php?id_lote=' + encodeURIComponent(loteId);
+        cargarAperturadoParaEdicion(loteId);
       });
 
       $('#btn_cancelar_edicion_lote').on('click', function() {

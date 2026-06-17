@@ -149,3 +149,27 @@ ALTER TABLE coladas
 MODIFY id_proveedor INT NULL,
 MODIFY id_compra INT NULL,
 MODIFY adjunto VARCHAR(500) NULL;
+
+-- CORRECCIÓN 13: Separar lote_aperturado en lote (batch) y aperturado (breakdown)
+
+ALTER TABLE `certificados_maestros_detalles`
+    CHANGE `lote_aperturado` `aperturado` VARCHAR(64) NULL;
+
+ALTER TABLE `certificados_maestros_detalles`
+    ADD COLUMN `lote` VARCHAR(64) NULL AFTER `aperturado`;
+
+-- Backfill: para datos existentes, lote = aperturado
+UPDATE `certificados_maestros_detalles`
+    SET `lote` = `aperturado`
+    WHERE `lote` IS NULL AND `aperturado` IS NOT NULL AND `aperturado` <> '';
+
+-- Tabla N:N
+ALTER TABLE `certificados_maestros_lotes_occ_detalle`
+    CHANGE `lote_aperturado` `aperturado` VARCHAR(64) NOT NULL;
+
+ALTER TABLE `certificados_maestros_lotes_occ_detalle`
+    ADD COLUMN `lote` VARCHAR(64) NULL AFTER `aperturado`;
+
+UPDATE `certificados_maestros_lotes_occ_detalle`
+    SET `lote` = `aperturado`
+    WHERE `lote` IS NULL;

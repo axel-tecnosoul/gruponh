@@ -225,6 +225,8 @@ include 'database.php';
                             <th>Unidad de Medida</th>
                             <th>Precio Unitario</th>
                             <th>Subtotal</th>
+                            <th>Aperturado</th>
+                            <th>Lote</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
@@ -240,6 +242,8 @@ include 'database.php';
                             <th>Unidad de Medida</th>
                             <th>Precio Unitario</th>
                             <th>Subtotal</th>
+                            <th>Aperturado</th>
+                            <th>Lote</th>
                           </tr>
                         </tfoot>
                       </table>

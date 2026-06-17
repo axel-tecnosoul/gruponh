@@ -6,6 +6,11 @@ if (empty($_SESSION['user'])) {
 }
 require 'database.php';
 
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') || !empty($_POST['aperturado']);
+
 $id = null;
 if (!empty($_GET['id'])) {
   $id = $_REQUEST['id'];
@@ -15,21 +20,17 @@ $id_lote = null;
 if (!empty($_GET['id_lote'])) {
   $id_lote = trim((string) $_GET['id_lote']);
 }
-
-if (null == $id && $id_lote === null) {
-  header("Location: listarCertificadosMaestros.php");
-  exit;
+if (!empty($_POST['aperturado'])) {
+  $id_lote = trim((string) $_POST['aperturado']);
 }
 
-$pdo = Database::connect();
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-$modoDebug=0;
-
-if ($modoDebug==1) {
-  $pdo->beginTransaction();
-  var_dump($_POST);
-  var_dump($_FILES);
+if (null == $id && $id_lote === null) {
+  if ($isAjax) {
+    echo json_encode(['success' => false, 'message' => 'No se especificó el lote a eliminar.']);
+    exit;
+  }
+  header("Location: listarCertificadosMaestros.php");
+  exit;
 }
 
 $column_names = [
@@ -40,84 +41,100 @@ $column_names = [
   5 => "monto_acumulado_ajustes",
 ];
 
-$detalle_accion = '';
+try {
+  $detalle_accion = '';
 
-if ($id_lote !== null) {
-  $sql = "SELECT id_certificado_maestro, COALESCE(SUM(subtotal),0) AS subtotal_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE lote_aperturado = ? GROUP BY id_certificado_maestro";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lote]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
+  if ($id_lote !== null) {
+    $sql = "SELECT id_certificado_maestro, COALESCE(SUM(subtotal),0) AS subtotal_lote, COUNT(*) AS cantidad_filas FROM certificados_maestros_detalles WHERE aperturado = ? GROUP BY id_certificado_maestro";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_lote]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
 
-  if (empty($data) || (int) ($data['cantidad_filas'] ?? 0) <= 0) {
-    Database::disconnect();
-    header("Location: listarCertificadosMaestros.php");
-    exit;
+    if (empty($data) || (int) ($data['cantidad_filas'] ?? 0) <= 0) {
+      if ($isAjax) {
+        echo json_encode(['success' => false, 'message' => 'No se encontró el lote a eliminar.']);
+        exit;
+      }
+      Database::disconnect();
+      header("Location: listarCertificadosMaestros.php");
+      exit;
+    }
+
+    $id_certificado_maestro = (int) $data['id_certificado_maestro'];
+    $subtotal_lote = (float) $data['subtotal_lote'];
+
+    $pdo->beginTransaction();
+
+    // Verificar avances antes de eliminar
+    $sqlAv = "SELECT COUNT(*) FROM certificados_avances_detalle 
+              WHERE id_certificado_maestro_detalle IN (
+                SELECT id FROM certificados_maestros_detalles 
+                WHERE id_certificado_maestro = ? AND aperturado = ?
+              )";
+    $qAv = $pdo->prepare($sqlAv);
+    $qAv->execute([$id_certificado_maestro, $id_lote]);
+    if ((int) $qAv->fetchColumn() > 0) {
+      throw new Exception("No se puede eliminar este lote porque tiene avances registrados.");
+    }
+
+    $sql = "UPDATE certificados_maestros SET monto_acumulado_avances = monto_acumulado_avances - ? WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$subtotal_lote, $id_certificado_maestro]);
+
+    $sql = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_certificado_maestro, $id_lote]);
+
+    $sql = "DELETE FROM certificados_maestros_detalles WHERE aperturado = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_lote]);
+
+    $detalle_accion = "Eliminación de lote #$id_lote de Certificado Maestro";
+  } else {
+    $sql = "SELECT id_certificado_maestro,id_tipo_item_certificado,subtotal FROM certificados_maestros_detalles WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    $id_certificado_maestro = $data['id_certificado_maestro'];
+    $id_tipo_item_old=$data["id_tipo_item_certificado"];
+    $subtotal_old=$data["subtotal"];
+
+    $column_name_old = $column_names[$id_tipo_item_old];
+    $sql = "UPDATE certificados_maestros SET $column_name_old = $column_name_old - ? WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$subtotal_old,$id_certificado_maestro]);
+
+    $sql = "DELETE from certificados_maestros_detalles WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+
+    $detalle_accion = "Eliminación de detalle ID #$id de Certificado Maestro";
   }
 
-  $id_certificado_maestro = (int) $data['id_certificado_maestro'];
-  $subtotal_lote = (float) $data['subtotal_lote'];
+  if ($detalle_accion !== '') {
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Certificado Maestro','')";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_SESSION['user']['id'], $detalle_accion]);
+  }
 
-  $pdo->beginTransaction();
-
-  $sql = "UPDATE certificados_maestros SET monto_acumulado_avances = monto_acumulado_avances - ? WHERE id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$subtotal_lote, $id_certificado_maestro]);
-
-  $sql = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND lote_aperturado = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_certificado_maestro, $id_lote]);
-
-  $sql = "DELETE FROM certificados_maestros_detalles WHERE lote_aperturado = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id_lote]);
-
-  $detalle_accion = "Eliminación de lote #$id_lote de Certificado Maestro";
-} else {
-  $sql = "SELECT id_certificado_maestro,id_tipo_item_certificado,subtotal FROM certificados_maestros_detalles WHERE id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  $id_certificado_maestro = $data['id_certificado_maestro'];
-  $id_tipo_item_old=$data["id_tipo_item_certificado"];
-  $subtotal_old=$data["subtotal"];
-
-  //obtenemos el nombre de la columna del tipo de detalle en la tabla certificado_maestro para restar el subtotal
-  $column_name_old = $column_names[$id_tipo_item_old];
-  //restamos el viejo subtotal en la columna segun el viejo tipo de detalle
-  $sql = "UPDATE certificados_maestros SET $column_name_old = $column_name_old - ? WHERE id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$subtotal_old,$id_certificado_maestro]);
-
-  $sql = "DELETE from certificados_maestros_detalles WHERE id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-
-  $detalle_accion = "Eliminación de detalle ID #$id de Certificado Maestro";
-}
-
-if ($modoDebug==1) {
-  $q->debugDumpParams();
-  echo "<br><br>Afe: ".$q->rowCount();
-  echo "<br><br>";
-}
-
-$sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Certificado Maestro','')";
-$q = $pdo->prepare($sql);
-$q->execute([$_SESSION['user']['id'], $detalle_accion]);
-
-if ($modoDebug==1) {
-  $q->debugDumpParams();
-  echo "<br><br>Afe: ".$q->rowCount();
-  echo "<br><br>";
-}
-
-if ($modoDebug==1) {
-  $pdo->rollBack();
-  die();
-} else {
-  if ($modoDebug != 1 && $pdo->inTransaction()) {
+  if ($pdo->inTransaction()) {
     $pdo->commit();
   }
   Database::disconnect();
+
+  if ($isAjax) {
+    echo json_encode(['success' => true, 'message' => 'Lote eliminado correctamente.']);
+    exit;
+  }
   header("Location: nuevoCertificadoMaestroDetalle.php?id_certificado_maestro=".$id_certificado_maestro);
+} catch (Exception $e) {
+  if ($pdo->inTransaction()) {
+    $pdo->rollBack();
+  }
+  Database::disconnect();
+  if ($isAjax) {
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    exit;
+  }
+  die("Error al eliminar: " . $e->getMessage());
 }
