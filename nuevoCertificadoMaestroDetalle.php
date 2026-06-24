@@ -158,6 +158,15 @@ if (!empty($_POST)) {
             $qUpdate = $pdo->prepare($sqlUpdate);
             $qUpdate->execute([round($sub, 6), $id_certificado_maestro_post]);
 
+            // Eliminar avances que referencien a este lote (cascada) antes de borrar los detalles
+            $sqlDelAv = "DELETE FROM certificados_avances_detalle 
+                         WHERE id_certificado_maestro_detalle IN (
+                           SELECT id FROM certificados_maestros_detalles 
+                           WHERE id_certificado_maestro = ? AND aperturado = ?
+                         )";
+            $qDelAv = $pdo->prepare($sqlDelAv);
+            $qDelAv->execute([$id_certificado_maestro_post, $lote]);
+
             // Eliminar relaciones y detalles de ese lote
             $sqlDelRel = "DELETE FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ?";
             $qDelRel = $pdo->prepare($sqlDelRel);
@@ -184,12 +193,11 @@ if (!empty($_POST)) {
         $qCheck = $pdo->prepare($sqlCheck);
         $qCheck->execute($paramsCheck);
         $conflicting = $qCheck->fetchAll(PDO::FETCH_ASSOC);
+        $conflictingItems = [];
         if (!empty($conflicting)) {
-          $conflictMsgs = [];
           foreach ($conflicting as $row) {
-            $conflictMsgs[] = "Item OCC ID {$row['id_occ_detalle']} ya está asignado al aperturado '{$row['aperturado']}'";
+            $conflictingItems[(int) $row['id_occ_detalle']] = $row['aperturado'];
           }
-          throw new Exception("Los siguientes ítems OCC ya tienen un aperturado asignado. Debe eliminar esos lotes primero:\n" . implode("\n", $conflictMsgs));
         }
       }
     }
@@ -230,6 +238,56 @@ if (!empty($_POST)) {
     }
 
     $pdo->beginTransaction();
+
+    // Resolver conflictos: desvincular items OCC de sus aperturados anteriores
+    if (!empty($conflictingItems) && $id_aperturado_edicion === '') {
+      $occPorAperturado = [];
+      foreach ($conflictingItems as $occId => $aperturado) {
+        $occPorAperturado[$aperturado][] = $occId;
+      }
+      foreach ($occPorAperturado as $aperturado => $occIds) {
+        $placeholdersRm = implode(',', array_fill(0, count($occIds), '?'));
+        $sqlRm = "DELETE FROM certificados_maestros_lotes_occ_detalle 
+                  WHERE id_certificado_maestro = ? AND aperturado = ? AND id_occ_detalle IN ($placeholdersRm)";
+        $qRm = $pdo->prepare($sqlRm);
+        $qRm->execute(array_merge([$id_certificado_maestro_post, $aperturado], $occIds));
+
+        $sqlCnt = "SELECT COUNT(*) FROM certificados_maestros_lotes_occ_detalle 
+                   WHERE id_certificado_maestro = ? AND aperturado = ?";
+        $qCnt = $pdo->prepare($sqlCnt);
+        $qCnt->execute([$id_certificado_maestro_post, $aperturado]);
+        $restanItems = (int) $qCnt->fetchColumn() > 0;
+
+        if (!$restanItems) {
+          $sqlAv = "SELECT COUNT(*) FROM certificados_avances_detalle 
+                    WHERE id_certificado_maestro_detalle IN (
+                      SELECT id FROM certificados_maestros_detalles 
+                      WHERE id_certificado_maestro = ? AND aperturado = ?
+                    )";
+          $qAv = $pdo->prepare($sqlAv);
+          $qAv->execute([$id_certificado_maestro_post, $aperturado]);
+          if ((int) $qAv->fetchColumn() > 0) {
+            throw new Exception("No se puede desvincular items del aperturado '$aperturado' porque tiene avances registrados.");
+          }
+
+          $sqlSub = "SELECT COALESCE(SUM(subtotal),0) FROM certificados_maestros_detalles 
+                     WHERE id_certificado_maestro = ? AND aperturado = ?";
+          $qSub = $pdo->prepare($sqlSub);
+          $qSub->execute([$id_certificado_maestro_post, $aperturado]);
+          $subtotalRestar = (float) $qSub->fetchColumn();
+
+          if ($subtotalRestar > 0) {
+            $sqlUpd = "UPDATE certificados_maestros SET monto_acumulado_avances = monto_acumulado_avances - ? WHERE id = ?";
+            $qUpd = $pdo->prepare($sqlUpd);
+            $qUpd->execute([$subtotalRestar, $id_certificado_maestro_post]);
+          }
+
+          $sqlDelDet = "DELETE FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ?";
+          $qDelDet = $pdo->prepare($sqlDelDet);
+          $qDelDet->execute([$id_certificado_maestro_post, $aperturado]);
+        }
+      }
+    }
 
     $subtotal_lote_anterior = 0.0;
     $monto_base_lote_anterior = 0.0;
@@ -998,6 +1056,7 @@ Database::disconnect();
       const lotesEditablesData = <?= json_encode($lotes_editables) ?>;
       const selectedOccItems = {};
       const hiddenDesglosePorItem = {};
+      const desglosePrecargadoPorItem = {};
       const occSubtotalPorId = {};
       let aperturadoRowIndex = 0;
       let ocultarTodosDesgloses = false;
@@ -1010,27 +1069,11 @@ Database::disconnect();
       });
 
       function preloadSelectedOccItemsFromExistingLots() {
-        const hasGlobalLots = lotesEditablesData.some(function(lote) {
-          return !!lote.aplica_global;
-        });
-
-        if (hasGlobalLots) {
-          $('#tabla_occ_detalles tbody tr.occ-item-row').each(function() {
-            const rowId = String($(this).data('id') || '');
-            const subtotal = parseFloat($(this).data('subtotal')) || 0;
-            if (rowId) {
-              selectedOccItems[rowId] = subtotal;
-            }
-          });
-          return;
-        }
-
+        // No pre-seleccionar checkboxes al editar, solo marcar items para mostrar desglose
         lotesEditablesData.forEach(function(lote) {
           (lote.occ_ids || []).forEach(function(occId) {
             const key = String(occId);
-            if (occSubtotalPorId[key] !== undefined) {
-              selectedOccItems[key] = parseFloat(occSubtotalPorId[key]) || 0;
-            }
+            desglosePrecargadoPorItem[key] = true;
           });
         });
       }
@@ -1095,7 +1138,7 @@ Database::disconnect();
         if (!allHidden) {
           const selectedIds = Object.keys(selectedOccItems);
           allHidden = selectedIds.length > 0 && selectedIds.every(function(id) {
-            return !!hiddenDesglosePorItem[id];
+            return hiddenDesglosePorItem[id] === 'hidden';
           });
         }
 
@@ -1108,6 +1151,7 @@ Database::disconnect();
         $('#estado_edicion_lote').hide().text('');
         $('#btn_guardar_detalle').text('Crear');
         $('#btn_cancelar_edicion_lote').hide();
+        $('button[name="btn_ir_certificado"]').show();
         baseLoteEdicionForzada = 0;
 
         Object.keys(selectedOccItems).forEach(function(id) {
@@ -1115,6 +1159,9 @@ Database::disconnect();
         });
         Object.keys(hiddenDesglosePorItem).forEach(function(id) {
           delete hiddenDesglosePorItem[id];
+        });
+        Object.keys(desglosePrecargadoPorItem).forEach(function(id) {
+          delete desglosePrecargadoPorItem[id];
         });
         ocultarTodosDesgloses = false;
 
@@ -1148,6 +1195,7 @@ Database::disconnect();
           .show();
         $('#btn_guardar_detalle').text('Guardar cambios de lote');
         $('#btn_cancelar_edicion_lote').show();
+        $('button[name="btn_ir_certificado"]').hide();
 
         $('#id_proyecto').val(String(lote.id_proyecto || '')).trigger('change');
         $('input[name="modo_generacion"]').prop('checked', false);
@@ -1164,6 +1212,9 @@ Database::disconnect();
         });
         Object.keys(hiddenDesglosePorItem).forEach(function(id) {
           delete hiddenDesglosePorItem[id];
+        });
+        Object.keys(desglosePrecargadoPorItem).forEach(function(id) {
+          delete desglosePrecargadoPorItem[id];
         });
         ocultarTodosDesgloses = false;
 
@@ -1191,7 +1242,7 @@ Database::disconnect();
         renderOccBreakdowns();
 
         $('html, body').animate({
-          scrollTop: $('#estado_edicion_lote').offset().top - 80
+          scrollTop: $('#tabla_aperturado').offset().top - 100
         }, 250);
       }
 
@@ -1211,6 +1262,7 @@ Database::disconnect();
           .show();
         $('#btn_guardar_detalle').text('Guardar cambios de aperturado');
         $('#btn_cancelar_edicion_lote').show();
+        $('button[name="btn_ir_certificado"]').hide();
 
         $('#id_proyecto').val(String(lote.id_proyecto || '')).trigger('change');
         $('input[name="modo_generacion"]').prop('checked', false);
@@ -1225,6 +1277,9 @@ Database::disconnect();
         // Limpiamos selección actual y cargamos solo los items de este lote
         Object.keys(selectedOccItems).forEach(function(id) {
           delete selectedOccItems[id];
+        });
+        Object.keys(desglosePrecargadoPorItem).forEach(function(id) {
+          delete desglosePrecargadoPorItem[id];
         });
         (lote.occ_ids || []).forEach(function(occId) {
           const key = String(occId);
@@ -1252,7 +1307,7 @@ Database::disconnect();
         renderOccBreakdowns();
 
         $('html, body').animate({
-          scrollTop: $('#estado_edicion_lote').offset().top - 80
+          scrollTop: $('#tabla_aperturado').offset().top - 100
         }, 250);
       }
 
@@ -1272,7 +1327,7 @@ Database::disconnect();
           if (!occId) {
             return;
           }
-          if (selectedOccItems[occId] !== undefined) {
+          if (selectedOccItems[occId] !== undefined || desglosePrecargadoPorItem[occId] !== undefined) {
             ids.push(occId);
           }
         });
@@ -1292,9 +1347,7 @@ Database::disconnect();
           .forEach(function(lote) {
             const loteOccIds = Array.isArray(lote.occ_ids) ? lote.occ_ids.map(String) : [];
             const idsDeGrupo = loteOccIds.length ?
-              selectedIdsInOrder.filter(function(id) {
-                return loteOccIds.indexOf(id) >= 0;
-              }) :
+              loteOccIds :
               selectedIdsInOrder.slice();
 
             if (!idsDeGrupo.length) {
@@ -1357,11 +1410,12 @@ Database::disconnect();
         function renderLoteHtml(lote) {
           const rowsLote = Array.isArray(lote.aperturado_rows) ? lote.aperturado_rows : [];
           const proyectoLabel = getProyectoLabelById(lote.id_proyecto);
+          const baseLote = parseFloat(lote.monto_base_occ) || 0;
+          const esAgrupado = String(lote.modo_generacion || '') === 'agrupar';
           const filasHtml = rowsLote.length ?
             rowsLote.map(function(row) {
               const cantidad = parseFloat(row.cantidad) || 0;
               const incidencia = parseFloat(row.incidencia) || 0;
-              const baseLote = parseFloat(lote.monto_base_occ) || 0;
               const totalFila = baseLote * (incidencia / 100);
               const precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
               return `
@@ -1376,6 +1430,11 @@ Database::disconnect();
             }).join('') :
             '<tr><td colspan="6" class="text-muted">Sin filas de aperturado guardadas para este lote.</td></tr>';
 
+          const sumaTotal = rowsLote.reduce(function(sum, row) {
+            const incidencia = parseFloat(row.incidencia) || 0;
+            return sum + (baseLote * (incidencia / 100));
+          }, 0);
+
           return `
                 <div class="border rounded px-2 py-2 mb-2 occ-lote-inline-row">
                   <div class="table-responsive mb-2">
@@ -1386,23 +1445,22 @@ Database::disconnect();
                           <th>Lote</th>
                           <th>Proyecto</th>
                           <th class="text-right">Monto</th>
-                          <th class="text-center">Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td>${escapeHtml(lote.aperturado)}</td>
-                          <td>${escapeHtml(lote.lote || '')}</td>
+                          <td>${escapeHtml(lote.aperturado)}
+                          ${!esAgrupado ? `<a href="#" class="btn-editar-aperturado-inline" data-lote="${escapeHtml(lote.aperturado)}" title="Editar solo aperturado (sin cambiar items OCC)" style="color: #17a2b8;">
+                            <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Aperturado" title="Editar solo aperturado (sin cambiar items OCC)">
+                          </a>` : ''}</td>
+                          <td>${escapeHtml(lote.lote || '')}
+
+                          
+                          <a href="#" class="btn-editar-lote-inline mr-2" data-lote="${escapeHtml(lote.aperturado)}" title="Editar lote (items OCC + aperturado)" style="color: midnightblue;">
+                            <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Modificar" title="Editar lote (items OCC + aperturado)">
+                          </a></td>
                           <td>${escapeHtml(proyectoLabel)}</td>
                           <td class="text-right">${simboloMonedaOcc} ${formatNumber(parseFloat(lote.subtotal_lote) || 0)}</td>
-                          <td class="text-center">
-                            <a href="#" class="btn-editar-lote-inline mr-2" data-lote="${escapeHtml(lote.aperturado)}" title="Editar lote (items OCC + aperturado)" style="color: midnightblue;">
-                              <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Modificar" title="Editar lote (items OCC + aperturado)">
-                            </a>
-                            <a href="#" class="btn-editar-aperturado-inline" data-lote="${escapeHtml(lote.aperturado)}" title="Editar solo aperturado (sin cambiar items OCC)" style="color: #17a2b8;">
-                              <img src="img/icon_modificar.png" width="20" height="21" border="0" alt="Aperturado" title="Editar solo aperturado (sin cambiar items OCC)">
-                            </a>
-                          </td>
                         </tr>
                       </tbody>
                     </table>
@@ -1422,6 +1480,12 @@ Database::disconnect();
                       <tbody>
                         ${filasHtml}
                       </tbody>
+                      <tfoot class="bg-light">
+                        <tr class="font-weight-bold">
+                          <td colspan="5" class="text-right">Total</td>
+                          <td class="text-right">${simboloMonedaOcc} ${formatNumber(sumaTotal)}</td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>`;
@@ -1432,8 +1496,6 @@ Database::disconnect();
             const idsGrupo = entry.ids_grupo || [];
             return `
                   <div class="occ-group-aperturado-wrap mb-2">
-                    <small class="d-block font-weight-bold text-info mb-1">Aperturado: ${escapeHtml(entry.lote.aperturado)}</small>
-                    <small class="d-block text-muted mb-1">Lote: ${escapeHtml(entry.lote.lote || '')}</small>
                     <small class="d-block text-muted mb-2">Aplica al grupo OCC: ${escapeHtml(idsGrupo.join(', '))}</small>
                     ${renderLoteHtml(entry.lote)}
                   </div>`;
@@ -1516,6 +1578,11 @@ Database::disconnect();
               </tr>`;
         }).join('');
 
+        const sumaTotal = rows.reduce(function(sum, row) {
+          const incidencia = parseFloat(row.incidencia) || 0;
+          return sum + (baseIndividual * (incidencia / 100));
+        }, 0);
+
         return `
             <div class="occ-breakdown-panel">
               <div class="occ-lote-inline-actions mb-2">
@@ -1534,6 +1601,12 @@ Database::disconnect();
                         </tr>
                       </thead>
                       <tbody>${filasHtml}</tbody>
+                      <tfoot class="bg-light">
+                        <tr class="font-weight-bold">
+                          <td colspan="5" class="text-right">Total</td>
+                          <td class="text-right">${simboloMonedaOcc} ${formatNumber(sumaTotal)}</td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -1543,6 +1616,7 @@ Database::disconnect();
 
       function renderOccBreakdowns() {
         if (!occDataTable) return;
+        syncOccRowStyles();
 
         const separar = isModoSeparar();
         const mostrarEnEdicion = lotesEditablesData.length > 0 || isEditandoLote();
@@ -1559,21 +1633,44 @@ Database::disconnect();
             return;
           }
 
-          const isSelected = selectedOccItems[occId] !== undefined;
-          const isHidden = ocultarTodosDesgloses || !!hiddenDesglosePorItem[occId];
+          const isSelected = selectedOccItems[occId] !== undefined || desglosePrecargadoPorItem[occId] !== undefined;
+          const toggleState = hiddenDesglosePorItem[occId];
+          const isHidden = ocultarTodosDesgloses || toggleState === 'hidden';
+          const isForceShown = toggleState === 'shown';
 
-          if ((!separar && !mostrarEnEdicion) || !isSelected || isHidden) {
+          const modoSeleccionado = $('input[name="modo_generacion"]:checked').val();
+          if ((!modoSeleccionado && !mostrarEnEdicion) || isHidden) {
             this.child.hide();
             return;
           }
 
-          const baseIndividual = parseFloat(selectedOccItems[occId]) || 0;
+          if (!isForceShown && !isSelected) {
+            const tieneLotesGuardados = (function() {
+              for (let i = 0; i < lotesEditablesData.length; i++) {
+                const ids = lotesEditablesData[i].occ_ids || [];
+                if (ids.indexOf(parseInt(occId)) >= 0 || ids.indexOf(occId) >= 0) return true;
+              }
+              return false;
+            })();
+            if (!tieneLotesGuardados) {
+              this.child.hide();
+              return;
+            }
+          }
+
+          const baseIndividual = parseFloat(selectedOccItems[occId] || occSubtotalPorId[occId]) || 0;
 
           if (isEditandoLote()) {
             let baseParaPreview;
             if (separar) {
               baseParaPreview = baseIndividual;
             } else {
+              const selectedIdsInOrder = getSelectedOccIdsInTableOrder();
+              const virtualOwner = selectedIdsInOrder.length > 0 ? selectedIdsInOrder[selectedIdsInOrder.length - 1] : null;
+              if (occId !== virtualOwner) {
+                this.child.hide();
+                return;
+              }
               baseParaPreview = getBaseCalculoActual();
             }
             const previewHtml = buildPreviewBreakdownHtml(occId, baseParaPreview);
@@ -1587,8 +1684,29 @@ Database::disconnect();
 
           // Comportamiento normal (creación o visualización de lotes guardados)
           const breakdownHtml = buildOccBreakdownHtml(occId, baseIndividual, groupedContext);
-          if (!breakdownHtml && !isEditandoLote() && separar && isSelected) {
+          if (!breakdownHtml && !isEditandoLote() && separar) {
             const previewHtml = buildPreviewBreakdownHtml(occId, baseIndividual);
+            if (previewHtml) {
+              this.child(previewHtml).show();
+            } else {
+              this.child.hide();
+            }
+            return;
+          }
+
+          // Vista previa en modo agrupar durante creación (una sola para el grupo)
+          if (!breakdownHtml && !isEditandoLote() && !separar) {
+            const selectedIdsInOrder = getSelectedOccIdsInTableOrder();
+            const idsSinGrupo = selectedIdsInOrder.filter(function(id) {
+              return (!groupedContext.groupedMembershipByItem || !groupedContext.groupedMembershipByItem[id]) && (selectedOccItems[id] !== undefined || occSubtotalPorId[id] !== undefined);
+            });
+            const virtualOwner = idsSinGrupo.length > 0 ? idsSinGrupo[idsSinGrupo.length - 1] : null;
+            if (occId !== virtualOwner) {
+              this.child.hide();
+              return;
+            }
+            const baseTotal = getBaseCalculoActual();
+            const previewHtml = buildPreviewBreakdownHtml(occId, baseTotal);
             if (previewHtml) {
               this.child(previewHtml).show();
             } else {
@@ -1714,12 +1832,6 @@ Database::disconnect();
         $('#cant_items_occ_seleccionados').text(ids.length);
         $('#base_total_occ_seleccionada').text(simboloMonedaOcc + ' ' + formatNumber(total));
 
-        Object.keys(hiddenDesglosePorItem).forEach(function(id) {
-          if (selectedOccItems[id] === undefined) {
-            delete hiddenDesglosePorItem[id];
-          }
-        });
-
         recalcularAperturado();
       }
 
@@ -1729,12 +1841,14 @@ Database::disconnect();
         $('#tabla_occ_detalles tbody tr.occ-item-row').each(function() {
           const rowId = String($(this).data('id') || '');
           const isSelected = !!selectedOccItems[rowId];
-          const isHidden = ocultarTodosDesgloses || !!hiddenDesglosePorItem[rowId];
+          const isPrecargado = !isSelected && !!desglosePrecargadoPorItem[rowId];
+          const toggleState = hiddenDesglosePorItem[rowId];
+          const isHidden = ocultarTodosDesgloses || toggleState === 'hidden';
           const actionCell = $(this).find('td.occ-desglose-cell');
           const checkbox = $(this).find('.occ-item-checkbox');
 
           $(this)
-            .toggleClass('selected', isSelected)
+            .removeClass('selected')
             .removeClass('occ-grouped-member occ-grouped-start occ-grouped-middle occ-grouped-end occ-grouped-single');
           actionCell.find('.btn-toggle-desglose-item').remove();
 
@@ -1742,12 +1856,17 @@ Database::disconnect();
             checkbox.prop('checked', isSelected);
           }
 
-          if (isSelected) {
-            const breakdownHtml = buildOccBreakdownHtml(rowId, parseFloat(selectedOccItems[rowId]) || 0, groupedContext);
-            if (!breakdownHtml) {
-              return;
+          const tieneBreakdownGuardado = buildOccBreakdownHtml(rowId, parseFloat(selectedOccItems[rowId] || occSubtotalPorId[rowId]) || 0, groupedContext);
+          const tieneLotesGuardados = (function() {
+            for (let i = 0; i < lotesEditablesData.length; i++) {
+              const ids = lotesEditablesData[i].occ_ids || [];
+              if (ids.indexOf(parseInt(rowId)) >= 0 || ids.indexOf(rowId) >= 0) return true;
             }
-
+            return false;
+          })();
+          const modoSel = $('input[name="modo_generacion"]:checked').val();
+          const tieneFilasPreview = getCurrentAperturadoRows().length > 0;
+          if (tieneBreakdownGuardado || tieneLotesGuardados || (modoSel && tieneFilasPreview)) {
             const textBtn = isHidden ? 'Mostrar desglose' : 'Ocultar desglose';
             actionCell.append('<button type="button" class="btn btn-secondary btn-sm btn-toggle-desglose-item" data-occ-id="' + rowId + '">' + textBtn + '</button>');
           }
@@ -1762,6 +1881,20 @@ Database::disconnect();
         });
       }
 
+      function getIdsAgruparParaItem(occId) {
+        const ids = [];
+        lotesEditablesData.forEach(function(lote) {
+          if (String(lote.modo_generacion || '') !== 'agrupar') return;
+          const loteOccIds = (lote.occ_ids || []).map(String);
+          if (loteOccIds.indexOf(String(occId)) >= 0) {
+            loteOccIds.forEach(function(id) {
+              if (ids.indexOf(id) < 0) ids.push(id);
+            });
+          }
+        });
+        return ids;
+      }
+
       $(document).on('change', '.occ-item-checkbox', function() {
         const rowId = String($(this).data('id') || '');
         const subtotal = parseFloat($(this).closest('tr').data('subtotal')) || 0;
@@ -1769,11 +1902,15 @@ Database::disconnect();
           return;
         }
 
-        if ($(this).is(':checked')) {
+        const isChecked = $(this).is(':checked');
+        const idsGrupo = getIdsAgruparParaItem(rowId);
+
+        if (isChecked) {
           selectedOccItems[rowId] = subtotal;
+          delete desglosePrecargadoPorItem[rowId];
         } else {
           delete selectedOccItems[rowId];
-          delete hiddenDesglosePorItem[rowId];
+          delete desglosePrecargadoPorItem[rowId];
         }
 
         syncOccRowStyles();
@@ -1839,16 +1976,20 @@ Database::disconnect();
           return;
         }
 
+        const currentState = hiddenDesglosePorItem[occId];
         if (ocultarTodosDesgloses) {
           ocultarTodosDesgloses = false;
           Object.keys(selectedOccItems).forEach(function(id) {
-            hiddenDesglosePorItem[id] = true;
+            hiddenDesglosePorItem[id] = 'hidden';
           });
-          hiddenDesglosePorItem[occId] = false;
-        } else if (hiddenDesglosePorItem[occId]) {
           delete hiddenDesglosePorItem[occId];
+        } else if (currentState === 'hidden') {
+          delete hiddenDesglosePorItem[occId];
+        } else if (currentState === 'shown') {
+          hiddenDesglosePorItem[occId] = 'hidden';
         } else {
-          hiddenDesglosePorItem[occId] = true;
+          const btnText = $(this).text().trim();
+          hiddenDesglosePorItem[occId] = btnText.indexOf('Ocultar') >= 0 ? 'hidden' : 'shown';
         }
 
         syncOccRowStyles();
@@ -1860,7 +2001,7 @@ Database::disconnect();
         if (!allHidden) {
           const selectedIds = Object.keys(selectedOccItems);
           allHidden = selectedIds.length > 0 && selectedIds.every(function(id) {
-            return !!hiddenDesglosePorItem[id];
+            return hiddenDesglosePorItem[id] === 'hidden';
           });
         }
 
