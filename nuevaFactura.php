@@ -86,7 +86,14 @@
                           <label class="col-sm-4 col-form-label">Orden de Compra(*)</label>
                           <div class="col-sm-8">
                             <?php if ($ocPreseleccionada): ?>
-                              <p class="form-control-plaintext"><?= htmlspecialchars($ocLabel) ?></p>
+                              <p class="form-control-plaintext">
+                                <a href="verCompra.php?id=<?= htmlspecialchars($_GET['oc']) ?>" target="_blank">
+                                  <?= htmlspecialchars($ocLabel) ?>
+                                </a>
+                                <?php if (!empty($ocTotalFormatted)): ?>
+                                  <br><small class="text-muted">Total: <?= htmlspecialchars($ocTotalFormatted) ?></small>
+                                <?php endif; ?>
+                              </p>
                               <input type="hidden" name="id_orden_compra" value="<?= htmlspecialchars($_GET['oc']) ?>">
                             <?php else: ?>
                             <select name="id_orden_compra" id="id_orden_compra" class="js-example-basic-single col-sm-12" required onchange="jsRecargar();">
@@ -259,7 +266,7 @@
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Número(*)</label>
                           <div class="col-sm-8">
-                            <input name="numero" id="numero" oninput="applyMask(this)"
+                            <input name="numero" id="numero" oninput="applyMask(this)" onblur="padNumberField(this)"
                               placeholder="0001-00000001" type="text" maxlength="20"
                               class="form-control" required>
                           </div>
@@ -503,65 +510,85 @@
                           <tr>
                             <th>#</th>
                             <th>Concepto</th>
+                            <th>Imputaciones</th>
                             <th>Cantidad</th>
                             <th>Precio</th>
                             <th>Subtotal</th>
+                            <th>Editar</th>
                             <th>Quitar</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th colspan="4" class="text-right">Total:</th>
+                            <th colspan="5" class="text-right">Total:</th>
                             <th id="totalDetalle">$ 0.00</th>
-                            <th></th>
+                            <th colspan="2"></th>
                           </tr>
                         </tfoot>
                       </table>
                     </div>
 
                     <div class="form-group row">
-                      <label class="col-sm-3 col-form-label">Concepto Contable(*)</label>
-                      <div class="col-sm-9">
-                        <select id="det_concepto" class="js-example-basic-single col-sm-12">
-                          <option value="">Seleccione...</option>
-                          <?php
-                          $pdo = Database::connect();
-                          $q = $pdo->prepare("SELECT id, descripcion FROM conceptos_contables WHERE 1");
-                          $q->execute();
-                          while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                            echo "<option value='{$f['id']}'>" . htmlspecialchars($f['descripcion']) . "</option>";
-                          }
-                          Database::disconnect();
-                          ?>
-                        </select>
+                      <div class="col-md-6">
+                        <div class="row">
+                          <label class="col-sm-4 col-form-label">Concepto Contable(*)</label>
+                          <div class="col-sm-8">
+                            <select id="det_concepto" class="js-example-basic-single col-sm-12">
+                              <option value="">Seleccione...</option>
+                              <?php
+                              $pdo = Database::connect();
+                              $q = $pdo->prepare("SELECT id, descripcion FROM conceptos_contables WHERE 1");
+                              $q->execute();
+                              while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                echo "<option value='{$f['id']}'>" . htmlspecialchars($f['descripcion']) . "</option>";
+                              }
+                              Database::disconnect();
+                              ?>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="row">
+                          <label class="col-sm-4 col-form-label">Imputaciones</label>
+                          <div class="col-sm-8">
+                            <select id="det_imputaciones" class="js-example-basic-multiple col-sm-12" multiple="multiple">
+                              <?php if ($vista === 'compra' && !empty($imputacionesOC)): ?>
+                                <?php foreach ($imputacionesOC as $imp): ?>
+                                  <option value="<?= $imp['id'] ?>"><?= htmlspecialchars($imp['concepto']) ?> (x<?= $imp['cantidad'] ?>)</option>
+                                <?php endforeach; ?>
+                              <?php endif; ?>
+                            </select>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
                     <div class="form-group row">
-                      <label class="col-sm-3 col-form-label">Imputaciones</label>
-                      <div class="col-sm-9">
-                        <select id="det_imputaciones" class="js-example-basic-multiple col-sm-12" multiple="multiple">
-                          <?php if ($vista === 'compra' && !empty($imputacionesOC)): ?>
-                            <?php foreach ($imputacionesOC as $imp): ?>
-                              <option value="<?= $imp['id'] ?>"><?= htmlspecialchars($imp['concepto']) ?> (x<?= $imp['cantidad'] ?>)</option>
-                            <?php endforeach; ?>
-                          <?php endif; ?>
-                        </select>
+                      <div class="col-md-6">
+                        <div class="row">
+                          <label class="col-sm-4 col-form-label">Cantidad(*)</label>
+                          <div class="col-sm-8">
+                            <input id="det_cantidad" type="number" step="0.01" class="form-control" oninput="calcularSubtotal()">
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="row">
+                          <label class="col-sm-4 col-form-label">Precio(*)</label>
+                          <div class="col-sm-8">
+                            <input id="det_precio" type="number" step="0.01" class="form-control" oninput="calcularSubtotal()">
+                          </div>
+                        </div>
                       </div>
                     </div>
 
+                    <input type="hidden" id="ocTotalData" value="<?= (float)($ocTotal ?? 0) ?>">
                     <div class="form-group row">
-                      <label class="col-sm-3 col-form-label">Cantidad(*)</label>
-                      <div class="col-sm-9">
-                        <input id="det_cantidad" type="number" step="0.01" class="form-control">
-                      </div>
-                    </div>
-
-                    <div class="form-group row">
-                      <label class="col-sm-3 col-form-label">Precio(*)</label>
-                      <div class="col-sm-9">
-                        <input id="det_precio" type="number" step="0.01" class="form-control">
+                      <div class="col-sm-12 text-right pr-4">
+                        <strong>Subtotal: $ <span id="previewSubtotal">0.00</span></strong>
+                        <br><small id="topeMaximo" style="color:red"></small>
                       </div>
                     </div>
 
@@ -690,8 +717,28 @@
       input.value = v;
     }
 
+    function padNumberField(input) {
+      var v = input.value.replace(/\D/g, '');
+      if (v.length === 0) return;
+
+      var prefix, suffix;
+      if (v.length <= 4) {
+        prefix = '0001';
+        suffix = v;
+      } else {
+        prefix = v.substring(0, 4);
+        suffix = v.substring(4);
+      }
+
+      prefix = prefix.padStart(4, '0');
+      suffix = suffix.padEnd(8, '0');
+
+      input.value = prefix + '-' + suffix;
+    }
+
     var detalles = [];
     var retenciones = [];
+    var editIndex = -1;
 
     <?php if ($vista === 'compra'): ?>
     function jsRecargar() {
@@ -712,21 +759,37 @@
         detalles.forEach(function(item, i) {
           var sub = item.cantidad * item.precio;
           total += sub;
+          var imputacionesHtml = item.imputaciones_text && item.imputaciones_text.length
+            ? item.imputaciones_text.join('<br>')
+            : '';
           tbody.append(
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
             '<td>' + item.concepto_text + '</td>' +
+            '<td>' + imputacionesHtml + '</td>' +
             '<td>' + parseFloat(item.cantidad).toFixed(2) + '</td>' +
             '<td>$ ' + parseFloat(item.precio).toFixed(2) + '</td>' +
             '<td>$ ' + sub.toFixed(2) + '</td>' +
+            '<td><a href="javascript:void(0)" onclick="editarDetalle(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a></td>' +
             '<td><a href="javascript:void(0)" onclick="quitarDetalle(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'
           );
         });
         $('#countDetalles').text('(' + detalles.length + ')');
+        if (typeof feather !== 'undefined') {
+          feather.replace();
+        }
       }
 
       $('#totalDetalle').text('$ ' + total.toFixed(2));
+
+      var ocTotal = parseFloat($('#ocTotalData').val()) || 0;
+      if (ocTotal > 0) {
+        $('#topeMaximo').text('(*)Tope Máximo Recomendado: $ ' + (ocTotal - total).toFixed(2));
+      } else {
+        $('#topeMaximo').text('');
+      }
+
       $('#detalles_json').val(JSON.stringify(detalles));
     }
 
@@ -766,6 +829,26 @@
     function quitarRetencion(index) {
       retenciones.splice(index, 1);
       renderRetenciones();
+    }
+
+    function calcularSubtotal() {
+      var cant = parseFloat($('#det_cantidad').val()) || 0;
+      var precio = parseFloat($('#det_precio').val()) || 0;
+      $('#previewSubtotal').text((cant * precio).toFixed(2));
+    }
+
+    function editarDetalle(index) {
+      editIndex = index;
+      var item = detalles[index];
+
+      $('#det_concepto').val(item.id_concepto).trigger('change');
+      $('#det_imputaciones').val(item.imputaciones).trigger('change');
+      $('#det_cantidad').val(item.cantidad);
+      $('#det_precio').val(item.precio);
+
+      calcularSubtotal();
+
+      $('#btnAgregarDetalle').text('Modificar Ítem');
     }
 
     $(document).ready(function() {
@@ -808,14 +891,34 @@
         }
 
         var imputaciones = $('#det_imputaciones').val() || [];
+        var imputacionesText = [];
+        if (imputaciones.length) {
+          $('#det_imputaciones option:selected').each(function() {
+            imputacionesText.push($(this).text());
+          });
+        }
 
-        detalles.push({
-          id_concepto: idConcepto,
-          concepto_text: conceptoText,
-          cantidad: cantidad,
-          precio: precio,
-          imputaciones: imputaciones
-        });
+        if (editIndex >= 0) {
+          detalles[editIndex] = {
+            id_concepto: idConcepto,
+            concepto_text: conceptoText,
+            cantidad: cantidad,
+            precio: precio,
+            imputaciones: imputaciones,
+            imputaciones_text: imputacionesText
+          };
+          editIndex = -1;
+          $('#btnAgregarDetalle').text('Agregar Ítem');
+        } else {
+          detalles.push({
+            id_concepto: idConcepto,
+            concepto_text: conceptoText,
+            cantidad: cantidad,
+            precio: precio,
+            imputaciones: imputaciones,
+            imputaciones_text: imputacionesText
+          });
+        }
 
         $('#det_concepto').val('').trigger('change');
         $('#det_imputaciones').val(null).trigger('change');
@@ -847,6 +950,11 @@
         $('#ret_regimen').val('').trigger('change');
         $('#ret_monto').val('');
         renderRetenciones();
+      });
+
+      $('#formFactura').on('submit', function() {
+        var numInput = document.getElementById('numero');
+        if (numInput) padNumberField(numInput);
       });
 
       <?php if ($vista === 'venta'): ?>

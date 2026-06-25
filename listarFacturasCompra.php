@@ -5,6 +5,13 @@ if (empty($_SESSION['user'])) {
     die("Redirecting to index.php");
 }
 include 'database.php';
+require_once 'manejarFiltros.php';
+$filters = gestionarFiltros('listarFacturasCompra');
+$nro = $filters['nro'] ?? "";
+$fecha = $filters['fecha'] ?? "";
+$fechah = $filters['fechah'] ?? "";
+$proveedor = $filters['proveedor'] ?? "";
+$id_estado = $filters['id_estado'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,13 +52,13 @@ include 'database.php';
 				  <div class="card-body">
 					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarFacturasCompra.php">
 					  <div class="form-group mb-0">
-						Nro:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
+						Nro:&nbsp;<input class="form-control" size="3" type="text" value="<?= htmlspecialchars($nro) ?>" name="nro">
 					  </div>
 					  <div class="form-group mb-0">
-						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
+						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?= htmlspecialchars($fecha) ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?= htmlspecialchars($fechah) ?>" name="fechah">
 					  </div>
 					  <div class="form-group mb-0">
-						Proveedor:&nbsp;<input class="form-control" size="20" type="text" value="<?php if (isset($_POST['proveedor'])) echo $_POST['proveedor'] ?>" name="proveedor">
+						Proveedor:&nbsp;<input class="form-control" size="20" type="text" value="<?= htmlspecialchars($proveedor) ?>" name="proveedor">
 					  </div>
 					  <div class="form-group mb-0">
 						Estado:&nbsp;
@@ -65,10 +72,8 @@ include 'database.php';
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if (isset($_POST['id_estado'])) {
-									if (in_array($fila['id'],$_POST['id_estado'])) {
-										echo " selected ";
-									}
+								if (in_array($fila['id'], $id_estado)) {
+									echo " selected ";
 								}
 								echo ">".$fila['estado']."</option>";
 							}
@@ -78,6 +83,7 @@ include 'database.php';
 					  </div>
 					  <div class="form-group mb-0">
 						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarFacturasCompra.php'">Buscar</button>
+						<a href="listarFacturasCompra.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
 					  </div>
 					</form>
 				</div>
@@ -131,26 +137,35 @@ include 'database.php';
                         </thead>
                         <tbody>
                           <?php
-                            if (!empty($_POST)) {
                             $pdo = Database::connect();
                             $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, ef.estado, date_format(fc.`fecha_emitida`,'%y%m%d') FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
-                            if (!empty($_POST['nro'])) {
-								$sql .= " AND fc.numero = '".$_POST['nro']."' ";
-							}
-							if (!empty($_POST['fecha'])) {
-								$sql .= " AND fc.fecha_emitida >= '".$_POST['fecha']."' ";
-							}
-							if (!empty($_POST['fechah'])) {
-								$sql .= " AND fc.fecha_emitida <= '".$_POST['fechah']."' ";
-							}
-							if (!empty($_POST['proveedor'])) {
-								$sql .= " AND c.razon_social like '%".$_POST['proveedor']."%' ";
-							}
-							if (!empty($_POST['id_estado'][0])) {
-								$sql .= " AND ef.id in (".implode(', ',$_POST['id_estado']).") ";
-							}
-							
-                            foreach ($pdo->query($sql) as $row) {
+                            $params = [];
+
+                            if (!empty($nro)) {
+                                $sql .= " AND fc.numero = ? ";
+                                $params[] = $nro;
+                            }
+                            if (!empty($fecha)) {
+                                $sql .= " AND fc.fecha_emitida >= ? ";
+                                $params[] = $fecha;
+                            }
+                            if (!empty($fechah)) {
+                                $sql .= " AND fc.fecha_emitida <= ? ";
+                                $params[] = $fechah;
+                            }
+                            if (!empty($proveedor)) {
+                                $sql .= " AND c.razon_social LIKE ? ";
+                                $params[] = '%' . $proveedor . '%';
+                            }
+                            if (!empty($id_estado[0])) {
+                                $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
+                                $sql .= " AND ef.id IN ($placeholders) ";
+                                $params = array_merge($params, $id_estado);
+                            }
+
+                            $q = $pdo->prepare($sql);
+                            $q->execute($params);
+                            foreach ($q as $row) {
                                 echo '<tr>';
 								echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
@@ -166,7 +181,6 @@ include 'database.php';
                                 echo '</tr>';
                             }
 							Database::disconnect();
-							}
                           ?>
                         </tbody>
 						<tfoot>

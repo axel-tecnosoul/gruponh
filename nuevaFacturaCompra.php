@@ -122,7 +122,7 @@ if (!empty($_POST)) {
 	if (!empty($_GET['oc'])) {
 		$pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT c.`id_cuenta_proveedor`, c.`id_forma_pago`, c.`id_moneda`, p.id_computo, p.id_proyecto FROM `compras` c inner join pedidos p on p.id = c.id_pedido WHERE c.`id` = ? ";
+        $sql = "SELECT c.`id_cuenta_proveedor`, c.`id_forma_pago`, c.`id_moneda`, c.`total`, p.id_computo, p.id_proyecto FROM `compras` c inner join pedidos p on p.id = c.id_pedido WHERE c.`id` = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$_GET['oc']]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -139,6 +139,7 @@ if (!empty($_POST)) {
 		
 		$idComputo = $data['id_computo'];
 		$idProyecto = $data['id_proyecto'];
+		$ocTotal = !empty($data['total']) ? (float)$data['total'] : 0;
 		if (!empty($idComputo)) {
 			$sql = " SELECT s.id_empresa FROM computos c inner join tareas t on t.id = c.id_tarea inner join proyectos pr on pr.id = t.id_proyecto inner join sitios s on s.id = pr.id_sitio WHERE c.id = ? ";
 			$q = $pdo->prepare($sql);
@@ -213,6 +214,11 @@ if ($ocPreseleccionada && !empty($_GET['oc'])) {
         $q = $pdo->prepare("SELECT moneda FROM monedas WHERE id = ?");
         $q->execute([$idMoneda]);
         $monedaLabel = $q->fetchColumn() ?: '';
+    }
+
+    $ocTotalFormatted = '';
+    if ($ocTotal > 0 && $monedaLabel) {
+        $ocTotalFormatted = $monedaLabel . ' ' . number_format($ocTotal, 2, ',', '.');
     }
 
     Database::disconnect();
