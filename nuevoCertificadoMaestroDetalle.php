@@ -442,6 +442,9 @@ if (!empty($_POST)) {
     if ($loteGenerado === '' && $id_aperturado_edicion !== '') {
       $loteGenerado = $id_aperturado_edicion;
     }
+    if ($solo_editar_aperturado && $modo_generacion === 'separar') {
+      $loteGenerado = '';
+    }
     if ($loteGenerado === '') {
       $sql = "SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(lote, '-LOTE-', -1) AS UNSIGNED)), 0) + 1 AS next_lote FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND lote LIKE 'CM%-LOTE-%'";
       $q = $pdo->prepare($sql);
@@ -613,7 +616,11 @@ if (!empty($_POST)) {
     $pdo->commit();
     Database::disconnect();
 
-    header("Location: listarCertificadosMaestros.php");
+    if ($id_aperturado_edicion !== '' || isset($_POST['btn_crear_otro_aperturado'])) {
+      header("Location: nuevoCertificadoMaestroDetalle.php?id_certificado_maestro=" . $id_certificado_maestro_post);
+    } else {
+      header("Location: listarCertificadosMaestros.php");
+    }
     exit;
   } catch (Exception $e) {
     if ($pdo->inTransaction()) {
@@ -854,7 +861,7 @@ Database::disconnect();
                                         } else {
                                           foreach ($occ_detalles as $row) { ?>
                                       <tr class="occ-item-row" data-id="<?= $row['id'] ?>" data-subtotal="<?= $row['subtotal'] ?>">
-                                        <td class="text-center"><input type="checkbox" class="occ-item-checkbox" data-id="<?= $row['id'] ?>"></td>
+                                        <td class="text-center" data-order="1"><input type="checkbox" class="occ-item-checkbox" data-id="<?= $row['id'] ?>"></td>
                                         <td><?= $row['id'] ?></td>
                                         <td><?= htmlspecialchars($row['descripcion']) ?></td>
                                         <td><?= number_format($row['cantidad'], 2, ',', '.') ?></td>
@@ -1106,6 +1113,34 @@ Database::disconnect();
         return $('input[name="modo_generacion"]:checked').val() === 'separar';
       }
 
+      function getSortPriority(rowId, isSelected) {
+        const paddedId = String(rowId).padStart(10, '0');
+        const aperturadoId = ($('#id_aperturado_edicion').val() || '').trim();
+
+        let loteIdx = -1;
+        for (let i = 0; i < lotesEditablesData.length; i++) {
+          const lt = lotesEditablesData[i];
+          if (String(lt.modo_generacion || '') !== 'agrupar') continue;
+          const ids = (lt.todos_occ_ids || lt.occ_ids || []).map(String);
+          if (ids.indexOf(String(rowId)) >= 0) { loteIdx = i; break; }
+        }
+
+        const pIdx = String(Math.max(0, loteIdx)).padStart(3, '0');
+
+        if (aperturadoId && isSelected && loteIdx >= 0) {
+          if (String(lotesEditablesData[loteIdx].aperturado) === aperturadoId) {
+            return '0' + pIdx + paddedId;
+          }
+        }
+        if (loteIdx >= 0) {
+          if (!aperturadoId || String(lotesEditablesData[loteIdx].aperturado) !== aperturadoId) {
+            return '1' + pIdx + paddedId;
+          }
+        }
+        if (isSelected) return '2' + paddedId;
+        return '3' + paddedId;
+      }
+
       function escapeHtml(text) {
         return String(text || '')
           .replace(/&/g, '&amp;')
@@ -1126,8 +1161,8 @@ Database::disconnect();
       }
 
       function updateOccBreakdownControls() {
-        const hasItems = Object.keys(selectedOccItems).length > 0;
-        const shouldShow = isModoSeparar() && hasItems;
+        const hasItems = Object.keys(selectedOccItems).length > 0 || Object.keys(desglosePrecargadoPorItem).length > 0;
+        const shouldShow = hasItems;
         $('#occ_breakdown_controls').toggle(shouldShow);
 
         if (!shouldShow) {
@@ -1136,8 +1171,12 @@ Database::disconnect();
 
         let allHidden = ocultarTodosDesgloses;
         if (!allHidden) {
-          const selectedIds = Object.keys(selectedOccItems);
-          allHidden = selectedIds.length > 0 && selectedIds.every(function(id) {
+          const ids = Object.keys(selectedOccItems);
+          const idsPre = Object.keys(desglosePrecargadoPorItem);
+          const allIds = ids.concat(idsPre.filter(function(id) {
+            return ids.indexOf(id) < 0;
+          }));
+          allHidden = allIds.length > 0 && allIds.every(function(id) {
             return hiddenDesglosePorItem[id] === 'hidden';
           });
         }
@@ -1240,6 +1279,9 @@ Database::disconnect();
         syncOccRowStyles();
         updateOccSelectionSummary();
         renderOccBreakdowns();
+        if ($('input[name="modo_generacion"]:checked').val() === 'agrupar') {
+          occDataTable.rows().invalidate().order([0, 'asc']).draw(false);
+        }
 
         $('html, body').animate({
           scrollTop: $('#tabla_aperturado').offset().top - 100
@@ -1305,6 +1347,9 @@ Database::disconnect();
         syncOccRowStyles();
         updateOccSelectionSummary();
         renderOccBreakdowns();
+        if ($('input[name="modo_generacion"]:checked').val() === 'agrupar') {
+          occDataTable.rows().invalidate().order([0, 'asc']).draw(false);
+        }
 
         $('html, body').animate({
           scrollTop: $('#tabla_aperturado').offset().top - 100
@@ -1386,6 +1431,25 @@ Database::disconnect();
               }
             });
           });
+
+        if (!isEditandoLote() && $('input[name="modo_generacion"]:checked').val() === 'agrupar') {
+          const idsEnOrden = getSelectedOccIdsInTableOrder().filter(function(id) {
+            return selectedOccItems[id] !== undefined;
+          });
+          if (idsEnOrden.length > 0) {
+            idsEnOrden.forEach(function(id, idx) {
+              if (!groupedRowClassByItem[id]) {
+                groupedRowClassByItem[id] = idsEnOrden.length === 1
+                  ? 'occ-grouped-single'
+                  : idx === 0
+                    ? 'occ-grouped-start'
+                    : idx === idsEnOrden.length - 1
+                      ? 'occ-grouped-end'
+                      : 'occ-grouped-middle';
+              }
+            });
+          }
+        }
 
         return {
           groupedByOwner: groupedByOwner,
@@ -1856,6 +1920,8 @@ Database::disconnect();
             checkbox.prop('checked', isSelected);
           }
 
+          $(this).find('td:first').attr('data-order', getSortPriority(rowId, isSelected));
+
           const tieneBreakdownGuardado = buildOccBreakdownHtml(rowId, parseFloat(selectedOccItems[rowId] || occSubtotalPorId[rowId]) || 0, groupedContext);
           const tieneLotesGuardados = (function() {
             for (let i = 0; i < lotesEditablesData.length; i++) {
@@ -1866,7 +1932,27 @@ Database::disconnect();
           })();
           const modoSel = $('input[name="modo_generacion"]:checked').val();
           const tieneFilasPreview = getCurrentAperturadoRows().length > 0;
-          if (tieneBreakdownGuardado || tieneLotesGuardados || (modoSel && tieneFilasPreview)) {
+          let mostrarBoton = false;
+          if (tieneBreakdownGuardado || tieneLotesGuardados) {
+            if (isModoSeparar()) {
+              mostrarBoton = true;
+            } else {
+              mostrarBoton = !!tieneBreakdownGuardado;
+            }
+          }
+          if (!mostrarBoton && modoSel && tieneFilasPreview) {
+            if (isModoSeparar()) {
+              mostrarBoton = isSelected;
+            } else {
+              const selectedIdsInOrder = getSelectedOccIdsInTableOrder();
+              const selectedFiltered = selectedIdsInOrder.filter(function(id) {
+                return selectedOccItems[id] !== undefined;
+              });
+              const virtualOwner = selectedFiltered.length > 0 ? selectedFiltered[selectedFiltered.length - 1] : null;
+              mostrarBoton = (rowId === virtualOwner);
+            }
+          }
+          if (mostrarBoton) {
             const textBtn = isHidden ? 'Mostrar desglose' : 'Ocultar desglose';
             actionCell.append('<button type="button" class="btn btn-secondary btn-sm btn-toggle-desglose-item" data-occ-id="' + rowId + '">' + textBtn + '</button>');
           }
@@ -1915,13 +2001,30 @@ Database::disconnect();
 
         syncOccRowStyles();
         updateOccSelectionSummary();
+        if ($('input[name="modo_generacion"]:checked').val() === 'agrupar') {
+          occDataTable.rows().invalidate().order([0, 'asc']).draw();
+        }
       });
 
       $(document).on('change', '#check_all_occ_items', function() {
         const isChecked = $(this).is(':checked');
         $('.occ-item-checkbox').each(function() {
-          $(this).prop('checked', isChecked).trigger('change');
+          const rowId = String($(this).data('id') || '');
+          if (!rowId) return;
+          const subtotal = parseFloat($(this).closest('tr').data('subtotal')) || 0;
+          if (isChecked) {
+            selectedOccItems[rowId] = subtotal;
+            delete desglosePrecargadoPorItem[rowId];
+          } else {
+            delete selectedOccItems[rowId];
+            delete desglosePrecargadoPorItem[rowId];
+          }
         });
+        syncOccRowStyles();
+        updateOccSelectionSummary();
+        if ($('input[name="modo_generacion"]:checked').val() === 'agrupar') {
+          occDataTable.rows().invalidate().order([0, 'asc']).draw();
+        }
       });
 
       $(document).on('click', '.btn-editar-lote-inline', function(e) {
@@ -1966,6 +2069,9 @@ Database::disconnect();
         syncOccRowStyles();
         renderOccBreakdowns();
         updateOccBreakdownControls();
+        if ($(this).val() === 'agrupar') {
+          occDataTable.rows().invalidate().order([0, 'asc']).draw();
+        }
       });
 
       $(document).on('click', '.btn-toggle-desglose-item', function(e) {
@@ -2066,6 +2172,13 @@ Database::disconnect();
       updateOccSelectionSummary();
       syncOccRowStyles();
       renderOccBreakdowns();
+
+      const hayLotesAgrupados = lotesEditablesData.some(function(lt) {
+        return String(lt.modo_generacion || '') === 'agrupar' && (lt.occ_ids || []).length > 0;
+      });
+      if (hayLotesAgrupados || $('input[name="modo_generacion"]:checked').val() === 'agrupar') {
+        occDataTable.rows().invalidate().order([0, 'asc']).draw(false);
+      }
 
       $('#tabla_occ_detalles').on('draw.dt', function() {
         syncOccRowStyles();

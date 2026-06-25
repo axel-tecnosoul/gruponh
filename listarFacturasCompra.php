@@ -89,7 +89,7 @@ include 'database.php';
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(336))) { ?><a href="#" id="btn_nueva_factura_compra" title="Nueva Factura"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva" title="Nueva"></a><?php } ?>
+                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(336))) { ?><a href="#" id="btn_nueva_factura_compra" title="Nueva Factura"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva"></a><?php } ?>
 					&nbsp;&nbsp;
 					<?php 
 					if (!empty(tienePermiso(338))) {
