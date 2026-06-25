@@ -1384,6 +1384,7 @@ Database::disconnect();
         const groupedByOwner = {};
         const groupedMembershipByItem = {};
         const groupedRowClassByItem = {};
+        const groupedSortOrderById = {};
 
         lotesEditablesData
           .filter(function(lote) {
@@ -1391,9 +1392,20 @@ Database::disconnect();
           })
           .forEach(function(lote) {
             const loteOccIds = Array.isArray(lote.occ_ids) ? lote.occ_ids.map(String) : [];
-            const idsDeGrupo = loteOccIds.length ?
-              loteOccIds :
-              selectedIdsInOrder.slice();
+            let idsDeGrupo;
+            const aperturadoEditando = ($('#id_aperturado_edicion').val() || '').trim();
+            if (aperturadoEditando && String(lote.aperturado) === aperturadoEditando && loteOccIds.length) {
+              idsDeGrupo = loteOccIds.filter(function(id) {
+                return selectedOccItems[id] !== undefined;
+              });
+              selectedIdsInOrder.forEach(function(id) {
+                if (selectedOccItems[id] !== undefined && idsDeGrupo.indexOf(id) === -1) {
+                  idsDeGrupo.push(id);
+                }
+              });
+            } else {
+              idsDeGrupo = loteOccIds.length ? loteOccIds : selectedIdsInOrder.slice();
+            }
 
             if (!idsDeGrupo.length) {
               return;
@@ -1429,6 +1441,7 @@ Database::disconnect();
                   groupedRowClassByItem[id] = 'occ-grouped-middle';
                 }
               }
+              groupedSortOrderById[id] = idx;
             });
           });
 
@@ -1455,6 +1468,7 @@ Database::disconnect();
           groupedByOwner: groupedByOwner,
           groupedMembershipByItem: groupedMembershipByItem,
           groupedRowClassByItem: groupedRowClassByItem,
+          groupedSortOrderById: groupedSortOrderById,
         };
       }
 
@@ -1724,7 +1738,7 @@ Database::disconnect();
 
           const baseIndividual = parseFloat(selectedOccItems[occId] || occSubtotalPorId[occId]) || 0;
 
-          if (isEditandoLote()) {
+          if (isEditandoLote() && selectedOccItems[occId] !== undefined) {
             let baseParaPreview;
             if (separar) {
               baseParaPreview = baseIndividual;
@@ -1748,7 +1762,8 @@ Database::disconnect();
 
           // Comportamiento normal (creación o visualización de lotes guardados)
           const breakdownHtml = buildOccBreakdownHtml(occId, baseIndividual, groupedContext);
-          if (!breakdownHtml && !isEditandoLote() && separar) {
+          const occGroupInfo = (groupedContext.groupedMembershipByItem && groupedContext.groupedMembershipByItem[occId]) || [];
+          if (!breakdownHtml && !isEditandoLote() && separar && !occGroupInfo.length) {
             const previewHtml = buildPreviewBreakdownHtml(occId, baseIndividual);
             if (previewHtml) {
               this.child(previewHtml).show();
@@ -1920,7 +1935,12 @@ Database::disconnect();
             checkbox.prop('checked', isSelected);
           }
 
-          $(this).find('td:first').attr('data-order', getSortPriority(rowId, isSelected));
+          if (isEditandoLote() && groupedContext.groupedSortOrderById[rowId] !== undefined) {
+            const gIdx = String(groupedContext.groupedSortOrderById[rowId]).padStart(5, '0');
+            $(this).find('td:first').attr('data-order', '0' + gIdx);
+          } else {
+            $(this).find('td:first').attr('data-order', getSortPriority(rowId, isSelected));
+          }
 
           const tieneBreakdownGuardado = buildOccBreakdownHtml(rowId, parseFloat(selectedOccItems[rowId] || occSubtotalPorId[rowId]) || 0, groupedContext);
           const tieneLotesGuardados = (function() {
@@ -1935,7 +1955,9 @@ Database::disconnect();
           let mostrarBoton = false;
           if (tieneBreakdownGuardado || tieneLotesGuardados) {
             if (isModoSeparar()) {
-              mostrarBoton = true;
+              mostrarBoton = !!tieneBreakdownGuardado;
+            } else if (isEditandoLote() && isSelected) {
+              mostrarBoton = false;
             } else {
               mostrarBoton = !!tieneBreakdownGuardado;
             }
@@ -1965,6 +1987,7 @@ Database::disconnect();
           }
           $(this).addClass('occ-grouped-member ' + rowClass);
         });
+
       }
 
       function getIdsAgruparParaItem(occId) {
@@ -2129,8 +2152,7 @@ Database::disconnect();
       occDataTable = $('#tabla_occ_detalles').DataTable({
         stateSave: false,
         responsive: false,
-        paging: true,
-        pageLength: 10,
+        paging: false,
         language: {
           "decimal": "",
           "emptyTable": "No hay información",
@@ -2143,13 +2165,7 @@ Database::disconnect();
           "loadingRecords": "Cargando...",
           "processing": "Procesando...",
           "search": "Buscar:",
-          "zeroRecords": "No hay resultados",
-          "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-          }
+          "zeroRecords": "No hay resultados"
         }
       });
 
