@@ -137,8 +137,6 @@ ALTER TABLE `ingresos_detalle`
 ALTER TABLE `ingresos_detalle`
   ADD CONSTRAINT `ingresos_detalle_ibfk_3` FOREIGN KEY (`id_colada_origen`) REFERENCES `coladas` (`id`);
 
---TODO APLICADO HASTA ACA
-
 INSERT INTO `estados_lista_corte` (`id`, `estado`) VALUES (NULL, 'Gestionada');
 
 ALTER TABLE coladas
@@ -173,3 +171,5 @@ ALTER TABLE `certificados_maestros_lotes_occ_detalle`
 UPDATE `certificados_maestros_lotes_occ_detalle`
     SET `lote` = `aperturado`
     WHERE `lote` IS NULL;
+
+--TODO APLICADO HASTA ACA
