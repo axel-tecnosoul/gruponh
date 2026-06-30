@@ -23,9 +23,15 @@ if ($idProveedor === 0) {
     $sql = "SELECT cu.id, cu.razon_social, cu.cuit, COUNT(c.id) AS cant_oc
             FROM cuentas cu
             INNER JOIN compras c ON c.id_cuenta_proveedor = cu.id
-            LEFT JOIN facturas_compra fc ON fc.id_orden_compra = c.id
-            WHERE fc.id IS NULL
-              AND c.id_estado_compra NOT IN (4)
+            WHERE c.id_estado_compra NOT IN (4)
+              AND (
+                SELECT COALESCE(SUM(cd.cantidad), 0) FROM compras_detalle cd WHERE cd.id_compra = c.id
+              ) > (
+                SELECT COALESCE(SUM(fcdx.cantidad), 0)
+                FROM facturas_compra_detalle_x_compras_detalle fcdx
+                INNER JOIN compras_detalle cd2 ON cd2.id = fcdx.id_compra_detalle
+                WHERE cd2.id_compra = c.id
+              )
             GROUP BY cu.id, cu.razon_social, cu.cuit
             ORDER BY cu.razon_social ASC";
     $q = $pdo->prepare($sql);
@@ -41,10 +47,16 @@ if ($idProveedor === 0) {
             FROM compras c
             INNER JOIN monedas m ON m.id = c.id_moneda
             INNER JOIN estados_compra ec ON ec.id = c.id_estado_compra
-            LEFT JOIN facturas_compra fc ON fc.id_orden_compra = c.id
-            WHERE fc.id IS NULL
-              AND c.id_estado_compra NOT IN (4)
+            WHERE c.id_estado_compra NOT IN (4)
               AND c.id_cuenta_proveedor = ?
+              AND (
+                SELECT COALESCE(SUM(cd.cantidad), 0) FROM compras_detalle cd WHERE cd.id_compra = c.id
+              ) > (
+                SELECT COALESCE(SUM(fcdx.cantidad), 0)
+                FROM facturas_compra_detalle_x_compras_detalle fcdx
+                INNER JOIN compras_detalle cd2 ON cd2.id = fcdx.id_compra_detalle
+                WHERE cd2.id_compra = c.id
+              )
             ORDER BY c.fecha_emision DESC";
     $q = $pdo->prepare($sql);
     $q->execute([$idProveedor]);

@@ -137,8 +137,6 @@ ALTER TABLE `ingresos_detalle`
 ALTER TABLE `ingresos_detalle`
   ADD CONSTRAINT `ingresos_detalle_ibfk_3` FOREIGN KEY (`id_colada_origen`) REFERENCES `coladas` (`id`);
 
---TODO APLICADO HASTA ACA
-
 INSERT INTO `estados_lista_corte` (`id`, `estado`) VALUES (NULL, 'Gestionada');
 
 ALTER TABLE coladas
@@ -173,3 +171,33 @@ ALTER TABLE `certificados_maestros_lotes_occ_detalle`
 UPDATE `certificados_maestros_lotes_occ_detalle`
     SET `lote` = `aperturado`
     WHERE `lote` IS NULL;
+
+-- Migración: múltiples OC por factura de compra
+-- Paso 1: Crear tabla pivote
+CREATE TABLE IF NOT EXISTS `facturas_compra_x_compras` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id_factura_compra` int(11) NOT NULL,
+  `id_compra` int(11) NOT NULL,
+  `estado_anterior` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `id_factura_compra` (`id_factura_compra`),
+  KEY `id_compra` (`id_compra`),
+  CONSTRAINT `fcxc_ibfk_1` FOREIGN KEY (`id_factura_compra`) REFERENCES `facturas_compra` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fcxc_ibfk_2` FOREIGN KEY (`id_compra`) REFERENCES `compras` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Paso 2: Migrar datos existentes
+INSERT INTO facturas_compra_x_compras (id_factura_compra, id_compra, estado_anterior)
+SELECT fc.id, fc.id_orden_compra, NULL
+FROM facturas_compra fc
+WHERE fc.id_orden_compra IS NOT NULL;
+
+-- Paso 3: Eliminar columna id_orden_compra
+ALTER TABLE facturas_compra DROP FOREIGN KEY facturas_compra_ibfk_7;
+ALTER TABLE facturas_compra DROP COLUMN id_orden_compra;
+
+-- Paso 4: Agregar columna descripcion a facturas_compra_detalle
+ALTER TABLE `facturas_compra_detalle`
+ADD COLUMN `descripcion` varchar(255) DEFAULT NULL AFTER `id_concepto_contable`;
+
+INSERT INTO estados_factura (id, estado) VALUES (5, 'Exportada');

@@ -23,6 +23,7 @@ function abrirMenu($op) {
         ($current_page == "listarOrdenesCompraClientes.php") || 
         ($current_page == "listarCertificadosMaestros.php") || 
         ($current_page == "listarRegimenes.php") || 
+		($current_page == "listarConceptosContables.php") || 
         ($current_page == "listarPolizas.php") || 
         ($current_page == "listarSucesos.php")) {
             echo 'class="active"';
@@ -113,6 +114,7 @@ function abrirMenu($op) {
 				<?php if(tienePermiso(373)){?><li><a href="listarCertificadosMaestros.php"><i class="fa fa-circle"></i>Certificados</a></li><?php }?>
 				<?php if(tienePermiso(379)){?><li><a href="listarPolizas.php"><i class="fa fa-circle"></i>Polizas</a></li><?php }?>
 				<?php if(tienePermiso(386)){?><li><a href="listarRegimenes.php"><i class="fa fa-circle"></i>Regimenes</a></li><?php }?>
+				<li><a href="listarConceptosContables.php"><i class="fa fa-circle"></i>Conceptos Contables</a></li>
 				</ul>
 			</li>
 			

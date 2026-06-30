@@ -86,7 +86,7 @@ foreach ($pdo->query($sql) as $row) {
 	$remitos = implode(", ", $arrRemitos);
 	
 	$facturas = "";
-	$sql2 = " SELECT f.numero FROM facturas_compra_detalle_x_compras_detalle fd inner join facturas_compra_detalle d on d.id = fd.id_factura_compra_detalle inner join facturas_compra f on f.id = d.id_factura_compra inner join compras_detalle cd on cd.id = fd.id_compra_detalle WHERE cd.id_material = $id_material and f.id_orden_compra = ".$id_compra;
+	$sql2 = " SELECT f.numero FROM facturas_compra_detalle_x_compras_detalle fd inner join facturas_compra_detalle d on d.id = fd.id_factura_compra_detalle inner join facturas_compra f on f.id = d.id_factura_compra inner join facturas_compra_x_compras fcxc on fcxc.id_factura_compra = f.id AND fcxc.id_compra = ".$id_compra." inner join compras_detalle cd on cd.id = fd.id_compra_detalle WHERE cd.id_material = $id_material";
 	foreach ($pdo->query($sql2) as $row2) {
 		$facturas .= $row2["numero"]." | ";
 	}

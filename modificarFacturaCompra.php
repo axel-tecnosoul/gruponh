@@ -17,29 +17,117 @@
     }
     
     if (!empty($_POST)) {
-        
-        // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $sql = "UPDATE `facturas_compra` set `descripcion` = ?, `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `id_orden_compra` = ?, `numero` = ?, `id_cuenta_origen` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_recibida` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ?, `id_estado` = ? where id = ?";
-        $q = $pdo->prepare($sql);
-        $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['id_orden_compra'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$_GET['id']]);
-		
-		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación/Anulación de Factura de Compra','Facturas de Compra','verCompra.php?id=$id')";
-		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
-		
-        Database::disconnect();
-        
-        header("Location: listarFacturasCompra.php");
+
+        $qCheck = $pdo->prepare("SELECT id FROM facturas_compra WHERE id = ? AND id_estado = 5");
+        $qCheck->execute([$id]);
+        if ($qCheck->fetchColumn()) {
+            header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue exportada y no puede editarse."));
+            exit;
+        }
+
+        $pdo->beginTransaction();
+
+        try {
+            $sql = "UPDATE `facturas_compra` set `descripcion` = ?, `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `numero` = ?, `id_cuenta_origen` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_recibida` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ?, `id_estado` = ? where id = ?";
+            $q = $pdo->prepare($sql);
+            $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$id]);
+
+            // Gestionar OC vinculadas
+            $nuevasOCs = !empty($_POST['id_orden_compra']) ? (is_array($_POST['id_orden_compra']) ? array_map('intval', $_POST['id_orden_compra']) : [intval($_POST['id_orden_compra'])]) : [];
+
+            // Obtener OC actualmente vinculadas
+            $qActuales = $pdo->prepare("SELECT id, id_compra, estado_anterior FROM facturas_compra_x_compras WHERE id_factura_compra = ?");
+            $qActuales->execute([$id]);
+            $actuales = [];
+            while ($row = $qActuales->fetch(PDO::FETCH_ASSOC)) {
+                $actuales[$row['id_compra']] = $row;
+            }
+
+            $idsActuales = array_keys($actuales);
+
+            // OC a agregar
+            $aAgregar = array_diff($nuevasOCs, $idsActuales);
+            // OC a quitar
+            $aQuitar = array_diff($idsActuales, $nuevasOCs);
+
+            $qInsertPivote = $pdo->prepare("INSERT INTO facturas_compra_x_compras (id_factura_compra, id_compra, estado_anterior) VALUES (?,?,?)");
+            $qDeletePivote = $pdo->prepare("DELETE FROM facturas_compra_x_compras WHERE id_factura_compra = ? AND id_compra = ?");
+            $qSelEstado = $pdo->prepare("SELECT id_estado_compra FROM compras WHERE id = ?");
+            $qUpdCompra = $pdo->prepare("UPDATE compras SET id_estado_compra = ? WHERE id = ?");
+            $qUpdPedido = $pdo->prepare("UPDATE pedidos SET id_estado = 4 WHERE id_estado = 3 AND id = ?");
+            $qSelPedido = $pdo->prepare("SELECT id_pedido FROM compras WHERE id = ?");
+            require_once('funciones.php');
+
+            foreach ($aAgregar as $ocId) {
+                $qSelEstado->execute([$ocId]);
+                $estadoAnterior = $qSelEstado->fetchColumn();
+                $estadoAnterior = $estadoAnterior !== false ? (int)$estadoAnterior : null;
+
+                $qInsertPivote->execute([$id, $ocId, $estadoAnterior]);
+                $qUpdCompra->execute([9, $ocId]);
+
+                $qSelPedido->execute([$ocId]);
+                $pedidoData = $qSelPedido->fetch(PDO::FETCH_ASSOC);
+                if (!empty($pedidoData['id_pedido'])) {
+                    $qUpdPedido->execute([$pedidoData['id_pedido']]);
+                }
+
+                $sqlAllItems = "SELECT DISTINCT pd.id FROM pedidos_detalle pd 
+                               INNER JOIN compras_detalle cd ON pd.id_pedido = (SELECT id_pedido FROM compras WHERE id = ?) AND pd.id_material = cd.id_material 
+                               INNER JOIN compras c ON c.id = cd.id_compra WHERE cd.id_compra = ?";
+                $qAllItems = $pdo->prepare($sqlAllItems);
+                $qAllItems->execute([$ocId, $ocId]);
+                while ($item = $qAllItems->fetch(PDO::FETCH_ASSOC)) {
+                    actualizarEstadoPedidoDetalle($pdo, $item['id']);
+                }
+            }
+
+            foreach ($aQuitar as $ocId) {
+                if (isset($actuales[$ocId])) {
+                    $estadoAnterior = $actuales[$ocId]['estado_anterior'];
+                    if ($estadoAnterior !== null) {
+                        $qUpdCompra->execute([$estadoAnterior, $ocId]);
+                    }
+                    $qDeletePivote->execute([$id, $ocId]);
+                }
+            }
+
+            $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación/Anulación de Factura de Compra','Facturas de Compra','verCompra.php?id=$id')";
+            $q = $pdo->prepare($sql);
+            $q->execute(array($_SESSION['user']['id']));
+
+            $pdo->commit();
+            Database::disconnect();
+            
+            header("Location: listarFacturasCompra.php");
+            exit;
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            Database::disconnect();
+            $errorMsg = "Error al guardar: " . $e->getMessage();
+        }
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `descripcion`, `id_tipo_comprobante`, `id_letra_comprobante`, `id_orden_compra`, `numero`, `id_cuenta_origen`, `id_empresa`, `fecha_emitida`, `fecha_recibida`, `id_condicion_pago`, `subtotal_gravado`, `subtotal_no_gravado`, `otros`, `iva`, `total`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario`, `id_estado` FROM `facturas_compra` WHERE id = ? ";
+        $sql = "SELECT `id`, `descripcion`, `id_tipo_comprobante`, `id_letra_comprobante`, `numero`, `id_cuenta_origen`, `id_empresa`, `fecha_emitida`, `fecha_recibida`, `id_condicion_pago`, `subtotal_gravado`, `subtotal_no_gravado`, `otros`, `iva`, `total`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario`, `id_estado`, `exportada` FROM `facturas_compra` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
+
+        if (!empty($data['id_estado']) && $data['id_estado'] == 5) {
+            header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue exportada y no puede editarse."));
+            exit;
+        }
+
+        // Obtener OC vinculadas desde la tabla pivote
+        $ocVinculadas = [];
+        $qOC = $pdo->prepare("SELECT fcxc.id_compra, c.nro_oc FROM facturas_compra_x_compras fcxc INNER JOIN compras c ON c.id = fcxc.id_compra WHERE fcxc.id_factura_compra = ?");
+        $qOC->execute([$id]);
+        while ($row = $qOC->fetch(PDO::FETCH_ASSOC)) {
+            $ocVinculadas[] = $row;
+        }
         
         Database::disconnect();
     }
@@ -128,9 +216,9 @@
 							</div>
 							</div>	
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Orden de Compra(*)</label>
+							<label class="col-sm-3 col-form-label">Órdenes de Compra(*)</label>
 							<div class="col-sm-9">
-							<select name="id_orden_compra" id="id_orden_compra" class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_orden_compra[]" id="id_orden_compra" class="js-example-basic-multiple col-sm-12" multiple="multiple" required="required">
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -138,12 +226,13 @@
 							$sqlZon = "SELECT `id`, `nro_oc` FROM `compras` WHERE 1";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
+							$idsVinculados = array_column($ocVinculadas, 'id_compra');
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_orden_compra']) {
-                                        echo " selected ";
+								echo "<option value='".(int)$fila['id']."'";
+								if (in_array($fila['id'], $idsVinculados)) {
+									echo " selected ";
 								}
-								echo ">".$fila['nro_oc']."</option>";
+								echo ">".htmlspecialchars($fila['nro_oc'])."</option>";
 							}
 							Database::disconnect();
 							?>

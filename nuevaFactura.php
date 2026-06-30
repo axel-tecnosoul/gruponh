@@ -1,4 +1,11 @@
-<?php if (!isset($vista)) return; ?>
+<?php if (!isset($vista)) return;
+$fv = function($key, $default = '') use ($facturaData) {
+  if (!empty($facturaData) && isset($facturaData[$key])) {
+    return htmlspecialchars($facturaData[$key]);
+  }
+  return htmlspecialchars($default);
+};
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -64,6 +71,9 @@
               <input type="hidden" name="certificados[]" value="<?= $cid ?>">
             <?php endforeach; ?>
             <?php endif; ?>
+            <?php if (!empty($editMode) && !empty($facturaData['id'])): ?>
+            <input type="hidden" name="id_factura" value="<?= (int)$facturaData['id'] ?>">
+            <?php endif; ?>
             <input type="hidden" name="detalles_json" id="detalles_json" value="[]">
             <input type="hidden" name="retenciones_json" id="retenciones_json" value="[]">
 
@@ -83,18 +93,21 @@
 
                         <?php if ($vista === 'compra'): ?>
                         <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Orden de Compra(*)</label>
+                          <label class="col-sm-4 col-form-label">Órdenes de Compra(*)</label>
                           <div class="col-sm-8">
-                            <?php if ($ocPreseleccionada): ?>
+                            <?php if ($ocPreseleccionada && !empty($ocLabels)): ?>
                               <p class="form-control-plaintext">
-                                <a href="verCompra.php?id=<?= htmlspecialchars($_GET['oc']) ?>" target="_blank">
-                                  <?= htmlspecialchars($ocLabel) ?>
-                                </a>
-                                <?php if (!empty($ocTotalFormatted)): ?>
-                                  <br><small class="text-muted">Total: <?= htmlspecialchars($ocTotalFormatted) ?></small>
-                                <?php endif; ?>
+                                <?php foreach ($ocLabels as $ol): ?>
+                                  <a href="verCompra.php?id=<?= (int)$ol['id'] ?>" target="_blank">
+                                    OC #<?= htmlspecialchars($ol['nro_oc']) ?>
+                                  </a>
+                                  <input type="hidden" name="id_orden_compra[]" value="<?= (int)$ol['id'] ?>">
+                                  <?php if (next($ocLabels)) echo ', '; ?>
+                                <?php endforeach; ?>
                               </p>
-                              <input type="hidden" name="id_orden_compra" value="<?= htmlspecialchars($_GET['oc']) ?>">
+                              <?php if (!empty($ocTotalFormatted)): ?>
+                                <small class="text-muted">Total OC: <?= htmlspecialchars($ocTotalFormatted) ?></small>
+                              <?php endif; ?>
                             <?php else: ?>
                             <select name="id_orden_compra" id="id_orden_compra" class="js-example-basic-single col-sm-12" required onchange="jsRecargar();">
                               <option value="">Seleccione...</option>
@@ -268,7 +281,7 @@
                           <div class="col-sm-8">
                             <input name="numero" id="numero" oninput="applyMask(this)" onblur="padNumberField(this)"
                               placeholder="0001-00000001" type="text" maxlength="20"
-                              class="form-control" required>
+                              class="form-control" required value="<?= $fv('numero') ?>">
                           </div>
                         </div>
 
@@ -280,7 +293,7 @@
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Descripción(*)</label>
                           <div class="col-sm-8">
-                            <textarea name="descripcion" class="form-control" rows="3" required><?php if ($vista === 'venta' && !empty($proyectoDatos['nombre'])): ?><?= htmlspecialchars($proyectoDatos['nombre']) ?><?php endif; ?></textarea>
+                            <textarea name="descripcion" class="form-control" rows="3" required><?= $fv('descripcion', ($vista === 'venta' && !empty($proyectoDatos['nombre'])) ? $proyectoDatos['nombre'] : '') ?></textarea>
                           </div>
                         </div>
 
@@ -289,7 +302,7 @@
                           <div class="col-sm-8">
                             <input name="fecha_emitida" id="fecha_emitida" type="date"
                               onfocus="this.showPicker()" class="form-control"
-                              <?= $vista === 'compra' ? 'value="' . date('Y-m-d') . '"' : '' ?>
+                              value="<?= $fv('fecha_emitida', $vista === 'compra' ? date('Y-m-d') : '') ?>"
                               required>
                           </div>
                         </div>
@@ -308,7 +321,7 @@
                           <div class="col-sm-8">
                             <input name="fecha_recibida" id="fecha_recibida" type="date"
                               onfocus="this.showPicker()" class="form-control"
-                              value="<?= date('Y-m-d') ?>" required>
+                              value="<?= $fv('fecha_recibida', date('Y-m-d')) ?>" required>
                           </div>
                         </div>
                         <?php endif; ?>
@@ -357,16 +370,16 @@
                               $q = $pdo->prepare("SELECT id, moneda FROM monedas WHERE 1");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                                $esDolar = (stripos($f['moneda'], 'dolar') !== false ||
+                                  stripos($f['moneda'], 'dólar') !== false ||
+                                  stripos($f['moneda'], 'usd')   !== false ||
+                                  stripos($f['moneda'], 'u$d')   !== false ||
+                                  stripos($f['moneda'], 'u$s')   !== false) ? 'true' : 'false';
                                 if ($vista === 'venta') {
-                                  $esDolar = (stripos($f['moneda'], 'dolar') !== false ||
-                                    stripos($f['moneda'], 'dólar') !== false ||
-                                    stripos($f['moneda'], 'usd')   !== false ||
-                                    stripos($f['moneda'], 'u$d')   !== false ||
-                                    stripos($f['moneda'], 'u$s')   !== false) ? 'true' : 'false';
                                   echo "<option value='{$f['id']}' data-esusd='$esDolar'>" . htmlspecialchars($f['moneda']) . "</option>";
                                 } else {
                                   $sel = ($idMoneda != 0 && $f['id'] == $idMoneda) ? ' selected' : '';
-                                  echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['moneda']) . "</option>";
+                                  echo "<option value='{$f['id']}' data-esusd='$esDolar'$sel>" . htmlspecialchars($f['moneda']) . "</option>";
                                 }
                               }
                               Database::disconnect();
@@ -414,35 +427,25 @@
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Cotización(*)</label>
                           <div class="col-sm-8">
-                            <input name="cotizacion" type="number" step="0.01" class="form-control" required>
+                            <div class="input-group">
+                              <input name="cotizacion" id="cotizacion" type="number" step="0.01"
+                                class="form-control" required placeholder="Seleccione una moneda..." value="<?= $fv('cotizacion') ?>">
+                              <div class="input-group-append">
+                                <span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;">
+                                  Esperando moneda...
+                                </span>
+                              </div>
+                            </div>
+                            <small id="infoCotizacion" class="text-muted"></small>
                           </div>
                         </div>
 
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Estado(*)</label>
-                          <div class="col-sm-8">
-                            <select name="id_estado" id="id_estado" class="js-example-basic-single col-sm-12" required>
-                              <option value="">Seleccione...</option>
-                              <?php
-                              $pdo = Database::connect();
-                              $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              $q = $pdo->prepare("SELECT id, estado FROM estados_factura WHERE id IN (1,2)");
-                              $q->execute();
-                              while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                $sel = ($f['id'] == 2) ? ' selected' : '';
-                                echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['estado']) . "</option>";
-                              }
-                              Database::disconnect();
-                              ?>
-                            </select>
-                          </div>
-                        </div>
                         <?php endif; ?>
 
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Observaciones</label>
                           <div class="col-sm-8">
-                            <textarea name="observaciones" class="form-control" rows="3"></textarea>
+                            <textarea name="observaciones" class="form-control" rows="3"><?= $fv('observaciones') ?></textarea>
                           </div>
                         </div>
 
@@ -504,15 +507,16 @@
                   </div>
                   <div class="card-body">
 
-                    <div id="contenedorTablaDetalles" style="display:none; background:#fff;">
+                    <div id="contenedorTablaDetalles" class="table-responsive" style="display:none; background:#fff;">
                       <table class="table table-bordered table-sm" id="tablaDetalles">
                         <thead>
                           <tr>
                             <th>#</th>
                             <th>Concepto</th>
+                            <th>Descripción</th>
                             <th>Imputaciones</th>
-                            <th>Cantidad</th>
-                            <th>Precio</th>
+                            <th>Precio sin desc.</th>
+                            <th>Descuento</th>
                             <th>Subtotal</th>
                             <th>Editar</th>
                             <th>Quitar</th>
@@ -521,7 +525,7 @@
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th colspan="5" class="text-right">Total:</th>
+                            <th colspan="6" class="text-right">Total:</th>
                             <th id="totalDetalle">$ 0.00</th>
                             <th colspan="2"></th>
                           </tr>
@@ -529,72 +533,78 @@
                       </table>
                     </div>
 
+                    <div id="topeMaximo" style="color:red; text-align:right; padding:4px 0; font-weight:bold;"></div>
+
                     <div class="form-group row">
-                      <div class="col-md-6">
-                        <div class="row">
-                          <label class="col-sm-4 col-form-label">Concepto Contable(*)</label>
-                          <div class="col-sm-8">
-                            <select id="det_concepto" class="js-example-basic-single col-sm-12">
-                              <option value="">Seleccione...</option>
-                              <?php
-                              $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, descripcion FROM conceptos_contables WHERE 1");
-                              $q->execute();
-                              while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='{$f['id']}'>" . htmlspecialchars($f['descripcion']) . "</option>";
-                              }
-                              Database::disconnect();
-                              ?>
-                            </select>
-                          </div>
-                        </div>
+                      <div class="col-md-3 mb-2">
+                        <label class="col-form-label">Concepto Contable(*)</label>
+                        <select id="det_concepto" class="js-example-basic-single col-sm-12">
+                          <option value="">Seleccione...</option>
+                          <?php
+                          $pdo = Database::connect();
+                          $q = $pdo->prepare("SELECT id, descripcion FROM conceptos_contables WHERE 1");
+                          $q->execute();
+                          while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                            echo "<option value='{$f['id']}'>" . htmlspecialchars($f['descripcion']) . "</option>";
+                          }
+                          Database::disconnect();
+                          ?>
+                        </select>
                       </div>
-                      <div class="col-md-6">
-                        <div class="row">
-                          <label class="col-sm-4 col-form-label">Imputaciones</label>
-                          <div class="col-sm-8">
-                            <select id="det_imputaciones" class="js-example-basic-multiple col-sm-12" multiple="multiple">
-                              <?php if ($vista === 'compra' && !empty($imputacionesOC)): ?>
-                                <?php foreach ($imputacionesOC as $imp): ?>
-                                  <option value="<?= $imp['id'] ?>"><?= htmlspecialchars($imp['concepto']) ?> (x<?= $imp['cantidad'] ?>)</option>
-                                <?php endforeach; ?>
-                              <?php endif; ?>
-                            </select>
-                          </div>
+                      <div class="col-md-3 mb-2">
+                        <label class="col-form-label">Descripción</label>
+                        <textarea id="det_descripcion" class="form-control" rows="1" placeholder="Texto a mostrar impreso en la factura"></textarea>
+                      </div>
+                      <?php if ($vista === 'compra' && !empty($imputacionesOC)): ?>
+                      <?php
+                        $ocMap = [];
+                        if (!empty($ocVinculadas)) {
+                          foreach ($ocVinculadas as $ov) $ocMap[$ov['id_compra']] = $ov['nro_oc'];
+                        }
+                        $ocIdsUnicos = array_unique(array_column($imputacionesOC, 'id_compra'));
+                        $ocIdsFaltantes = array_diff($ocIdsUnicos, array_keys($ocMap));
+                        if (!empty($ocIdsFaltantes)) {
+                          $pdoMap = Database::connect();
+                          $placeholders = implode(',', array_fill(0, count($ocIdsFaltantes), '?'));
+                          $qMap = $pdoMap->prepare("SELECT id, nro_oc FROM compras WHERE id IN ($placeholders)");
+                          $qMap->execute(array_values($ocIdsFaltantes));
+                          while ($r = $qMap->fetch(PDO::FETCH_ASSOC)) $ocMap[$r['id']] = $r['nro_oc'];
+                          Database::disconnect();
+                        }
+                      ?>
+                      <div class="col-md-3 mb-2">
+                        <label class="col-form-label">Imputaciones</label>
+                        <select id="det_imputaciones" class="js-example-basic-multiple col-sm-12" multiple="multiple" data-all-options='<?= htmlspecialchars(json_encode(array_map(function($imp) use ($ocMap) {
+                          $nro = $ocMap[$imp['id_compra']] ?? $imp['id_compra'];
+                          $rest = (float)($imp['restante'] ?? $imp['oc_cantidad']);
+                          return [
+                            'value' => $imp['id'],
+                            'text' => "OC #{$nro} - {$imp['concepto']} (queda " . number_format($rest, 2) . " de " . number_format($imp['oc_cantidad'], 2) . ")",
+                            'restante' => $rest,
+                            'oc_precio' => (float)$imp['oc_precio'],
+                            'done' => $rest <= 0
+                          ];
+                        }, $imputacionesOC)), JSON_UNESCAPED_UNICODE) ?>'>
+                        </select>
+                      </div>
+                      <?php endif; ?>
+                      <div class="col-md-3 mb-2">
+                        <label class="col-form-label">Descuento (%)</label>
+                        <div class="input-group" style="max-width:150px;">
+                          <input id="det_descuento" type="number" min="0" max="100" step="0.01" class="form-control" value="0">
+                          <div class="input-group-append"><span class="input-group-text">%</span></div>
                         </div>
                       </div>
                     </div>
 
-                    <div class="form-group row">
-                      <div class="col-md-6">
-                        <div class="row">
-                          <label class="col-sm-4 col-form-label">Cantidad(*)</label>
-                          <div class="col-sm-8">
-                            <input id="det_cantidad" type="number" step="0.01" class="form-control" oninput="calcularSubtotal()">
-                          </div>
-                        </div>
-                      </div>
-                      <div class="col-md-6">
-                        <div class="row">
-                          <label class="col-sm-4 col-form-label">Precio(*)</label>
-                          <div class="col-sm-8">
-                            <input id="det_precio" type="number" step="0.01" class="form-control" oninput="calcularSubtotal()">
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <div id="imp-sub-lines" style="padding:8px 0;"></div>
 
                     <input type="hidden" id="ocTotalData" value="<?= (float)($ocTotal ?? 0) ?>">
-                    <div class="form-group row">
-                      <div class="col-sm-12 text-right pr-4">
-                        <strong>Subtotal: $ <span id="previewSubtotal">0.00</span></strong>
-                        <br><small id="topeMaximo" style="color:red"></small>
-                      </div>
-                    </div>
 
                     <div class="form-group row">
                       <div class="col-sm-9 offset-sm-3">
                         <button type="button" class="btn btn-success" id="btnAgregarDetalle">Agregar Ítem</button>
+                        <button type="button" class="btn btn-light ml-2" id="btnCancelarDetalle" style="display:none;">Cancelar</button>
                       </div>
                     </div>
 
@@ -608,20 +618,22 @@
                   </div>
                   <div class="card-body">
 
-                    <div id="contenedorTablaRetenciones" style="display:none; background:#fff;">
+                    <div id="contenedorTablaRetenciones" class="table-responsive" style="display:none; background:#fff;">
                       <table class="table table-bordered table-sm" id="tablaRetenciones">
                         <thead>
                           <tr>
                             <th>#</th>
                             <th>Régimen</th>
-                            <th>Monto</th>
+                            <th>Base imponible</th>
+                            <th>%</th>
+                            <th>Retención</th>
                             <th>Quitar</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th colspan="2" class="text-right">Total:</th>
+                            <th colspan="4" class="text-right">Total:</th>
                             <th id="totalRetenciones">$ 0.00</th>
                             <th></th>
                           </tr>
@@ -630,27 +642,30 @@
                     </div>
 
                     <div class="form-group row">
-                      <label class="col-sm-3 col-form-label">Régimen de Facturación(*)</label>
-                      <div class="col-sm-9">
+                      <div class="col-md-4 mb-2">
+                        <label class="col-form-label">Régimen de Facturación(*)</label>
                         <select id="ret_regimen" class="js-example-basic-single col-sm-12">
                           <option value="">Seleccione...</option>
                           <?php
                           $pdo = Database::connect();
-                          $q = $pdo->prepare("SELECT id, regimen FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
+                          $q = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
                           $q->execute();
                           while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                            echo "<option value='{$f['id']}'>" . htmlspecialchars($f['regimen']) . "</option>";
+                            echo "<option value='{$f['id']}' data-porcentaje='{$f['porcentaje']}'>" . htmlspecialchars($f['regimen']) . "</option>";
                           }
                           Database::disconnect();
                           ?>
                         </select>
                       </div>
-                    </div>
-
-                    <div class="form-group row">
-                      <label class="col-sm-3 col-form-label">Monto(*)</label>
-                      <div class="col-sm-9">
-                        <input id="ret_monto" type="number" step="0.01" class="form-control">
+                      <div class="col-md-4 mb-2">
+                        <label class="col-form-label">Base imponible(*)</label>
+                        <div class="input-group" style="max-width:250px;">
+                          <input id="ret_base" type="number" step="0.01" class="form-control" placeholder="Base imponible">
+                          <div class="input-group-append">
+                            <span class="input-group-text" id="ret_porcentaje_label">%</span>
+                          </div>
+                        </div>
+                        <small class="text-muted" id="ret_monto_calculado" style="display:none;"></small>
                       </div>
                     </div>
 
@@ -663,14 +678,36 @@
                   </div>
                 </div>
 
-                <!-- CARD 4 - GUARDAR -->
+                <!-- CARD 4 - RESUMEN Y GUARDAR -->
                 <div class="card">
+                  <div class="card-header">
+                    <h5>Resumen</h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="row">
+                      <div class="col-md-5 ml-auto">
+                        <table class="table table-sm table-borderless mb-0">
+                          <tr><td class="text-right">Subtotal:</td><td class="text-right" id="granSubtotal">$ 0.00</td></tr>
+                          <tr><td class="text-right">Retenciones:</td><td class="text-right" id="granRetenciones">$ 0.00</td></tr>
+                          <tr class="font-weight-bold" style="border-top: 2px solid #000;"><td class="text-right">Total:</td><td class="text-right" id="granTotal">$ 0.00</td></tr>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
                   <div class="card-footer">
                     <div class="col-sm-9 offset-sm-3">
-                      <button type="submit" class="btn btn-primary"
-                        <?= $vista === 'venta' ? 'id="btnGuardarTodo"' : '' ?>>
-                        <?= $vista === 'venta' ? 'Guardar Factura' : 'Crear' ?>
-                      </button>
+                      <?php if ($vista === 'venta'): ?>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarTodo">
+                          Guardar Factura
+                        </button>
+                      <?php else: ?>
+                        <button type="submit" class="btn btn-primary" name="btn_definitivo" value="1">
+                          Guardar Definitivo
+                        </button>
+                        <button type="submit" class="btn btn-secondary" name="btn_temporal" value="1">
+                          Guardar Temporal
+                        </button>
+                      <?php endif; ?>
                       <a href="<?= $vista === 'venta' ? 'listarFacturasVenta.php' : 'listarFacturasCompra.php' ?>"
                         class="btn btn-light">
                         <?= $vista === 'venta' ? 'Volver al Listado' : 'Volver' ?>
@@ -736,6 +773,15 @@
       input.value = prefix + '-' + suffix;
     }
 
+    function htmlEsc(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     var detalles = [];
     var retenciones = [];
     var editIndex = -1;
@@ -757,18 +803,30 @@
       } else {
         $('#contenedorTablaDetalles').show();
         detalles.forEach(function(item, i) {
-          var sub = item.cantidad * item.precio;
+          var impsData = item.imputaciones_data || [];
+          var totalCant = 0, totalSubImp = 0;
+          impsData.forEach(function(imp) {
+            totalCant += parseFloat(imp.cantidad || 0);
+            totalSubImp += parseFloat(imp.cantidad || 0) * parseFloat(imp.precio || 0);
+          });
+          var porcDesc = parseFloat(item.porc_descuento || 0);
+          var sub = totalSubImp * (1 - porcDesc / 100);
           total += sub;
-          var imputacionesHtml = item.imputaciones_text && item.imputaciones_text.length
-            ? item.imputaciones_text.join('<br>')
-            : '';
+
+          var impLabels = [];
+          impsData.forEach(function(imp) {
+            impLabels.push(imp.concepto_text + ' (x' + parseFloat(imp.cantidad||0).toFixed(2) + ' @ $' + parseFloat(imp.precio||0).toFixed(2) + ')');
+          });
+          var imputacionesHtml = impLabels.length ? impLabels.join('<br>') : item.imputaciones_text ? item.imputaciones_text.join('<br>') : '';
+
           tbody.append(
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
             '<td>' + item.concepto_text + '</td>' +
+            '<td>' + (item.descripcion ? htmlEsc(item.descripcion) : '') + '</td>' +
             '<td>' + imputacionesHtml + '</td>' +
-            '<td>' + parseFloat(item.cantidad).toFixed(2) + '</td>' +
-            '<td>$ ' + parseFloat(item.precio).toFixed(2) + '</td>' +
+            '<td>$ ' + totalSubImp.toFixed(2) + '</td>' +
+            '<td>' + porcDesc.toFixed(2) + '%</td>' +
             '<td>$ ' + sub.toFixed(2) + '</td>' +
             '<td><a href="javascript:void(0)" onclick="editarDetalle(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a></td>' +
             '<td><a href="javascript:void(0)" onclick="quitarDetalle(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
@@ -776,21 +834,21 @@
           );
         });
         $('#countDetalles').text('(' + detalles.length + ')');
-        if (typeof feather !== 'undefined') {
-          feather.replace();
-        }
+        if (typeof feather !== 'undefined') { feather.replace(); }
       }
 
       $('#totalDetalle').text('$ ' + total.toFixed(2));
 
       var ocTotal = parseFloat($('#ocTotalData').val()) || 0;
       if (ocTotal > 0) {
-        $('#topeMaximo').text('(*)Tope Máximo Recomendado: $ ' + (ocTotal - total).toFixed(2));
+        $('#topeMaximo').text('(*)Tope Maximo Recomendado: $ ' + (ocTotal - total).toFixed(2));
       } else {
         $('#topeMaximo').text('');
       }
 
       $('#detalles_json').val(JSON.stringify(detalles));
+
+      actualizarGranTotal();
     }
 
     function renderRetenciones() {
@@ -805,10 +863,13 @@
         $('#contenedorTablaRetenciones').show();
         retenciones.forEach(function(item, i) {
           total += item.monto;
+          var base = item.base || (item.porcentaje > 0 ? item.monto / (item.porcentaje / 100) : item.monto);
           tbody.append(
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
-            '<td>' + item.regimen_text + '</td>' +
+            '<td>' + htmlEsc(item.regimen_text) + '</td>' +
+            '<td>$ ' + parseFloat(base).toFixed(2) + '</td>' +
+            '<td>' + parseFloat(item.porcentaje || 0).toFixed(2) + '%</td>' +
             '<td>$ ' + parseFloat(item.monto).toFixed(2) + '</td>' +
             '<td><a href="javascript:void(0)" onclick="quitarRetencion(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'
@@ -819,11 +880,50 @@
 
       $('#totalRetenciones').text('$ ' + total.toFixed(2));
       $('#retenciones_json').val(JSON.stringify(retenciones));
+
+      actualizarGranTotal();
     }
 
     function quitarDetalle(index) {
+      var item = detalles[index];
+      // Add back imputaciones to select2
+      if (item.imputaciones_data) {
+        var opts = JSON.parse($('#det_imputaciones').attr('data-all-options') || '[]');
+        item.imputaciones_data.forEach(function(imp) {
+          var found = opts.find(function(o) { return o.value == imp.id_cd; });
+          if (found) {
+            var opt = new Option(found.text, found.value, false, false);
+            $('#det_imputaciones').append(opt);
+          }
+        });
+        $('#det_imputaciones').trigger('change');
+      }
       detalles.splice(index, 1);
       renderDetalles();
+    }
+
+    function buildSubLines(items, storedData) {
+      var container = $('#imp-sub-lines');
+      container.empty();
+      if (!items || items.length === 0) return;
+
+      var storedMap = {};
+      if (storedData) {
+        storedData.forEach(function(s) { storedMap[s.id_cd] = s; });
+      }
+
+      items.forEach(function(item) {
+        var st = storedMap[item.id_cd] || {};
+        var cant = st.cantidad || item.restante || 0;
+        var prec = st.precio || item.oc_precio || 0;
+        container.append(
+          '<div class="row imp-sub-row align-items-center" data-cd-id="' + item.id_cd + '" style="margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid #eee;">' +
+          '<div class="col-md-6"><span class="imp-sub-label" style="font-size:13px;">' + htmlEsc(item.concepto_text) + '</span></div>' +
+          '<div class="col-md-3"><span style="font-size:13px; color:#333; margin-right:6px;">Cant:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-cant" style="display:inline-block; width:65%;" value="' + cant + '" data-restante="' + (item.restante || 0) + '"></div>' +
+          '<div class="col-md-3"><span style="font-size:13px; color:#333; margin-right:6px;">Precio:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-prec" style="display:inline-block; width:65%;" value="' + prec + '"></div>' +
+          '</div>'
+        );
+      });
     }
 
     function quitarRetencion(index) {
@@ -831,24 +931,87 @@
       renderRetenciones();
     }
 
-    function calcularSubtotal() {
-      var cant = parseFloat($('#det_cantidad').val()) || 0;
-      var precio = parseFloat($('#det_precio').val()) || 0;
-      $('#previewSubtotal').text((cant * precio).toFixed(2));
+    function actualizarGranTotal() {
+      var subTotal = parseFloat($('#totalDetalle').text().replace(/[^0-9.-]/g, '')) || 0;
+      var retTotal = parseFloat($('#totalRetenciones').text().replace(/[^0-9.-]/g, '')) || 0;
+      $('#granSubtotal').text('$ ' + subTotal.toFixed(2));
+      $('#granRetenciones').text('$ ' + retTotal.toFixed(2));
+      $('#granTotal').text('$ ' + (subTotal + retTotal).toFixed(2));
+    }
+
+    function calcularRetencion() {
+      var base = parseFloat($('#ret_base').val()) || 0;
+      var porc = parseFloat($('#ret_regimen option:selected').data('porcentaje')) || 0;
+      var monto = base * porc / 100;
+      if (monto > 0) {
+        $('#ret_monto_calculado').show().text('Retención: $ ' + monto.toFixed(2));
+      } else {
+        $('#ret_monto_calculado').hide().text('');
+      }
     }
 
     function editarDetalle(index) {
       editIndex = index;
       var item = detalles[index];
 
-      $('#det_concepto').val(item.id_concepto).trigger('change');
-      $('#det_imputaciones').val(item.imputaciones).trigger('change');
-      $('#det_cantidad').val(item.cantidad);
-      $('#det_precio').val(item.precio);
+      // Limpiar select2 para evitar duplicados al editar varias veces
+      $('#det_imputaciones').val(null).trigger('change');
 
-      calcularSubtotal();
+      // Eliminar opciones previamente agregadas para este ítem antes de re-agregarlas
+      var idsToAdd = [];
+      if (item.imputaciones_data) {
+        item.imputaciones_data.forEach(function(imp) { idsToAdd.push(imp.id_cd); });
+      } else if (item.imputaciones && item.imputaciones.length) {
+        item.imputaciones.forEach(function(idv) {
+          idsToAdd.push(typeof idv === 'object' ? (idv.id_cd || idv) : idv);
+        });
+      }
+      idsToAdd.forEach(function(id) {
+        $('#det_imputaciones option[value="' + id + '"]').remove();
+      });
+
+      // Add back current item's options to select2
+      if (item.imputaciones_data) {
+        var opts = JSON.parse($('#det_imputaciones').attr('data-all-options') || '[]');
+        item.imputaciones_data.forEach(function(imp) {
+          var found = opts.find(function(o) { return o.value == imp.id_cd; });
+          if (found) {
+            var opt = new Option(found.text, found.value, false, false);
+            $('#det_imputaciones').append(opt);
+          }
+        });
+      } else if (item.imputaciones && item.imputaciones.length) {
+        var opts2 = JSON.parse($('#det_imputaciones').attr('data-all-options') || '[]');
+        item.imputaciones.forEach(function(idv) {
+          var idCd = typeof idv === 'object' ? (idv.id_cd || idv) : idv;
+          var found = opts2.find(function(o) { return o.value == idCd; });
+          if (found) {
+            var opt = new Option(found.text, found.value, false, false);
+            $('#det_imputaciones').append(opt);
+          }
+        });
+      }
+
+      $('#det_concepto').val(item.id_concepto).trigger('change');
+      $('#det_descripcion').val(item.descripcion || '');
+      $('#det_descuento').val(item.porc_descuento || 0);
+
+      // Select imputaciones in select2
+      var selIds = [];
+      if (item.imputaciones_data) {
+        item.imputaciones_data.forEach(function(imp) { selIds.push(imp.id_cd); });
+      } else if (item.imputaciones) {
+        item.imputaciones.forEach(function(x) {
+          selIds.push(typeof x === 'object' ? (x.id_cd || x) : x);
+        });
+      }
+      $('#det_imputaciones').val(selIds).trigger('change');
+
+      // Build sub-lines with stored qty/price
+      buildSubLines(item.imputaciones_data || [], item.imputaciones_data || []);
 
       $('#btnAgregarDetalle').text('Modificar Ítem');
+      $('#btnCancelarDetalle').show();
     }
 
     $(document).ready(function() {
@@ -870,110 +1033,6 @@
         });
       });
       <?php endif; ?>
-
-      $('#btnAgregarDetalle').on('click', function() {
-        var idConcepto = $('#det_concepto').val();
-        var conceptoText = $('#det_concepto option:selected').text();
-        var cantidad = parseFloat($('#det_cantidad').val());
-        var precio = parseFloat($('#det_precio').val());
-
-        if (!idConcepto) {
-          alert('Seleccione un concepto contable.');
-          return;
-        }
-        if (isNaN(cantidad) || cantidad <= 0) {
-          alert('Ingrese una cantidad válida.');
-          return;
-        }
-        if (isNaN(precio) || precio <= 0) {
-          alert('Ingrese un precio válido.');
-          return;
-        }
-
-        var imputaciones = $('#det_imputaciones').val() || [];
-        var imputacionesText = [];
-        if (imputaciones.length) {
-          $('#det_imputaciones option:selected').each(function() {
-            imputacionesText.push($(this).text());
-          });
-        }
-
-        if (editIndex >= 0) {
-          detalles[editIndex] = {
-            id_concepto: idConcepto,
-            concepto_text: conceptoText,
-            cantidad: cantidad,
-            precio: precio,
-            imputaciones: imputaciones,
-            imputaciones_text: imputacionesText
-          };
-          editIndex = -1;
-          $('#btnAgregarDetalle').text('Agregar Ítem');
-        } else {
-          detalles.push({
-            id_concepto: idConcepto,
-            concepto_text: conceptoText,
-            cantidad: cantidad,
-            precio: precio,
-            imputaciones: imputaciones,
-            imputaciones_text: imputacionesText
-          });
-        }
-
-        $('#det_concepto').val('').trigger('change');
-        $('#det_imputaciones').val(null).trigger('change');
-        $('#det_cantidad').val('');
-        $('#det_precio').val('');
-        renderDetalles();
-      });
-
-      $('#btnAgregarRetencion').on('click', function() {
-        var idRegimen = $('#ret_regimen').val();
-        var regimenText = $('#ret_regimen option:selected').text();
-        var monto = parseFloat($('#ret_monto').val());
-
-        if (!idRegimen) {
-          alert('Seleccione un régimen.');
-          return;
-        }
-        if (isNaN(monto) || monto <= 0) {
-          alert('Ingrese un monto válido.');
-          return;
-        }
-
-        retenciones.push({
-          id_regimen: idRegimen,
-          regimen_text: regimenText,
-          monto: monto
-        });
-
-        $('#ret_regimen').val('').trigger('change');
-        $('#ret_monto').val('');
-        renderRetenciones();
-      });
-
-      $('#formFactura').on('submit', function() {
-        var numInput = document.getElementById('numero');
-        if (numInput) padNumberField(numInput);
-      });
-
-      <?php if ($vista === 'venta'): ?>
-      $('#formFactura').on('submit', function(e) {
-        if (detalles.length === 0) {
-          e.preventDefault();
-          alert('Debe agregar al menos un ítem de detalle.');
-          return false;
-        }
-      });
-
-      $('#fecha_enviada').on('change', function() {
-        var desde = $('#fecha_emitida').val();
-        var hasta = $(this).val();
-        if (desde && hasta && Date.parse(hasta) < Date.parse(desde)) {
-          alert('La fecha enviada debe ser mayor o igual a la fecha emitida');
-          $(this).val('');
-        }
-      });
 
       $('#id_moneda').on('change', function() {
         var opcion = $(this).find('option:selected');
@@ -1023,6 +1082,266 @@
         }
       });
 
+      <?php if (!empty($editMode) && !empty($detallesExistentes)): ?>
+      detalles = <?= json_encode($detallesExistentes) ?>;
+      $('#detalles_json').val(JSON.stringify(detalles));
+      <?php endif; ?>
+      <?php if (!empty($editMode) && !empty($retencionesExistentes)): ?>
+      retenciones = <?= json_encode($retencionesExistentes) ?>;
+      $('#retenciones_json').val(JSON.stringify(retenciones));
+      <?php endif; ?>
+      <?php if (!empty($editMode)): ?>
+      if (detalles.length > 0) renderDetalles();
+      if (retenciones.length > 0) renderRetenciones();
+      // Pre-fill select fields
+      <?php if (!empty($facturaData)): ?>
+      $('#id_tipo_comprobante').val('<?= $fv('id_tipo_comprobante') ?>').trigger('change');
+      $('#id_letra_comprobante').val('<?= $fv('id_letra_comprobante') ?>').trigger('change');
+      $('#id_condicion_pago').val('<?= $fv('id_condicion_pago') ?>').trigger('change');
+      $('#id_moneda').val('<?= $fv('id_moneda') ?>').trigger('change');
+      $('#id_empresa').val('<?= $fv('id_empresa') ?>').trigger('change');
+      $('#id_cuenta_origen').val('<?= $fv('id_cuenta_origen') ?>').trigger('change');
+      <?php endif; ?>
+      <?php endif; ?>
+
+      // Load all options into select2 if empty (compra)
+      <?php if ($vista === 'compra'): ?>
+      (function() {
+        var select = $('#det_imputaciones');
+        if (select.find('option').length === 0) {
+          var opts = JSON.parse(select.attr('data-all-options') || '[]');
+          opts.forEach(function(o) {
+            if (!o.done) {
+              var opt = new Option(o.text, o.value, false, false);
+              select.append(opt);
+            }
+          });
+        }
+      })();
+      <?php endif; ?>
+
+      <?php if ($vista === 'compra'): ?>
+      // Remove options already used by existing detalles
+      if (detalles.length > 0) {
+        detalles.forEach(function(d) {
+          var imps = d.imputaciones_data || [];
+          imps.forEach(function(imp) {
+            $('#det_imputaciones option[value="' + imp.id_cd + '"]').remove();
+          });
+        });
+      }
+      <?php endif; ?>
+
+      // Auto-fill descripcion from concepto contable
+      $('#det_concepto').on('change', function() {
+        var texto = $(this).find(':selected').text();
+        var current = $('#det_descripcion').val();
+        if (texto && !current) {
+          $('#det_descripcion').val(texto);
+        }
+      });
+
+      // Select2 change → rebuild sub-lines
+      $('#det_imputaciones').on('change', function() {
+        var selectedIds = $(this).val() || [];
+        var opts = JSON.parse($(this).attr('data-all-options') || '[]');
+        // Build array of selected items data
+        var items = [];
+        selectedIds.forEach(function(id) {
+          var found = opts.find(function(o) { return o.value == id; });
+          if (found) {
+            items.push({
+              id_cd: found.value,
+              concepto_text: found.text.split(' - ').slice(1).join(' - ').split(' (queda')[0],
+              restante: found.restante,
+              oc_precio: found.oc_precio
+            });
+          }
+        });
+        buildSubLines(items, false);
+      });
+
+      $('#btnAgregarDetalle').on('click', function() {
+        var idConcepto = $('#det_concepto').val();
+        var conceptoText = $('#det_concepto option:selected').text();
+        var descripcion = $('#det_descripcion').val() || '';
+        var porcDescuento = parseFloat($('#det_descuento').val()) || 0;
+
+        if (!idConcepto) {
+          alert('Seleccione un concepto contable.');
+          return;
+        }
+
+        // Collect from sub-lines
+        var impsData = [];
+        var allImpIds = [];
+        var aborted = false;
+
+        $('#imp-sub-lines .imp-sub-row').each(function() {
+          var cdId = parseInt($(this).data('cd-id'));
+          var cant = parseFloat($(this).find('.imp-sub-cant').val()) || 0;
+          var prec = parseFloat($(this).find('.imp-sub-prec').val()) || 0;
+          var restante = parseFloat($(this).find('.imp-sub-cant').data('restante')) || 0;
+          var conceptoText = $(this).find('.imp-sub-label').text().trim();
+
+          if (cant <= 0) return;
+
+          var dup = detalles.some(function(d, idx) {
+            if (idx === editIndex) return false;
+            var ids = (d.imputaciones_data || []).map(function(x) { return x.id_cd; });
+            return ids.indexOf(cdId) >= 0;
+          });
+          if (dup) {
+            alert('La imputacion "' + conceptoText + '" ya fue usada en otro detalle.');
+            aborted = true;
+            return false;
+          }
+
+          if (cant > restante && restante > 0) {
+            if (!confirm('La cantidad supera lo pendiente (' + restante.toFixed(2) + '). Desea continuar?')) {
+              aborted = true;
+              return false;
+            }
+          }
+
+          impsData.push({ id_cd: cdId, concepto_text: conceptoText, cantidad: cant, precio: prec });
+          allImpIds.push(cdId);
+        });
+
+        if (aborted) return;
+
+        if (impsData.length === 0) {
+          alert('Seleccione al menos una imputacion con cantidad > 0.');
+          return;
+        }
+
+        var imputacionesText = [];
+        impsData.forEach(function(imp) {
+          imputacionesText.push(imp.concepto_text + ' (' + parseFloat(imp.cantidad).toFixed(2) + ' x $' + parseFloat(imp.precio).toFixed(2) + ')');
+        });
+
+        var item = {
+          id_concepto: idConcepto, concepto_text: conceptoText,
+          descripcion: descripcion, porc_descuento: porcDescuento,
+          cantidad: impsData.reduce(function(s, x) { return s + x.cantidad; }, 0), precio: 0,
+          imputaciones: allImpIds, imputaciones_data: impsData, imputaciones_text: imputacionesText
+        };
+
+        if (editIndex >= 0) {
+          detalles[editIndex] = item;
+          editIndex = -1;
+          $('#btnAgregarDetalle').text('Agregar Ítem');
+          $('#btnCancelarDetalle').hide();
+        } else {
+          detalles.push(item);
+        }
+
+        // Remove selected options from select2
+        allImpIds.forEach(function(cdId) {
+          $('#det_imputaciones option[value="' + cdId + '"]').remove();
+        });
+        $('#det_imputaciones').val(null).trigger('change');
+
+        // Reset form
+        $('#det_concepto').val('').trigger('change');
+        $('#det_descripcion').val('');
+        $('#det_descuento').val(0);
+        $('#imp-sub-lines').empty();
+        renderDetalles();
+      });
+
+      $('#btnCancelarDetalle').on('click', function() {
+        var canceledItem = editIndex >= 0 ? detalles[editIndex] : null;
+        editIndex = -1;
+        $('#btnAgregarDetalle').text('Agregar Ítem');
+        $('#btnCancelarDetalle').hide();
+        $('#det_concepto').val('').trigger('change');
+        $('#det_descripcion').val('');
+        $('#det_descuento').val(0);
+        $('#det_imputaciones').val(null).trigger('change');
+        $('#imp-sub-lines').empty();
+        if (canceledItem) {
+          var idsToRemove = [];
+          if (canceledItem.imputaciones_data) {
+            canceledItem.imputaciones_data.forEach(function(imp) { idsToRemove.push(imp.id_cd); });
+          } else if (canceledItem.imputaciones && canceledItem.imputaciones.length) {
+            canceledItem.imputaciones.forEach(function(idv) {
+              idsToRemove.push(typeof idv === 'object' ? (idv.id_cd || idv) : idv);
+            });
+          }
+          idsToRemove.forEach(function(id) {
+            $('#det_imputaciones option[value="' + id + '"]').remove();
+          });
+        }
+      });
+
+      $('#btnAgregarRetencion').on('click', function() {
+        var idRegimen = $('#ret_regimen').val();
+        var regimenText = $('#ret_regimen option:selected').text();
+        var porc = parseFloat($('#ret_regimen option:selected').data('porcentaje')) || 0;
+        var base = parseFloat($('#ret_base').val());
+
+        if (!idRegimen) {
+          alert('Seleccione un régimen.');
+          return;
+        }
+        if (isNaN(base) || base <= 0) {
+          alert('Ingrese una base imponible válida.');
+          return;
+        }
+
+        var monto = base * porc / 100;
+
+        retenciones.push({
+          id_regimen: idRegimen,
+          regimen_text: regimenText,
+          monto: monto,
+          base: base,
+          porcentaje: porc
+        });
+
+        $('#ret_regimen').val('').trigger('change');
+        $('#ret_base').val('');
+        $('#ret_porcentaje_label').text('%');
+        $('#ret_monto_calculado').hide().text('');
+        renderRetenciones();
+      });
+
+      $('#ret_regimen').on('change', function() {
+        var porc = parseFloat($(this).find('option:selected').data('porcentaje')) || 0;
+        $('#ret_porcentaje_label').text(porc > 0 ? porc.toFixed(2) + '%' : '%');
+        calcularRetencion();
+      });
+
+      $('#ret_base').on('input', function() {
+        calcularRetencion();
+      });
+
+      $('#formFactura').on('submit', function() {
+        var numInput = document.getElementById('numero');
+        if (numInput) padNumberField(numInput);
+      });
+
+      <?php if ($vista === 'venta' || $vista === 'compra'): ?>
+      $('#formFactura').on('submit', function(e) {
+        if (detalles.length === 0) {
+          e.preventDefault();
+          alert('Debe agregar al menos un ítem de detalle.');
+          return false;
+        }
+      });
+      <?php endif; ?>
+
+      <?php if ($vista === 'venta'): ?>
+      $('#fecha_enviada').on('change', function() {
+        var desde = $('#fecha_emitida').val();
+        var hasta = $(this).val();
+        if (desde && hasta && Date.parse(hasta) < Date.parse(desde)) {
+          alert('La fecha enviada debe ser mayor o igual a la fecha emitida');
+          $(this).val('');
+        }
+      });
+
       var clienteInicial = $('#id_cuenta_destino').val();
       if (clienteInicial) {
         $('#id_cuenta_destino').trigger('change');
@@ -1030,6 +1349,11 @@
       <?php endif; ?>
 
       <?php if ($vista === 'compra'): ?>
+      var ocTotal = parseFloat($('#ocTotalData').val()) || 0;
+      if (detalles.length === 0 && ocTotal > 0) {
+        $('#topeMaximo').text('(*)Tope Máximo Recomendado: $ ' + ocTotal.toFixed(2));
+      }
+
       $("#fecha_recibida").change(function() {
         var startDate = document.getElementById("fecha_emitida").value;
         var endDate = document.getElementById("fecha_recibida").value;
@@ -1038,6 +1362,41 @@
           document.getElementById("fecha_recibida").value = "";
         }
       });
+
+      <?php if ($ocPreseleccionada): ?>
+      <?php if ($monedaEsDolar): ?>
+      var badge = $('#estadoDolar');
+      var input = $('#cotizacion');
+      var info = $('#infoCotizacion');
+      badge.text('Cargando...').removeClass('text-danger text-success').addClass('text-secondary');
+      input.prop('readonly', true);
+      fetch('https://dolarapi.com/v1/dolares/oficial', {
+          headers: { 'Accept': 'application/json' }
+        })
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(d) {
+          if (!d.venta) throw new Error('Sin venta');
+          input.val(parseFloat(d.venta).toFixed(2));
+          badge.html('Dólar Oficial').removeClass('text-secondary text-danger').addClass('text-success');
+          var fecha = d.fechaActualizacion ? ' — Act: ' + new Date(d.fechaActualizacion).toLocaleString('es-AR') : '';
+          info.html('Compra: <strong>$' + parseFloat(d.compra).toLocaleString('es-AR', {minimumFractionDigits:2}) + '</strong>' +
+            ' | Venta: <strong>$' + parseFloat(d.venta).toLocaleString('es-AR', {minimumFractionDigits:2}) + '</strong>' + fecha);
+          input.prop('readonly', false);
+        })
+        .catch(function() {
+          badge.text('Error al obtener').removeClass('text-secondary text-success').addClass('text-danger');
+          info.html('<span class="text-danger">No se pudo obtener la cotización. Ingrésela manualmente.</span>');
+          input.val('').prop('readonly', false);
+        });
+      <?php else: ?>
+      $('#cotizacion').val(1);
+      $('#estadoDolar').text('Ingreso manual').removeClass('text-danger text-success').addClass('text-secondary');
+      $('#infoCotizacion').html('');
+      <?php endif; ?>
+      <?php endif; ?>
       <?php endif; ?>
     });
   </script>

@@ -97,12 +97,16 @@ $id_estado = $filters['id_estado'] ?? [];
                   <div class="card-header">
                     <h5><?php echo $ubicacion; if (!empty(tienePermiso(336))) { ?><a href="#" id="btn_nueva_factura_compra" title="Nueva Factura"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva"></a><?php } ?>
 					&nbsp;&nbsp;
-					<?php 
-					if (!empty(tienePermiso(338))) {
-						echo '<a href="#" id="link_modificar_fc"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular"></a>';
-						echo '&nbsp;&nbsp;';
-					}
-					if (!empty(tienePermiso(336))) {
+				<?php 
+				if (!empty(tienePermiso(338))) {
+					echo '<a href="#" id="link_modificar_fc"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular"></a>';
+					echo '&nbsp;&nbsp;';
+				}
+				if (!empty(tienePermiso(342))) {
+					echo '<a href="#" id="link_exportar_fc"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar Factura" title="Exportar Factura"></a>';
+					echo '&nbsp;&nbsp;';
+				}
+				if (!empty(tienePermiso(336))) {
 						echo '<a href="#" id="link_nuevo_detalle_fc"><img src="img/venc.jpg" width="24" height="25" border="0" alt="Añadir ítem Detalle" title="Añadir ítem Detalle"></a>';
 						echo '&nbsp;&nbsp;';
 						echo '<a href="#" id="link_nuevo_retencion_fc"><img src="img/edit3.png" width="24" height="25" border="0" alt="Añadir Retenciones" title="Añadir Retenciones"></a>';
@@ -138,7 +142,7 @@ $id_estado = $filters['id_estado'] ?? [];
                         <tbody>
                           <?php
                             $pdo = Database::connect();
-                            $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, ef.estado, date_format(fc.`fecha_emitida`,'%y%m%d') FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
+                            $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, ef.estado, date_format(fc.`fecha_emitida`,'%y%m%d'), ef.id FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
                             $params = [];
 
                             if (!empty($nro)) {
@@ -166,7 +170,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             $q = $pdo->prepare($sql);
                             $q->execute($params);
                             foreach ($q as $row) {
-                                echo '<tr>';
+                                echo '<tr data-id-estado="'. $row[12] .'">';
 								echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
 								echo '<td>'. $row[2] . '</td>';
@@ -314,7 +318,7 @@ $id_estado = $filters['id_estado'] ?? [];
             </button>
             <div>
               <strong id="labelProveedorSeleccionado"></strong><br>
-              <small class="text-muted">Seleccione una orden de compra para crear la factura</small>
+              <small class="text-muted">Seleccione una o más órdenes de compra para crear la factura</small>
             </div>
           </div>
           <div id="listaOC" style="max-height: 400px; overflow-y: auto;">
@@ -326,7 +330,7 @@ $id_estado = $filters['id_estado'] ?? [];
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" id="btnContinuarConOC" style="display:none;">
-          Continuar con OC seleccionada
+          Continuar con OC seleccionadas
         </button>
       </div>
     </div>
@@ -373,6 +377,13 @@ $id_estado = $filters['id_estado'] ?? [];
     <script src="assets/js/script.js"></script>
   <script>
     $(document).ready(function() {
+    // Mostrar errores pasados por URL
+    var urlParams = new URLSearchParams(window.location.search);
+    var errorMsg = urlParams.get('error');
+    if (errorMsg) {
+      alert(decodeURIComponent(errorMsg));
+    }
+
     // Setup - add a text input to each footer cell
     $('#dataTables-example666 tfoot th').each( function () {
         var title = $(this).text();
@@ -429,46 +440,87 @@ $id_estado = $filters['id_estado'] ?? [];
 		} );
 		
 	
-	  $("#link_modificar_fc").on("click",function(){
+	  $("#link_modificar_fc").on("click",function(e){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una Factura de Compra para modificar")
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Compra para modificar");
+          } else {
+            alert("Esta factura ya fue exportada y no puede editarse.");
+          }
+          e.preventDefault();
         }
       })
-	  $("#link_nuevo_detalle_fc").on("click",function(){
+	  $("#link_nuevo_detalle_fc").on("click",function(e){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una Factura de Compra para añadir ítem de detalle")
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Compra para añadir ítem de detalle");
+          } else {
+            alert("Esta factura ya fue exportada y no puede editarse.");
+          }
+          e.preventDefault();
         }
       })
-	  $("#link_nuevo_retencion_fc").on("click",function(){
+	  $("#link_nuevo_retencion_fc").on("click",function(e){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione una Factura de Compra para añadir ítem de retención")
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Compra para añadir ítem de retención");
+          } else {
+            alert("Esta factura ya fue exportada y no puede editarse.");
+          }
+          e.preventDefault();
+        }
+      })
+	  $("#link_exportar_fc").on("click",function(e){
+        let l=document.location.href;
+        if(this.href==l || this.href==l+"#"){
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Compra para exportar");
+          } else {
+            alert("Solo se pueden exportar facturas terminadas (Definitiva o Pagada).");
+          }
+          e.preventDefault();
         }
       })
 	   
 	//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
     $(document).on("click","#dataTables-example666 tbody tr td", function(){
         var t=$(this).parent();
-        //t.parent().find("tr").removeClass("selected");
 
         let id_fc=t.find("td:first-child").html();
+        let id_estado = parseInt(t.data('id-estado'));
+
         if(t.hasClass('selected')){
           deselectRow(t);
 		      get_detalles(id_fc)
           $("#link_modificar_fc").attr("href","#");
 		      $("#link_nuevo_detalle_fc").attr("href","#");
 			  $("#link_nuevo_retencion_fc").attr("href","#");
+			  $("#link_exportar_fc").attr("href","#");
         }else{
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
 		      get_detalles(id_fc)
-          $("#link_modificar_fc").attr("href","modificarFacturaCompra.php?id="+id_fc);
-		      $("#link_nuevo_detalle_fc").attr("href","nuevoDetalleFacturaCompra.php?id="+id_fc);
-			  $("#link_nuevo_retencion_fc").attr("href","nuevaRetencionFacturaCompra.php?id="+id_fc);
+          // Exportar: solo terminadas (3=Definitiva, 4=Pagada, 5=Exportada)
+          if ([3,4,5].indexOf(id_estado) !== -1) {
+            $("#link_exportar_fc").attr("href","exportarFacturaCompra.php?id="+id_fc);
+          } else {
+            $("#link_exportar_fc").attr("href","#");
+          }
+          // Modificar / agregar items: no se puede si ya fue exportada (5)
+          if (id_estado !== 5) {
+            $("#link_modificar_fc").attr("href","nuevaFacturaCompra.php?id="+id_fc);
+            $("#link_nuevo_detalle_fc").attr("href","nuevoDetalleFacturaCompra.php?id="+id_fc);
+            $("#link_nuevo_retencion_fc").attr("href","nuevaRetencionFacturaCompra.php?id="+id_fc);
+          } else {
+            $("#link_modificar_fc").attr("href","#");
+            $("#link_nuevo_detalle_fc").attr("href","#");
+            $("#link_nuevo_retencion_fc").attr("href","#");
+          }
         }
       });
     
@@ -641,11 +693,11 @@ function htmlEsc(str) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-var idOCSeleccionada = null;
+var idsOCSeleccionadas = [];
 
 $('#btn_nueva_factura_compra').on('click', function(e) {
   e.preventDefault();
-  idOCSeleccionada = null;
+  idsOCSeleccionadas = [];
   $('#pasoProveedor').show();
   $('#pasoOC').hide();
   $('#btnContinuarConOC').hide();
@@ -694,7 +746,7 @@ $('#buscarProveedor').on('keyup', function() {
 $(document).on('click', '.fila-proveedor', function() {
   var idProveedor = $(this).data('id');
   var nombreProveedor = $(this).data('nombre');
-  idOCSeleccionada = null;
+  idsOCSeleccionadas = [];
 
   $('#labelProveedorSeleccionado').text(nombreProveedor);
   $('#listaOC').html('<div class="text-center py-3"><i>Cargando órdenes de compra...</i></div>');
@@ -721,7 +773,7 @@ $(document).on('click', '.fila-proveedor', function() {
 
         // Cabecera con radio button y datos principales
         html += '<div class="d-flex align-items-center p-2 bg-light rounded" style="cursor:pointer;" data-toggle="collapse" data-target="#collapse_oc_' + oc.id + '">';
-        html += '<input type="radio" name="oc_seleccionada" class="radio-oc mr-2" id="' + ocId + '" value="' + oc.id + '" onclick="event.stopPropagation()">';
+        html += '<input type="checkbox" class="checkbox-oc mr-2" id="' + ocId + '" value="' + oc.id + '" onclick="event.stopPropagation()">';
         html += '<label for="' + ocId + '" class="mb-0 mr-2 font-weight-bold" style="color:#000;" onclick="event.stopPropagation()">OC #' + htmlEsc(oc.nro_oc) + '</label>';
         html += '<span class="badge badge-secondary mr-2">' + htmlEsc(oc.estado) + '</span>';
         html += '<small class="text-dark mr-auto">' + htmlEsc(oc.fecha_emision);
@@ -777,10 +829,10 @@ $(document).on('click', '.fila-proveedor', function() {
   });
 });
 
-// Habilitar botón Continuar al seleccionar una OC
-$(document).on('change', '.radio-oc', function() {
-  idOCSeleccionada = $(this).val();
-  $('#btnContinuarConOC').prop('disabled', false);
+// Habilitar botón Continuar al seleccionar al menos una OC
+$(document).on('change', '.checkbox-oc', function() {
+  idsOCSeleccionadas = $('.checkbox-oc:checked').map(function() { return $(this).val(); }).get();
+  $('#btnContinuarConOC').prop('disabled', idsOCSeleccionadas.length === 0);
 });
 
 // Volver a la lista de proveedores
@@ -788,17 +840,18 @@ $('#btnVolverProveedores').on('click', function() {
   $('#pasoOC').hide();
   $('#btnContinuarConOC').hide();
   $('#pasoProveedor').show();
-  idOCSeleccionada = null;
+  idsOCSeleccionadas = [];
 });
 
-// Continuar: ir al formulario de nueva factura con la OC seleccionada
+// Continuar: ir al formulario de nueva factura con las OC seleccionadas
 $('#btnContinuarConOC').on('click', function() {
-  if (!idOCSeleccionada) {
-    alert('Por favor seleccione una orden de compra.');
+  idsOCSeleccionadas = $('.checkbox-oc:checked').map(function() { return $(this).val(); }).get();
+  if (idsOCSeleccionadas.length === 0) {
+    alert('Por favor seleccione al menos una orden de compra.');
     return;
   }
   $('#modalElegirProveedorOC').modal('hide');
-  window.location.href = 'nuevaFacturaCompra.php?oc=' + idOCSeleccionada;
+  window.location.href = 'nuevaFacturaCompra.php?oc=' + idsOCSeleccionadas.join(',');
 });
 </script>
 
