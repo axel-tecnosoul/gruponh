@@ -1,94 +1,141 @@
 <?php
 require("config.php");
 if (empty($_SESSION['user'])) {
-	header("Location: index.php");
-	die("Redirecting to index.php");
+  header("Location: index.php");
+  die("Redirecting to index.php");
 }
-
 require 'database.php';
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 try {
-	$sql = "SELECT d.`id`, c.`descripcion`, tc.tipo, lc.letra, GROUP_CONCAT(DISTINCT oc.nro_oc SEPARATOR ' | '), c.`numero`, cu1.razon_social, e.empresa, c.`fecha_emitida`, c.`fecha_recibida`, fp.forma_pago, c.`subtotal_gravado`, c.`subtotal_no_gravado`, c.`otros`, c.`iva`, c.`total`, m.moneda, c.`cotizacion`, c.`observaciones`, u.usuario, ef.estado, d.`descripcion`, d.`cantidad`, d.`precio`, d.`porc_descuento`, CAST(NULL AS DECIMAL(10,2)) as importe_otros, d.`subtotal`, c.id
-		FROM `facturas_compra_detalle` d
-		INNER JOIN facturas_compra c ON c.id = d.id_factura_compra
-		INNER JOIN tipos_comprobante tc ON tc.id = c.`id_tipo_comprobante`
-		INNER JOIN letras_comprobante lc ON lc.id = c.`id_letra_comprobante`
-		LEFT JOIN facturas_compra_x_compras fcxc ON fcxc.id_factura_compra = c.id
-		LEFT JOIN compras oc ON oc.id = fcxc.id_compra
-		INNER JOIN cuentas cu1 ON cu1.id = c.`id_cuenta_origen`
-		INNER JOIN empresas e ON e.id = c.`id_empresa`
-		INNER JOIN formas_pago fp ON fp.id = c.`id_condicion_pago`
-		INNER JOIN monedas m ON m.id = c.`id_moneda`
-		INNER JOIN usuarios u ON u.id = c.`id_usuario`
-		INNER JOIN estados_factura ef ON ef.id = c.`id_estado`
-		WHERE c.`id_estado` IN (3,4) AND c.exportada = 0
-		GROUP BY d.id
-		ORDER BY c.id, d.id";
-	$stmt = $pdo->prepare($sql);
-	$stmt->execute();
-	$rows = $stmt->fetchAll(PDO::FETCH_NUM);
+  // Cabeceras de facturas compra
+  $qCab = $pdo->query("SELECT fc.id, fc.descripcion, tc.tipo, lc.letra, fc.numero,
+                              cu.razon_social, cu.cuit, e.empresa,
+                              DATE_FORMAT(fc.fecha_emitida,'%Y%m%d') as fe,
+                              fc.total
+                       FROM facturas_compra fc
+                       INNER JOIN tipos_comprobante tc ON tc.id = fc.id_tipo_comprobante
+                       INNER JOIN letras_comprobante lc ON lc.id = fc.id_letra_comprobante
+                       INNER JOIN cuentas cu ON cu.id = fc.id_cuenta_origen
+                       INNER JOIN empresas e ON e.id = fc.id_empresa
+                       WHERE fc.id_estado = 3 AND fc.exportada = 0
+                       ORDER BY fc.id");
+  $facturas = $qCab->fetchAll(PDO::FETCH_ASSOC);
 
-	if (empty($rows)) {
-		die("No hay facturas de compra pendientes de exportación (estado Definitiva o Pagada, no exportadas).");
-	}
+  if (empty($facturas)) {
+    die("No hay facturas de compra pendientes de exportación.");
+  }
 
-	$filePath  = 'CCabecer.txt';
-	$filePath2 = 'CItems.txt';
-	$filePath3 = 'CRegEsp.txt';
+  // Todos los items
+  $qDet = $pdo->query("SELECT fc.id as factura_id, d.cantidad, d.precio,
+                              COALESCE(d.descripcion, d.texto_impreso, cc.descripcion, '') as descripcion_det
+                       FROM facturas_compra fc
+                       INNER JOIN facturas_compra_detalle d ON d.id_factura_compra = fc.id
+                       LEFT JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable
+                       WHERE fc.id_estado = 3 AND fc.exportada = 0
+                       ORDER BY fc.id, d.id");
+  $itemsRaw = $qDet->fetchAll(PDO::FETCH_ASSOC);
 
-	$file  = fopen($filePath, 'w');
-	$file2 = fopen($filePath2, 'w');
-	$file3 = fopen($filePath3, 'w');
+  // Todas las retenciones
+  $qRet = $pdo->query("SELECT fc.id as factura_id, r.monto, rf.regimen
+                       FROM facturas_compra fc
+                       INNER JOIN facturas_compra_retenciones r ON r.id_factura_compra = fc.id
+                       LEFT JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+                       WHERE fc.id_estado = 3 AND fc.exportada = 0
+                       ORDER BY fc.id");
+  $retsRaw = $qRet->fetchAll(PDO::FETCH_ASSOC);
 
-	$idsActualizados = [];
+  // Agrupar por factura_id
+  $itemsPorFactura = [];
+  foreach ($itemsRaw as $r) {
+    $itemsPorFactura[$r['factura_id']][] = $r;
+  }
+  $retsPorFactura = [];
+  foreach ($retsRaw as $r) {
+    $retsPorFactura[$r['factura_id']][] = $r;
+  }
 
-	foreach ($rows as $row) {
-		$idFactura = $row[27];
-		$line = implode('', array_slice($row, 0, 27)) . PHP_EOL;
+  $hCab = [];
+  $hItems = [];
+  $hReg = [];
 
-		fwrite($file, $line);
-		fwrite($file2, $line);
-		fwrite($file3, $line);
+  foreach ($facturas as $f) {
+    $idFactura = $f['id'];
+    $tipo = $f['tipo'] ?? 'FC';
+    $letra = $f['letra'] ?? ' ';
+    $tipoLetra = str_pad(substr($tipo, 0, 2) . $letra, 4);
+    $numero = str_pad($f['numero'] ?? '', 12, '0', STR_PAD_LEFT);
+    $fecha = $f['fe'] ?? date('Ymd');
+    $codEmpresa = str_pad(substr(preg_replace('/[^A-Za-z0-9]/', '', $f['empresa'] ?? ''), 0, 6), 6);
+    $prefix = $tipoLetra . $numero . str_repeat(' ', 8) . $fecha . $codEmpresa;
 
-		if (!in_array($idFactura, $idsActualizados, true)) {
-			$idsActualizados[] = $idFactura;
-		}
-	}
+    // Cabecera
+    $razonSocial = str_pad(mb_substr($f['razon_social'] ?? '', 0, 40), 40);
+    $cuit = str_pad(preg_replace('/[^0-9]/', '', $f['cuit'] ?? ''), 15, '0', STR_PAD_LEFT);
+    $total = str_pad(number_format($f['total'] ?? 0, 2, '.', ''), 18, ' ', STR_PAD_LEFT);
+    $cabLine = $prefix . $razonSocial . $cuit . str_repeat(' ', 60) . $fecha . str_repeat(' ', 6) . $total . str_repeat(' ', 260) . $total;
+    $hCab[] = str_pad($cabLine, 610) . PHP_EOL;
 
-	fclose($file);
-	fclose($file2);
-	fclose($file3);
+    // Items
+    $items = $itemsPorFactura[$idFactura] ?? [];
+    foreach ($items as $det) {
+      $descDet = str_pad(mb_substr($det['descripcion_det'] ?? '', 0, 35), 35);
+      $cantidad = str_pad(number_format($det['cantidad'] ?? 0, 2, '.', ''), 12, ' ', STR_PAD_LEFT);
+      $precio = str_pad(number_format($det['precio'] ?? 0, 2, '.', ''), 18, ' ', STR_PAD_LEFT);
+      $itemSubtotal = ($det['cantidad'] ?? 0) * ($det['precio'] ?? 0);
+      $subtotal = str_pad(number_format($itemSubtotal, 2, '.', ''), 18, ' ', STR_PAD_LEFT);
+      $ivaDet = str_pad(number_format($itemSubtotal * 0.21, 2, '.', ''), 12, ' ', STR_PAD_LEFT);
+      $totalDet = str_pad(number_format($itemSubtotal, 2, '.', ''), 18, ' ', STR_PAD_LEFT);
+      $itemLine = $prefix . $descDet . $cantidad . str_repeat(' ', 13) . '0.00' . str_repeat(' ', 56) . $subtotal . '   21.00    0.00     ' . $ivaDet . str_repeat(' ', 12) . '0.00' . str_repeat(' ', 6) . $totalDet . str_repeat(' ', 12) . '0.00' . str_repeat(' ', 12) . '0.00' . str_repeat(' ', 12) . '0.00' . str_repeat(' ', 16) . '0.001' . str_repeat(' ', 14) . '0.00' . str_repeat(' ', 34) . $totalDet;
+      $hItems[] = str_pad($itemLine, 548) . PHP_EOL;
+    }
 
-	foreach ($idsActualizados as $idFactura) {
-		$upd = $pdo->prepare("UPDATE `facturas_compra` SET `exportada` = 1, `id_estado` = 5 WHERE id = ?");
-		$upd->execute([$idFactura]);
-	}
+    // Retenciones
+    $rets = $retsPorFactura[$idFactura] ?? [];
+    foreach ($rets as $ret) {
+      $regimen = str_pad(substr(preg_replace('/[^A-Za-z0-9]/', '', $ret['regimen'] ?? ''), 0, 8), 8);
+      $montoReg = str_pad(number_format($ret['monto'] ?? 0, 2, '.', ''), 14, ' ', STR_PAD_LEFT);
+      $regLine = $prefix . $regimen . $montoReg . str_repeat(' ', 14) . '0.00';
+      $hReg[] = str_pad($regLine, 78) . PHP_EOL;
+    }
+  }
 
-	header('Content-Type: application/zip');
-	header('Content-Disposition: attachment; filename="facturas_compra_exportadas.zip"');
-	header('Pragma: public');
+  // Escribir archivos
+  file_put_contents(__DIR__ . '/CCabecer.txt', implode('', $hCab));
+  file_put_contents(__DIR__ . '/CItems.txt', implode('', $hItems));
+  file_put_contents(__DIR__ . '/CRegEsp.txt', implode('', $hReg));
 
-	$zip = new ZipArchive();
-	$zipPath = 'facturas_compra_exportadas.zip';
-	if ($zip->open($zipPath, ZipArchive::CREATE) === TRUE) {
-		$zip->addFile($filePath);
-		$zip->addFile($filePath2);
-		$zip->addFile($filePath3);
-		$zip->close();
-	}
+  // Marcar como exportadas
+  $upd = $pdo->prepare("UPDATE facturas_compra SET exportada = 1 WHERE id = ?");
+  foreach ($facturas as $f) {
+    $upd->execute([$f['id']]);
+  }
 
-	readfile($zipPath);
+  ob_clean();
 
-	unlink($filePath);
-	unlink($filePath2);
-	unlink($filePath3);
-	unlink($zipPath);
+  $zip = new ZipArchive();
+  $zipPath = __DIR__ . '/facturas_compra_bejerman.zip';
+  $zip->open($zipPath, ZipArchive::CREATE);
+  $zip->addFile(__DIR__ . '/CCabecer.txt', 'CCabecer.txt');
+  $zip->addFile(__DIR__ . '/CItems.txt', 'CItems.txt');
+  $zip->addFile(__DIR__ . '/CRegEsp.txt', 'CRegEsp.txt');
+  $zip->close();
+
+  header('Content-Type: application/zip');
+  header('Content-Disposition: attachment; filename="facturas_compra_bejerman.zip"');
+  header('Pragma: public');
+
+  readfile($zipPath);
+
+  unlink(__DIR__ . '/CCabecer.txt');
+  unlink(__DIR__ . '/CItems.txt');
+  unlink(__DIR__ . '/CRegEsp.txt');
+  unlink($zipPath);
 
 } catch (Exception $e) {
-	die("Error al exportar: " . $e->getMessage());
+  die("Error al exportar: " . $e->getMessage());
 }
 
 exit;

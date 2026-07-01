@@ -65,8 +65,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             action="<?= $vista === 'venta'
               ? 'nuevaFacturaVenta.php' . (!empty($_GET['id_proyecto']) ? '?id_proyecto=' . intval($_GET['id_proyecto']) : '')
               : 'nuevaFacturaCompra.php' ?>">
-            <?php if ($vista === 'venta'): ?>
-            <input type="hidden" name="_accion" value="guardar_todo">
+            <?php if (!empty($certIds)): ?>
             <?php foreach ($certIds as $cid): ?>
               <input type="hidden" name="certificados[]" value="<?= $cid ?>">
             <?php endforeach; ?>
@@ -279,9 +278,27 @@ $fv = function($key, $default = '') use ($facturaData) {
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Número(*)</label>
                           <div class="col-sm-8">
-                            <input name="numero" id="numero" oninput="applyMask(this)" onblur="padNumberField(this)"
-                              placeholder="0001-00000001" type="text" maxlength="20"
-                              class="form-control" required value="<?= $fv('numero') ?>">
+                            <div class="input-group">
+                              <?php
+                              $numeroCompleto = $fv('numero');
+                              $pv = '';
+                              $nc = '';
+                              if (!empty($numeroCompleto) && str_contains($numeroCompleto, '-')) {
+                                list($pv, $nc) = explode('-', $numeroCompleto, 2);
+                              }
+                              ?>
+                              <input name="punto_venta" type="text" maxlength="4"
+                                class="form-control" placeholder="0001" required
+                                style="width:80px;flex:none;" value="<?= htmlspecialchars($pv) ?>"
+                                oninput="this.value=this.value.replace(/\D/g,'')">
+                              <div class="input-group-append">
+                                <span class="input-group-text">-</span>
+                              </div>
+                              <input name="nro_comprobante" type="text" maxlength="8"
+                                class="form-control" placeholder="00000001" required
+                                value="<?= htmlspecialchars($nc) ?>"
+                                oninput="this.value=this.value.replace(/\D/g,'')">
+                            </div>
                           </div>
                         </div>
 
@@ -312,7 +329,8 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <label class="col-sm-4 col-form-label">Fecha Enviada(*)</label>
                           <div class="col-sm-8">
                             <input name="fecha_enviada" id="fecha_enviada" type="date"
-                              onfocus="this.showPicker()" class="form-control" required>
+                              onfocus="this.showPicker()" class="form-control"
+                              value="<?= $fv('fecha_enviada') ?>" required>
                           </div>
                         </div>
                         <?php else: ?>
@@ -416,7 +434,8 @@ $fv = function($key, $default = '') use ($facturaData) {
                               $q = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='{$f['id']}'>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
+                                $sel = (!empty($regimenesSeleccionados) && in_array($f['id'], $regimenesSeleccionados)) ? ' selected' : '';
+                                echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
                               }
                               Database::disconnect();
                               ?>
@@ -514,8 +533,8 @@ $fv = function($key, $default = '') use ($facturaData) {
                             <th>#</th>
                             <th>Concepto</th>
                             <th>Descripción</th>
-                            <th>Imputaciones</th>
-                            <th>Precio sin desc.</th>
+                            <th>Imputación</th>
+                            <th>Precio</th>
                             <th>Descuento</th>
                             <th>Subtotal</th>
                             <th>Editar</th>
@@ -538,53 +557,67 @@ $fv = function($key, $default = '') use ($facturaData) {
                     <div class="form-group row">
                       <div class="col-md-3 mb-2">
                         <label class="col-form-label">Concepto Contable(*)</label>
-                        <select id="det_concepto" class="js-example-basic-single col-sm-12">
-                          <option value="">Seleccione...</option>
-                          <?php
-                          $pdo = Database::connect();
-                          $q = $pdo->prepare("SELECT id, descripcion FROM conceptos_contables WHERE 1");
-                          $q->execute();
-                          while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                            echo "<option value='{$f['id']}'>" . htmlspecialchars($f['descripcion']) . "</option>";
-                          }
-                          Database::disconnect();
-                          ?>
-                        </select>
+                          <select id="det_concepto" class="js-example-basic-single col-sm-12">
+                            <option value="">Seleccione...</option>
+                            <?php
+                            $pdo = Database::connect();
+                            $q = $pdo->prepare("SELECT cc.id, cc.descripcion, COALESCE(ti.tasa, 21) as tasa 
+                                                     FROM conceptos_contables cc 
+                                                     LEFT JOIN tipos_iva ti ON ti.id = cc.id_alicuota_iva 
+                                                     WHERE 1");
+                            $q->execute();
+                            while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                              echo "<option value='{$f['id']}' data-tasa='{$f['tasa']}'>" . htmlspecialchars($f['descripcion']) . "</option>";
+                            }
+                            Database::disconnect();
+                            ?>
+                          </select>
+                          <small id="iva-info" class="text-info"></small>
                       </div>
                       <div class="col-md-3 mb-2">
                         <label class="col-form-label">Descripción</label>
                         <textarea id="det_descripcion" class="form-control" rows="1" placeholder="Texto a mostrar impreso en la factura"></textarea>
                       </div>
-                      <?php if ($vista === 'compra' && !empty($imputacionesOC)): ?>
+<?php if ($vista === 'venta' || ($vista === 'compra' && !empty($imputacionesOC))): ?>
                       <?php
+                        $imputacionesOC = $imputacionesOC ?? [];
                         $ocMap = [];
                         if (!empty($ocVinculadas)) {
                           foreach ($ocVinculadas as $ov) $ocMap[$ov['id_compra']] = $ov['nro_oc'];
                         }
-                        $ocIdsUnicos = array_unique(array_column($imputacionesOC, 'id_compra'));
-                        $ocIdsFaltantes = array_diff($ocIdsUnicos, array_keys($ocMap));
-                        if (!empty($ocIdsFaltantes)) {
-                          $pdoMap = Database::connect();
-                          $placeholders = implode(',', array_fill(0, count($ocIdsFaltantes), '?'));
-                          $qMap = $pdoMap->prepare("SELECT id, nro_oc FROM compras WHERE id IN ($placeholders)");
-                          $qMap->execute(array_values($ocIdsFaltantes));
-                          while ($r = $qMap->fetch(PDO::FETCH_ASSOC)) $ocMap[$r['id']] = $r['nro_oc'];
-                          Database::disconnect();
-                        }
+                        if ($vista === 'compra'):
+                          $ocIdsUnicos = array_unique(array_column($imputacionesOC, 'id_compra'));
+                          $ocIdsFaltantes = array_diff($ocIdsUnicos, array_keys($ocMap));
+                          if (!empty($ocIdsFaltantes)) {
+                            $pdoMap = Database::connect();
+                            $placeholders = implode(',', array_fill(0, count($ocIdsFaltantes), '?'));
+                            $qMap = $pdoMap->prepare("SELECT id, nro_oc FROM compras WHERE id IN ($placeholders)");
+                            $qMap->execute(array_values($ocIdsFaltantes));
+                            while ($r = $qMap->fetch(PDO::FETCH_ASSOC)) $ocMap[$r['id']] = $r['nro_oc'];
+                            Database::disconnect();
+                          }
+                        endif;
                       ?>
                       <div class="col-md-3 mb-2">
                         <label class="col-form-label">Imputaciones</label>
-                        <select id="det_imputaciones" class="js-example-basic-multiple col-sm-12" multiple="multiple" data-all-options='<?= htmlspecialchars(json_encode(array_map(function($imp) use ($ocMap) {
-                          $nro = $ocMap[$imp['id_compra']] ?? $imp['id_compra'];
-                          $rest = (float)($imp['restante'] ?? $imp['oc_cantidad']);
-                          return [
-                            'value' => $imp['id'],
-                            'text' => "OC #{$nro} - {$imp['concepto']} (queda " . number_format($rest, 2) . " de " . number_format($imp['oc_cantidad'], 2) . ")",
-                            'restante' => $rest,
-                            'oc_precio' => (float)$imp['oc_precio'],
-                            'done' => $rest <= 0
-                          ];
-                        }, $imputacionesOC)), JSON_UNESCAPED_UNICODE) ?>'>
+                        <?php
+                          $dataOptions = [];
+                          if ($vista === 'compra') {
+                            $dataOptions = array_map(function($imp) use ($ocMap) {
+                              $nro = $ocMap[$imp['id_compra']] ?? $imp['id_compra'];
+                              $rest = (float)($imp['restante'] ?? $imp['oc_cantidad']);
+                              return [
+                                'value' => $imp['id'],
+                                'text' => "OC #{$nro} - {$imp['concepto']} (queda " . number_format($rest, 2) . " de " . number_format($imp['oc_cantidad'], 2) . ")",
+                                'restante' => $rest,
+                                'oc_precio' => (float)$imp['oc_precio'],
+                                'nro_oc' => $nro,
+                                'done' => $rest <= 0
+                              ];
+                            }, $imputacionesOC);
+                          }
+                        ?>
+                        <select id="det_imputaciones" class="js-example-basic-multiple col-sm-12" multiple="multiple" data-all-options='<?= htmlspecialchars(json_encode($dataOptions, JSON_UNESCAPED_UNICODE)) ?>'>
                         </select>
                       </div>
                       <?php endif; ?>
@@ -696,18 +729,12 @@ $fv = function($key, $default = '') use ($facturaData) {
                   </div>
                   <div class="card-footer">
                     <div class="col-sm-9 offset-sm-3">
-                      <?php if ($vista === 'venta'): ?>
-                        <button type="submit" class="btn btn-primary" id="btnGuardarTodo">
-                          Guardar Factura
-                        </button>
-                      <?php else: ?>
                         <button type="submit" class="btn btn-primary" name="btn_definitivo" value="1">
                           Guardar Definitivo
                         </button>
                         <button type="submit" class="btn btn-secondary" name="btn_temporal" value="1">
                           Guardar Temporal
                         </button>
-                      <?php endif; ?>
                       <a href="<?= $vista === 'venta' ? 'listarFacturasVenta.php' : 'listarFacturasCompra.php' ?>"
                         class="btn btn-light">
                         <?= $vista === 'venta' ? 'Volver al Listado' : 'Volver' ?>
@@ -748,31 +775,6 @@ $fv = function($key, $default = '') use ($facturaData) {
   <?php endif; ?>
 
   <script>
-    function applyMask(input) {
-      var v = input.value.replace(/\D/g, '');
-      if (v.length > 4) v = v.substring(0, 4) + '-' + v.substring(4, 12);
-      input.value = v;
-    }
-
-    function padNumberField(input) {
-      var v = input.value.replace(/\D/g, '');
-      if (v.length === 0) return;
-
-      var prefix, suffix;
-      if (v.length <= 4) {
-        prefix = '0001';
-        suffix = v;
-      } else {
-        prefix = v.substring(0, 4);
-        suffix = v.substring(4);
-      }
-
-      prefix = prefix.padStart(4, '0');
-      suffix = suffix.padEnd(8, '0');
-
-      input.value = prefix + '-' + suffix;
-    }
-
     function htmlEsc(str) {
         return String(str)
             .replace(/&/g, '&amp;')
@@ -815,7 +817,7 @@ $fv = function($key, $default = '') use ($facturaData) {
 
           var impLabels = [];
           impsData.forEach(function(imp) {
-            impLabels.push(imp.concepto_text + ' (x' + parseFloat(imp.cantidad||0).toFixed(2) + ' @ $' + parseFloat(imp.precio||0).toFixed(2) + ')');
+            impLabels.push('OC ' + (imp.nro_oc || '') + ' x' + parseFloat(imp.cantidad||0).toFixed(2) + ' ' + imp.concepto_text + ' $' + parseFloat(imp.precio||0).toFixed(2));
           });
           var imputacionesHtml = impLabels.length ? impLabels.join('<br>') : item.imputaciones_text ? item.imputaciones_text.join('<br>') : '';
 
@@ -886,17 +888,38 @@ $fv = function($key, $default = '') use ($facturaData) {
 
     function quitarDetalle(index) {
       var item = detalles[index];
-      // Add back imputaciones to select2
+      // Add back imputaciones to select2 (only if not already present)
       if (item.imputaciones_data) {
         var opts = JSON.parse($('#det_imputaciones').attr('data-all-options') || '[]');
         item.imputaciones_data.forEach(function(imp) {
           var found = opts.find(function(o) { return o.value == imp.id_cd; });
-          if (found) {
+          if (found && $('#det_imputaciones option[value="' + found.value + '"]').length === 0) {
             var opt = new Option(found.text, found.value, false, false);
             $('#det_imputaciones').append(opt);
           }
         });
         $('#det_imputaciones').trigger('change');
+      } else if (item.imputaciones && item.imputaciones.length) {
+        var opts2 = JSON.parse($('#det_imputaciones').attr('data-all-options') || '[]');
+        item.imputaciones.forEach(function(idv) {
+          var idCd = typeof idv === 'object' ? (idv.id_cd || idv) : idv;
+          var found = opts2.find(function(o) { return o.value == idCd; });
+          if (found && $('#det_imputaciones option[value="' + found.value + '"]').length === 0) {
+            var opt = new Option(found.text, found.value, false, false);
+            $('#det_imputaciones').append(opt);
+          }
+        });
+        $('#det_imputaciones').trigger('change');
+      }
+      // Reset editing state if the removed item was being edited
+      if (editIndex === index) {
+        editIndex = -1;
+        $('#btnAgregarDetalle').text('Agregar Ítem');
+        $('#btnCancelarDetalle').hide();
+        $('#det_concepto').val('').trigger('change');
+        $('#det_descripcion').val('');
+        $('#det_descuento').val(0);
+        $('#imp-sub-lines').empty();
       }
       detalles.splice(index, 1);
       renderDetalles();
@@ -916,9 +939,10 @@ $fv = function($key, $default = '') use ($facturaData) {
         var st = storedMap[item.id_cd] || {};
         var cant = st.cantidad || item.restante || 0;
         var prec = st.precio || item.oc_precio || 0;
+        var label = (item.nro_oc ? 'OC #' + item.nro_oc + ' - ' : '') + htmlEsc(item.concepto_text);
         container.append(
-          '<div class="row imp-sub-row align-items-center" data-cd-id="' + item.id_cd + '" style="margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid #eee;">' +
-          '<div class="col-md-6"><span class="imp-sub-label" style="font-size:13px;">' + htmlEsc(item.concepto_text) + '</span></div>' +
+          '<div class="row imp-sub-row align-items-center" data-cd-id="' + item.id_cd + '" data-nro-oc="' + (item.nro_oc || '') + '" style="margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid #eee;">' +
+          '<div class="col-md-6"><span class="imp-sub-label" style="font-size:13px;">' + label + '</span></div>' +
           '<div class="col-md-3"><span style="font-size:13px; color:#333; margin-right:6px;">Cant:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-cant" style="display:inline-block; width:65%;" value="' + cant + '" data-restante="' + (item.restante || 0) + '"></div>' +
           '<div class="col-md-3"><span style="font-size:13px; color:#333; margin-right:6px;">Precio:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-prec" style="display:inline-block; width:65%;" value="' + prec + '"></div>' +
           '</div>'
@@ -951,6 +975,20 @@ $fv = function($key, $default = '') use ($facturaData) {
     }
 
     function editarDetalle(index) {
+      if (editIndex >= 0 && editIndex !== index) {
+        var prevItem = detalles[editIndex];
+        var prevIds = [];
+        if (prevItem.imputaciones_data) {
+          prevItem.imputaciones_data.forEach(function(imp) { prevIds.push(imp.id_cd); });
+        } else if (prevItem.imputaciones && prevItem.imputaciones.length) {
+          prevItem.imputaciones.forEach(function(idv) {
+            prevIds.push(typeof idv === 'object' ? (idv.id_cd || idv) : idv);
+          });
+        }
+        prevIds.forEach(function(id) {
+          $('#det_imputaciones option[value="' + id + '"]').remove();
+        });
+      }
       editIndex = index;
       var item = detalles[index];
 
@@ -1100,7 +1138,11 @@ $fv = function($key, $default = '') use ($facturaData) {
       $('#id_condicion_pago').val('<?= $fv('id_condicion_pago') ?>').trigger('change');
       $('#id_moneda').val('<?= $fv('id_moneda') ?>').trigger('change');
       $('#id_empresa').val('<?= $fv('id_empresa') ?>').trigger('change');
+      <?php if ($vista === 'compra'): ?>
       $('#id_cuenta_origen').val('<?= $fv('id_cuenta_origen') ?>').trigger('change');
+      <?php else: ?>
+      $('#id_cuenta_destino').val('<?= $fv('id_cuenta_destino') ?>').trigger('change');
+      <?php endif; ?>
       <?php endif; ?>
       <?php endif; ?>
 
@@ -1132,12 +1174,18 @@ $fv = function($key, $default = '') use ($facturaData) {
       }
       <?php endif; ?>
 
-      // Auto-fill descripcion from concepto contable
+      // Auto-fill descripcion and show IVA from concepto contable
       $('#det_concepto').on('change', function() {
-        var texto = $(this).find(':selected').text();
-        var current = $('#det_descripcion').val();
-        if (texto && !current) {
+        var opt = $(this).find(':selected');
+        var texto = opt.text();
+        if (texto) {
           $('#det_descripcion').val(texto);
+        }
+        var tasa = opt.data('tasa');
+        if (tasa || tasa === 0) {
+          $('#iva-info').text('IVA: ' + parseFloat(tasa).toFixed(2) + '%');
+        } else {
+          $('#iva-info').text('');
         }
       });
 
@@ -1153,6 +1201,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             items.push({
               id_cd: found.value,
               concepto_text: found.text.split(' - ').slice(1).join(' - ').split(' (queda')[0],
+              nro_oc: found.nro_oc || '',
               restante: found.restante,
               oc_precio: found.oc_precio
             });
@@ -1183,6 +1232,7 @@ $fv = function($key, $default = '') use ($facturaData) {
           var prec = parseFloat($(this).find('.imp-sub-prec').val()) || 0;
           var restante = parseFloat($(this).find('.imp-sub-cant').data('restante')) || 0;
           var conceptoText = $(this).find('.imp-sub-label').text().trim();
+          var nroOc = $(this).data('nro-oc') || '';
 
           if (cant <= 0) return;
 
@@ -1204,16 +1254,11 @@ $fv = function($key, $default = '') use ($facturaData) {
             }
           }
 
-          impsData.push({ id_cd: cdId, concepto_text: conceptoText, cantidad: cant, precio: prec });
+          impsData.push({ id_cd: cdId, nro_oc: nroOc, concepto_text: conceptoText, cantidad: cant, precio: prec });
           allImpIds.push(cdId);
         });
 
         if (aborted) return;
-
-        if (impsData.length === 0) {
-          alert('Seleccione al menos una imputacion con cantidad > 0.');
-          return;
-        }
 
         var imputacionesText = [];
         impsData.forEach(function(imp) {
@@ -1315,11 +1360,6 @@ $fv = function($key, $default = '') use ($facturaData) {
 
       $('#ret_base').on('input', function() {
         calcularRetencion();
-      });
-
-      $('#formFactura').on('submit', function() {
-        var numInput = document.getElementById('numero');
-        if (numInput) padNumberField(numInput);
       });
 
       <?php if ($vista === 'venta' || $vista === 'compra'): ?>

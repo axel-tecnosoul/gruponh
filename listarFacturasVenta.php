@@ -5,6 +5,13 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 include 'database.php';
+require_once 'manejarFiltros.php';
+$filters = gestionarFiltros('listarFacturasVenta');
+$nro = $filters['nro'] ?? '';
+$fecha = $filters['fecha'] ?? '';
+$fechah = $filters['fechah'] ?? '';
+$cliente = $filters['cliente'] ?? '';
+$id_estado = $filters['id_estado'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -26,10 +33,6 @@ include 'database.php';
       color: midnightblue;
     }
 
-    .editable {
-      text-decoration: underline;
-      cursor: default;
-    }
   </style>
 </head>
 
@@ -52,19 +55,19 @@ include 'database.php';
                   <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarFacturasVenta.php">
                     <div class="form-group mb-0">
                       Nro:&nbsp;<input class="form-control" size="3" type="text"
-                        value="<?= isset($_POST['nro']) ? htmlspecialchars($_POST['nro']) : '' ?>" name="nro">
+                        value="<?= htmlspecialchars($nro) ?>" name="nro">
                     </div>
                     <div class="form-group mb-0">
                       Rango:&nbsp;
                       <input class="form-control" size="20" type="date"
-                        value="<?= isset($_POST['fecha'])  ? htmlspecialchars($_POST['fecha'])  : '' ?>" name="fecha">
+                        value="<?= htmlspecialchars($fecha) ?>" name="fecha">
                       &nbsp;-&nbsp;
                       <input class="form-control" size="20" type="date"
-                        value="<?= isset($_POST['fechah']) ? htmlspecialchars($_POST['fechah']) : '' ?>" name="fechah">
+                        value="<?= htmlspecialchars($fechah) ?>" name="fechah">
                     </div>
                     <div class="form-group mb-0">
                       Cliente:&nbsp;<input class="form-control" size="20" type="text"
-                        value="<?= isset($_POST['cliente']) ? htmlspecialchars($_POST['cliente']) : '' ?>" name="cliente">
+                        value="<?= htmlspecialchars($cliente) ?>" name="cliente">
                     </div>
                     <div class="form-group mb-0">
                       Estado:&nbsp;
@@ -76,7 +79,7 @@ include 'database.php';
                         $q = $pdo->prepare("SELECT id, estado FROM estados_factura ORDER BY id ASC");
                         $q->execute();
                         while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                          $sel = (isset($_POST['id_estado']) && in_array($fila['id'], $_POST['id_estado'])) ? ' selected' : '';
+                          $sel = in_array($fila['id'], $id_estado) ? ' selected' : '';
                           echo "<option value='{$fila['id']}'$sel>{$fila['estado']}</option>";
                         }
                         Database::disconnect();
@@ -85,6 +88,7 @@ include 'database.php';
                     </div>
                     <div class="form-group mb-0">
                       <button class="btn btn-primary" type="submit">Buscar</button>
+                      <a href="listarFacturasVenta.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                     </div>
                   </form>
                 </div>
@@ -108,6 +112,11 @@ include 'database.php';
                     <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_modificar_fv" title="Modificar/Anular">
                         <img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular">
+                      </a>&nbsp;
+                    <?php endif; ?>
+                    <?php if (!empty(tienePermiso(339))): ?>
+                      <a href="#" id="link_pagar_fv" title="Marcar Pagada">
+                        <img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada">
                       </a>&nbsp;
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(337))): ?>
@@ -151,14 +160,17 @@ include 'database.php';
                       </thead>
                       <tbody>
                         <?php
-                        if (!empty($_POST)) {
+                        $hasSearched = isset($_SESSION['filtros_listarFacturasVenta']);
+                        if ($hasSearched):
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                           $sql = "SELECT fv.id, fv.descripcion, tc.tipo, lc.letra, fv.numero,
                                          c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'), fp.forma_pago,
-                                         fv.subtotal_no_gravado, m.moneda, ef.estado,
+                                         fv.subtotal_no_gravado, m.moneda,
+                                         CASE WHEN fv.exportada=1 THEN 'Exportada' WHEN fv.pagada=1 THEN 'Pagada' ELSE ef.estado END as estado,
                                          fv.iva, fv.otros, fv.total,
-                                         DATE_FORMAT(fv.fecha_emitida,'%y%m%d')
+                                         DATE_FORMAT(fv.fecha_emitida,'%y%m%d'),
+                                         ef.id, fv.pagada
                                   FROM facturas_venta fv
                                   INNER JOIN tipos_comprobante   tc  ON tc.id  = fv.id_tipo_comprobante
                                   INNER JOIN letras_comprobante  lc  ON lc.id  = fv.id_letra_comprobante
@@ -168,31 +180,31 @@ include 'database.php';
                                   INNER JOIN estados_factura     ef  ON ef.id  = fv.id_estado
                                   WHERE 1=1";
                           $params = [];
-                          if (!empty($_POST['nro'])) {
+                          if (!empty($nro)) {
                             $sql .= " AND fv.numero = ?";
-                            $params[] = $_POST['nro'];
+                            $params[] = $nro;
                           }
-                          if (!empty($_POST['fecha'])) {
+                          if (!empty($fecha)) {
                             $sql .= " AND fv.fecha_emitida >= ?";
-                            $params[] = $_POST['fecha'];
+                            $params[] = $fecha;
                           }
-                          if (!empty($_POST['fechah'])) {
+                          if (!empty($fechah)) {
                             $sql .= " AND fv.fecha_emitida <= ?";
-                            $params[] = $_POST['fechah'];
+                            $params[] = $fechah;
                           }
-                          if (!empty($_POST['cliente'])) {
+                          if (!empty($cliente)) {
                             $sql .= " AND c.nombre LIKE ?";
-                            $params[] = '%' . $_POST['cliente'] . '%';
+                            $params[] = '%' . $cliente . '%';
                           }
-                          if (!empty($_POST['id_estado'][0])) {
-                            $placeholders = implode(',', array_fill(0, count($_POST['id_estado']), '?'));
+                          if (!empty($id_estado[0])) {
+                            $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
                             $sql .= " AND ef.id IN ($placeholders)";
-                            $params = array_merge($params, $_POST['id_estado']);
+                            $params = array_merge($params, $id_estado);
                           }
                           $q = $pdo->prepare($sql);
                           $q->execute($params);
                           while ($row = $q->fetch(PDO::FETCH_NUM)) {
-                            echo '<tr>';
+                            echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '">';
                             echo '<td class="d-none">' . $row[0] . '</td>';
                             echo '<td>' . htmlspecialchars($row[1]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[2]) . '</td>';
@@ -206,11 +218,11 @@ include 'database.php';
                             echo '<td>' . number_format($row[11] ?? 0, 2) . '</td>';
                             echo '<td>' . number_format($row[12] ?? 0, 2) . '</td>';
                             echo '<td>' . number_format($row[13] ?? 0, 2) . '</td>';
-                            echo '<td class="editable" data-id-posicion="' . $row[0] . '" data-id-estado="' . $row[10] . '" title="Doble click para editar">' . htmlspecialchars($row[10]) . '</td>';
+                            echo '<td>' . htmlspecialchars($row[10]) . '</td>';
                             echo '</tr>';
                           }
                           Database::disconnect();
-                        }
+                        endif;
                         ?>
                       </tbody>
                       <tfoot>
@@ -401,20 +413,7 @@ include 'database.php';
   <?php endwhile;
   Database::disconnect(); ?>
 
-  <!-- select oculto para edición inline de estado -->
-  <div style="display:none;">
-    <select id="select_estado_base">
-      <?php
-      $pdo = Database::connect();
-      $q   = $pdo->prepare("SELECT id, estado FROM estados_factura ORDER BY id ASC");
-      $q->execute();
-      while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
-        echo '<option value="' . $row['id'] . '">' . htmlspecialchars($row['estado']) . '</option>';
-      }
-      Database::disconnect();
-      ?>
-    </select>
-  </div>
+
 
   <!-- Scripts -->
   <script src="assets/js/jquery-3.2.1.min.js"></script>
@@ -627,6 +626,8 @@ include 'database.php';
       $(document).on('click', '#dataTables-example666 tbody tr td', function() {
         var t = $(this).parent();
         var id_fv = t.find('td:first-child').html();
+        var id_estado = parseInt(t.data('id-estado'));
+        var pagada = parseInt(t.data('pagada'));
 
         if (t.hasClass('selected')) {
           t.removeClass('selected');
@@ -638,19 +639,70 @@ include 'database.php';
           });
           t.addClass('selected');
           get_detalles(id_fv);
-          $('#link_modificar_fv').attr('href', 'modificarFacturaVenta.php?id=' + id_fv);
-          $('#link_nuevo_detalle_fv').attr('href', 'nuevoDetalleFacturaVenta.php?id=' + id_fv);
-          $('#link_nuevo_retencion_fv').attr('href', 'nuevaRetencionFacturaVenta.php?id=' + id_fv);
+          if (id_estado !== 3 && pagada !== 1) {
+            $('#link_modificar_fv').attr('href', 'nuevaFacturaVenta.php?id=' + id_fv);
+            $('#link_nuevo_detalle_fv').attr('href', 'nuevoDetalleFacturaVenta.php?id=' + id_fv);
+            $('#link_nuevo_retencion_fv').attr('href', 'nuevaRetencionFacturaVenta.php?id=' + id_fv);
+          } else {
+            $('#link_modificar_fv').attr('href', '#');
+            $('#link_nuevo_detalle_fv').attr('href', '#');
+            $('#link_nuevo_retencion_fv').attr('href', '#');
+          }
+          if (id_estado === 3 && pagada !== 1) {
+            $('#link_pagar_fv').attr('href', '#').data('id-fv', id_fv);
+          } else {
+            $('#link_pagar_fv').attr('href', '#').data('id-fv', '');
+          }
         }
       });
 
       function resetLinks() {
-        $('#link_modificar_fv, #link_nuevo_detalle_fv, #link_nuevo_retencion_fv').attr('href', '#');
+        $('#link_modificar_fv, #link_nuevo_detalle_fv, #link_nuevo_retencion_fv, #link_pagar_fv').attr('href', '#');
       }
 
-      $('#link_modificar_fv, #link_nuevo_detalle_fv, #link_nuevo_retencion_fv').on('click', function() {
-        if (this.href.replace(/#$/, '') === window.location.href.replace(/#$/, '')) {
-          alert('Por favor seleccione una Factura de Venta primero');
+      $("#link_modificar_fv").on("click", function(e) {
+        var l = document.location.href;
+        if (this.href == l || this.href == l + "#") {
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Venta para modificar");
+          } else {
+            alert("Esta factura ya fue definitiva y no puede editarse.");
+          }
+          e.preventDefault();
+        }
+      });
+      $("#link_nuevo_detalle_fv").on("click", function(e) {
+        var l = document.location.href;
+        if (this.href == l || this.href == l + "#") {
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Venta para añadir ítem de detalle");
+          } else {
+            alert("Esta factura ya fue definitiva y no puede editarse.");
+          }
+          e.preventDefault();
+        }
+      });
+      $("#link_nuevo_retencion_fv").on("click", function(e) {
+        var l = document.location.href;
+        if (this.href == l || this.href == l + "#") {
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Venta para añadir retención");
+          } else {
+            alert("Esta factura ya fue definitiva y no puede editarse.");
+          }
+          e.preventDefault();
+        }
+      });
+
+      $('#link_pagar_fv').on('click', function(e) {
+        e.preventDefault();
+        var id = $(this).data('id-fv');
+        if (!id) {
+          alert('Seleccione una factura definitiva no pagada.');
+          return;
+        }
+        if (confirm('¿Está seguro que desea marcar esta factura como pagada?')) {
+          window.location.href = 'pagarFacturaVenta.php?id=' + id;
         }
       });
 
@@ -676,36 +728,6 @@ include 'database.php';
         if (!$(this).attr('data-target') && (this.href || '').replace(/#$/, '') === window.location.href.replace(/#$/, '')) {
           alert('Por favor seleccione un detalle primero');
         }
-      });
-
-      $('body').on('dblclick', '.editable', function() {
-        var t = $(this);
-        var old_padding = t.css('padding');
-        var idPosicion = t.data('idPosicion');
-        var idEstado = t.data('idEstado');
-
-        t.css({
-          padding: '0'
-        });
-        var nuevo_select = $('#select_estado_base').clone().removeAttr('id');
-        t.html(nuevo_select);
-        nuevo_select.val(idEstado);
-
-        nuevo_select.on('blur', function() {
-          var nuevaEstado = nuevo_select.val();
-          var textoSeleccionado = nuevo_select.find('option[value="' + nuevaEstado + '"]').text();
-          $.post('modificarEstadoFacturaVenta.php', {
-              idPosicion: idPosicion,
-              idEstado: nuevaEstado
-            },
-            function() {
-              t.css({
-                  padding: old_padding
-                }).html(textoSeleccionado)
-                .attr('data-id-estado', nuevaEstado);
-            }
-          );
-        });
       });
 
     });

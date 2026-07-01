@@ -79,3 +79,4 @@ Thumbs.db
 
 /adjuntos_sitios/*
 !/adjuntos_sitios/.gitkeep
+.aider*

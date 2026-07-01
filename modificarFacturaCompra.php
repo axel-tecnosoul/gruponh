@@ -20,16 +20,24 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $qCheck = $pdo->prepare("SELECT id FROM facturas_compra WHERE id = ? AND id_estado = 5");
+        $qCheck = $pdo->prepare("SELECT id_estado, pagada, exportada FROM facturas_compra WHERE id = ?");
         $qCheck->execute([$id]);
-        if ($qCheck->fetchColumn()) {
-            header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue exportada y no puede editarse."));
+        $estadoRow = $qCheck->fetch(PDO::FETCH_ASSOC);
+        if ($estadoRow && ($estadoRow['id_estado'] == 3 || $estadoRow['pagada'] == 1 || $estadoRow['exportada'] == 1)) {
+            $msg = $estadoRow['pagada'] == 1 ? 'pagada' : ($estadoRow['exportada'] == 1 ? 'exportada' : 'definitiva');
+            header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue " . $msg . " y no puede editarse."));
             exit;
         }
 
         $pdo->beginTransaction();
 
         try {
+            // Concatenar punto_venta + nro_comprobante en numero
+            if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
+                $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
+                    . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
+            }
+
             $sql = "UPDATE `facturas_compra` set `descripcion` = ?, `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `numero` = ?, `id_cuenta_origen` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_recibida` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ?, `id_estado` = ? where id = ?";
             $q = $pdo->prepare($sql);
             $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$id]);
@@ -116,8 +124,9 @@
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
 
-        if (!empty($data['id_estado']) && $data['id_estado'] == 5) {
-            header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue exportada y no puede editarse."));
+        if (!empty($data['id_estado']) && ($data['id_estado'] == 3 || $data['pagada'] == 1 || $data['exportada'] == 1)) {
+            $msg = $data['pagada'] == 1 ? 'pagada' : ($data['exportada'] == 1 ? 'exportada' : 'definitiva');
+            header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue " . $msg . " y no puede editarse."));
             exit;
         }
 
@@ -241,7 +250,29 @@
 							</div>	
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Número(*)</label>
-							<div class="col-sm-9"><input name="numero" type="text" maxlength="99" class="form-control" value="<?php echo $data['numero']; ?>" required="required"></div>
+							<div class="col-sm-9">
+							  <?php
+							  $numeroCompleto = $data['numero'] ?? '';
+							  $pv = '';
+							  $nc = '';
+							  if (!empty($numeroCompleto) && str_contains($numeroCompleto, '-')) {
+							    list($pv, $nc) = explode('-', $numeroCompleto, 2);
+							  }
+							  ?>
+							  <div class="input-group">
+							    <input name="punto_venta" type="text" maxlength="4"
+							      class="form-control" placeholder="0001" required
+							      style="width:80px;flex:none;" value="<?= htmlspecialchars($pv) ?>"
+							      oninput="this.value=this.value.replace(/\D/g,'')">
+							    <div class="input-group-append">
+							      <span class="input-group-text">-</span>
+							    </div>
+							    <input name="nro_comprobante" type="text" maxlength="8"
+							      class="form-control" placeholder="00000001" required
+							      value="<?= htmlspecialchars($nc) ?>"
+							      oninput="this.value=this.value.replace(/\D/g,'')">
+							  </div>
+							</div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Proveedor(*)</label>

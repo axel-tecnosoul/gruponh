@@ -49,6 +49,12 @@ if (!empty($_POST)) {
   try {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
+    // Concatenar punto_venta + nro_comprobante en numero
+    if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
+      $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
+        . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
+    }
+
     $ocPostIds = [];
     if (!empty($_POST['id_orden_compra'])) {
       $ocPostIds = is_array($_POST['id_orden_compra'])
@@ -61,6 +67,16 @@ if (!empty($_POST)) {
 
     if ($isEditing) {
       $idFactura = (int)$_POST['id_factura'];
+
+      // Verificar que la factura siga siendo editable
+      $qCheckEstado = $pdo->prepare("SELECT id_estado, pagada, exportada FROM facturas_compra WHERE id = ?");
+      $qCheckEstado->execute([$idFactura]);
+      $estadoRow = $qCheckEstado->fetch(PDO::FETCH_ASSOC);
+      if (!$estadoRow) throw new Exception("Factura no encontrada.");
+      if ($estadoRow['id_estado'] == 3 || $estadoRow['pagada'] == 1 || $estadoRow['exportada'] == 1) {
+        $motivo = $estadoRow['pagada'] == 1 ? 'pagada' : ($estadoRow['exportada'] == 1 ? 'exportada' : 'definitiva');
+        throw new Exception("Esta factura ya fue " . $motivo . " y no puede editarse.");
+      }
 
       // UPDATE header
       $q = $pdo->prepare("UPDATE facturas_compra SET descripcion=?, id_tipo_comprobante=?, id_letra_comprobante=?, numero=?, id_cuenta_origen=?, id_empresa=?, fecha_emitida=?, fecha_recibida=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
@@ -356,9 +372,10 @@ if (!empty($_POST)) {
     $q->execute([$editId]);
     $facturaData = $q->fetch(PDO::FETCH_ASSOC);
 
-    if (!empty($facturaData['id_estado']) && $facturaData['id_estado'] == 5) {
-      echo '<script>alert("Esta factura ya fue exportada y no puede editarse");</script>';
-      echo '<div style="text-align:center;padding:40px;color:red;font-size:18px;">Esta factura ya fue exportada y no puede editarse.<br><a href="listarFacturasCompra.php">Volver al listado</a></div>';
+    if (!empty($facturaData['id_estado']) && ($facturaData['id_estado'] == 3 || $facturaData['pagada'] == 1 || $facturaData['exportada'] == 1)) {
+      $msg = $facturaData['pagada'] == 1 ? 'pagada' : ($facturaData['exportada'] == 1 ? 'exportada' : 'definitiva');
+      echo '<script>alert("Esta factura ya fue ' . $msg . ' y no puede editarse");</script>';
+      echo '<div style="text-align:center;padding:40px;color:red;font-size:18px;">Esta factura ya fue ' . $msg . ' y no puede editarse.<br><a href="listarFacturasCompra.php">Volver al listado</a></div>';
       exit;
     }
 
@@ -400,10 +417,11 @@ if (!empty($_POST)) {
       $qDet = $pdo->prepare("SELECT d.*, cc.descripcion AS concepto_text FROM facturas_compra_detalle d INNER JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable WHERE d.id_factura_compra = ?");
       $qDet->execute([$editId]);
       while ($row = $qDet->fetch(PDO::FETCH_ASSOC)) {
-        $qImp = $pdo->prepare("SELECT fcdx.id_compra_detalle, fcdx.cantidad, fcdx.precio, m.concepto
+        $qImp = $pdo->prepare("SELECT fcdx.id_compra_detalle, fcdx.cantidad, fcdx.precio, m.concepto, c.nro_oc
           FROM facturas_compra_detalle_x_compras_detalle fcdx
           INNER JOIN compras_detalle cd ON cd.id = fcdx.id_compra_detalle
           INNER JOIN materiales m ON m.id = cd.id_material
+          INNER JOIN compras c ON c.id = cd.id_compra
           WHERE fcdx.id_factura_compra_detalle = ?");
         $qImp->execute([$row['id']]);
         $impRows = $qImp->fetchAll(PDO::FETCH_ASSOC);
@@ -412,7 +430,7 @@ if (!empty($_POST)) {
         foreach ($impRows as $ir) {
           $imputacionesData[] = [
             'id_cd' => (int)$ir['id_compra_detalle'],
-            'concepto_text' => $ir['concepto'] ?? '',
+            'concepto_text' => 'OC #' . $ir['nro_oc'] . ' - ' . ($ir['concepto'] ?? ''),
             'cantidad' => (float)($ir['cantidad'] ?? $row['cantidad']),
             'precio' => (float)($ir['precio'] ?? $row['precio'])
           ];
@@ -508,6 +526,7 @@ if (!empty($_POST)) {
 $preseleccionado = false;
 $proyectoDatos = [];
 $certIds = [];
+$regimenesSeleccionados = [];
 $errorMsg = $errorMsg ?? '';
 
 $ocLabel = '';

@@ -93,7 +93,7 @@ if ($st) {
 	
 	$facturadoS = 0;
 	$facturadoUSD = 0;
-	$sql4 = " SELECT `id_moneda`, `total` FROM `facturas_venta` WHERE id_estado in (3,4) and id_proyecto = ".$row[0];
+	$sql4 = " SELECT `id_moneda`, `total` FROM `facturas_venta` WHERE id_estado = 3 and id_proyecto = ".$row[0];
 	foreach ($pdo->query($sql4) as $row4) {
 		if ($row4[0] == 1) { //dolares
 			$facturadoUSD += $row4[1];
@@ -104,7 +104,7 @@ if ($st) {
 	
 	$pagadoS = 0;
 	$pagadoUSD = 0;
-	$sql5 = " SELECT `id_moneda`, `total` FROM `facturas_venta` WHERE id_estado = 4 and id_proyecto = ".$row[0];
+	$sql5 = " SELECT `id_moneda`, `total` FROM `facturas_venta` WHERE id_estado = 3 AND pagada = 1 and id_proyecto = ".$row[0];
 	foreach ($pdo->query($sql5) as $row5) {
 		if ($row5[0] == 1) { //dolares
 			$pagadoUSD += $row5[1];

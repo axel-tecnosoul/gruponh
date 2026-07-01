@@ -102,8 +102,8 @@ $id_estado = $filters['id_estado'] ?? [];
 					echo '<a href="#" id="link_modificar_fc"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular"></a>';
 					echo '&nbsp;&nbsp;';
 				}
-				if (!empty(tienePermiso(342))) {
-					echo '<a href="#" id="link_exportar_fc"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar Factura" title="Exportar Factura"></a>';
+				if (!empty(tienePermiso(338))) {
+					echo '<a href="#" id="link_pagar_fc"><img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada" title="Marcar Pagada"></a>';
 					echo '&nbsp;&nbsp;';
 				}
 				if (!empty(tienePermiso(336))) {
@@ -141,8 +141,10 @@ $id_estado = $filters['id_estado'] ?? [];
                         </thead>
                         <tbody>
                           <?php
+                           $hasSearched = isset($_SESSION['filtros_listarFacturasCompra']);
+                           if ($hasSearched):
                             $pdo = Database::connect();
-                            $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, ef.estado, date_format(fc.`fecha_emitida`,'%y%m%d'), ef.id FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
+                            $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, CASE WHEN fc.exportada=1 THEN 'Exportada' WHEN fc.pagada=1 THEN 'Pagada' ELSE ef.estado END as estado, date_format(fc.`fecha_emitida`,'%y%m%d'), ef.id, fc.pagada FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
                             $params = [];
 
                             if (!empty($nro)) {
@@ -170,10 +172,10 @@ $id_estado = $filters['id_estado'] ?? [];
                             $q = $pdo->prepare($sql);
                             $q->execute($params);
                             foreach ($q as $row) {
-                                echo '<tr data-id-estado="'. $row[12] .'">';
+                                echo '<tr data-id-estado="'. $row[12] .'" data-pagada="'. (int)$row[13] .'">';
 								echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
-								echo '<td>'. $row[2] . '</td>';
+                                echo '<td>'. $row[2] . '</td>';
                                 echo '<td>'. $row[3] . '</td>';
                                 echo '<td>'. $row[4] . '</td>';
                                 echo '<td>'. $row[5] . '</td>';
@@ -185,6 +187,7 @@ $id_estado = $filters['id_estado'] ?? [];
                                 echo '</tr>';
                             }
 							Database::disconnect();
+                          endif;
                           ?>
                         </tbody>
 						<tfoot>
@@ -319,6 +322,7 @@ $id_estado = $filters['id_estado'] ?? [];
             <div>
               <strong id="labelProveedorSeleccionado"></strong><br>
               <small class="text-muted">Seleccione una o más órdenes de compra para crear la factura</small>
+              <span id="infoMonedaSel" class="text-info ml-2" style="font-size:0.85em;display:none;"></span>
             </div>
           </div>
           <div id="listaOC" style="max-height: 400px; overflow-y: auto;">
@@ -446,7 +450,8 @@ $id_estado = $filters['id_estado'] ?? [];
           if ($('#dataTables-example666 tbody tr.selected').length === 0) {
             alert("Por favor seleccione una Factura de Compra para modificar");
           } else {
-            alert("Esta factura ya fue exportada y no puede editarse.");
+            var est = $('#dataTables-example666 tbody tr.selected').data('id-estado');
+            alert("Esta factura ya fue " + (est == 5 ? 'exportada' : 'definitiva') + " y no puede editarse.");
           }
           e.preventDefault();
         }
@@ -473,15 +478,15 @@ $id_estado = $filters['id_estado'] ?? [];
           e.preventDefault();
         }
       })
-	  $("#link_exportar_fc").on("click",function(e){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
-            alert("Por favor seleccione una Factura de Compra para exportar");
-          } else {
-            alert("Solo se pueden exportar facturas terminadas (Definitiva o Pagada).");
-          }
-          e.preventDefault();
+	  $("#link_pagar_fc").on("click",function(e){
+        e.preventDefault();
+        var id = $(this).data('id-fc');
+        if (!id) {
+          alert("Seleccione una factura definitiva no pagada.");
+          return;
+        }
+        if (confirm("¿Está seguro que desea marcar esta factura como pagada?")) {
+          window.location.href = 'pagarFacturaCompra.php?id=' + id;
         }
       })
 	   
@@ -491,28 +496,23 @@ $id_estado = $filters['id_estado'] ?? [];
 
         let id_fc=t.find("td:first-child").html();
         let id_estado = parseInt(t.data('id-estado'));
+        let pagada = parseInt(t.data('pagada'));
 
         if(t.hasClass('selected')){
           deselectRow(t);
-		      get_detalles(id_fc)
+           get_detalles(id_fc)
           $("#link_modificar_fc").attr("href","#");
 		      $("#link_nuevo_detalle_fc").attr("href","#");
 			  $("#link_nuevo_retencion_fc").attr("href","#");
-			  $("#link_exportar_fc").attr("href","#");
+			  $("#link_pagar_fc").attr("href","#");
         }else{
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
 		      get_detalles(id_fc)
-          // Exportar: solo terminadas (3=Definitiva, 4=Pagada, 5=Exportada)
-          if ([3,4,5].indexOf(id_estado) !== -1) {
-            $("#link_exportar_fc").attr("href","exportarFacturaCompra.php?id="+id_fc);
-          } else {
-            $("#link_exportar_fc").attr("href","#");
-          }
-          // Modificar / agregar items: no se puede si ya fue exportada (5)
-          if (id_estado !== 5) {
+          // Modificar / agregar items: solo si no es definitiva, pagada ni exportada
+          if (id_estado !== 3 && pagada !== 1 && id_estado !== 5) {
             $("#link_modificar_fc").attr("href","nuevaFacturaCompra.php?id="+id_fc);
             $("#link_nuevo_detalle_fc").attr("href","nuevoDetalleFacturaCompra.php?id="+id_fc);
             $("#link_nuevo_retencion_fc").attr("href","nuevaRetencionFacturaCompra.php?id="+id_fc);
@@ -520,6 +520,12 @@ $id_estado = $filters['id_estado'] ?? [];
             $("#link_modificar_fc").attr("href","#");
             $("#link_nuevo_detalle_fc").attr("href","#");
             $("#link_nuevo_retencion_fc").attr("href","#");
+          }
+          // Marcar pagada: solo definitivas no pagadas
+          if (id_estado === 3 && pagada !== 1) {
+            $("#link_pagar_fc").attr("href","#").data('id-fc', id_fc).data('pagada', 0);
+          } else {
+            $("#link_pagar_fc").attr("href","#").data('id-fc', '').data('pagada', 1);
           }
         }
       });
@@ -763,15 +769,19 @@ $(document).on('click', '.fila-proveedor', function() {
       if (!ordenes || ordenes.length === 0) {
         $('#listaOC').html('<div class="alert alert-info mb-0">Este proveedor no tiene órdenes de compra pendientes de facturar.</div>');
         $('#btnContinuarConOC').hide();
+        $('#infoMonedaSel').hide();
         return;
       }
 
+      $('#infoMonedaSel').hide();
+
       var html = '<div class="list-group">';
       $.each(ordenes, function(i, oc) {
+        var ocMoneda = oc.moneda || 'N/A';
         var ocId = 'oc_' + oc.id;
-        html += '<div class="list-group-item p-0 border-0 mb-1">';
+        html += '<div class="list-group-item p-0 border-0 mb-1 item-oc" data-moneda="' + htmlEsc(ocMoneda) + '">';
 
-        // Cabecera con radio button y datos principales
+        // Cabecera con checkbox y datos principales
         html += '<div class="d-flex align-items-center p-2 bg-light rounded" style="cursor:pointer;" data-toggle="collapse" data-target="#collapse_oc_' + oc.id + '">';
         html += '<input type="checkbox" class="checkbox-oc mr-2" id="' + ocId + '" value="' + oc.id + '" onclick="event.stopPropagation()">';
         html += '<label for="' + ocId + '" class="mb-0 mr-2 font-weight-bold" style="color:#000;" onclick="event.stopPropagation()">OC #' + htmlEsc(oc.nro_oc) + '</label>';
@@ -829,9 +839,27 @@ $(document).on('click', '.fila-proveedor', function() {
   });
 });
 
-// Habilitar botón Continuar al seleccionar al menos una OC
+// Al seleccionar/deseleccionar OC: grisar las de moneda distinta
 $(document).on('change', '.checkbox-oc', function() {
-  idsOCSeleccionadas = $('.checkbox-oc:checked').map(function() { return $(this).val(); }).get();
+  var checked = $('.checkbox-oc:checked');
+
+  if (checked.length === 0) {
+    $('.item-oc').css('opacity', '1').find('.checkbox-oc').prop('disabled', false);
+    $('#infoMonedaSel').hide();
+  } else {
+    var monedaSel = checked.first().closest('.item-oc').data('moneda');
+    $('.item-oc').each(function() {
+      var itemMoneda = $(this).data('moneda');
+      if (itemMoneda === monedaSel) {
+        $(this).css('opacity', '1').find('.checkbox-oc').prop('disabled', false);
+      } else {
+        $(this).css('opacity', '0.4').find('.checkbox-oc').prop('disabled', true).prop('checked', false);
+      }
+    });
+    $('#infoMonedaSel').text('OC en ' + monedaSel + ' seleccionada — OCs en otras monedas deshabilitadas').show();
+  }
+
+  idsOCSeleccionadas = $('.checkbox-oc:checked:not(:disabled)').map(function() { return $(this).val(); }).get();
   $('#btnContinuarConOC').prop('disabled', idsOCSeleccionadas.length === 0);
 });
 
@@ -839,13 +867,15 @@ $(document).on('change', '.checkbox-oc', function() {
 $('#btnVolverProveedores').on('click', function() {
   $('#pasoOC').hide();
   $('#btnContinuarConOC').hide();
+  $('#infoMonedaSel').hide();
+  $('.item-oc').css('opacity', '1').find('.checkbox-oc').prop('disabled', false);
   $('#pasoProveedor').show();
   idsOCSeleccionadas = [];
 });
 
 // Continuar: ir al formulario de nueva factura con las OC seleccionadas
 $('#btnContinuarConOC').on('click', function() {
-  idsOCSeleccionadas = $('.checkbox-oc:checked').map(function() { return $(this).val(); }).get();
+  idsOCSeleccionadas = $('.checkbox-oc:checked:not(:disabled)').map(function() { return $(this).val(); }).get();
   if (idsOCSeleccionadas.length === 0) {
     alert('Por favor seleccione al menos una orden de compra.');
     return;
