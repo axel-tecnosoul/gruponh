@@ -172,6 +172,8 @@ UPDATE `certificados_maestros_lotes_occ_detalle`
     SET `lote` = `aperturado`
     WHERE `lote` IS NULL;
 
+--TODO APLICADO HASTA ACA //Lo borré sin querér
+
 -- Migración: múltiples OC por factura de compra
 -- Paso 1: Crear tabla pivote
 CREATE TABLE IF NOT EXISTS `facturas_compra_x_compras` (
@@ -201,3 +203,9 @@ ALTER TABLE `facturas_compra_detalle`
 ADD COLUMN `descripcion` varchar(255) DEFAULT NULL AFTER `id_concepto_contable`;
 
 INSERT INTO estados_factura (id, estado) VALUES (5, 'Exportada');
+
+ALTER TABLE facturas_compra ADD pagada tinyint(1) NOT NULL DEFAULT 0;
+ALTER TABLE facturas_venta ADD pagada tinyint(1) NOT NULL DEFAULT 0;
+
+UPDATE facturas_compra SET pagada = 1 WHERE id_estado = 4;
+UPDATE facturas_venta SET pagada = 1 WHERE id_estado = 4;
