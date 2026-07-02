@@ -209,3 +209,14 @@ ALTER TABLE facturas_venta ADD pagada tinyint(1) NOT NULL DEFAULT 0;
 
 UPDATE facturas_compra SET pagada = 1 WHERE id_estado = 4;
 UPDATE facturas_venta SET pagada = 1 WHERE id_estado = 4;
+
+ALTER TABLE facturas_compra ADD COLUMN IF NOT EXISTS exportada tinyint(4) NOT NULL DEFAULT 0;
+ALTER TABLE facturas_venta ADD COLUMN IF NOT EXISTS exportada tinyint(4) NOT NULL DEFAULT 0;
+
+UPDATE facturas_compra SET exportada = 1 WHERE id_estado = 5;
+UPDATE facturas_venta SET exportada = 1 WHERE id_estado = 5;
+
+UPDATE facturas_compra SET id_estado = 3 WHERE id_estado IN (4, 5);
+UPDATE facturas_venta SET id_estado = 3 WHERE id_estado IN (4, 5);
+
+DELETE FROM estados_factura WHERE id IN (4, 5);
