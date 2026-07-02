@@ -224,3 +224,9 @@ DELETE FROM estados_factura WHERE id IN (4, 5);
 ALTER TABLE `facturas_compra_detalle_x_compras_detalle`
   ADD COLUMN `cantidad` DOUBLE NOT NULL DEFAULT 0 AFTER `id_compra_detalle`,
   ADD COLUMN `precio` DOUBLE NOT NULL DEFAULT 0 AFTER `cantidad`;
+
+ALTER TABLE `conceptos_contables`
+  ADD COLUMN `id_alicuota_iva` INT(11) DEFAULT NULL;
+
+ALTER TABLE `facturas_compra_detalle`
+  ADD COLUMN `porc_descuento` double NOT NULL DEFAULT 0 AFTER `descripcion`;

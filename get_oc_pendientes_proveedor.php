@@ -23,7 +23,7 @@ if ($idProveedor === 0) {
     $sql = "SELECT cu.id, cu.razon_social, cu.cuit, COUNT(c.id) AS cant_oc
             FROM cuentas cu
             INNER JOIN compras c ON c.id_cuenta_proveedor = cu.id
-            WHERE c.id_estado_compra NOT IN (4)
+            WHERE c.id_estado_compra NOT IN (1, 2, 4)
               AND (
                 SELECT COALESCE(SUM(cd.cantidad), 0) FROM compras_detalle cd WHERE cd.id_compra = c.id
               ) > (
@@ -47,7 +47,7 @@ if ($idProveedor === 0) {
             FROM compras c
             INNER JOIN monedas m ON m.id = c.id_moneda
             INNER JOIN estados_compra ec ON ec.id = c.id_estado_compra
-            WHERE c.id_estado_compra NOT IN (4)
+            WHERE c.id_estado_compra NOT IN (1, 2, 4)
               AND c.id_cuenta_proveedor = ?
               AND (
                 SELECT COALESCE(SUM(cd.cantidad), 0) FROM compras_detalle cd WHERE cd.id_compra = c.id

@@ -113,7 +113,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                               <?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              $q = $pdo->prepare("SELECT id, nro_oc FROM compras WHERE 1");
+                              $q = $pdo->prepare("SELECT id, nro_oc FROM compras WHERE id_estado_compra NOT IN (1, 2, 4)");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 echo "<option value='{$f['id']}'>" . htmlspecialchars($f['nro_oc']) . "</option>";
@@ -660,14 +660,16 @@ $fv = function($key, $default = '') use ($facturaData) {
                             <th>Base imponible</th>
                             <th>%</th>
                             <th>Retención</th>
+                            <th>Editar</th>
                             <th>Quitar</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th colspan="4" class="text-right">Total:</th>
+                            <th colspan="5" class="text-right">Total:</th>
                             <th id="totalRetenciones">$ 0.00</th>
+                            <th></th>
                             <th></th>
                           </tr>
                         </tfoot>
@@ -705,6 +707,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                     <div class="form-group row">
                       <div class="col-sm-9 offset-sm-3">
                         <button type="button" class="btn btn-success" id="btnAgregarRetencion">Agregar Retención</button>
+                        <button type="button" class="btn btn-light ml-2" id="btnCancelarRetencion" style="display:none;">Cancelar</button>
                       </div>
                     </div>
 
@@ -787,6 +790,7 @@ $fv = function($key, $default = '') use ($facturaData) {
     var detalles = [];
     var retenciones = [];
     var editIndex = -1;
+    var editRetencionIndex = -1;
 
     <?php if ($vista === 'compra'): ?>
     function jsRecargar() {
@@ -873,6 +877,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             '<td>$ ' + parseFloat(base).toFixed(2) + '</td>' +
             '<td>' + parseFloat(item.porcentaje || 0).toFixed(2) + '%</td>' +
             '<td>$ ' + parseFloat(item.monto).toFixed(2) + '</td>' +
+            '<td><a href="javascript:void(0)" onclick="editarRetencion(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a></td>' +
             '<td><a href="javascript:void(0)" onclick="quitarRetencion(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'
           );
@@ -884,6 +889,7 @@ $fv = function($key, $default = '') use ($facturaData) {
       $('#retenciones_json').val(JSON.stringify(retenciones));
 
       actualizarGranTotal();
+      if (typeof feather !== 'undefined') { feather.replace(); }
     }
 
     function quitarDetalle(index) {
@@ -939,20 +945,65 @@ $fv = function($key, $default = '') use ($facturaData) {
         var st = storedMap[item.id_cd] || {};
         var cant = st.cantidad || item.restante || 0;
         var prec = st.precio || item.oc_precio || 0;
+        var sub = cant * prec;
         var label = (item.nro_oc ? 'OC #' + item.nro_oc + ' - ' : '') + htmlEsc(item.concepto_text);
         container.append(
           '<div class="row imp-sub-row align-items-center" data-cd-id="' + item.id_cd + '" data-nro-oc="' + (item.nro_oc || '') + '" style="margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid #eee;">' +
-          '<div class="col-md-6"><span class="imp-sub-label" style="font-size:13px;">' + label + '</span></div>' +
-          '<div class="col-md-3"><span style="font-size:13px; color:#333; margin-right:6px;">Cant:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-cant" style="display:inline-block; width:65%;" value="' + cant + '" data-restante="' + (item.restante || 0) + '"></div>' +
-          '<div class="col-md-3"><span style="font-size:13px; color:#333; margin-right:6px;">Precio:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-prec" style="display:inline-block; width:65%;" value="' + prec + '"></div>' +
+          '<div class="col-md-5"><span class="imp-sub-label" style="font-size:13px;">' + label + '</span></div>' +
+          '<div class="col-md-2"><span style="font-size:13px; color:#333; margin-right:6px;">Cant:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-cant" style="display:inline-block; width:60%;" value="' + cant + '" data-restante="' + (item.restante || 0) + '"></div>' +
+          '<div class="col-md-2"><span style="font-size:13px; color:#333; margin-right:6px;">Precio:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-prec" style="display:inline-block; width:60%;" value="' + prec + '"></div>' +
+          '<div class="col-md-3 text-right"><span class="imp-sub-subtotal" style="font-size:13px; font-weight:bold;">$ ' + sub.toFixed(2) + '</span></div>' +
           '</div>'
         );
       });
+      container.append(
+        '<div class="row" id="imp-sub-total-row" style="margin:0; padding:8px 0; border-top:2px solid #333;">' +
+        '<div class="col-md-9 text-right font-weight-bold">Total Imputación:</div>' +
+        '<div class="col-md-3 text-right"><span id="imp-sub-total-value" style="font-weight:bold;">$ 0.00</span></div>' +
+        '</div>'
+      );
+      actualizarSubTotalesImputacion();
+    }
+
+    function actualizarSubTotalesImputacion() {
+      var total = 0;
+      $('#imp-sub-lines .imp-sub-row').each(function() {
+        var cant = parseFloat($(this).find('.imp-sub-cant').val()) || 0;
+        var prec = parseFloat($(this).find('.imp-sub-prec').val()) || 0;
+        var sub = cant * prec;
+        $(this).find('.imp-sub-subtotal').text('$ ' + sub.toFixed(2));
+        total += sub;
+      });
+      $('#imp-sub-total-value').text('$ ' + total.toFixed(2));
     }
 
     function quitarRetencion(index) {
+      if (editRetencionIndex === index) {
+        editRetencionIndex = -1;
+        $('#btnAgregarRetencion').text('Agregar Retención');
+        $('#btnCancelarRetencion').hide();
+        $('#ret_regimen').val('').trigger('change');
+        $('#ret_base').val('');
+        $('#ret_porcentaje_label').text('%');
+        $('#ret_monto_calculado').hide().text('');
+      }
       retenciones.splice(index, 1);
       renderRetenciones();
+    }
+
+    function editarRetencion(index) {
+      if (editRetencionIndex >= 0 && editRetencionIndex !== index) {
+        editRetencionIndex = -1;
+        $('#btnAgregarRetencion').text('Agregar Retención');
+        $('#btnCancelarRetencion').hide();
+      }
+      editRetencionIndex = index;
+      var item = retenciones[index];
+      $('#ret_regimen').val(item.id_regimen).trigger('change');
+      $('#ret_base').val(item.base);
+      calcularRetencion();
+      $('#btnAgregarRetencion').text('Modificar Retención');
+      $('#btnCancelarRetencion').show();
     }
 
     function actualizarGranTotal() {
@@ -1337,19 +1388,42 @@ $fv = function($key, $default = '') use ($facturaData) {
 
         var monto = base * porc / 100;
 
-        retenciones.push({
-          id_regimen: idRegimen,
-          regimen_text: regimenText,
-          monto: monto,
-          base: base,
-          porcentaje: porc
-        });
+        if (editRetencionIndex >= 0) {
+          retenciones[editRetencionIndex] = {
+            id_regimen: idRegimen,
+            regimen_text: regimenText,
+            monto: monto,
+            base: base,
+            porcentaje: porc
+          };
+          editRetencionIndex = -1;
+          $('#btnAgregarRetencion').text('Agregar Retención');
+          $('#btnCancelarRetencion').hide();
+        } else {
+          retenciones.push({
+            id_regimen: idRegimen,
+            regimen_text: regimenText,
+            monto: monto,
+            base: base,
+            porcentaje: porc
+          });
+        }
 
         $('#ret_regimen').val('').trigger('change');
         $('#ret_base').val('');
         $('#ret_porcentaje_label').text('%');
         $('#ret_monto_calculado').hide().text('');
         renderRetenciones();
+      });
+
+      $('#btnCancelarRetencion').on('click', function() {
+        editRetencionIndex = -1;
+        $('#btnAgregarRetencion').text('Agregar Retención');
+        $('#btnCancelarRetencion').hide();
+        $('#ret_regimen').val('').trigger('change');
+        $('#ret_base').val('');
+        $('#ret_porcentaje_label').text('%');
+        $('#ret_monto_calculado').hide().text('');
       });
 
       $('#ret_regimen').on('change', function() {
@@ -1438,6 +1512,11 @@ $fv = function($key, $default = '') use ($facturaData) {
       <?php endif; ?>
       <?php endif; ?>
       <?php endif; ?>
+
+      $('#imp-sub-lines').on('input', '.imp-sub-cant, .imp-sub-prec', function() {
+        actualizarSubTotalesImputacion();
+      });
+
     });
   </script>
 

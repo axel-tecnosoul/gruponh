@@ -1639,7 +1639,8 @@ INSERT INTO `computos_revisiones` (`id`, `id_computo`, `nro_revision`, `comentar
 CREATE TABLE `conceptos_contables` (
   `id` int(11) NOT NULL,
   `codigo` varchar(99) NOT NULL,
-  `descripcion` varchar(99) NOT NULL
+  `descripcion` varchar(99) NOT NULL,
+  `id_alicuota_iva` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -13599,7 +13600,9 @@ CREATE TABLE `facturas_compra_detalle` (
   `cantidad` int(11) NOT NULL,
   `precio` double NOT NULL,
   `subtotal` double NOT NULL,
-  `id_concepto_contable` int(11) NOT NULL
+  `id_concepto_contable` int(11) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL,
+  `porc_descuento` double NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -13624,7 +13627,9 @@ INSERT INTO `facturas_compra_detalle` (`id`, `id_factura_compra`, `cantidad`, `p
 CREATE TABLE `facturas_compra_detalle_x_compras_detalle` (
   `id` int(11) NOT NULL,
   `id_factura_compra_detalle` int(11) NOT NULL,
-  `id_compra_detalle` int(11) NOT NULL
+  `id_compra_detalle` int(11) NOT NULL,
+  `cantidad` double NOT NULL DEFAULT 0,
+  `precio` double NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
