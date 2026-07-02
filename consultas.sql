@@ -220,3 +220,7 @@ UPDATE facturas_compra SET id_estado = 3 WHERE id_estado IN (4, 5);
 UPDATE facturas_venta SET id_estado = 3 WHERE id_estado IN (4, 5);
 
 DELETE FROM estados_factura WHERE id IN (4, 5);
+
+ALTER TABLE `facturas_compra_detalle_x_compras_detalle`
+  ADD COLUMN `cantidad` DOUBLE NOT NULL DEFAULT 0 AFTER `id_compra_detalle`,
+  ADD COLUMN `precio` DOUBLE NOT NULL DEFAULT 0 AFTER `cantidad`;
