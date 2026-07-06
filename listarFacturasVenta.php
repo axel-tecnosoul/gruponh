@@ -11,6 +11,7 @@ $nro = $filters['nro'] ?? '';
 $fecha = $filters['fecha'] ?? '';
 $fechah = $filters['fechah'] ?? '';
 $cliente = $filters['cliente'] ?? '';
+$tipo_letra = $filters['tipo_letra'] ?? '';
 $id_estado = $filters['id_estado'] ?? [];
 ?>
 <!DOCTYPE html>
@@ -70,6 +71,23 @@ $id_estado = $filters['id_estado'] ?? [];
                         value="<?= htmlspecialchars($cliente) ?>" name="cliente">
                     </div>
                     <div class="form-group mb-0">
+                      Tipo:&nbsp;
+                      <select name="tipo_letra" class="form-control">
+                        <option value="">Todos</option>
+                        <?php
+                        $pdoTL = Database::connect();
+                        $qTL = $pdoTL->prepare("SELECT DISTINCT CONCAT(tc.tipo, ' ', lc.letra) as tipo_letra FROM facturas_venta fv INNER JOIN tipos_comprobante tc ON tc.id = fv.id_tipo_comprobante INNER JOIN letras_comprobante lc ON lc.id = fv.id_letra_comprobante WHERE 1 ORDER BY tipo_letra");
+                        $qTL->execute();
+                        while ($filaTL = $qTL->fetch(PDO::FETCH_ASSOC)) {
+                          echo "<option value='".$filaTL['tipo_letra']."'";
+                          if ($tipo_letra === $filaTL['tipo_letra']) echo " selected";
+                          echo ">".$filaTL['tipo_letra']."</option>";
+                        }
+                        Database::disconnect();
+                        ?>
+                      </select>
+                    </div>
+                    <div class="form-group mb-0">
                       Estado:&nbsp;
                       <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
                         <option value="">Todos</option>
@@ -120,18 +138,18 @@ $id_estado = $filters['id_estado'] ?? [];
                       </a>&nbsp;
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(337))): ?>
-                      <a href="#" id="link_nuevo_detalle_fv" title="Añadir ítem Detalle">
+                      <?php /* <a href="#" id="link_nuevo_detalle_fv" title="Añadir ítem Detalle">
                         <img src="img/venc.jpg" width="24" height="25" border="0" alt="Añadir ítem Detalle">
                       </a>&nbsp;
                       <a href="#" id="link_nuevo_retencion_fv" title="Añadir Retenciones">
                         <img src="img/edit3.png" width="24" height="25" border="0" alt="Añadir Retenciones">
-                      </a>&nbsp;
+                      </a>&nbsp; */ ?>
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(343))): ?>
-                      <a href="exportFacturasVenta.php" title="Exportar">
+                      <a href="#" id="link_exportar_fv" title="Exportar">
                         <img src="img/xls.png" width="24" height="25" border="0" alt="Exportar">
                       </a>&nbsp;
-                      <a href="exportFacturasVentaBejerman.php" title="Bejerman TXT">
+                      <a href="#" id="link_exportar_bejerman_fv" title="Bejerman TXT">
                         <img src="img/import.png" width="24" height="25" border="0" alt="Bejerman TXT">
                       </a>&nbsp;
                     <?php endif; ?>
@@ -142,15 +160,14 @@ $id_estado = $filters['id_estado'] ?? [];
                     <table class="display truncate" id="dataTables-example666">
                       <thead>
                         <tr>
+                          <th style="width:1%; white-space:nowrap"><input type="checkbox" id="select-all-fv"></th>
                           <th class="d-none">ID</th>
                           <th>Descripción</th>
                           <th>Tipo</th>
-                          <th>Letra</th>
                           <th>Número</th>
                           <th>Cliente</th>
                           <th>Fecha</th>
                           <th>Condición</th>
-                          <th>Moneda</th>
                           <th>Total s/Imp</th>
                           <th>IVA</th>
                           <th>Otros</th>
@@ -196,6 +213,10 @@ $id_estado = $filters['id_estado'] ?? [];
                             $sql .= " AND c.nombre LIKE ?";
                             $params[] = '%' . $cliente . '%';
                           }
+                          if (!empty($tipo_letra)) {
+                            $sql .= " AND CONCAT(tc.tipo, ' ', lc.letra) = ?";
+                            $params[] = $tipo_letra;
+                          }
                           if (!empty($id_estado[0])) {
                             $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
                             $sql .= " AND ef.id IN ($placeholders)";
@@ -205,19 +226,18 @@ $id_estado = $filters['id_estado'] ?? [];
                           $q->execute($params);
                           while ($row = $q->fetch(PDO::FETCH_NUM)) {
                             echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '">';
+                            echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
                             echo '<td class="d-none">' . $row[0] . '</td>';
                             echo '<td>' . htmlspecialchars($row[1]) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[2]) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[3]) . '</td>';
+                            echo '<td>' . htmlspecialchars($row[2]) . ' ' . htmlspecialchars($row[3]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[4]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[5]) . '</td>';
                             echo '<td><span style="display:none;">' . $row[14] . '</span>' . htmlspecialchars($row[6]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[7]) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[9]) . '</td>';
-                            echo '<td>' . number_format($row[8]  ?? 0, 2) . '</td>';
-                            echo '<td>' . number_format($row[11] ?? 0, 2) . '</td>';
-                            echo '<td>' . number_format($row[12] ?? 0, 2) . '</td>';
-                            echo '<td>' . number_format($row[13] ?? 0, 2) . '</td>';
+                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[8]  ?? 0, 2) . '</td>';
+                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[11] ?? 0, 2) . '</td>';
+                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[12] ?? 0, 2) . '</td>';
+                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[13] ?? 0, 2) . '</td>';
                             echo '<td>' . htmlspecialchars($row[10]) . '</td>';
                             echo '</tr>';
                           }
@@ -227,15 +247,14 @@ $id_estado = $filters['id_estado'] ?? [];
                       </tbody>
                       <tfoot>
                         <tr>
+                          <th style="width:1%"></th>
                           <th class="d-none">ID</th>
                           <th>Descripción</th>
                           <th>Tipo</th>
-                          <th>Letra</th>
                           <th>Número</th>
                           <th>Cliente</th>
                           <th>Fecha</th>
                           <th>Condición</th>
-                          <th>Moneda</th>
                           <th>Total s/Imp</th>
                           <th>IVA</th>
                           <th>Otros</th>
@@ -299,6 +318,26 @@ $id_estado = $filters['id_estado'] ?? [];
         </div><!-- /container-fluid -->
       </div><!-- /page-body -->
       <?php include("footer.php"); ?>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalExportarFV" tabindex="-1" role="dialog" aria-labelledby="modalExportarFVLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalExportarFVLabel">Exportar facturas de venta</h5>
+          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+        </div>
+        <div class="modal-body">
+          <p>Hay <strong id="cantSeleccionadosFV">0</strong> facturas seleccionadas.</p>
+          <p>¿Qué desea exportar?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" id="btnExportarSeleccionadosFV">Exportar seleccionados</button>
+          <button type="button" class="btn btn-secondary" id="btnExportarTodosFV">Exportar todos</button>
+          <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -453,7 +492,8 @@ $id_estado = $filters['id_estado'] ?? [];
     $(document).ready(function() {
 
       // ── DataTable facturas (666) ─────────────────────────────────────
-      $('#dataTables-example666 tfoot th').each(function() {
+      $('#dataTables-example666 tfoot th').each(function(i) {
+        if (i === 0) return;
         var t = $(this).text();
         $(this).html('<input type="text" size="' + t.length + '" placeholder="' + t + '" />');
       });
@@ -468,10 +508,10 @@ $id_estado = $filters['id_estado'] ?? [];
           [10, 25, 50, 100, 500, 1000]
         ],
         language: dtLang(),
-        columnDefs: [{
-          targets: [0],
-          className: 'd-none'
-        }]
+        columnDefs: [
+          { targets: 0, width: '1%', className: 'dt-center' },
+          { targets: 1, className: 'd-none' }
+        ]
       });
 
       // ── DataTable detalles (667) ─────────────────────────────────────
@@ -625,7 +665,7 @@ $id_estado = $filters['id_estado'] ?? [];
 
       $(document).on('click', '#dataTables-example666 tbody tr td', function() {
         var t = $(this).parent();
-        var id_fv = t.find('td:first-child').html();
+        var id_fv = t.find('td:nth-child(2)').html();
         var id_estado = parseInt(t.data('id-estado'));
         var pagada = parseInt(t.data('pagada'));
 
@@ -728,6 +768,57 @@ $id_estado = $filters['id_estado'] ?? [];
         if (!$(this).attr('data-target') && (this.href || '').replace(/#$/, '') === window.location.href.replace(/#$/, '')) {
           alert('Por favor seleccione un detalle primero');
         }
+      });
+
+      $('#select-all-fv').on('change', function() {
+        var checked = this.checked;
+        $('.chk-factura').each(function() {
+          if (!$(this).prop('disabled')) $(this).prop('checked', checked);
+        });
+      });
+
+      $('#link_exportar_fv').on('click', function(e) {
+        e.preventDefault();
+        var ids = $('.chk-factura:checked').map(function() { return $(this).val(); }).get();
+        if (ids.length === 0) {
+          window.open('exportFacturasVenta.php', '_blank');
+          return;
+        }
+        $('#modalExportarFVLabel').text('Exportar facturas de venta (Excel)');
+        $('#cantSeleccionadosFV').text(ids.length);
+        $('#modalExportarFV').modal('show');
+        $('#btnExportarSeleccionadosFV').off('click').on('click', function() {
+          window.open('exportFacturasVenta.php?ids=' + ids.join(','), '_blank');
+          $('#modalExportarFV').modal('hide');
+        });
+        $('#btnExportarTodosFV').off('click').on('click', function() {
+          window.open('exportFacturasVenta.php', '_blank');
+          $('#modalExportarFV').modal('hide');
+        });
+      });
+
+      $('#link_exportar_bejerman_fv').on('click', function(e) {
+        e.preventDefault();
+        var ids = $('.chk-factura:checked').map(function() { return $(this).val(); }).get();
+        if (ids.length === 0) {
+          window.open('exportFacturasVentaBejerman.php', '_blank');
+          return;
+        }
+        $('#modalExportarFVLabel').text('Exportar facturas de venta (Bejerman)');
+        $('#cantSeleccionadosFV').text(ids.length);
+        $('#modalExportarFV').modal('show');
+        $('#btnExportarSeleccionadosFV').off('click').on('click', function() {
+          window.open('exportFacturasVentaBejerman.php?ids=' + ids.join(','), '_blank');
+          $('#modalExportarFV').modal('hide');
+        });
+        $('#btnExportarTodosFV').off('click').on('click', function() {
+          window.open('exportFacturasVentaBejerman.php', '_blank');
+          $('#modalExportarFV').modal('hide');
+        });
+      });
+
+      $(document).on('click', '#dataTables-example666 tbody .chk-factura', function(e) {
+        e.stopPropagation();
       });
 
     });

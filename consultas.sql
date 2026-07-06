@@ -230,3 +230,11 @@ ALTER TABLE `conceptos_contables`
 
 ALTER TABLE `facturas_compra_detalle`
   ADD COLUMN `porc_descuento` double NOT NULL DEFAULT 0 AFTER `descripcion`;
+
+UPDATE facturas_compra SET id_estado = 2 WHERE id_estado = 1;
+
+-- 2. Migrar facturas de venta que estén en Pendiente a Editable
+UPDATE facturas_venta SET id_estado = 2 WHERE id_estado = 1;
+
+-- 3. Eliminar el estado Pendiente
+DELETE FROM estados_factura WHERE id = 1;

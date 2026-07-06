@@ -9,9 +9,21 @@ require 'database.php';
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+$ids = isset($_GET['ids']) ? array_map('intval', array_filter(explode(',', $_GET['ids']))) : [];
+$idFilter = '';
+$params = [];
+if (!empty($ids)) {
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $idFilter = " AND fc.id IN ($placeholders) ";
+    $params = $ids;
+    $extraFilter = " AND fc.id_estado = 3 ";
+} else {
+    $extraFilter = " AND fc.id_estado = 3 AND fc.exportada = 0 ";
+}
+
 try {
   // Cabeceras de facturas compra
-  $qCab = $pdo->query("SELECT fc.id, fc.descripcion, tc.tipo, lc.letra, fc.numero,
+  $qCab = $pdo->prepare("SELECT fc.id, fc.descripcion, tc.tipo, lc.letra, fc.numero,
                               cu.razon_social, cu.cuit, e.empresa,
                               DATE_FORMAT(fc.fecha_emitida,'%Y%m%d') as fe,
                               fc.total
@@ -20,8 +32,9 @@ try {
                        INNER JOIN letras_comprobante lc ON lc.id = fc.id_letra_comprobante
                        INNER JOIN cuentas cu ON cu.id = fc.id_cuenta_origen
                        INNER JOIN empresas e ON e.id = fc.id_empresa
-                       WHERE fc.id_estado = 3 AND fc.exportada = 0
+                       WHERE 1 $extraFilter $idFilter
                        ORDER BY fc.id");
+  $qCab->execute($params);
   $facturas = $qCab->fetchAll(PDO::FETCH_ASSOC);
 
   if (empty($facturas)) {
@@ -29,22 +42,24 @@ try {
   }
 
   // Todos los items
-  $qDet = $pdo->query("SELECT fc.id as factura_id, d.cantidad, d.precio,
+  $qDet = $pdo->prepare("SELECT fc.id as factura_id, d.cantidad, d.precio,
                               COALESCE(d.descripcion, d.texto_impreso, cc.descripcion, '') as descripcion_det
                        FROM facturas_compra fc
                        INNER JOIN facturas_compra_detalle d ON d.id_factura_compra = fc.id
                        LEFT JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable
-                       WHERE fc.id_estado = 3 AND fc.exportada = 0
+                       WHERE 1 $extraFilter $idFilter
                        ORDER BY fc.id, d.id");
+  $qDet->execute($params);
   $itemsRaw = $qDet->fetchAll(PDO::FETCH_ASSOC);
 
   // Todas las retenciones
-  $qRet = $pdo->query("SELECT fc.id as factura_id, r.monto, rf.regimen
+  $qRet = $pdo->prepare("SELECT fc.id as factura_id, r.monto, rf.regimen
                        FROM facturas_compra fc
                        INNER JOIN facturas_compra_retenciones r ON r.id_factura_compra = fc.id
                        LEFT JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
-                       WHERE fc.id_estado = 3 AND fc.exportada = 0
+                       WHERE 1 $extraFilter $idFilter
                        ORDER BY fc.id");
+  $qRet->execute($params);
   $retsRaw = $qRet->fetchAll(PDO::FETCH_ASSOC);
 
   // Agrupar por factura_id

@@ -13556,7 +13556,6 @@ CREATE TABLE `facturas_compra` (
   `descripcion` varchar(199) NOT NULL,
   `id_tipo_comprobante` int(11) NOT NULL,
   `id_letra_comprobante` int(11) NOT NULL,
-  `id_orden_compra` int(11) NOT NULL,
   `numero` varchar(99) NOT NULL,
   `id_cuenta_origen` int(11) NOT NULL,
   `id_empresa` int(11) NOT NULL,
@@ -13591,6 +13590,17 @@ INSERT INTO `facturas_compra` (`id`, `descripcion`, `id_tipo_comprobante`, `id_l
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `facturas_compra_x_compras`
+--
+
+CREATE TABLE `facturas_compra_x_compras` (
+  `id` int(11) NOT NULL,
+  `id_factura_compra` int(11) NOT NULL,
+  `id_compra` int(11) NOT NULL,
+  `estado_anterior` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
 -- Estructura de tabla para la tabla `facturas_compra_detalle`
 --
 
@@ -13602,7 +13612,8 @@ CREATE TABLE `facturas_compra_detalle` (
   `subtotal` double NOT NULL,
   `id_concepto_contable` int(11) NOT NULL,
   `descripcion` varchar(255) DEFAULT NULL,
-  `porc_descuento` double NOT NULL DEFAULT 0
+  `porc_descuento` double NOT NULL DEFAULT 0,
+  `texto_impreso` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -13722,7 +13733,8 @@ CREATE TABLE `facturas_venta_detalle` (
   `cantidad` int(11) NOT NULL,
   `precio` double NOT NULL,
   `subtotal` double NOT NULL,
-  `id_concepto_contable` int(11) NOT NULL
+  `id_concepto_contable` int(11) NOT NULL,
+  `texto_impreso` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -31907,6 +31919,14 @@ ALTER TABLE `facturas_compra_detalle_x_compras_detalle`
   ADD KEY `id_factura_compra_detalle` (`id_factura_compra_detalle`);
 
 --
+-- Indices de la tabla `facturas_compra_x_compras`
+--
+ALTER TABLE `facturas_compra_x_compras`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `id_factura_compra` (`id_factura_compra`),
+  ADD KEY `id_compra` (`id_compra`);
+
+--
 -- Indices de la tabla `facturas_compra_retenciones`
 --
 ALTER TABLE `facturas_compra_retenciones`
@@ -32874,6 +32894,12 @@ ALTER TABLE `facturas_compra_detalle_x_compras_detalle`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
+-- AUTO_INCREMENT de la tabla `facturas_compra_x_compras`
+--
+ALTER TABLE `facturas_compra_x_compras`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT de la tabla `facturas_compra_retenciones`
 --
 ALTER TABLE `facturas_compra_retenciones`
@@ -33617,6 +33643,13 @@ ALTER TABLE `facturas_compra_detalle`
 ALTER TABLE `facturas_compra_detalle_x_compras_detalle`
   ADD CONSTRAINT `facturas_compra_detalle_x_compras_detalle_ibfk_1` FOREIGN KEY (`id_compra_detalle`) REFERENCES `compras_detalle` (`id`),
   ADD CONSTRAINT `facturas_compra_detalle_x_compras_detalle_ibfk_2` FOREIGN KEY (`id_factura_compra_detalle`) REFERENCES `facturas_compra_detalle` (`id`);
+
+--
+-- Filtros para la tabla `facturas_compra_x_compras`
+--
+ALTER TABLE `facturas_compra_x_compras`
+  ADD CONSTRAINT `fcxc_ibfk_1` FOREIGN KEY (`id_factura_compra`) REFERENCES `facturas_compra` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fcxc_ibfk_2` FOREIGN KEY (`id_compra`) REFERENCES `compras` (`id`);
 
 --
 -- Filtros para la tabla `facturas_compra_retenciones`

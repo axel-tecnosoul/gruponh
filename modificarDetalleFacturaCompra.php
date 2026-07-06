@@ -64,7 +64,7 @@
         $q->execute([$_GET['id']]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
 		
-		$sql2 = "select c.total,c.id from compras c inner join facturas_compra f on f.id_orden_compra = c.id where f.id = ? ";
+		$sql2 = "select c.total,c.id from compras c inner join facturas_compra_x_compras fxc on fxc.id_compra = c.id inner join facturas_compra f on f.id = fxc.id_factura_compra where f.id = ? ";
         $q2 = $pdo->prepare($sql2);
         $q2->execute([$data['id_factura_compra']]);
         $data2 = $q2->fetch(PDO::FETCH_ASSOC);

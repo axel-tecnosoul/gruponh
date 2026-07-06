@@ -43,8 +43,18 @@ include 'database.php';
 		              <?php     
 						$pdo = Database::connect();
 								 
-						$sql = " SELECT fc.`id`, fc.`descripcion`, tp.tipo , lc.`letra`, GROUP_CONCAT(c.nro_oc SEPARATOR ' | '), fc.`numero`, cu.razon_social, e.empresa, fc.`fecha_emitida`, fc.`fecha_recibida`, fp.forma_pago, fc.`subtotal_gravado`, fc.`subtotal_no_gravado`, fc.`otros`, fc.`iva`, fc.`total`, m.moneda, fc.`cotizacion`, fc.`observaciones`, u.usuario, ef.estado FROM `facturas_compra` fc inner join tipos_comprobante tp on tp.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join facturas_compra_x_compras fcxc on fcxc.id_factura_compra = fc.id inner join compras c on c.id = fcxc.id_compra inner join cuentas cu on cu.id = fc.`id_cuenta_origen` inner join empresas e on e.id = fc.`id_empresa` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join usuarios u on u.id = fc.`id_usuario` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 GROUP BY fc.id";
-                        foreach ($pdo->query($sql) as $row) {
+						$sql = " SELECT fc.`id`, fc.`descripcion`, tp.tipo , lc.`letra`, GROUP_CONCAT(c.nro_oc SEPARATOR ' | '), fc.`numero`, cu.razon_social, e.empresa, fc.`fecha_emitida`, fc.`fecha_recibida`, fp.forma_pago, fc.`subtotal_gravado`, fc.`subtotal_no_gravado`, fc.`otros`, fc.`iva`, fc.`total`, m.moneda, fc.`cotizacion`, fc.`observaciones`, u.usuario, ef.estado FROM `facturas_compra` fc inner join tipos_comprobante tp on tp.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join facturas_compra_x_compras fcxc on fcxc.id_factura_compra = fc.id inner join compras c on c.id = fcxc.id_compra inner join cuentas cu on cu.id = fc.`id_cuenta_origen` inner join empresas e on e.id = fc.`id_empresa` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join usuarios u on u.id = fc.`id_usuario` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
+						$ids = isset($_GET['ids']) ? array_map('intval', array_filter(explode(',', $_GET['ids']))) : [];
+						$params = [];
+						if (!empty($ids)) {
+							$placeholders = implode(',', array_fill(0, count($ids), '?'));
+							$sql .= " AND fc.id IN ($placeholders) ";
+							$params = $ids;
+						}
+						$sql .= " GROUP BY fc.id";
+						$q = $pdo->prepare($sql);
+						$q->execute($params);
+                        foreach ($q as $row) {
 							echo '<tr>';
 								echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
