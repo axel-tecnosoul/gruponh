@@ -154,6 +154,8 @@ $id_estado = $filters['id_estado'] ?? [];
 							  <th>Condición</th>
 							  <th>Total</th>
 							  <th>Estado</th>
+							  <th>Exportada</th>
+							  <th>Pagada</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -161,7 +163,7 @@ $id_estado = $filters['id_estado'] ?? [];
                            $hasSearched = isset($_SESSION['filtros_listarFacturasCompra']);
                            if ($hasSearched):
                             $pdo = Database::connect();
-                            $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, CASE WHEN fc.exportada=1 THEN 'Exportada' WHEN fc.pagada=1 THEN 'Pagada' ELSE ef.estado END as estado, date_format(fc.`fecha_emitida`,'%y%m%d'), ef.id, fc.pagada FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
+                             $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, ef.estado, date_format(fc.`fecha_emitida`,'%y%m%d'), ef.id, fc.pagada, fc.exportada FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
                             $params = [];
 
                             if (!empty($nro)) {
@@ -193,7 +195,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             $q = $pdo->prepare($sql);
                             $q->execute($params);
                             foreach ($q as $row) {
-                                echo '<tr data-id-estado="'. $row[12] .'" data-pagada="'. (int)$row[13] .'">';
+                                echo '<tr data-id-estado="'. $row[12] .'" data-pagada="'. (int)$row[13] .'" data-exportada="'. (int)$row[14] .'">';
                                 echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="'. $row[0] . '"></td>';
 								echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
@@ -204,6 +206,8 @@ $id_estado = $filters['id_estado'] ?? [];
                                 echo '<td>'. $row[7] . '</td>';
                                 echo '<td class="text-right">'. $row[9] . ' ' . number_format($row[8] ?? 0,2) . '</td>';
                                 echo '<td>'. $row[10] . '</td>';
+                                echo '<td class="text-center">' . ($row[14] ? 'Sí' : 'No') . '</td>';
+                                echo '<td class="text-center">' . ((int)$row[13] ? 'Sí' : 'No') . '</td>';
                                 echo '</tr>';
                             }
 							Database::disconnect();
@@ -222,6 +226,8 @@ $id_estado = $filters['id_estado'] ?? [];
 							  <th>Condición</th>
 							  <th>Total</th>
 							  <th>Estado</th>
+							  <th>Exportada</th>
+							  <th>Pagada</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -495,7 +501,10 @@ $id_estado = $filters['id_estado'] ?? [];
             alert("Por favor seleccione una Factura de Compra para modificar");
           } else {
             var est = $('#dataTables-example666 tbody tr.selected').data('id-estado');
-            alert("Esta factura ya fue " + (est == 5 ? 'exportada' : 'definitiva') + " y no puede editarse.");
+            var exp = $('#dataTables-example666 tbody tr.selected').data('exportada');
+            var pag = $('#dataTables-example666 tbody tr.selected').data('pagada');
+            var motivo = exp ? 'exportada' : (pag ? 'pagada' : 'definitiva');
+            alert("Esta factura ya fue " + motivo + " y no puede editarse.");
           }
           e.preventDefault();
         }
@@ -541,6 +550,7 @@ $id_estado = $filters['id_estado'] ?? [];
         let id_fc=t.find("td:nth-child(2)").html();
         let id_estado = parseInt(t.data('id-estado'));
         let pagada = parseInt(t.data('pagada'));
+        let exportada = parseInt(t.data('exportada'));
 
         if(t.hasClass('selected')){
           deselectRow(t);
@@ -556,7 +566,7 @@ $id_estado = $filters['id_estado'] ?? [];
           selectRow(t);
 		      get_detalles(id_fc)
           // Modificar / agregar items: solo si no es definitiva, pagada ni exportada
-          if (id_estado !== 3 && pagada !== 1 && id_estado !== 5) {
+          if (id_estado !== 3 && pagada !== 1 && exportada !== 1) {
             $("#link_modificar_fc").attr("href","nuevaFacturaCompra.php?id="+id_fc);
             $("#link_nuevo_detalle_fc").attr("href","nuevoDetalleFacturaCompra.php?id="+id_fc);
             $("#link_nuevo_retencion_fc").attr("href","nuevaRetencionFacturaCompra.php?id="+id_fc);
