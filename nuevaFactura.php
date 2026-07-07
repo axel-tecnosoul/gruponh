@@ -527,7 +527,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                   <div class="card-body">
 
                     <div id="contenedorTablaDetalles" class="table-responsive" style="display:none; background:#fff;">
-                      <table class="table table-bordered table-sm" id="tablaDetalles">
+                      <table class="table table-bordered" id="tablaDetalles">
                         <thead>
                           <tr>
                             <th>#</th>
@@ -537,8 +537,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                             <th>Precio</th>
                             <th>Descuento</th>
                             <th>Subtotal</th>
-                            <th>Editar</th>
-                            <th>Quitar</th>
+                            <th>Acciones</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
@@ -546,7 +545,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <tr>
                             <th colspan="6" class="text-right">Total:</th>
                             <th id="totalDetalle">$ 0.00</th>
-                            <th colspan="2"></th>
+                            <th colspan="1"></th>
                           </tr>
                         </tfoot>
                       </table>
@@ -798,6 +797,13 @@ $fv = function($key, $default = '') use ($facturaData) {
     }
     <?php endif; ?>
 
+    function formatNumber(value) {
+      return value.toLocaleString('es-AR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
     function renderDetalles() {
       var tbody = $('#tablaDetalles tbody');
       tbody.empty();
@@ -821,7 +827,8 @@ $fv = function($key, $default = '') use ($facturaData) {
 
           var impLabels = [];
           impsData.forEach(function(imp) {
-            impLabels.push('OC ' + (imp.nro_oc || '') + ' x' + parseFloat(imp.cantidad||0).toFixed(2) + ' ' + imp.concepto_text + ' $' + parseFloat(imp.precio||0).toFixed(2));
+            //impLabels.push('OC ' + (imp.nro_oc || '') + ' x' + parseFloat(imp.cantidad||0).toFixed(2) + ' ' + imp.concepto_text + ' $' + parseFloat(imp.precio||0).toFixed(2));
+            impLabels.push(parseFloat(imp.cantidad||0).toFixed(2) + ' x ' + imp.concepto_text + ' x $' + parseFloat(imp.precio||0).toFixed(2));
           });
           var imputacionesHtml = impLabels.length ? impLabels.join('<br>') : item.imputaciones_text ? item.imputaciones_text.join('<br>') : '';
 
@@ -831,12 +838,11 @@ $fv = function($key, $default = '') use ($facturaData) {
             '<td>' + item.concepto_text + '</td>' +
             '<td>' + (item.descripcion ? htmlEsc(item.descripcion) : '') + '</td>' +
             '<td>' + imputacionesHtml + '</td>' +
-            '<td>$ ' + totalSubImp.toFixed(2) + '</td>' +
-            '<td>' + porcDesc.toFixed(2) + '%</td>' +
-            '<td>$ ' + sub.toFixed(2) + '</td>' +
-            '<td><a href="javascript:void(0)" onclick="editarDetalle(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a></td>' +
-            '<td><a href="javascript:void(0)" onclick="quitarDetalle(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
-            '</tr>'
+            '<td class="text-right">$ ' + formatNumber(totalSubImp) + '</td>' +
+            '<td class="text-right">' + porcDesc.toFixed(2) + '%</td>' +
+            '<td class="text-right">$ ' + formatNumber(sub) + '</td>' +
+            '<td><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular">&nbsp;<a href="javascript:void(0)" onclick="quitarDetalle(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
+            '</tr>'//<a href="javascript:void(0)" onclick="editarDetalle(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a>
           );
         });
         $('#countDetalles').text('(' + detalles.length + ')');

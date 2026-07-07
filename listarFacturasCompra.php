@@ -204,7 +204,7 @@ $id_estado = $filters['id_estado'] ?? [];
                                 echo '<td>'. $row[5] . '</td>';
                                 echo '<td><span style="display: none;">'. $row[11] . '</span>'. $row[6] . '</td>';
                                 echo '<td>'. $row[7] . '</td>';
-                                echo '<td class="text-right">'. $row[9] . ' ' . number_format($row[8] ?? 0,2) . '</td>';
+                                echo '<td class="text-right">'. $row[9] . ' ' . number_format($row[8] ?? 0,2, ",",".") . '</td>';
                                 echo '<td>'. $row[10] . '</td>';
                                 echo '<td class="text-center">' . ($row[14] ? 'Sí' : 'No') . '</td>';
                                 echo '<td class="text-center">' . ((int)$row[13] ? 'Sí' : 'No') . '</td>';
