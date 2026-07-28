@@ -22,9 +22,9 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "UPDATE `materiales` set `codigo` = ?, `concepto` = ?, `calidad` = ?, `descripcion` = ?, `largo` = ?, `peso_metro` = ?, `perimetro` = ?, `id_categoria` = ?, `activo` = ?, `id_unidad_medida` = ?, `stock_minimo` = ? where id = ?";
+  $sql = "UPDATE `materiales` set `codigo` = ?, `concepto` = ?, `calidad` = ?, `descripcion` = ?, `espesor` = ?, `ancho` = ?, `largo` = ?, `peso_metro` = ?, `perimetro` = ?, `id_categoria` = ?, `activo` = ?, `id_unidad_medida` = ?, `stock_minimo` = ? where id = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['calidad'], $_POST['descripcion'], $_POST['largo'], $_POST['peso_metro'], $_POST['perimetro'] ?: null, $_POST['id_categoria'], $_POST['activo'], $_POST['id_unidad_medida'], $_POST['stock_minimo'], $_GET['id']]);
+  $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['calidad'], $_POST['descripcion'], $_POST['espesor'] ?: null, $_POST['ancho'] ?: null, $_POST['largo'], $_POST['peso_metro'], $_POST['perimetro'] ?: null, $_POST['id_categoria'], $_POST['activo'], $_POST['id_unidad_medida'], $_POST['stock_minimo'], $_GET['id']]);
 
   $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de concepto','Conceptos','verMaterial.php?id=$id')";
   $q = $pdo->prepare($sql);
@@ -36,7 +36,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
+  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -135,6 +135,20 @@ if (!empty($_POST)) {
                               Database::disconnect();
                               ?>
                             </select>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Espesor (mm)</label>
+                          <div class="col-sm-9">
+                            <input name="espesor" type="number" step="0.01" class="form-control" value="<?php echo $data['espesor']; ?>">
+                            <small class="form-text text-muted">Ingrese el espesor en <strong>milímetros (mm)</strong></small>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Ancho (mm)</label>
+                          <div class="col-sm-9">
+                            <input name="ancho" type="number" step="0.01" class="form-control" value="<?php echo $data['ancho']; ?>">
+                            <small class="form-text text-muted">Ingrese el ancho en <strong>milímetros (mm)</strong></small>
                           </div>
                         </div>
                         <div class="form-group row">

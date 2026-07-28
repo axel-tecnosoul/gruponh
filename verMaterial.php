@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
+  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -127,6 +127,14 @@ if ($origen == 'pedidos') {
                               ?>
                             </select>
                           </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Espesor (mm)</label>
+                          <div class="col-sm-9"><input name="espesor" type="number" step="0.01" class="form-control" value="<?php echo $data['espesor']; ?>"></div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Ancho (mm)</label>
+                          <div class="col-sm-9"><input name="ancho" type="number" step="0.01" class="form-control" value="<?php echo $data['ancho']; ?>"></div>
                         </div>
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Largo (mm)</label>

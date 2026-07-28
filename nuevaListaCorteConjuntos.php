@@ -441,7 +441,7 @@ Database::disconnect();?>
         let nombre = $("input[name='nombre']").val();
         let cantidad = $("input[name='cantidad']").val();
         if(nombre !== "" || cantidad !== ""){
-          alert("No se puede guardar y volver si hay datos sin guardar.");
+          alert("No se puede guardar y volver si hay datos sin crear.");
           e.preventDefault();
         }
       });

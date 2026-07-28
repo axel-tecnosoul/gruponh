@@ -120,10 +120,14 @@ $id_estado = $filters['id_estado'] ?? [];
 					echo '<a href="#" id="link_modificar_fc"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular"></a>';
 					echo '&nbsp;&nbsp;';
 				}
-				if (!empty(tienePermiso(338))) {
-					echo '<a href="#" id="link_pagar_fc"><img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada" title="Marcar Pagada"></a>';
-					echo '&nbsp;&nbsp;';
-				}
+			if (!empty(tienePermiso(338))) {
+				echo '<a href="#" id="link_pagar_fc"><img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada" title="Marcar Pagada"></a>';
+				echo '&nbsp;&nbsp;';
+			}
+			if (!empty(tienePermiso(338))) {
+				echo '<a href="#" id="link_ver_fc"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Factura" title="Ver Factura"></a>';
+				echo '&nbsp;&nbsp;';
+			}
 				if (!empty(tienePermiso(336))) {
 						/* echo '<a href="#" id="link_nuevo_detalle_fc"><img src="img/venc.jpg" width="24" height="25" border="0" alt="Añadir ítem Detalle" title="Añadir ítem Detalle"></a>';
 						echo '&nbsp;&nbsp;';
@@ -146,16 +150,16 @@ $id_estado = $filters['id_estado'] ?? [];
                           <tr>
                               <th style="width:1%; white-space:nowrap"><input type="checkbox" id="select-all-fc"></th>
 							  <th>ID</th>
-							  <th>Descripción</th>
 							  <th>Tipo</th>
 							  <th>Número</th>
 							  <th>Proveedor</th>
-							  <th>Fecha</th>
-							  <th>Condición</th>
-							  <th>Total</th>
-							  <th>Estado</th>
-							  <th>Exportada</th>
-							  <th>Pagada</th>
+                              <th>Fecha</th>
+                              <th>Condición</th>
+                              <th>Total</th>
+                              <th>Observación</th>
+                              <th>Estado</th>
+                              <th>Exportada</th>
+                              <th>Pagada</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -163,7 +167,7 @@ $id_estado = $filters['id_estado'] ?? [];
                            $hasSearched = isset($_SESSION['filtros_listarFacturasCompra']);
                            if ($hasSearched):
                             $pdo = Database::connect();
-                             $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, ef.estado, date_format(fc.`fecha_emitida`,'%y%m%d'), ef.id, fc.pagada, fc.exportada FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` inner join estados_factura ef on ef.id = fc.`id_estado` WHERE 1 ";
+                              $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, CASE WHEN fc.id_estado = 3 THEN 'Definitivo' ELSE 'Temporal' END as estado, date_format(fc.`fecha_emitida`,'%y%m%d'), fc.id_estado, fc.pagada, fc.exportada, fc.observaciones FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` WHERE 1 ";
                             $params = [];
 
                             if (!empty($nro)) {
@@ -188,7 +192,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             }
                             if (!empty($id_estado[0])) {
                                 $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
-                                $sql .= " AND ef.id IN ($placeholders) ";
+                                $sql .= " AND fc.id_estado IN ($placeholders) ";
                                 $params = array_merge($params, $id_estado);
                             }
 
@@ -198,13 +202,13 @@ $id_estado = $filters['id_estado'] ?? [];
                                 echo '<tr data-id-estado="'. $row[12] .'" data-pagada="'. (int)$row[13] .'" data-exportada="'. (int)$row[14] .'">';
                                 echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="'. $row[0] . '"></td>';
 								echo '<td>'. $row[0] . '</td>';
-                                echo '<td>'. $row[1] . '</td>';
                                 echo '<td>'. $row[2] . ' ' . $row[3] . '</td>';
                                 echo '<td>'. $row[4] . '</td>';
                                 echo '<td>'. $row[5] . '</td>';
                                 echo '<td><span style="display: none;">'. $row[11] . '</span>'. $row[6] . '</td>';
                                 echo '<td>'. $row[7] . '</td>';
                                 echo '<td class="text-right">'. $row[9] . ' ' . number_format($row[8] ?? 0,2, ",",".") . '</td>';
+                                echo '<td>'. $row[15] . '</td>';
                                 echo '<td>'. $row[10] . '</td>';
                                 echo '<td class="text-center">' . ($row[14] ? 'Sí' : 'No') . '</td>';
                                 echo '<td class="text-center">' . ((int)$row[13] ? 'Sí' : 'No') . '</td>';
@@ -218,16 +222,16 @@ $id_estado = $filters['id_estado'] ?? [];
                           <tr>
                               <th style="width:1%"></th>
 							  <th>ID</th>
-							  <th>Descripción</th>
 							  <th>Tipo</th>
 							  <th>Número</th>
 							  <th>Proveedor</th>
-							  <th>Fecha</th>
-							  <th>Condición</th>
-							  <th>Total</th>
-							  <th>Estado</th>
-							  <th>Exportada</th>
-							  <th>Pagada</th>
+                              <th>Fecha</th>
+                              <th>Condición</th>
+                              <th>Total</th>
+                              <th>Observación</th>
+                              <th>Estado</th>
+                              <th>Exportada</th>
+                              <th>Pagada</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -509,6 +513,15 @@ $id_estado = $filters['id_estado'] ?? [];
           e.preventDefault();
         }
       })
+	  $("#link_ver_fc").on("click",function(e){
+        let l=document.location.href;
+        if(this.href==l || this.href==l+"#"){
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Compra para ver");
+          }
+          e.preventDefault();
+        }
+      })
 	  $("#link_nuevo_detalle_fc").on("click",function(e){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
@@ -559,12 +572,14 @@ $id_estado = $filters['id_estado'] ?? [];
 		      $("#link_nuevo_detalle_fc").attr("href","#");
 			  $("#link_nuevo_retencion_fc").attr("href","#");
 			  $("#link_pagar_fc").attr("href","#");
+          $("#link_ver_fc").attr("href","#");
         }else{
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
 		      get_detalles(id_fc)
+          $("#link_ver_fc").attr("href","verFacturaCompra.php?id="+id_fc);
           // Modificar / agregar items: solo si no es definitiva, pagada ni exportada
           if (id_estado !== 3 && pagada !== 1 && exportada !== 1) {
             $("#link_modificar_fc").attr("href","nuevaFacturaCompra.php?id="+id_fc);

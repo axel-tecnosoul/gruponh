@@ -34,6 +34,7 @@ function abrirMenu($op) {
         }
     } else if ($op == "5") {
         if (($current_page == "listarMateriales.php") || 
+        ($current_page == "importMateriales.php") || 
         ($current_page == "listarPedidos.php") || 
         ($current_page == "listarCompras.php") || 
         ($current_page == "listarIngresos.php") || 

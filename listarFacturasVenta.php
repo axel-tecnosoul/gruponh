@@ -137,6 +137,11 @@ $id_estado = $filters['id_estado'] ?? [];
                         <img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada">
                       </a>&nbsp;
                     <?php endif; ?>
+                    <?php if (!empty(tienePermiso(339))): ?>
+                      <a href="#" id="link_ver_fv" title="Ver Factura">
+                        <img src="img/eye.png" width="24" height="15" border="0" alt="Ver Factura">
+                      </a>&nbsp;
+                    <?php endif; ?>
                     <?php if (!empty(tienePermiso(337))): ?>
                       <?php /* <a href="#" id="link_nuevo_detalle_fv" title="Añadir ítem Detalle">
                         <img src="img/venc.jpg" width="24" height="25" border="0" alt="Añadir ítem Detalle">
@@ -162,7 +167,6 @@ $id_estado = $filters['id_estado'] ?? [];
                         <tr>
                           <th style="width:1%; white-space:nowrap"><input type="checkbox" id="select-all-fv"></th>
                           <th class="d-none">ID</th>
-                          <th>Descripción</th>
                           <th>Tipo</th>
                           <th>Número</th>
                           <th>Cliente</th>
@@ -172,6 +176,7 @@ $id_estado = $filters['id_estado'] ?? [];
                           <th>IVA</th>
                           <th>Otros</th>
                           <th>Total Neto</th>
+                          <th>Observación</th>
                           <th>Estado</th>
                           <th>Exportada</th>
                           <th>Pagada</th>
@@ -189,7 +194,7 @@ $id_estado = $filters['id_estado'] ?? [];
                                           ef.estado,
                                           fv.iva, fv.otros, fv.total,
                                           DATE_FORMAT(fv.fecha_emitida,'%y%m%d'),
-                                          ef.id, fv.pagada, fv.exportada
+                                          ef.id, fv.pagada, fv.exportada, fv.observaciones
                                   FROM facturas_venta fv
                                   INNER JOIN tipos_comprobante   tc  ON tc.id  = fv.id_tipo_comprobante
                                   INNER JOIN letras_comprobante  lc  ON lc.id  = fv.id_letra_comprobante
@@ -230,7 +235,6 @@ $id_estado = $filters['id_estado'] ?? [];
                             echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '">';
                             echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
                             echo '<td class="d-none">' . $row[0] . '</td>';
-                            echo '<td>' . htmlspecialchars($row[1]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[2]) . ' ' . htmlspecialchars($row[3]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[4]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[5]) . '</td>';
@@ -240,6 +244,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[11] ?? 0, 2) . '</td>';
                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[12] ?? 0, 2) . '</td>';
                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[13] ?? 0, 2) . '</td>';
+                            echo '<td>' . htmlspecialchars($row[18]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[10]) . '</td>';
                             echo '<td class="text-center">' . ($row[17] ? 'Sí' : 'No') . '</td>';
                             echo '<td class="text-center">' . ((int)$row[16] ? 'Sí' : 'No') . '</td>';
@@ -253,7 +258,6 @@ $id_estado = $filters['id_estado'] ?? [];
                         <tr>
                           <th style="width:1%"></th>
                           <th class="d-none">ID</th>
-                          <th>Descripción</th>
                           <th>Tipo</th>
                           <th>Número</th>
                           <th>Cliente</th>
@@ -263,6 +267,7 @@ $id_estado = $filters['id_estado'] ?? [];
                           <th>IVA</th>
                           <th>Otros</th>
                           <th>Total Neto</th>
+                          <th>Observación</th>
                           <th>Estado</th>
                           <th>Exportada</th>
                           <th>Pagada</th>
@@ -700,11 +705,12 @@ $id_estado = $filters['id_estado'] ?? [];
           } else {
             $('#link_pagar_fv').attr('href', '#').data('id-fv', '');
           }
+          $('#link_ver_fv').attr('href', 'verFacturaVenta.php?id=' + id_fv);
         }
       });
 
       function resetLinks() {
-        $('#link_modificar_fv, #link_nuevo_detalle_fv, #link_nuevo_retencion_fv, #link_pagar_fv').attr('href', '#');
+        $('#link_modificar_fv, #link_nuevo_detalle_fv, #link_nuevo_retencion_fv, #link_pagar_fv, #link_ver_fv').attr('href', '#');
       }
 
       $("#link_modificar_fv").on("click", function(e) {
@@ -717,6 +723,15 @@ $id_estado = $filters['id_estado'] ?? [];
             var pag = $('#dataTables-example666 tbody tr.selected').data('pagada');
             var motivo = exp ? 'exportada' : (pag ? 'pagada' : 'definitiva');
             alert("Esta factura ya fue " + motivo + " y no puede editarse.");
+          }
+          e.preventDefault();
+        }
+      });
+      $("#link_ver_fv").on("click", function(e) {
+        var l = document.location.href;
+        if (this.href == l || this.href == l + "#") {
+          if ($('#dataTables-example666 tbody tr.selected').length === 0) {
+            alert("Por favor seleccione una Factura de Venta para ver");
           }
           e.preventDefault();
         }

@@ -19,6 +19,40 @@ if (null==$id_lista_corte_conjunto) {
 }
 
 if (!empty($_POST)) {
+  // validacion AJAX de posicion libre
+  if (!empty($_POST['validar_posicion'])) {
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    $posicion = trim($_POST['posicion']);
+    $id_material = trim($_POST['id_material']);
+    $ancho = trim($_POST['ancho']);
+    $largo = trim($_POST['largo']);
+    $diametro = trim($_POST['diametro']);
+
+    $sqlProyecto = "SELECT lc.id_proyecto FROM listas_corte_conjuntos lcc JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lcc.id = ?";
+    $qProyecto = $pdo->prepare($sqlProyecto);
+    $qProyecto->execute([$id_lista_corte_conjunto]);
+    $id_proyecto = $qProyecto->fetchColumn();
+
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
+    $qNum = $pdo->prepare($sqlNum);
+    $qNum->execute([$id_proyecto, $posicion]);
+    $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
+
+    Database::disconnect();
+
+    if (!empty($dataNum)) {
+      if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || floatval($dataNum['diametro']) != floatval($diametro)) {
+        echo json_encode(['ok' => false, 'error' => 'El número de Posición ya existe con otro material o medidas en el proyecto']);
+        exit;
+      }
+    }
+
+    echo json_encode(['ok' => true]);
+    exit;
+  }
+
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -545,6 +579,7 @@ Database::disconnect();?>
                           if (!empty($_GET['error_numero'])) {
                             echo "<font color='red'><b>El número de Posición ya existe con otro material o medidas en el proyecto</b></font>";
                           }?>
+                          <span id="error_posicion" style="color:red;font-weight:bold;display:none;"></span>
                         </div>
                         <div class="form-group col-2">
                           <label>Cantidad(*)</label>
@@ -639,6 +674,9 @@ Database::disconnect();?>
                         <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
                         <a href='nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=<?=$data["id_lista_corte"]?><?= $prodParam ?>' id="guardarVolver" class="btn btn-danger volverConjuntos">Guardar y volver a Conjuntos</a>
+                        <?php if ($data['id_estado_lista_corte'] == 1) { ?>
+                        <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
+                        <?php } ?>
                       </div>
                     </div>
                   </form>
@@ -672,18 +710,20 @@ Database::disconnect();?>
                         <th style="width:70px;">Diametro</th>
                         <th style="width:70px;">Marca</th>
                         <th style="width:120px;">Procesos</th>
+                        <th style="width:100px;">Estado</th>
                       </tr>
                     </thead>
                     <tbody><?php
                       $pdoModal = Database::connect();
                       $pdoModal->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                      $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto, pos.ancho, pos.largo, pos.diametro, pos.marca, GROUP_CONCAT(tp.tipo SEPARATOR ', ') AS procesos
+                      $sqlModal = "SELECT lc.numero, lc.nro_revision, lcc.nombre, pos.posicion, pos.cantidad, m.concepto, pos.ancho, pos.largo, pos.diametro, pos.marca, GROUP_CONCAT(tp.tipo SEPARATOR ', ') AS procesos, els.estado
                       FROM listas_corte lc
                         JOIN listas_corte_conjuntos lcc ON lcc.id_lista_corte = lc.id
                         JOIN lista_corte_posiciones pos ON pos.id_lista_corte_conjunto = lcc.id
                         JOIN materiales m ON m.id = pos.id_material
                         LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion = pos.id
                         LEFT JOIN tipos_procesos tp ON tp.id = lcp.id_tipo_proceso
+                        LEFT JOIN estados_lista_corte els ON els.id = lc.id_estado_lista_corte
                       WHERE lc.id_proyecto = ? AND lc.id_estado_lista_corte IN (3,4,5) GROUP BY pos.id ORDER BY lc.numero, lcc.nombre, pos.posicion";
                       $qModal = $pdoModal->prepare($sqlModal);
                       $qModal->execute([$data['id_proyecto']]);
@@ -700,6 +740,7 @@ Database::disconnect();?>
                           <td><?=$rowModal['diametro']?></td>
                           <td><?=$rowModal['marca']?></td>
                           <td><?=$rowModal['procesos']?></td>
+                          <td><?=$rowModal['estado']?></td>
                         </tr><?php
                       }
                       Database::disconnect();?>
@@ -710,6 +751,27 @@ Database::disconnect();?>
               <div class="modal-footer">
                 <button class="btn btn-light" type="button" data-dismiss="modal">Cerrar</button>
               </div>
+            </div>
+          </div>
+        </div>
+        <!-- Modal Enviar a Aprobación -->
+        <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$data['id_lista_corte']?><?= $prodParam ?>">
+                <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirmar envío a aprobación</h5>
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <p>¿Estás seguro de que quieres enviar esta revisión a aprobación?</p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -816,6 +878,7 @@ Database::disconnect();?>
           columnDefs: [
             { width: '70px', targets: [0,1,3,4,6,7,8,9] },
             { width: '100px', targets: [2,10] },
+            { width: '80px', targets: [11] },
             { width: '300px', targets: [5] }
           ],
           language: {
@@ -948,6 +1011,48 @@ Database::disconnect();?>
           $("#guardarVolver").toggleClass("d-none")
         })
 
+        var posicionValida = true;
+
+        $("input[name='nombre_posicion']").on('blur', function() {
+          var posicion = $(this).val();
+          var id_material = $("select[name='id_material']").val();
+          if (!posicion) { posicionValida = true; $("#error_posicion").hide(); return; }
+
+          $.ajax({
+            type: "POST",
+            url: window.location.pathname + window.location.search,
+            data: {
+              validar_posicion: 1,
+              posicion: posicion,
+              id_material: id_material || '',
+              ancho: $("input[name='ancho']").val() || '0',
+              largo: $("input[name='largo']").val() || '0',
+              diametro: $("input[name='diametro']").val() || '0'
+            },
+            dataType: 'json',
+            success: function(resp) {
+              if (resp.ok) {
+                $("#error_posicion").hide().text('');
+                posicionValida = true;
+              } else {
+                $("#error_posicion").show().text(resp.error);
+                posicionValida = false;
+              }
+            }
+          });
+        });
+
+        $('#btnEnviarAprobacion').on('click', function(){
+          var nombre = $("input[name='nombre_posicion']").val();
+          var cantidad = $("input[name='cantidad_posicion']").val();
+          var material = $("select[name='id_material']").val();
+          if(nombre !== "" || cantidad !== "" || material !== ""){
+            alert("No se puede enviar a aprobación si hay datos sin guardar.");
+            return false;
+          }
+          $('#modalEnviarAprobacion').modal('show');
+        });
+
         $("button[name='btn2']").on("click", function(e){
           e.preventDefault();
           const form = $(this).closest('form');
@@ -975,7 +1080,7 @@ Database::disconnect();?>
           const terminacion = $("select[name='id_terminacion']").val();
           const tieneDatos = nombre !== "" || cantidad !== "" || material !== "" || ancho !== "" || largo !== "" || diametro !== "" || marca !== "" || peso !== "" || procesos > 0 || terminacion !== "";
           if(tieneDatos){
-            alert("No se puede guardar y volver si hay datos sin guardar.");
+            alert("No se puede guardar y volver si hay datos sin crear.");
             return;
           }
           const url = $(this).attr('href');
@@ -988,6 +1093,12 @@ Database::disconnect();?>
         });
 
         $("form.theme-form").on("submit", function(e){
+          if (!posicionValida) {
+            alert('Corrija el número de posición antes de guardar.');
+            e.preventDefault();
+            return;
+          }
+
           const procesos = $("input[name='proceso[]']:checked").length;
           //const terminacion = $("select[name='id_terminacion']").val();
           //if (procesos === 0 && (!terminacion || terminacion === "")) {

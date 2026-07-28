@@ -13,9 +13,9 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        $sql = "INSERT INTO `regimenes_facturacion`(`regimen`, `porcentaje`, `anulado`) VALUES (?,?,0)";
+        $sql = "INSERT INTO `regimenes_facturacion`(`codigo`, `articulo`, `regimen`, `porcentaje`, `monto`, `anulado`) VALUES (?,?,?,?,?,0)";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['regimen'],$_POST['porcentaje']]);
+        $q->execute([$_POST['codigo'], $_POST['articulo'], $_POST['regimen'], $_POST['porcentaje'], $_POST['monto']]);
         
 		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Regimen','Regimenes','')";
 		$q = $pdo->prepare($sql);
@@ -60,12 +60,24 @@
                         <div class="col">
 						
 							<div class="form-group row">
+							<label class="col-sm-3 col-form-label">Código</label>
+							<div class="col-sm-9"><input name="codigo" type="text" maxlength="99" class="form-control"></div>
+						  </div>
+						  <div class="form-group row">
+							<label class="col-sm-3 col-form-label">Artículo</label>
+							<div class="col-sm-9"><input name="articulo" type="text" maxlength="99" class="form-control"></div>
+						  </div>
+							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Regimen(*)</label>
 							<div class="col-sm-9"><input name="regimen" type="text" maxlength="99" class="form-control" required="required"></div>
 						  </div>
 						  <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Porcentaje(*)</label>
 							<div class="col-sm-9"><input name="porcentaje" type="number" step="0.01" class="form-control" required="required"></div>
+						  </div>
+						  <div class="form-group row">
+							<label class="col-sm-3 col-form-label">Monto</label>
+							<div class="col-sm-9"><input name="monto" type="number" step="0.01" class="form-control"></div>
 						  </div>
 						  
                         </div>

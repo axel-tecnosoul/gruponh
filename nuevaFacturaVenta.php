@@ -21,12 +21,20 @@ if (!empty($_POST)) {
   try {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
+    $_POST['descripcion'] = '';
+    $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
+
     if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
       $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
         . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
     }
 
     $isEditing = !empty($_POST['id_factura']);
+
+    if (empty($_POST['id_condicion_pago'])) {
+      $qFallback = $pdo->query("SELECT id FROM formas_pago LIMIT 1");
+      $_POST['id_condicion_pago'] = (int)$qFallback->fetchColumn();
+    }
 
     if ($isEditing) {
       $idFactura = (int)$_POST['id_factura'];
@@ -143,10 +151,12 @@ if (!empty($_POST)) {
 
     if (is_array($retenciones)) {
       $qRet = $pdo->prepare("INSERT INTO facturas_venta_retenciones
-                                     (id_factura_venta, id_regimen_facturacion, monto) VALUES (?,?,?)");
+                                     (id_factura_venta, id_regimen_facturacion, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?)");
       foreach ($retenciones as $ret) {
         $monto = floatval($ret['monto']);
-        $qRet->execute([$idFactura, intval($ret['id_regimen']), $monto]);
+        $porcentaje = floatval($ret['porcentaje'] ?? 0);
+        $base = floatval($ret['base'] ?? 0);
+        $qRet->execute([$idFactura, intval($ret['id_regimen']), $monto, $porcentaje, $base]);
         $totalOtros += $monto;
       }
     }
@@ -207,6 +217,7 @@ $detallesExistentes = [];
 $retencionesExistentes = [];
 $certIds = [];
 $regimenesSeleccionados = [];
+$monedaLabel = '';
 
 if ($editMode && $editId) {
   $pdo = Database::connect();
@@ -232,6 +243,11 @@ if ($editMode && $editId) {
       $q = $pdo->prepare("SELECT empresa FROM empresas WHERE id = ?");
       $q->execute([$idEmpresaVal]);
       $empresaLabel = $q->fetchColumn() ?: '';
+    }
+    if (!empty($facturaData['id_moneda'])) {
+      $q = $pdo->prepare("SELECT moneda FROM monedas WHERE id = ?");
+      $q->execute([$facturaData['id_moneda']]);
+      $monedaLabel = $q->fetchColumn() ?: '';
     }
     if ($idClienteVal) {
       $q = $pdo->prepare("SELECT nombre FROM cuentas WHERE id = ?");

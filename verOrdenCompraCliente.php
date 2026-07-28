@@ -13,6 +13,7 @@ if (!empty($_GET['id'])) {
 
 if (null==$id) {
   header("Location: listarOrdenesCompraClientes.php");
+  exit;
 }
 
 if (!empty($_POST)) {
@@ -24,6 +25,12 @@ if (!empty($_POST)) {
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   
+  if (!$data) {
+    Database::disconnect();
+    header("Location: listarOrdenesCompraClientes.php");
+    exit;
+  }
+
   $signo = '$';
   if ($data["id_moneda"] == 1) {
 	$signo = 'u$s';  

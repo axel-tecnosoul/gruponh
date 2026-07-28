@@ -22,9 +22,9 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        $sql = "UPDATE `regimenes_facturacion` set `regimen` = ?, `porcentaje` = ? where id = ?";
+        $sql = "UPDATE `regimenes_facturacion` set `regimen` = ?, `porcentaje` = ?, `monto` = ? where id = ?";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['regimen'],$_POST['porcentaje'],$_GET['id']]);
+        $q->execute([$_POST['regimen'],$_POST['porcentaje'],$_POST['monto'],$_GET['id']]);
 
 		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de regimen','Regimenes','')";
 		$q = $pdo->prepare($sql);
@@ -36,7 +36,7 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `regimen`, `porcentaje`, `anulado` FROM `regimenes_facturacion` WHERE id = ? ";
+        $sql = "SELECT `id`, `codigo`, `articulo`, `regimen`, `porcentaje`, `monto`, `anulado` FROM `regimenes_facturacion` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -78,12 +78,24 @@
                       <div class="row">
                         <div class="col">
 							<div class="form-group row">
+							<label class="col-sm-3 col-form-label">Código</label>
+							<div class="col-sm-9"><input name="codigo" type="text" maxlength="99" class="form-control" readonly value="<?php echo $data['codigo']; ?>"></div>
+						  </div>
+						  <div class="form-group row">
+							<label class="col-sm-3 col-form-label">Artículo</label>
+							<div class="col-sm-9"><input name="articulo" type="text" maxlength="99" class="form-control" readonly value="<?php echo $data['articulo']; ?>"></div>
+						  </div>
+							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Regimen(*)</label>
 							<div class="col-sm-9"><input name="regimen" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['regimen']; ?>"></div>
 						  </div>
 						  <div class="form-group row">
 							<label class="col-sm-3 col-form-label">Porcentaje(*)</label>
 							<div class="col-sm-9"><input name="porcentaje" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['porcentaje']; ?>"></div>
+						  </div>
+						  <div class="form-group row">
+							<label class="col-sm-3 col-form-label">Monto</label>
+							<div class="col-sm-9"><input name="monto" type="number" step="0.01" class="form-control" value="<?php echo $data['monto']; ?>"></div>
 						  </div>
 						
 						

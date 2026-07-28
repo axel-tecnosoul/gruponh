@@ -13,9 +13,9 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO `materiales`(`codigo`, `concepto`, `descripcion`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado`, `calidad`, `perimetro`) VALUES (?,?,?,?,?,?,1,?,?,0,?,?)";
+  $sql = "INSERT INTO `materiales`(`codigo`, `concepto`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado`, `calidad`, `perimetro`) VALUES (?,?,?,?,?,?,?,?,1,?,?,0,?,?)";
   $q = $pdo->prepare($sql);
-  $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['descripcion'], $_POST['largo'] ?: 0, $_POST['peso_metro'] ?: 0, $_POST['id_categoria'], $_POST['id_unidad_medida'], $_POST['stock_minimo'] ?: 0, $_POST['calidad'], $_POST['perimetro'] ?: null]);
+  $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['descripcion'], $_POST['espesor'] ?: null, $_POST['ancho'] ?: null, $_POST['largo'] ?: 0, $_POST['peso_metro'] ?: 0, $_POST['id_categoria'], $_POST['id_unidad_medida'], $_POST['stock_minimo'] ?: 0, $_POST['calidad'], $_POST['perimetro'] ?: null]);
   $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Concepto','Conceptos','verConcepto.php?id=$id')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
@@ -109,6 +109,20 @@ if (!empty($_POST)) {
                               Database::disconnect();
                               ?>
                             </select>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Espesor (mm)</label>
+                          <div class="col-sm-9">
+                            <input name="espesor" type="number" step="0.01" class="form-control">
+                            <small class="form-text text-muted">Ingrese el espesor en <strong>milímetros (mm)</strong></small>
+                          </div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label">Ancho (mm)</label>
+                          <div class="col-sm-9">
+                            <input name="ancho" type="number" step="0.01" class="form-control">
+                            <small class="form-text text-muted">Ingrese el ancho en <strong>milímetros (mm)</strong></small>
                           </div>
                         </div>
                         <div class="form-group row">

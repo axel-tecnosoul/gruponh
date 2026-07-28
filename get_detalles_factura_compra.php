@@ -1,8 +1,15 @@
 <?php
+ob_start();
 require("config.php");
 require 'database.php';
 
-$id_fc = $_POST['id_fc'];
+if (empty($_POST['id_fc'])) {
+    ob_end_clean();
+    echo json_encode([]);
+    exit;
+}
+
+$id_fc = intval($_POST['id_fc']);
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -21,5 +28,6 @@ foreach ($pdo->query($sql) as $row) {
 }
 
 Database::disconnect();
+
+ob_end_clean();
 echo json_encode($aDetalles);
-?>

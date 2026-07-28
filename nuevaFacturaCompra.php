@@ -49,6 +49,10 @@ if (!empty($_POST)) {
   try {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
+    $_POST['descripcion'] = '';
+
+    $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
+
     // Concatenar punto_venta + nro_comprobante en numero
     if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
       $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
@@ -64,6 +68,11 @@ if (!empty($_POST)) {
 
     $isEditing = !empty($_POST['id_factura']);
     require_once('funciones.php');
+
+    if (empty($_POST['id_condicion_pago'])) {
+      $qFallback = $pdo->query("SELECT id FROM formas_pago LIMIT 1");
+      $_POST['id_condicion_pago'] = (int)$qFallback->fetchColumn();
+    }
 
     if ($isEditing) {
       $idFactura = (int)$_POST['id_factura'];
@@ -294,35 +303,19 @@ if (!empty($_POST)) {
         . "Excesos:\n" . $detalleExceso;
 
       $detalleNotif = "Factura #" . ($fc['numero'] ?? $idFactura) . " - " . ($fc['razon_social'] ?? 'N/A');
-      crearNotificacion($pdo, 6, $idFactura, $detalleNotif, $asunto, $cuerpo);
-
-      $smtp = getSmtpConfig($pdo);
-      $mailExceso = new PHPMailer();
-      $mailExceso->IsSMTP();
-      $mailExceso->Host       = $smtp[0];
-      $mailExceso->Username   = $smtp[1];
-      $mailExceso->Password   = $smtp[2];
-      $mailExceso->Port       = $smtp[5];
-      $mailExceso->SMTPSecure = $smtp[6];
-      $mailExceso->From       = $smtp[3];
-      $mailExceso->FromName   = $smtp[4];
-      $mailExceso->CharSet    = "utf-8";
-      $mailExceso->IsHTML(true);
-      $mailExceso->AddAddress('juanaugustohaser@gmail.com');
-      $mailExceso->Subject    = $asunto;
-      $mailExceso->Body       = nl2br($cuerpo) . "<br><br>";
-      $mailExceso->AltBody    = $cuerpo;
-      $mailExceso->Send();
+      crearNotificacion($pdo, 22, $idFactura, $detalleNotif, $asunto, $cuerpo);
     }
 
     // Procesar retenciones_json (común)
     $totalOtros = 0;
     $retenciones = !empty($_POST['retenciones_json']) ? json_decode($_POST['retenciones_json'], true) : [];
     if (is_array($retenciones) && count($retenciones) > 0) {
-      $qRet = $pdo->prepare("INSERT INTO facturas_compra_retenciones (id_factura_compra, id_regimen_facturacion, monto) VALUES (?,?,?)");
+      $qRet = $pdo->prepare("INSERT INTO facturas_compra_retenciones (id_factura_compra, id_regimen_facturacion, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?)");
       foreach ($retenciones as $ret) {
         $monto = floatval($ret['monto']);
-        $qRet->execute([$idFactura, intval($ret['id_regimen']), $monto]);
+        $porcentaje = floatval($ret['porcentaje'] ?? 0);
+        $base = floatval($ret['base'] ?? 0);
+        $qRet->execute([$idFactura, intval($ret['id_regimen']), $monto, $porcentaje, $base]);
         $totalOtros += $monto;
       }
     }
@@ -414,6 +407,11 @@ if (!empty($_POST)) {
         $imputacionesOC = array_merge($imputacionesOC, $qImp->fetchAll(PDO::FETCH_ASSOC));
       }
 
+      $restanteOC = [];
+      foreach ($imputacionesOC as $ioc) {
+        $restanteOC[(int)$ioc['id']] = (float)$ioc['restante'];
+      }
+
       $qDet = $pdo->prepare("SELECT d.*, cc.descripcion AS concepto_text FROM facturas_compra_detalle d INNER JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable WHERE d.id_factura_compra = ?");
       $qDet->execute([$editId]);
       while ($row = $qDet->fetch(PDO::FETCH_ASSOC)) {
@@ -432,7 +430,8 @@ if (!empty($_POST)) {
             'id_cd' => (int)$ir['id_compra_detalle'],
             'concepto_text' => 'OC #' . $ir['nro_oc'] . ' - ' . ($ir['concepto'] ?? ''),
             'cantidad' => (float)($ir['cantidad'] ?? $row['cantidad']),
-            'precio' => (float)($ir['precio'] ?? $row['precio'])
+            'precio' => (float)($ir['precio'] ?? $row['precio']),
+            'restante' => $restanteOC[(int)$ir['id_compra_detalle']] ?? 0
           ];
         }
 

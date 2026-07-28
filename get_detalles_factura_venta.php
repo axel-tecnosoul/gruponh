@@ -1,8 +1,10 @@
 <?php
+ob_start();
 require("config.php");
 require 'database.php';
 
 if (empty($_POST['id_fv'])) {
+    ob_end_clean();
     echo json_encode([]);
     exit;
 }
@@ -33,5 +35,5 @@ while ($row = $q->fetch(PDO::FETCH_NUM)) {
 
 Database::disconnect();
 
-header('Content-Type: application/json');
+ob_end_clean();
 echo json_encode($aDetalles);

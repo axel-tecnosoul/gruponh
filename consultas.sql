@@ -233,8 +233,93 @@ ALTER TABLE `facturas_compra_detalle`
 
 UPDATE facturas_compra SET id_estado = 2 WHERE id_estado = 1;
 
--- 2. Migrar facturas de venta que estén en Pendiente a Editable
 UPDATE facturas_venta SET id_estado = 2 WHERE id_estado = 1;
 
--- 3. Eliminar el estado Pendiente
 DELETE FROM estados_factura WHERE id = 1;
+
+UPDATE facturas_compra SET id_estado = 3 WHERE id_estado IN (4, 5);
+UPDATE facturas_venta SET id_estado = 3 WHERE id_estado IN (4, 5);
+
+DELETE FROM estados_factura WHERE id IN (4, 5);
+
+INSERT INTO tipos_notificacion (id, tipo, mensaje, redirect) VALUES
+(22, 'Exceso en Facturación de OC', 'Se detectó un exceso de cantidad al facturar respecto a la OC', 'verFacturaCompra.php?id=');
+
+ALTER TABLE `materiales` 
+  ADD COLUMN `espesor` DECIMAL(10,2) NULL AFTER `descripcion`,
+  ADD COLUMN `ancho` DECIMAL(10,2) NULL AFTER `espesor`;
+
+UPDATE facturas_compra SET observaciones = TRIM(CONCAT(
+    COALESCE(descripcion,''),
+    CASE WHEN COALESCE(descripcion,'') != '' AND COALESCE(observaciones,'') != '' THEN CHAR(10) ELSE '' END,
+    COALESCE(observaciones,'')
+)) WHERE COALESCE(descripcion,'') != '';
+
+UPDATE facturas_venta SET observaciones = TRIM(CONCAT(
+    COALESCE(descripcion,''),
+    CASE WHEN COALESCE(descripcion,'') != '' AND COALESCE(observaciones,'') != '' THEN CHAR(10) ELSE '' END,
+    COALESCE(observaciones,'')
+)) WHERE COALESCE(descripcion,'') != '';
+
+----------Hay que deshabilitar el check de las claves foraneas, si da error puede que esté habilitado un checkbox debajo del textbox de la consulta
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DELETE FROM categorias;
+
+ALTER TABLE categorias AUTO_INCREMENT = 1;
+
+INSERT INTO categorias (id, categoria) VALUES
+(1, 'Metales (alum/cobre/bronce)'),
+(2, 'Balizamiento'),
+(3, 'Bulones / Varillas'),
+(4, 'Cables / Riendas / Accesorios'),
+(5, 'Caños'),
+(6, 'Chapas'),
+(7, 'Electricidad'),
+(8, 'Ferreteria'),
+(9, 'Galvanizado'),
+(10, 'Perfiles'),
+(11, 'Pinturas'),
+(12, 'Sanitarios'),
+(13, 'Maderas'),
+(14, 'Corralon'),
+(15, 'Electronicos'),
+(16, 'Servicios'),
+(17, 'Rodados'),
+(18, 'Art. Varios'),
+(19, 'Mano de Obra'),
+(20, 'Ingenieria'),
+(21, 'Certificaciones/ensayos'),
+(22, 'Hospedaje'),
+(23, 'Herramientas'),
+(24, 'Fabricacion/taller'),
+(25, 'Librería/imprenta'),
+(26, 'Honorarios'),
+(27, 'Limpieza'),
+(28, 'Computacion'),
+(29, 'Estudios'),
+(30, 'Acero Inoxidable');
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+ALTER TABLE regimenes_facturacion ADD COLUMN codigo VARCHAR(99) DEFAULT NULL AFTER id;
+ALTER TABLE regimenes_facturacion ADD COLUMN articulo VARCHAR(99) DEFAULT NULL AFTER codigo;
+ALTER TABLE regimenes_facturacion ADD COLUMN monto DOUBLE DEFAULT 0 AFTER porcentaje;
+
+DELETE FROM regimenes_facturacion;
+ALTER TABLE regimenes_facturacion AUTO_INCREMENT = 1;
+
+ALTER TABLE facturas_compra_retenciones ADD COLUMN porcentaje DOUBLE DEFAULT 0 AFTER monto;
+ALTER TABLE facturas_compra_retenciones ADD COLUMN base_imponible DOUBLE DEFAULT 0 AFTER porcentaje;
+
+ALTER TABLE facturas_venta_retenciones ADD COLUMN porcentaje DOUBLE DEFAULT 0 AFTER monto;
+ALTER TABLE facturas_venta_retenciones ADD COLUMN base_imponible DOUBLE DEFAULT 0 AFTER porcentaje;
+
+UPDATE facturas_compra_retenciones r
+INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+SET r.porcentaje = rf.porcentaje;
+
+UPDATE facturas_venta_retenciones r
+INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+SET r.porcentaje = rf.porcentaje;

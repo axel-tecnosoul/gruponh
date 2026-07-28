@@ -315,7 +315,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                             </div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Ingreso (*)</label>
+                            <label class="col-sm-3 col-form-label">Reserva (*)</label>
                             <div class="col-sm-9">
                               <select id="id_ingreso_seleccionado" class="js-example-basic-single col-sm-12" required>
                                 <option value="">Seleccione material primero...</option>

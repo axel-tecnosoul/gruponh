@@ -22,3 +22,4 @@
 	Database::disconnect();
         
     header("Location: ".$_GET['returnURL']);
+exit;

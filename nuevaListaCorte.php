@@ -229,7 +229,7 @@ if (!empty($_POST)) {
     $id_lista_corte = $_GET['id_lista_corte'];
     $formAction .= ($prodQuery ? '&' : '?')."modo=update&id_lista_corte=".$id_lista_corte;
 
-    $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto, numero, nro_revision FROM listas_corte WHERE id = ?";
+    $sql = "SELECT fecha, id_tarea, id_proyecto, nombre, adjunto, numero, nro_revision, id_estado_lista_corte FROM listas_corte WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_lista_corte]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -241,6 +241,7 @@ if (!empty($_POST)) {
       $adjunto=$data["adjunto"];
       $numero=$data["numero"];
       $nro_revision=$data["nro_revision"];
+      $id_estado_lista_corte = $data["id_estado_lista_corte"];
     }
   }
 
@@ -397,6 +398,9 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-success" type="submit"><?=$accion?> y agregar Conjuntos</button>
+                        <?php if ($modo == 'update' && $id_estado_lista_corte == 1) { ?>
+                        <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
+                        <?php } ?>
                         <a href="listarListasCorte.php<?= $prodQuery ?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -406,6 +410,26 @@ if (!empty($_POST)) {
             </div>
           </div>
           <!-- Container-fluid Ends-->
+        </div>
+        <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$id_lista_corte ?><?= $prodParam ?>">
+                <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirmar envío a aprobación</h5>
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <p>¿Estás seguro de que quieres enviar esta revisión a aprobación?</p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+                  <button type="submit" class="btn btn-primary">Confirmar</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
         <!-- footer start-->
         <?php include("footer.php"); ?>
@@ -455,5 +479,12 @@ if (!empty($_POST)) {
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
+    <script>
+      $(document).ready(function() {
+        $('#btnEnviarAprobacion').on('click', function(){
+          $('#modalEnviarAprobacion').modal('show');
+        });
+      });
+    </script>
   </body>
 </html>

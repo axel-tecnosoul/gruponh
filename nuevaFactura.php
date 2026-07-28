@@ -308,13 +308,6 @@ $fv = function($key, $default = '') use ($facturaData) {
                       <div class="col-md-6">
 
                         <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Descripción(*)</label>
-                          <div class="col-sm-8">
-                            <textarea name="descripcion" class="form-control" rows="3" required><?= $fv('descripcion', ($vista === 'venta' && !empty($proyectoDatos['nombre'])) ? $proyectoDatos['nombre'] : '') ?></textarea>
-                          </div>
-                        </div>
-
-                        <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Fecha Emitida(*)</label>
                           <div class="col-sm-8">
                             <input name="fecha_emitida" id="fecha_emitida" type="date"
@@ -343,35 +336,6 @@ $fv = function($key, $default = '') use ($facturaData) {
                           </div>
                         </div>
                         <?php endif; ?>
-
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Forma de Pago(*)</label>
-                          <div class="col-sm-8">
-                            <?php if ($vista === 'compra' && $ocPreseleccionada): ?>
-                              <p class="form-control-plaintext"><?= htmlspecialchars($formaPagoLabel) ?></p>
-                              <input type="hidden" name="id_condicion_pago" value="<?= (int)$idFormaPago ?>">
-                            <?php else: ?>
-                            <select name="id_condicion_pago" id="id_condicion_pago"
-                              class="js-example-basic-single col-sm-12" required>
-                              <option value="">Seleccione...</option>
-                              <?php
-                              $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, forma_pago FROM formas_pago WHERE 1");
-                              $q->execute();
-                              while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                if ($vista === 'venta') {
-                                  echo "<option value='{$f['id']}'>" . htmlspecialchars($f['forma_pago']) . "</option>";
-                                } else {
-                                  $sel = ($idFormaPago != 0 && $f['id'] == $idFormaPago) ? ' selected' : '';
-                                  echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['forma_pago']) . "</option>";
-                                }
-                              }
-                              Database::disconnect();
-                              ?>
-                            </select>
-                            <?php endif; ?>
-                          </div>
-                        </div>
 
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Moneda(*)</label>
@@ -685,7 +649,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           $q = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
                           $q->execute();
                           while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                            echo "<option value='{$f['id']}' data-porcentaje='{$f['porcentaje']}'>" . htmlspecialchars($f['regimen']) . "</option>";
+                            echo "<option value='{$f['id']}' data-porcentaje='{$f['porcentaje']}'>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
                           }
                           Database::disconnect();
                           ?>
@@ -694,12 +658,20 @@ $fv = function($key, $default = '') use ($facturaData) {
                       <div class="col-md-4 mb-2">
                         <label class="col-form-label">Base imponible(*)</label>
                         <div class="input-group" style="max-width:250px;">
-                          <input id="ret_base" type="number" step="0.01" class="form-control" placeholder="Base imponible">
+                          <input id="ret_base" type="number" step="0.01" min="0" class="form-control" placeholder="Base imponible">
                           <div class="input-group-append">
                             <span class="input-group-text" id="ret_porcentaje_label">%</span>
                           </div>
                         </div>
-                        <small class="text-muted" id="ret_monto_calculado" style="display:none;"></small>
+                      </div>
+                      <div class="col-md-4 mb-2">
+                        <label class="col-form-label">Retención(*)</label>
+                        <div class="input-group" style="max-width:250px;">
+                          <div class="input-group-prepend">
+                            <span class="input-group-text">$</span>
+                          </div>
+                          <input id="ret_monto" type="number" step="0.01" min="0" class="form-control" placeholder="Monto retención">
+                        </div>
                       </div>
                     </div>
 
@@ -790,6 +762,7 @@ $fv = function($key, $default = '') use ($facturaData) {
     var retenciones = [];
     var editIndex = -1;
     var editRetencionIndex = -1;
+    var monedaSimbolo = "<?= !empty($monedaLabel) ? htmlspecialchars($monedaLabel) : '$' ?>";
 
     <?php if ($vista === 'compra'): ?>
     function jsRecargar() {
@@ -825,12 +798,22 @@ $fv = function($key, $default = '') use ($facturaData) {
           var sub = totalSubImp * (1 - porcDesc / 100);
           total += sub;
 
-          var impLabels = [];
-          impsData.forEach(function(imp) {
-            //impLabels.push('OC ' + (imp.nro_oc || '') + ' x' + parseFloat(imp.cantidad||0).toFixed(2) + ' ' + imp.concepto_text + ' $' + parseFloat(imp.precio||0).toFixed(2));
-            impLabels.push(parseFloat(imp.cantidad||0).toFixed(2) + ' x ' + imp.concepto_text + ' x $' + parseFloat(imp.precio||0).toFixed(2));
-          });
-          var imputacionesHtml = impLabels.length ? impLabels.join('<br>') : item.imputaciones_text ? item.imputaciones_text.join('<br>') : '';
+          var imputacionesHtml = '';
+          if (impsData.length > 0) {
+            imputacionesHtml = '<table class="table table-sm table-borderless mb-0" style="font-size:12px;background:none;"><thead><th style="padding: 0 2px;">Concepto</th><th style="text-align:right; padding: 0 2px;">Cant.</th><th style="text-align:right; padding: 0 2px;">Precio</th><th style="text-align:right; padding: 0 2px;">Subtotal</th></thead>';
+            impsData.forEach(function(imp) {
+              var subImp = parseFloat(imp.cantidad||0) * parseFloat(imp.precio||0);
+              imputacionesHtml += '<tr>';
+              imputacionesHtml += '<td style="padding:2px 4px;">OC #' + (imp.nro_oc || '') + ' - ' + htmlEsc(imp.concepto_text) + '</td>';
+              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + parseFloat(imp.cantidad||0).toFixed(2) + '</td>';
+              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + monedaSimbolo + ' ' + parseFloat(imp.precio||0).toFixed(2) + '</td>';
+              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + monedaSimbolo + ' ' + subImp.toFixed(2) + '</td>';
+              imputacionesHtml += '</tr>';
+            });
+            imputacionesHtml += '</table>';
+          } else if (item.imputaciones_text && item.imputaciones_text.length) {
+            imputacionesHtml = item.imputaciones_text.join('<br>');
+          }
 
           tbody.append(
             '<tr>' +
@@ -838,10 +821,10 @@ $fv = function($key, $default = '') use ($facturaData) {
             '<td>' + item.concepto_text + '</td>' +
             '<td>' + (item.descripcion ? htmlEsc(item.descripcion) : '') + '</td>' +
             '<td>' + imputacionesHtml + '</td>' +
-            '<td class="text-right">$ ' + formatNumber(totalSubImp) + '</td>' +
+            '<td class="text-right">' + monedaSimbolo + ' ' + formatNumber(totalSubImp) + '</td>' +
             '<td class="text-right">' + porcDesc.toFixed(2) + '%</td>' +
-            '<td class="text-right">$ ' + formatNumber(sub) + '</td>' +
-            '<td><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular">&nbsp;<a href="javascript:void(0)" onclick="quitarDetalle(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
+            '<td class="text-right">' + monedaSimbolo + ' ' + formatNumber(sub) + '</td>' +
+            '<td><img src="img/icon_modificar.png" onclick="editarDetalle(' + i + ')" style="cursor:pointer" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular">&nbsp;<a href="javascript:void(0)" onclick="quitarDetalle(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'//<a href="javascript:void(0)" onclick="editarDetalle(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a>
           );
         });
@@ -849,11 +832,11 @@ $fv = function($key, $default = '') use ($facturaData) {
         if (typeof feather !== 'undefined') { feather.replace(); }
       }
 
-      $('#totalDetalle').text('$ ' + total.toFixed(2));
+      $('#totalDetalle').text(monedaSimbolo + ' ' + total.toFixed(2));
 
       var ocTotal = parseFloat($('#ocTotalData').val()) || 0;
       if (ocTotal > 0) {
-        $('#topeMaximo').text('(*)Tope Maximo Recomendado: $ ' + (ocTotal - total).toFixed(2));
+        $('#topeMaximo').text('(*)Tope Maximo Recomendado: ' + monedaSimbolo + ' ' + (ocTotal - total).toFixed(2));
       } else {
         $('#topeMaximo').text('');
       }
@@ -880,9 +863,9 @@ $fv = function($key, $default = '') use ($facturaData) {
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
             '<td>' + htmlEsc(item.regimen_text) + '</td>' +
-            '<td>$ ' + parseFloat(base).toFixed(2) + '</td>' +
+            '<td>' + monedaSimbolo + ' ' + parseFloat(base).toFixed(2) + '</td>' +
             '<td>' + parseFloat(item.porcentaje || 0).toFixed(2) + '%</td>' +
-            '<td>$ ' + parseFloat(item.monto).toFixed(2) + '</td>' +
+            '<td>' + monedaSimbolo + ' ' + parseFloat(item.monto).toFixed(2) + '</td>' +
             '<td><a href="javascript:void(0)" onclick="editarRetencion(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a></td>' +
             '<td><a href="javascript:void(0)" onclick="quitarRetencion(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'
@@ -891,7 +874,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#countRetenciones').text('(' + retenciones.length + ')');
       }
 
-      $('#totalRetenciones').text('$ ' + total.toFixed(2));
+      $('#totalRetenciones').text(monedaSimbolo + ' ' + total.toFixed(2));
       $('#retenciones_json').val(JSON.stringify(retenciones));
 
       actualizarGranTotal();
@@ -952,20 +935,20 @@ $fv = function($key, $default = '') use ($facturaData) {
         var cant = st.cantidad || item.restante || 0;
         var prec = st.precio || item.oc_precio || 0;
         var sub = cant * prec;
-        var label = (item.nro_oc ? 'OC #' + item.nro_oc + ' - ' : '') + htmlEsc(item.concepto_text);
+        var label = ('') + htmlEsc(item.concepto_text);
         container.append(
           '<div class="row imp-sub-row align-items-center" data-cd-id="' + item.id_cd + '" data-nro-oc="' + (item.nro_oc || '') + '" style="margin:0 0 6px 0; padding:6px 0; border-bottom:1px solid #eee;">' +
           '<div class="col-md-5"><span class="imp-sub-label" style="font-size:13px;">' + label + '</span></div>' +
           '<div class="col-md-2"><span style="font-size:13px; color:#333; margin-right:6px;">Cant:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-cant" style="display:inline-block; width:60%;" value="' + cant + '" data-restante="' + (item.restante || 0) + '"></div>' +
           '<div class="col-md-2"><span style="font-size:13px; color:#333; margin-right:6px;">Precio:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-prec" style="display:inline-block; width:60%;" value="' + prec + '"></div>' +
-          '<div class="col-md-3 text-right"><span class="imp-sub-subtotal" style="font-size:13px; font-weight:bold;">$ ' + sub.toFixed(2) + '</span></div>' +
+          '<div class="col-md-3 text-right"><span class="imp-sub-subtotal" style="font-size:13px; font-weight:bold;">' + monedaSimbolo + ' ' + sub.toFixed(2) + '</span></div>' +
           '</div>'
         );
       });
       container.append(
         '<div class="row" id="imp-sub-total-row" style="margin:0; padding:8px 0; border-top:2px solid #333;">' +
         '<div class="col-md-9 text-right font-weight-bold">Total Imputación:</div>' +
-        '<div class="col-md-3 text-right"><span id="imp-sub-total-value" style="font-weight:bold;">$ 0.00</span></div>' +
+        '<div class="col-md-3 text-right"><span id="imp-sub-total-value" style="font-weight:bold;">' + monedaSimbolo + ' 0.00</span></div>' +
         '</div>'
       );
       actualizarSubTotalesImputacion();
@@ -977,10 +960,10 @@ $fv = function($key, $default = '') use ($facturaData) {
         var cant = parseFloat($(this).find('.imp-sub-cant').val()) || 0;
         var prec = parseFloat($(this).find('.imp-sub-prec').val()) || 0;
         var sub = cant * prec;
-        $(this).find('.imp-sub-subtotal').text('$ ' + sub.toFixed(2));
+        $(this).find('.imp-sub-subtotal').text(monedaSimbolo + ' ' + sub.toFixed(2));
         total += sub;
       });
-      $('#imp-sub-total-value').text('$ ' + total.toFixed(2));
+      $('#imp-sub-total-value').text(monedaSimbolo + ' ' + total.toFixed(2));
     }
 
     function quitarRetencion(index) {
@@ -990,8 +973,9 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#btnCancelarRetencion').hide();
         $('#ret_regimen').val('').trigger('change');
         $('#ret_base').val('');
-        $('#ret_porcentaje_label').text('%');
-        $('#ret_monto_calculado').hide().text('');
+        $('#ret_monto').val('');
+        $('#ret_porcentaje_label').text('-%');
+        
       }
       retenciones.splice(index, 1);
       renderRetenciones();
@@ -1015,19 +999,24 @@ $fv = function($key, $default = '') use ($facturaData) {
     function actualizarGranTotal() {
       var subTotal = parseFloat($('#totalDetalle').text().replace(/[^0-9.-]/g, '')) || 0;
       var retTotal = parseFloat($('#totalRetenciones').text().replace(/[^0-9.-]/g, '')) || 0;
-      $('#granSubtotal').text('$ ' + subTotal.toFixed(2));
-      $('#granRetenciones').text('$ ' + retTotal.toFixed(2));
-      $('#granTotal').text('$ ' + (subTotal + retTotal).toFixed(2));
+      $('#granSubtotal').text(monedaSimbolo + ' ' + subTotal.toFixed(2));
+      $('#granRetenciones').text(monedaSimbolo + ' ' + retTotal.toFixed(2));
+      $('#granTotal').text(monedaSimbolo + ' ' + (subTotal + retTotal).toFixed(2));
     }
 
     function calcularRetencion() {
       var base = parseFloat($('#ret_base').val()) || 0;
       var porc = parseFloat($('#ret_regimen option:selected').data('porcentaje')) || 0;
       var monto = base * porc / 100;
-      if (monto > 0) {
-        $('#ret_monto_calculado').show().text('Retención: $ ' + monto.toFixed(2));
-      } else {
-        $('#ret_monto_calculado').hide().text('');
+      $('#ret_monto').val(monto.toFixed(2));
+    }
+
+    function calcularBaseDesdeMonto() {
+      var monto = parseFloat($('#ret_monto').val()) || 0;
+      var porc = parseFloat($('#ret_regimen option:selected').data('porcentaje')) || 0;
+      if (porc > 0) {
+        var base = monto / (porc / 100);
+        $('#ret_base').val(base.toFixed(2));
       }
     }
 
@@ -1102,8 +1091,20 @@ $fv = function($key, $default = '') use ($facturaData) {
       }
       $('#det_imputaciones').val(selIds).trigger('change');
 
-      // Build sub-lines with stored qty/price
-      buildSubLines(item.imputaciones_data || [], item.imputaciones_data || []);
+      if ($('#imp-sub-lines .imp-sub-row').length > 0) {
+        if (item.imputaciones_data) {
+          item.imputaciones_data.forEach(function(imp) {
+            var row = $('#imp-sub-lines .imp-sub-row[data-cd-id="' + imp.id_cd + '"]');
+            if (row.length) {
+              row.find('.imp-sub-cant').val(imp.cantidad);
+              row.find('.imp-sub-prec').val(imp.precio);
+            }
+          });
+          actualizarSubTotalesImputacion();
+        }
+      } else if (item.imputaciones_data && item.imputaciones_data.length > 0) {
+        buildSubLines(item.imputaciones_data, item.imputaciones_data);
+      }
 
       $('#btnAgregarDetalle').text('Modificar Ítem');
       $('#btnCancelarDetalle').show();
@@ -1131,6 +1132,7 @@ $fv = function($key, $default = '') use ($facturaData) {
 
       $('#id_moneda').on('change', function() {
         var opcion = $(this).find('option:selected');
+        monedaSimbolo = opcion.text() || '$';
         var esDolar = (opcion.data('esusd') === true || opcion.data('esusd') === 'true');
         var input = $('#cotizacion');
         var badge = $('#estadoDolar');
@@ -1192,7 +1194,6 @@ $fv = function($key, $default = '') use ($facturaData) {
       <?php if (!empty($facturaData)): ?>
       $('#id_tipo_comprobante').val('<?= $fv('id_tipo_comprobante') ?>').trigger('change');
       $('#id_letra_comprobante').val('<?= $fv('id_letra_comprobante') ?>').trigger('change');
-      $('#id_condicion_pago').val('<?= $fv('id_condicion_pago') ?>').trigger('change');
       $('#id_moneda').val('<?= $fv('id_moneda') ?>').trigger('change');
       $('#id_empresa').val('<?= $fv('id_empresa') ?>').trigger('change');
       <?php if ($vista === 'compra'): ?>
@@ -1311,7 +1312,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             }
           }
 
-          impsData.push({ id_cd: cdId, nro_oc: nroOc, concepto_text: conceptoText, cantidad: cant, precio: prec });
+          impsData.push({ id_cd: cdId, nro_oc: nroOc, concepto_text: conceptoText, cantidad: cant, precio: prec, restante: restante });
           allImpIds.push(cdId);
         });
 
@@ -1392,7 +1393,7 @@ $fv = function($key, $default = '') use ($facturaData) {
           return;
         }
 
-        var monto = base * porc / 100;
+        var monto = parseFloat($('#ret_monto').val()) || (base * porc / 100);
 
         if (editRetencionIndex >= 0) {
           retenciones[editRetencionIndex] = {
@@ -1417,8 +1418,9 @@ $fv = function($key, $default = '') use ($facturaData) {
 
         $('#ret_regimen').val('').trigger('change');
         $('#ret_base').val('');
-        $('#ret_porcentaje_label').text('%');
-        $('#ret_monto_calculado').hide().text('');
+        $('#ret_monto').val('');
+        $('#ret_porcentaje_label').text('-%');
+        
         renderRetenciones();
       });
 
@@ -1428,18 +1430,27 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#btnCancelarRetencion').hide();
         $('#ret_regimen').val('').trigger('change');
         $('#ret_base').val('');
-        $('#ret_porcentaje_label').text('%');
-        $('#ret_monto_calculado').hide().text('');
+        $('#ret_monto').val('');
+        $('#ret_porcentaje_label').text('-%');
+        
       });
 
       $('#ret_regimen').on('change', function() {
         var porc = parseFloat($(this).find('option:selected').data('porcentaje')) || 0;
-        $('#ret_porcentaje_label').text(porc > 0 ? porc.toFixed(2) + '%' : '%');
+        $('#ret_porcentaje_label').text(porc > 0 ? porc.toFixed(2) + '%' : '-%');
+        if (!$('#ret_base').val()) {
+          var neto = parseFloat($('#totalDetalle').text().replace(/[^0-9.-]/g, '')) || 0;
+          if (neto > 0) $('#ret_base').val(neto.toFixed(2));
+        }
         calcularRetencion();
       });
 
       $('#ret_base').on('input', function() {
         calcularRetencion();
+      });
+
+      $('#ret_monto').on('input', function() {
+        calcularBaseDesdeMonto();
       });
 
       <?php if ($vista === 'venta' || $vista === 'compra'): ?>

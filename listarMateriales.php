@@ -20,31 +20,25 @@ include 'database.php';
   </style>
 </head>
 <body>
-  <!-- page-wrapper Start-->
   <div class="page-wrapper">
-    <!-- Page Header Start-->
     <?php include('header.php'); ?>
-
-    <!-- Page Header Ends -->
-    <!-- Page Body Start-->
     <div class="page-body-wrapper">
-      <!-- Page Sidebar Start-->
       <?php include('menu.php'); ?>
-      <!-- Page Sidebar Ends-->
       <div class="page-body">
         <?php
         $ubicacion = "Conceptos ";
         include_once("head_page.php") ?>
-        <!-- Container-fluid starts-->
         <div class="container-fluid">
           <div class="row">
-            <!-- Zero Configuration Starts-->
             <div class="col-sm-12">
               <div class="card">
                 <div class="card-header">
                   <h5><?php echo $ubicacion;
                       if (!empty(tienePermiso(286))) { ?><a href="nuevoMaterial.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a><?php } ?>
                     &nbsp;&nbsp;
+                    <a href="importMateriales.php" title="Importar Excel Conceptos"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Conceptos" title="Importar Conceptos"></a>
+                    &nbsp;
+                    <a href="importUnidadesMedida.php" title="Importar Unidades de Medida"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Unidades" title="Importar Unidades de Medida"></a>
                     <?php
                     echo '<a href="#" id="link_ver_material"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
                     echo '&nbsp;&nbsp;';
@@ -78,30 +72,6 @@ include 'database.php';
                         </tr>
                       </thead>
                       <tbody>
-                        <?php
-                        $pdo = Database::connect();
-                        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                        $sql = "SELECT m.id, m.codigo, m.concepto, c.categoria, m.activo 
-                                FROM materiales m 
-                                INNER JOIN categorias c ON c.id = m.id_categoria 
-                                WHERE m.anulado = 0";
-
-                        foreach ($pdo->query($sql) as $row) {
-                          $stockInfo = obtenerStockYReservado($pdo, (int)$row['id']);
-                          ?>
-                          <tr>
-                            <td><?= htmlspecialchars($row['id']) ?></td>
-                            <td><?= htmlspecialchars($row['codigo']) ?></td>
-                            <td><?= htmlspecialchars($row['concepto']) ?></td>
-                            <td><?= htmlspecialchars($row['categoria']) ?></td>
-                            <td><?= $stockInfo['stock'] ?></td>
-                            <td><?= $stockInfo['reservado'] ?></td>
-                            <td><?= ($row['activo'] == 1) ? 'Si' : 'No' ?></td>
-                          </tr>
-                        <?php
-                        }
-                        Database::disconnect();
-                        ?>
                       </tbody>
                       <tfoot>
                         <tr>
@@ -119,55 +89,36 @@ include 'database.php';
                 </div>
               </div>
             </div>
-            <!-- Zero Configuration Ends-->
           </div>
         </div>
-        <!-- Container-fluid Ends-->
       </div>
-      <!-- footer start-->
       <?php include("footer.php"); ?>
     </div>
   </div>
-  <?php
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT m.id, m.codigo, m.concepto, c.categoria, m.activo 
-          FROM materiales m 
-          INNER JOIN categorias c ON c.id = m.id_categoria 
-          WHERE m.anulado = 0";
-  foreach ($pdo->query($sql) as $row) {
-  ?>
-    <div class="modal fade" id="eliminarModal_<?= $row['id'] ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-          </div>
-          <div class="modal-body">¿Está seguro que desea eliminar el concepto?</div>
-          <div class="modal-footer">
-            <a href="eliminarMaterial.php?id=<?= $row['id'] ?>" class="btn btn-primary">Eliminar</a>
-            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-          </div>
+
+  <div class="modal fade" id="eliminarModal" tabindex="-1" role="dialog" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="eliminarModalLabel">Confirmación</h5>
+          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+        </div>
+        <div class="modal-body">¿Está seguro que desea eliminar el concepto?</div>
+        <div class="modal-footer">
+          <a href="#" id="btnConfirmarEliminar" class="btn btn-primary">Eliminar</a>
+          <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
         </div>
       </div>
     </div>
-  <?php
-  }
-  Database::disconnect();
-  ?>
-  <!-- latest jquery-->
+  </div>
+
   <script src="assets/js/jquery-3.2.1.min.js"></script>
-  <!-- Bootstrap js-->
   <script src="assets/js/bootstrap/popper.min.js"></script>
   <script src="assets/js/bootstrap/bootstrap.js"></script>
-  <!-- feather icon js-->
   <script src="assets/js/icons/feather-icon/feather.min.js"></script>
   <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-  <!-- Sidebar jquery-->
   <script src="assets/js/sidebar-menu.js"></script>
   <script src="assets/js/config.js"></script>
-  <!-- Plugins JS start-->
   <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
   <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
   <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
@@ -190,12 +141,9 @@ include 'database.php';
   <script src="assets/js/datatable/datatable-extension/custom.js"></script>
   <script src="assets/js/chat-menu.js"></script>
   <script src="assets/js/tooltip-init.js"></script>
-  <!-- Plugins JS Ends-->
-  <!-- Theme js-->
   <script src="assets/js/script.js"></script>
   <script>
     $(document).ready(function() {
-      // Setup - add a text input to each footer cell
       $('#dataTables-example666 tfoot th').each(function() {
         var title = $(this).text();
         if (title === 'Stock' || title === 'Reservado') {
@@ -217,8 +165,29 @@ include 'database.php';
       });
 
       var table = $('#dataTables-example666').DataTable({
-        stateSave: false,
-        responsive: false,
+        serverSide: true,
+        processing: true,
+        ajax: {
+          url: 'get_materiales_datatable.php',
+          data: function(d) {
+            d.stock_op = $('#dataTables-example666 tfoot th').eq(4).find('select.numeric-operator').val() || '';
+            d.stock_val = $('#dataTables-example666 tfoot th').eq(4).find('input.numeric-value').val() || '';
+            d.reservado_op = $('#dataTables-example666 tfoot th').eq(5).find('select.numeric-operator').val() || '';
+            d.reservado_val = $('#dataTables-example666 tfoot th').eq(5).find('input.numeric-value').val() || '';
+          }
+        },
+        columns: [
+          { data: 'id' },
+          { data: 'codigo' },
+          { data: 'concepto' },
+          { data: 'categoria' },
+          { data: 'stock' },
+          { data: 'reservado' },
+          { data: 'activo' }
+        ],
+        lengthMenu: [[10, 25, 50, 100, 500, 1000], [10, 25, 50, 100, 500, 1000]],
+        dom: 'Bfrtp<"bottom"l>',
+        buttons: ['excel'],
         language: {
           "decimal": "",
           "emptyTable": "No hay información",
@@ -241,89 +210,30 @@ include 'database.php';
         }
       });
 
-      function parseNumericFilter(value) {
-        value = (value || '').trim();
-        if (value === '') {
-          return null;
-        }
-        var match = value.match(/^\s*(!=|==|[<>]=?)?\s*(-?\d+(?:[\.,]\d+)?)\s*$/);
-        if (match) {
-          var op = match[1] || '=';
-          var num = parseFloat(match[2].replace(',', '.'));
-          return { op: op, num: num };
-        }
-        return null;
-      }
-
-      function numericCompare(cellValue, filter) {
-        if (!filter) {
-          return true;
-        }
-        var cellNum = parseFloat((cellValue || '').toString().replace(/,/g, '.'));
-        if (isNaN(cellNum)) {
-          return false;
-        }
-        switch (filter.op) {
-          case '>': return cellNum > filter.num;
-          case '<': return cellNum < filter.num;
-          case '>=': return cellNum >= filter.num;
-          case '<=': return cellNum <= filter.num;
-          case '==':
-          case '=': return cellNum === filter.num;
-          case '!=': return cellNum !== filter.num;
-          default: return false;
-        }
-      }
-
-      $.fn.dataTable.ext.search.push(function(settings, data) {
-        if (settings.nTable !== $('#dataTables-example666')[0]) {
-          return true;
-        }
-
-        function getNumericFilter(colIndex) {
-          var $th = $('#dataTables-example666 tfoot th').eq(colIndex);
-          var op = $th.find('select.numeric-operator').val() || '';
-          var val = $th.find('input.numeric-value').val() || '';
-          return parseNumericFilter(op + val);
-        }
-
-        var stockFilter = getNumericFilter(4);
-        var reservadoFilter = getNumericFilter(5);
-
-        if (stockFilter && !numericCompare(data[4], stockFilter)) {
-          return false;
-        }
-        if (reservadoFilter && !numericCompare(data[5], reservadoFilter)) {
-          return false;
-        }
-        return true;
-      });
-
-      // Apply the search
       table.columns().every(function() {
         var that = this;
         var columnIndex = that.index();
 
         $('input, select', this.footer()).on('keyup change', function() {
-          var value;
           var isNumericColumn = (columnIndex === 4 || columnIndex === 5);
 
           if (isNumericColumn) {
             var op = $(that.footer()).find('select.numeric-operator').val() || '';
             var num = $(that.footer()).find('input.numeric-value').val() || '';
-            value = op + num;
-          } else {
-            value = $(that.footer()).find('input').val() || '';
-          }
 
-          var isNumericOperator = isNumericColumn && parseNumericFilter(value);
-
-          if (isNumericOperator) {
-            if (that.search() !== '') {
+            if (op && num) {
               that.search('');
+            } else {
+              var val = $(that.footer()).find('input').val() || '';
+              if (that.search() !== val) {
+                that.search(val);
+              }
             }
-          } else if (that.search() !== value) {
-            that.search(value);
+          } else {
+            var val = $(that.footer()).find('input').val() || '';
+            if (that.search() !== val) {
+              that.search(val);
+            }
           }
 
           table.draw();
@@ -374,22 +284,13 @@ include 'database.php';
           $("#link_modificar_material").attr("href", "modificarMaterial.php?id=" + id_material);
           $("#link_ver_precios_material").attr("href", "verPreciosMaterial.php?id=" + id_material);
           $("#link_eliminar_material").attr("data-toggle", "modal");
-          $("#link_eliminar_material").attr("data-target", "#eliminarModal_" + id_material);
+          $("#link_eliminar_material").attr("data-target", "#eliminarModal");
+          $("#btnConfirmarEliminar").attr("href", "eliminarMaterial.php?id=" + id_material);
         }
       });
 
     });
-      /*table.on('page.dt', function () {
-          //alert('La página ha cambiado');
-          // Hacer algo más aquí...
-      });
 
-      // Ejecutar una función al cambiar la cantidad de filas mostradas
-      table.on('length.dt', function (e, settings, len) {
-          //alert('La cantidad de filas mostradas ha cambiado a ' + len);
-          // Hacer algo más aquí...
-      });*/
-    
     function selectRow(t) {
       t.addClass('selected');
     }
@@ -399,6 +300,5 @@ include 'database.php';
     }
   </script>
   <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-  <!-- Plugin used-->
 </body>
 </html>

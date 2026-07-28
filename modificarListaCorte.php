@@ -480,6 +480,9 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
 					              <button class="btn btn-primary" value="<?=$accion?>" name="btn1" type="submit">Modificar</button>
+                        <?php if ($id_estado_lista_corte == 1) { ?>
+                        <button class="btn btn-primary" type="button" id="btnEnviarAprobacion">Enviar a aprobación</button>
+                        <?php } ?>
                         <a href='listarListasCorte.php<?= $prodQuery ?>' class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -494,6 +497,27 @@ if (!empty($_POST)) {
         <?php include("footer.php"); ?>
       </div>
     </div>
+    <div class="modal fade" id="modalEnviarAprobacion" tabindex="-1" role="dialog">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <form id="formEnviarAprobacion" method="post" action="enviarAprobacionListaCorte.php?id_lista_corte=<?=$data['id_lista_corte']?><?= $prodParam ?>">
+            <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>">
+            <div class="modal-header">
+              <h5 class="modal-title">Confirmar envío a aprobación</h5>
+              <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+              <p>¿Estás seguro de que quieres enviar esta revisión a aprobación?</p>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Confirmar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <div class="modal fade" id="modalConjuntos" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
 		  <div class="modal-dialog" role="document">
 		    <div class="modal-content">
@@ -584,6 +608,10 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <script>
       $(document).ready(function() {
+
+        $('#btnEnviarAprobacion').on('click', function(){
+          $('#modalEnviarAprobacion').modal('show');
+        });
 
         $(".selectOneFromTable").on("click",function(e){
           var nodes = $('#dataTables-example667').DataTable().rows().nodes();

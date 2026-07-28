@@ -54,6 +54,8 @@ if (empty($_SESSION['user'])) {
 						echo '&nbsp;&nbsp;';
 					}
 					?>
+					&nbsp;&nbsp;
+					<a href="importRegimenes.php" title="Importar Excel"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Excel" title="Importar Excel"></a>
 					</h5>
                   </div>
                   <div class="card-body">
@@ -62,21 +64,27 @@ if (empty($_SESSION['user'])) {
                         <thead>
                           <tr>
 							  <th>ID</th>
+							  <th>Código</th>
+							  <th>Artículo</th>
 							  <th>Regimen</th>
 							  <th>Porcentaje</th>
+							  <th>Monto</th>
                           </tr>
                         </thead>
                         <tbody>
                           <?php
                             include 'database.php';
                             $pdo = Database::connect();
-                            $sql = " SELECT `id`, `regimen`, `porcentaje` FROM `regimenes_facturacion` WHERE `anulado` = 0 ";
+                            $sql = " SELECT `id`, `codigo`, `articulo`, `regimen`, `porcentaje`, `monto` FROM `regimenes_facturacion` WHERE `anulado` = 0 ";
                             
                             foreach ($pdo->query($sql) as $row) {
                                 echo '<tr>';
                                 echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[1] . '</td>';
-                                echo '<td>'. number_format($row[2],1) . '%</td>';
+                                echo '<td>'. $row[2] . '</td>';
+                                echo '<td>'. $row[3] . '</td>';
+                                echo '<td>'. number_format($row[4],1) . '%</td>';
+                                echo '<td>'. number_format($row[5],2) . '</td>';
                                 echo '</tr>';
                             }
                            Database::disconnect();
@@ -85,8 +93,11 @@ if (empty($_SESSION['user'])) {
 						<tfoot>
                           <tr>
 							  <th>ID</th>
+							  <th>Código</th>
+							  <th>Artículo</th>
 							  <th>Regimen</th>
 							  <th>Porcentaje</th>
+							  <th>Monto</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -106,7 +117,7 @@ if (empty($_SESSION['user'])) {
     </div>
   <?php
     $pdo = Database::connect();
-    $sql = " SELECT `id`, `regimen`, `porcentaje` FROM `regimenes_facturacion` WHERE `anulado` = 0 ";
+    $sql = " SELECT `id`, `codigo`, `articulo`, `regimen`, `porcentaje`, `monto` FROM `regimenes_facturacion` WHERE `anulado` = 0 ";
     foreach ($pdo->query($sql) as $row) {
         ?>
   <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
