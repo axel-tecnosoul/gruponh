@@ -36,10 +36,10 @@ include 'database.php';
                   <h5><?php echo $ubicacion;
                       if (!empty(tienePermiso(286))) { ?><a href="nuevoMaterial.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a><?php } ?>
                     &nbsp;&nbsp;
-                    <a href="importMateriales.php" title="Importar Excel Conceptos"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Conceptos" title="Importar Conceptos"></a>
+                    <a href="importMateriales.php" title="Importar Excel Conceptos"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Conceptos"></a>
                     &nbsp;
-                    <a href="importUnidadesMedida.php" title="Importar Unidades de Medida"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Unidades" title="Importar Unidades de Medida"></a>
-                    <?php
+<!--                     <a href="importUnidadesMedida.php" title="Importar Unidades de Medida"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Unidades" title="Importar Unidades de Medida"></a>
+ -->                    <?php
                     echo '<a href="#" id="link_ver_material"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
                     echo '&nbsp;&nbsp;';
                     if (!empty(tienePermiso(287))) {
