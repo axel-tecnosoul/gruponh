@@ -21,7 +21,7 @@
   } else {
       $pdo = Database::connect();
       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-      $sql = "SELECT `id`, `codigo`, `concepto`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `perimetro`, `anulado` FROM `materiales` WHERE id = ? ";
+      $sql = "SELECT `id`, `codigo`, `concepto`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `id_categoria`, `id_unidad_medida`, `stock_minimo`, `perimetro`, `anulado` FROM `materiales` WHERE id = ? ";
       $q = $pdo->prepare($sql);
       $q->execute([$id]);
       $data = $q->fetch(PDO::FETCH_ASSOC);

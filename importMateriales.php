@@ -38,9 +38,9 @@
             return [$espesor, $ancho, $largo];
         }
 
-        // Perfiles: primer número tras una "x" es el ancho, largo de Excel (obligatorio)
+        // Perfiles: el número anterior a la "x" es el ancho, largo de Excel (obligatorio)
         if (strpos($conceptoUpper, 'PERFIL') !== false) {
-            if (preg_match('/x\s*(\d+[\.\,]?\d*)/i', $conceptoNorm, $m)) {
+            if (preg_match('/(\d+[\.\,]?\d*)\s*x/i', $conceptoNorm, $m)) {
                 $ancho = floatval($m[1]);
             }
             // En Perfiles el largo DEBE venir del Excel
@@ -94,8 +94,8 @@
                 $qCategoria = $pdo->prepare("SELECT id FROM categorias WHERE id = ?");
                 $qUnidad = $pdo->prepare("SELECT id FROM unidades_medida WHERE id = ?");
                 $qExiste = $pdo->prepare("SELECT id FROM materiales WHERE codigo = ?");
-                $qInsert = $pdo->prepare("INSERT INTO materiales (codigo, concepto, descripcion, largo, peso_metro, id_categoria, activo, id_unidad_medida, stock_minimo, anulado, calidad, perimetro, espesor, ancho) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $qUpdate = $pdo->prepare("UPDATE materiales SET concepto = ?, descripcion = ?, largo = ?, peso_metro = ?, id_categoria = ?, activo = ?, id_unidad_medida = ?, stock_minimo = ?, anulado = ?, calidad = ?, perimetro = ?, espesor = ?, ancho = ? WHERE codigo = ?");
+                $qInsert = $pdo->prepare("INSERT INTO materiales (codigo, concepto, descripcion, largo, peso_metro, id_categoria, id_unidad_medida, stock_minimo, anulado, calidad, perimetro, espesor, ancho) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $qUpdate = $pdo->prepare("UPDATE materiales SET concepto = ?, descripcion = ?, largo = ?, peso_metro = ?, id_categoria = ?, id_unidad_medida = ?, stock_minimo = ?, anulado = ?, calidad = ?, perimetro = ?, espesor = ?, ancho = ? WHERE codigo = ?");
 
                 foreach ($rows as $i => $row) {
                     $id_col = trim($row[0] ?? '');
@@ -105,10 +105,9 @@
                     $largo = str_replace(',', '.', trim($row[4] ?? ''));
                     $peso_metro = str_replace(',', '.', trim($row[5] ?? ''));
                     $id_categoria = str_replace(',', '.', trim($row[6] ?? ''));
-                    $activo = trim($row[7] ?? '');
-                    $id_unidad_medida = str_replace(',', '.', trim($row[8] ?? ''));
-                    $stock_minimo = str_replace(',', '.', trim($row[9] ?? ''));
-                    $anulado = trim($row[10] ?? '');
+                    $id_unidad_medida = str_replace(',', '.', trim($row[7] ?? ''));
+                    $stock_minimo = str_replace(',', '.', trim($row[8] ?? ''));
+                    $anulado = trim($row[9] ?? '');
 
                     $esEncabezado = (
                         stripos($id_col, 'Base de datos') !== false ||
@@ -164,7 +163,6 @@
                     $largo = $largo !== '' ? (float)$largo : 0;
                     $peso_metro = $peso_metro !== '' ? (float)$peso_metro : 0;
                     $stock_minimo = $stock_minimo !== '' ? (float)$stock_minimo : 0;
-                    $activo = $activo !== '' ? (int)$activo : 1;
                     $anulado = $anulado !== '' ? (int)$anulado : 0;
                     $descripcion = $descripcion !== '' ? $descripcion : '';
 
@@ -187,10 +185,10 @@
                     $existente = $qExiste->fetch(PDO::FETCH_ASSOC);
 
                     if ($existente) {
-                        $qUpdate->execute([$concepto, $descripcion, $largo, $peso_metro, $id_categoria, $activo, $id_unidad_medida, $stock_minimo, $anulado, '', 0, $espesor, $ancho, $codigo]);
+                        $qUpdate->execute([$concepto, $descripcion, $largo, $peso_metro, $id_categoria, $id_unidad_medida, $stock_minimo, $anulado, '', 0, $espesor, $ancho, $codigo]);
                         $actualizados++;
                     } else {
-                        $qInsert->execute([$codigo, $concepto, $descripcion, $largo, $peso_metro, $id_categoria, $activo, $id_unidad_medida, $stock_minimo, $anulado, '', 0, $espesor, $ancho]);
+                        $qInsert->execute([$codigo, $concepto, $descripcion, $largo, $peso_metro, $id_categoria, $id_unidad_medida, $stock_minimo, $anulado, '', 0, $espesor, $ancho]);
                         $insertados++;
                     }
                 }
@@ -256,10 +254,9 @@
                       <strong>E:</strong> Largo (mm) &nbsp;|&nbsp;
                       <strong>F:</strong> Peso x Metro (kg) &nbsp;|&nbsp;
                       <strong>G:</strong> ID Categoría(*) &nbsp;|&nbsp;
-                      <strong>H:</strong> Activo &nbsp;|&nbsp;
-                      <strong>I:</strong> ID Unidad Medida &nbsp;|&nbsp;
-                      <strong>J:</strong> Stock Mínimo &nbsp;|&nbsp;
-                      <strong>K:</strong> Anulado<br>
+                      <strong>H:</strong> ID Unidad Medida &nbsp;|&nbsp;
+                      <strong>I:</strong> Stock Mínimo &nbsp;|&nbsp;
+                      <strong>J:</strong> Anulado<br>
                       <small>Las dimensiones (espesor, ancho) se extraen automáticamente del concepto según la categoría. (*) obligatorio.</small>
                     </div>
 

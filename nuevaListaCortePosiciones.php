@@ -35,9 +35,11 @@ if (!empty($_POST)) {
     $qProyecto->execute([$id_lista_corte_conjunto]);
     $id_proyecto = $qProyecto->fetchColumn();
 
-    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
+    $id_posicion_ajax = trim($_POST['id_posicion'] ?? 0);
+
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND pos.id != ? AND lc.id_estado_lista_corte IN (3,4,5) LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
-    $qNum->execute([$id_proyecto, $posicion]);
+    $qNum->execute([$id_proyecto, $posicion, $id_posicion_ajax]);
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
 
     Database::disconnect();
@@ -171,9 +173,9 @@ if (!empty($_POST)) {
     $id_proyecto = $qProyecto->fetchColumn();
 
     //validación del número de posición a nivel de proyecto
-    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND pos.id != ? AND lc.id_estado_lista_corte IN (3,4,5) LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
-    $params = [$id_proyecto, $nombre_posicion];
+    $params = [$id_proyecto, $nombre_posicion, $id_lista_corte_posicion];
     $qNum->execute($params);
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
 
@@ -321,7 +323,7 @@ if (!empty($_POST)) {
     $id_proyecto = $qProyecto->fetchColumn();
 
     //validación del número de posición a nivel de proyecto
-    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? LIMIT 1";
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND lc.id_estado_lista_corte IN (3,4,5) LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
     $params = [$id_proyecto, $nombre_posicion];
     $qNum->execute($params);
@@ -1027,7 +1029,8 @@ Database::disconnect();?>
               id_material: id_material || '',
               ancho: $("input[name='ancho']").val() || '0',
               largo: $("input[name='largo']").val() || '0',
-              diametro: $("input[name='diametro']").val() || '0'
+              diametro: $("input[name='diametro']").val() || '0',
+              id_posicion: $("#editPosicion").val() || 0
             },
             dataType: 'json',
             success: function(resp) {

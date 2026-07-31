@@ -59,17 +59,17 @@ foreach ($detalles as $det) {
   $detallesConImputaciones[] = $det;
 }
 
-$qRet = $pdo->prepare("SELECT r.*, rf.regimen AS regimen_text
+$qRet = $pdo->prepare("SELECT r.*, COALESCE(r.regimen_text, rf.regimen) AS regimen_text
     FROM facturas_venta_retenciones r
-    INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+    LEFT JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
     WHERE r.id_factura_venta = ?");
 $qRet->execute([$id]);
 $retenciones = $qRet->fetchAll(PDO::FETCH_ASSOC);
 
-$qReg = $pdo->prepare("SELECT r.id_regimen, rf.regimen, rf.porcentaje
-    FROM facturas_venta_otros r
-    INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen
-    WHERE r.id_factura_venta = ?");
+$qReg = $pdo->prepare("SELECT o.*, COALESCE(o.regimen_text, rf.regimen) AS regimen_text
+    FROM facturas_venta_otros o
+    LEFT JOIN regimenes_facturacion rf ON rf.id = o.id_regimen
+    WHERE o.id_factura_venta = ?");
 $qReg->execute([$id]);
 $regimenes = $qReg->fetchAll(PDO::FETCH_ASSOC);
 
@@ -151,7 +151,7 @@ function fmtV($val) {
                     <label class="col-sm-2 font-weight-bold">Regímenes</label>
                     <div class="col-sm-10">
                       <?php foreach ($regimenes as $i => $reg): ?>
-                        <?= htmlspecialchars($reg['regimen']) ?> (<?= fmtV($reg['porcentaje']) ?>%)<?= $i < count($regimenes) - 1 ? ', ' : '' ?>
+                        <?= htmlspecialchars($reg['regimen_text']) ?> (<?= fmtV($reg['porcentaje']) ?>%)<?= $i < count($regimenes) - 1 ? ', ' : '' ?>
                       <?php endforeach; ?>
                     </div>
                   </div>
@@ -171,14 +171,13 @@ function fmtV($val) {
                   <?php if (!empty($detallesConImputaciones)): ?>
                     <?php $sumaSubtotal = 0; ?>
                     <div class="table-responsive">
-                      <table class="table table-sm table-bordered w-100" style="font-size:13px;">
+                      <table class="table table-sm table-bordered w-100" style="font-size:13px;background:#fff;">
                         <thead class="thead-light">
                           <tr>
                             <th>#</th>
                             <th>Concepto</th>
                             <th>Descripción</th>
-                            <th class="text-right">Cantidad</th>
-                            <th class="text-right">Precio</th>
+                            <th>Imputaciones</th>
                             <th class="text-right">Subtotal</th>
                           </tr>
                         </thead>
@@ -187,48 +186,33 @@ function fmtV($val) {
                             <?php
                               $subtotalDet = (float)$det['subtotal'];
                               $sumaSubtotal += $subtotalDet;
+                              $impsHtml = '';
+                              if (!empty($det['imputaciones'])) {
+                                $impsHtml = '<table class="table table-sm table-borderless mb-0" style="font-size:12px;background:#fff;">';
+                                $impsHtml .= '<thead><tr>';
+                                $impsHtml .= '<th style="padding:0 2px;">Concepto</th>';
+                                $impsHtml .= '<th style="text-align:right;padding:0 2px;">Cant.</th>';
+                                $impsHtml .= '<th style="text-align:right;padding:0 2px;">Precio</th>';
+                                $impsHtml .= '<th style="text-align:right;padding:0 2px;">Subtotal</th>';
+                                $impsHtml .= '</tr></thead><tbody>';
+                                foreach ($det['imputaciones'] as $imp) {
+                                  $impsHtml .= '<tr>';
+                                  $impsHtml .= '<td style="padding:2px 4px;">Cert. #' . htmlspecialchars($imp['numero']) . ' (Rev ' . htmlspecialchars($imp['revision']) . ')</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">1</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
+                                  $impsHtml .= '</tr>';
+                                }
+                                $impsHtml .= '</tbody></table>';
+                              }
                             ?>
                             <tr>
                               <td><?= $i + 1 ?></td>
                               <td><?= htmlspecialchars($det['concepto_text']) ?></td>
                               <td><?= htmlspecialchars($det['descripcion'] ?? '') ?></td>
-                              <td class="text-right"><?= fmtV($det['cantidad']) ?></td>
-                              <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($det['precio']) ?></td>
+                              <td><?= $impsHtml ?></td>
                               <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($subtotalDet) ?></td>
                             </tr>
-                            <?php if (!empty($det['imputaciones'])): ?>
-                            <tr>
-                              <td colspan="6" class="p-2">
-                                <small class="text-muted font-weight-bold">Certificados vinculados</small>
-                                <table class="table table-sm table-bordered mb-0" style="font-size:12px;">
-                                  <thead class="thead-light">
-                                    <tr>
-                                      <th>Cert #</th>
-                                      <th>Revisión</th>
-                                      <th>Fecha Emisión</th>
-                                      <th class="text-right">Monto</th>
-                                      <th class="text-center">Aprobado</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <?php foreach ($det['imputaciones'] as $imp): ?>
-                                    <tr>
-                                      <td><?= htmlspecialchars($imp['numero']) ?></td>
-                                      <td><?= htmlspecialchars($imp['revision']) ?></td>
-                                      <td><?= date('d/m/Y', strtotime($imp['fecha_emision'])) ?></td>
-                                      <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($imp['monto_total']) ?></td>
-                                      <td class="text-center">
-                                        <span class="badge <?= $imp['aprobado_cliente'] ? 'badge-success' : 'badge-secondary' ?>">
-                                          <?= $imp['aprobado_cliente'] ? 'Aprobado' : 'Pendiente' ?>
-                                        </span>
-                                      </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                  </tbody>
-                                </table>
-                              </td>
-                            </tr>
-                            <?php endif; ?>
                           <?php endforeach; ?>
                         </tbody>
                       </table>
@@ -243,7 +227,7 @@ function fmtV($val) {
                   <h6 class="mb-3 font-weight-bold">Retenciones</h6>
                   <?php if (!empty($retenciones)): ?>
                     <div class="table-responsive">
-                          <table class="table table-sm table-bordered mb-0 w-100" style="font-size:13px;">
+                          <table class="table table-sm table-bordered mb-0 w-100" style="font-size:13px;background:#fff;">
                         <thead class="thead-light">
                           <tr>
                             <th>#</th>

@@ -54,6 +54,7 @@ include 'database.php';
                         $sql = " SELECT cc.`id`, cc.`codigo`, cc.`descripcion`, COALESCE(ti.`tasa`, '') 
                                  FROM `conceptos_contables` cc 
                                  LEFT JOIN `tipos_iva` ti ON ti.id = cc.`id_alicuota_iva` 
+                                 WHERE cc.`anulado` = 0 
                                  ORDER BY cc.`codigo` ";
 
                         foreach ($pdo->query($sql) as $row) {

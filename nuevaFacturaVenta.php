@@ -150,13 +150,17 @@ if (!empty($_POST)) {
     $retenciones = !empty($_POST['retenciones_json']) ? json_decode($_POST['retenciones_json'], true) : [];
 
     if (is_array($retenciones)) {
+      $qRegimenData = $pdo->prepare("SELECT regimen, codigo, articulo FROM regimenes_facturacion WHERE id = ?");
       $qRet = $pdo->prepare("INSERT INTO facturas_venta_retenciones
-                                     (id_factura_venta, id_regimen_facturacion, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?)");
+                                     (id_factura_venta, id_regimen_facturacion, regimen_text, codigo, articulo, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?,?,?,?)");
       foreach ($retenciones as $ret) {
+        $idRegimen = intval($ret['id_regimen']);
+        $qRegimenData->execute([$idRegimen]);
+        $regData = $qRegimenData->fetch(PDO::FETCH_ASSOC);
         $monto = floatval($ret['monto']);
         $porcentaje = floatval($ret['porcentaje'] ?? 0);
         $base = floatval($ret['base'] ?? 0);
-        $qRet->execute([$idFactura, intval($ret['id_regimen']), $monto, $porcentaje, $base]);
+        $qRet->execute([$idFactura, $idRegimen, $regData['regimen'] ?? null, $regData['codigo'] ?? null, $regData['articulo'] ?? null, $monto, $porcentaje, $base]);
         $totalOtros += $monto;
       }
     }
@@ -169,13 +173,12 @@ if (!empty($_POST)) {
 
     // Regímenes
     if (!empty($_POST['regimenes'])) {
+      $qp = $pdo->prepare("SELECT regimen, codigo, articulo, porcentaje FROM regimenes_facturacion WHERE id = ?");
+      $qi = $pdo->prepare("INSERT INTO facturas_venta_otros (id_factura_venta, id_regimen, regimen_text, codigo, articulo, porcentaje) VALUES (?,?,?,?,?,?)");
       foreach ($_POST['regimenes'] as $idRegimen) {
-        $qp = $pdo->prepare("SELECT porcentaje FROM regimenes_facturacion WHERE id = ?");
         $qp->execute([$idRegimen]);
         $reg = $qp->fetch(PDO::FETCH_ASSOC);
-        $porcentaje = $reg ? $reg['porcentaje'] : 0;
-        $qi = $pdo->prepare("INSERT INTO facturas_venta_otros (id_factura_venta, id_regimen, porcentaje) VALUES (?,?,?)");
-        $qi->execute([$idFactura, $idRegimen, $porcentaje]);
+        $qi->execute([$idFactura, $idRegimen, $reg['regimen'] ?? null, $reg['codigo'] ?? null, $reg['articulo'] ?? null, $reg['porcentaje'] ?? 0]);
       }
     }
 

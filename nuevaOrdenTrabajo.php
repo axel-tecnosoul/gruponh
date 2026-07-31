@@ -458,7 +458,7 @@ Database::disconnect();
                             }?>
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-3">
-                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?=$editing ?  date('Y-m-d') : $data_ot['fecha'];?>" class="form-control">
+                              <input name="fecha" type="date" onfocus="this.showPicker()" value="<?=date('Y-m-d')?>" class="form-control">
                             </div>
                             <label class="col-sm-3 col-form-label">Titulo(*)</label>
                             <div class="col-sm-3">

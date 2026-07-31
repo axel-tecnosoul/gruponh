@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
+  $sql = "SELECT `id`, `codigo`, `concepto`, `calidad`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `perimetro`, `id_categoria`, `id_unidad_medida`, `stock_minimo`, `anulado` FROM `materiales` WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -158,20 +158,6 @@ if ($origen == 'pedidos') {
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Calidad</label>
                           <div class="col-sm-9"><input name="calidad" type="text" maxlength="99" class="form-control" value="<?php echo $data['calidad']; ?>"></div>
-                        </div>
-                        <div class="form-group row">
-                          <label class="col-sm-3 col-form-label">Activo</label>
-                          <div class="col-sm-9">
-                            <select name="activo" id="activo" class="js-example-basic-single col-sm-12" required="required">
-                              <option value="">Seleccione...</option>
-                              <option value="1" <?php if ($data['activo'] == 1) {
-                                                  echo " selected ";
-                                                } ?>>Si</option>
-                              <option value="0" <?php if ($data['activo'] == 0) {
-                                                  echo " selected ";
-                                                } ?>>No</option>
-                            </select>
-                          </div>
                         </div>
                         <div class="form-group row">
                           <label class="col-sm-3 col-form-label">Histórico de Compras</label>

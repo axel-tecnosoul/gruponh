@@ -6,7 +6,7 @@ $id_proyecto = $_POST['id_proyecto'];
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = " SELECT distinct m.`id`, m.`codigo`, m.`concepto`, c.categoria FROM computos_detalle cod inner join `materiales` m on m.id = cod.id_material inner join categorias c on c.id = m.`id_categoria` inner join computos co on co.id = cod.id_computo inner join tareas t on t.id = co.id_tarea WHERE m.`activo` = 1 and m.`anulado` = 0 and t.id_proyecto = ".$id_proyecto;
+$sql = " SELECT distinct m.`id`, m.`codigo`, m.`concepto`, c.categoria FROM computos_detalle cod inner join `materiales` m on m.id = cod.id_material inner join categorias c on c.id = m.`id_categoria` inner join computos co on co.id = cod.id_computo inner join tareas t on t.id = co.id_tarea WHERE m.`anulado` = 0 and t.id_proyecto = ".$id_proyecto;
 
 $aConceptos=[];
 

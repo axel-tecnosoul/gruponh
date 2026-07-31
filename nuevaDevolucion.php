@@ -23,7 +23,7 @@
 		$q->execute([$_POST['nro_obra'],$_POST['id_usuario'],$_POST['observaciones']]);
 		$idIn = $pdo->lastInsertId();
 		
-		$sql = " SELECT m.`id`, m.`codigo`, m.`concepto`, c.categoria, m.id_unidad_medida FROM `materiales` m inner join categorias c on c.id = m.`id_categoria` WHERE m.`activo` = 1 and m.`anulado` = 0";				
+		$sql = " SELECT m.`id`, m.`codigo`, m.`concepto`, c.categoria, m.id_unidad_medida FROM `materiales` m inner join categorias c on c.id = m.`id_categoria` WHERE m.`anulado` = 0";				
 		foreach ($pdo->query($sql) as $row) {
 			if (!empty($_POST['cantidad_'.$row[0]])) {
 				$sql = "INSERT INTO `devoluciones_detalle`(`id_devolucion`, `id_material`, `cantidad`) VALUES (?,?,?)";

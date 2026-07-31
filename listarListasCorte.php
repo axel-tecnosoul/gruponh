@@ -260,33 +260,21 @@ if($prodQuery){
                           <tr>
                             <th>Conjunto</th>
                             <th>Cant. Conj</th>
-                            <th>Posicion</th>
-                            <th>Concepto</th>
-                            <th>Cant. Pos</th>
-                            <th>Cant. Tot</th>
                             <th>Cant. OT</th>
                             <th>Cant. Lib</th>
-                            <th>Cant. Rech</th>
-                            <th>Cant. Reproc</th>
-                            <th>Procesos</th>
-                            <th>Estado</th>
+                            <th>Saldo</th>
+                            <th>Posiciones</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
-                                                            <tfoot>
+                        <tfoot>
                           <tr>
                             <th>Conjunto</th>
                             <th>Cant. Conj</th>
-                            <th>Posicion</th>
-                            <th>Concepto</th>
-                            <th>Cant. Pos</th>
-                            <th>Cant. Tot</th>
                             <th>Cant. OT</th>
                             <th>Cant. Lib</th>
-                            <th>Cant. Rech</th>
-                            <th>Cant. Reproc</th>
-                            <th>Procesos</th>
-                            <th>Estado</th>
+                            <th>Saldo</th>
+                            <th>Posiciones</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -735,6 +723,15 @@ if($prodQuery){
         t.removeClass('selected');
       }
     
+      function escapeHtml(text){
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
       function get_detalle_lista_corte(id_lc){
         let datosUpdate = new FormData();
         datosUpdate.append('id_lc', id_lc);
@@ -746,13 +743,50 @@ if($prodQuery){
           contentType: false,
           processData: false,
           success: function(data){
-            data = JSON.parse(data);
-            
-            $('#dataTables-example667').DataTable().destroy();
+            let conjuntos = JSON.parse(data);
+            let html = '';
+
+            conjuntos.forEach(function(conj){
+              let posicionesHtml = '<table class="table table-sm mb-0"><thead><tr>' +
+                '<th>Posición</th><th>Concepto</th><th>Procesos</th>' +
+                '<th class="text-end">Cant. Pos</th><th class="text-end">Cant. Tot</th>' +
+                '<th class="text-end">Cant. OT</th><th class="text-end">Cant. Lib</th>' +
+                '<th class="text-end">Cant. Rech</th><th class="text-end">Cant. Reproc</th>' +
+                '</tr></thead><tbody>';
+
+              conj.posiciones.forEach(function(pos){
+                posicionesHtml += '<tr>' +
+                  '<td>' + escapeHtml(pos.posicion) + '</td>' +
+                  '<td>' + escapeHtml(pos.concepto || '') + '</td>' +
+                  '<td>' + escapeHtml(pos.procesos || '') + '</td>' +
+                  '<td class="text-end">' + pos.cant_pos + '</td>' +
+                  '<td class="text-end">' + pos.cant_total + '</td>' +
+                  '<td class="text-end">' + pos.cant_ot + '</td>' +
+                  '<td class="text-end">' + pos.cant_liberadas + '</td>' +
+                  '<td class="text-end">' + pos.cant_rechazadas + '</td>' +
+                  '<td class="text-end">' + pos.cant_reproceso + '</td>' +
+                  '</tr>';
+              });
+
+              posicionesHtml += '</tbody></table>';
+
+              html += '<tr>' +
+                '<td>' + escapeHtml(conj.nombre) + '</td>' +
+                '<td class="text-end">' + conj.cantidad + '</td>' +
+                '<td class="text-end">' + conj.cant_ot + '</td>' +
+                '<td class="text-end">' + conj.cant_lib + '</td>' +
+                '<td class="text-end">' + conj.saldo + '</td>' +
+                '<td>' + posicionesHtml + '</td>' +
+                '</tr>';
+            });
+
+            if ($.fn.DataTable.isDataTable('#dataTables-example667')) {
+              $('#dataTables-example667').DataTable().destroy();
+            }
+            $('#dataTables-example667 tbody').html(html);
             $('#dataTables-example667').DataTable({
               stateSave: false,
               responsive: false,
-              data: data,
               language: {
                 "decimal": "",
                 "emptyTable": "No hay información",
@@ -774,19 +808,16 @@ if($prodQuery){
                 }
               }
             });
-        
-            // DataTable
+
             var table = $('#dataTables-example667').DataTable();
-            // Apply the search
-            table.columns().every( function () {
+            table.columns().every(function () {
               var that = this;
-              $( 'input', this.footer() ).on( 'keyup change', function () {
-                if ( that.search() !== this.value ) {
-                  that.search( this.value ).draw();
+              $('input', this.footer()).on('keyup change', function () {
+                if (that.search() !== this.value) {
+                  that.search(this.value).draw();
                 }
               });
             });
-
           }
         });
       }

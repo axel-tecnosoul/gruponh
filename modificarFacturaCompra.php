@@ -20,11 +20,11 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $qCheck = $pdo->prepare("SELECT id_estado, pagada, exportada FROM facturas_compra WHERE id = ?");
+        $qCheck = $pdo->prepare("SELECT id_estado, exportada FROM facturas_compra WHERE id = ?");
         $qCheck->execute([$id]);
         $estadoRow = $qCheck->fetch(PDO::FETCH_ASSOC);
-        if ($estadoRow && ($estadoRow['id_estado'] == 3 || $estadoRow['pagada'] == 1 || $estadoRow['exportada'] == 1)) {
-            $msg = $estadoRow['pagada'] == 1 ? 'pagada' : ($estadoRow['exportada'] == 1 ? 'exportada' : 'definitiva');
+        if ($estadoRow && ($estadoRow['id_estado'] == 3 || $estadoRow['exportada'] == 1)) {
+            $msg = $estadoRow['exportada'] == 1 ? 'exportada' : 'definitiva';
             header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue " . $msg . " y no puede editarse."));
             exit;
         }
@@ -124,8 +124,8 @@
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
 
-        if (!empty($data['id_estado']) && ($data['id_estado'] == 3 || $data['pagada'] == 1 || $data['exportada'] == 1)) {
-            $msg = $data['pagada'] == 1 ? 'pagada' : ($data['exportada'] == 1 ? 'exportada' : 'definitiva');
+        if (!empty($data['id_estado']) && ($data['id_estado'] == 3 || $data['exportada'] == 1)) {
+            $msg = $data['exportada'] == 1 ? 'exportada' : 'definitiva';
             header("Location: listarFacturasCompra.php?error=" . urlencode("Esta factura ya fue " . $msg . " y no puede editarse."));
             exit;
         }

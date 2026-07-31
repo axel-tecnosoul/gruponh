@@ -31,12 +31,14 @@
 
                 $insertados = 0;
                 $actualizados = 0;
+                $anulados = 0;
+                $codigosImportados = [];
                 $pdo->beginTransaction();
 
                 $qTasa = $pdo->prepare("SELECT id FROM tipos_iva WHERE tasa = ?");
                 $qExiste = $pdo->prepare("SELECT id FROM conceptos_contables WHERE codigo = ?");
-                $qInsert = $pdo->prepare("INSERT INTO conceptos_contables (codigo, descripcion, id_alicuota_iva) VALUES (?, ?, ?)");
-                $qUpdate = $pdo->prepare("UPDATE conceptos_contables SET descripcion = ?, id_alicuota_iva = ? WHERE codigo = ?");
+                $qInsert = $pdo->prepare("INSERT INTO conceptos_contables (codigo, descripcion, id_alicuota_iva, anulado) VALUES (?, ?, ?, 0)");
+                $qUpdate = $pdo->prepare("UPDATE conceptos_contables SET descripcion = ?, id_alicuota_iva = ?, anulado = 0 WHERE codigo = ?");
 
                 foreach ($rows as $i => $row) {
                     $codigo = trim($row[0] ?? '');
@@ -49,6 +51,8 @@
                         }
                         continue;
                     }
+
+                    $codigosImportados[] = $codigo;
 
                     $idAlicuota = null;
                     if ($tasaStr !== '') {
@@ -75,7 +79,15 @@
                 }
 
                 $pdo->commit();
-                $resultado = "Importación completada: $insertados nuevos, $actualizados actualizados.";
+
+                if (!empty($codigosImportados)) {
+                    $placeholders = implode(',', array_fill(0, count($codigosImportados), '?'));
+                    $qAnular = $pdo->prepare("UPDATE conceptos_contables SET anulado = 1 WHERE codigo NOT IN ($placeholders) AND anulado = 0");
+                    $qAnular->execute($codigosImportados);
+                    $anulados = $qAnular->rowCount();
+                }
+
+                $resultado = "Importación completada: $insertados nuevos, $actualizados actualizados, $anulados anulados.";
 
                 $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Importación Excel Conceptos Contables','Conceptos Contables','')";
                 $pdo->prepare($sql)->execute([$_SESSION['user']['id']]);

@@ -121,10 +121,6 @@ $id_estado = $filters['id_estado'] ?? [];
 					echo '&nbsp;&nbsp;';
 				}
 			if (!empty(tienePermiso(338))) {
-				echo '<a href="#" id="link_pagar_fc"><img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada" title="Marcar Pagada"></a>';
-				echo '&nbsp;&nbsp;';
-			}
-			if (!empty(tienePermiso(338))) {
 				echo '<a href="#" id="link_ver_fc"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Factura" title="Ver Factura"></a>';
 				echo '&nbsp;&nbsp;';
 			}
@@ -159,7 +155,6 @@ $id_estado = $filters['id_estado'] ?? [];
                               <th>Observación</th>
                               <th>Estado</th>
                               <th>Exportada</th>
-                              <th>Pagada</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -167,7 +162,7 @@ $id_estado = $filters['id_estado'] ?? [];
                            $hasSearched = isset($_SESSION['filtros_listarFacturasCompra']);
                            if ($hasSearched):
                             $pdo = Database::connect();
-                              $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, CASE WHEN fc.id_estado = 3 THEN 'Definitivo' ELSE 'Temporal' END as estado, date_format(fc.`fecha_emitida`,'%y%m%d'), fc.id_estado, fc.pagada, fc.exportada, fc.observaciones FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` WHERE 1 ";
+                              $sql = " SELECT fc.`id`, fc.`descripcion`, tc.`tipo`, lc.`letra`, fc.`numero`, c.razon_social, date_format(fc.`fecha_emitida`,'%d/%m/%y'), fp.forma_pago, fc.`total`, m.`moneda`, CASE WHEN fc.id_estado = 3 THEN 'Definitivo' ELSE 'Temporal' END as estado, date_format(fc.`fecha_emitida`,'%y%m%d'), fc.id_estado, fc.exportada, fc.observaciones FROM `facturas_compra` fc inner join tipos_comprobante tc on tc.id = fc.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fc.`id_letra_comprobante` inner join cuentas c on c.id = fc.`id_cuenta_origen` inner join formas_pago fp on fp.id = fc.`id_condicion_pago` inner join monedas m on m.id = fc.`id_moneda` WHERE 1 ";
                             $params = [];
 
                             if (!empty($nro)) {
@@ -199,7 +194,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             $q = $pdo->prepare($sql);
                             $q->execute($params);
                             foreach ($q as $row) {
-                                echo '<tr data-id-estado="'. $row[12] .'" data-pagada="'. (int)$row[13] .'" data-exportada="'. (int)$row[14] .'">';
+                                echo '<tr data-id-estado="'. $row[12] .'" data-exportada="'. (int)$row[13] .'">';
                                 echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="'. $row[0] . '"></td>';
 								echo '<td>'. $row[0] . '</td>';
                                 echo '<td>'. $row[2] . ' ' . $row[3] . '</td>';
@@ -208,10 +203,9 @@ $id_estado = $filters['id_estado'] ?? [];
                                 echo '<td><span style="display: none;">'. $row[11] . '</span>'. $row[6] . '</td>';
                                 echo '<td>'. $row[7] . '</td>';
                                 echo '<td class="text-right">'. $row[9] . ' ' . number_format($row[8] ?? 0,2, ",",".") . '</td>';
-                                echo '<td>'. $row[15] . '</td>';
+                                echo '<td>'. $row[14] . '</td>';
                                 echo '<td>'. $row[10] . '</td>';
-                                echo '<td class="text-center">' . ($row[14] ? 'Sí' : 'No') . '</td>';
-                                echo '<td class="text-center">' . ((int)$row[13] ? 'Sí' : 'No') . '</td>';
+                                echo '<td class="text-center">' . ($row[13] ? 'Sí' : 'No') . '</td>';
                                 echo '</tr>';
                             }
 							Database::disconnect();
@@ -231,7 +225,6 @@ $id_estado = $filters['id_estado'] ?? [];
                               <th>Observación</th>
                               <th>Estado</th>
                               <th>Exportada</th>
-                              <th>Pagada</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -506,8 +499,7 @@ $id_estado = $filters['id_estado'] ?? [];
           } else {
             var est = $('#dataTables-example666 tbody tr.selected').data('id-estado');
             var exp = $('#dataTables-example666 tbody tr.selected').data('exportada');
-            var pag = $('#dataTables-example666 tbody tr.selected').data('pagada');
-            var motivo = exp ? 'exportada' : (pag ? 'pagada' : 'definitiva');
+            var motivo = exp ? 'exportada' : 'definitiva';
             alert("Esta factura ya fue " + motivo + " y no puede editarse.");
           }
           e.preventDefault();
@@ -544,17 +536,7 @@ $id_estado = $filters['id_estado'] ?? [];
           e.preventDefault();
         }
       })
-	  $("#link_pagar_fc").on("click",function(e){
-        e.preventDefault();
-        var id = $(this).data('id-fc');
-        if (!id) {
-          alert("Seleccione una factura definitiva no pagada.");
-          return;
-        }
-        if (confirm("¿Está seguro que desea marcar esta factura como pagada?")) {
-          window.location.href = 'pagarFacturaCompra.php?id=' + id;
-        }
-      })
+
 	   
 	//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
     $(document).on("click","#dataTables-example666 tbody tr td", function(){
@@ -562,7 +544,6 @@ $id_estado = $filters['id_estado'] ?? [];
 
         let id_fc=t.find("td:nth-child(2)").html();
         let id_estado = parseInt(t.data('id-estado'));
-        let pagada = parseInt(t.data('pagada'));
         let exportada = parseInt(t.data('exportada'));
 
         if(t.hasClass('selected')){
@@ -571,7 +552,6 @@ $id_estado = $filters['id_estado'] ?? [];
           $("#link_modificar_fc").attr("href","#");
 		      $("#link_nuevo_detalle_fc").attr("href","#");
 			  $("#link_nuevo_retencion_fc").attr("href","#");
-			  $("#link_pagar_fc").attr("href","#");
           $("#link_ver_fc").attr("href","#");
         }else{
           table.rows().nodes().each( function (rowNode, index) {
@@ -580,8 +560,8 @@ $id_estado = $filters['id_estado'] ?? [];
           selectRow(t);
 		      get_detalles(id_fc)
           $("#link_ver_fc").attr("href","verFacturaCompra.php?id="+id_fc);
-          // Modificar / agregar items: solo si no es definitiva, pagada ni exportada
-          if (id_estado !== 3 && pagada !== 1 && exportada !== 1) {
+          // Modificar / agregar items: solo si no es definitiva ni exportada
+          if (id_estado !== 3 && exportada !== 1) {
             $("#link_modificar_fc").attr("href","nuevaFacturaCompra.php?id="+id_fc);
             $("#link_nuevo_detalle_fc").attr("href","nuevoDetalleFacturaCompra.php?id="+id_fc);
             $("#link_nuevo_retencion_fc").attr("href","nuevaRetencionFacturaCompra.php?id="+id_fc);
@@ -589,12 +569,6 @@ $id_estado = $filters['id_estado'] ?? [];
             $("#link_modificar_fc").attr("href","#");
             $("#link_nuevo_detalle_fc").attr("href","#");
             $("#link_nuevo_retencion_fc").attr("href","#");
-          }
-          // Marcar pagada: solo definitivas no pagadas
-          if (id_estado === 3 && pagada !== 1) {
-            $("#link_pagar_fc").attr("href","#").data('id-fc', id_fc).data('pagada', 0);
-          } else {
-            $("#link_pagar_fc").attr("href","#").data('id-fc', '').data('pagada', 1);
           }
         }
       });

@@ -68,7 +68,6 @@ include 'database.php';
                           <th>Categoría</th>
                           <th>Stock</th>
                           <th>Reservado</th>
-                          <th>Activo</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -81,7 +80,6 @@ include 'database.php';
                           <th>Categoría</th>
                           <th>Stock</th>
                           <th>Reservado</th>
-                          <th>Activo</th>
                         </tr>
                       </tfoot>
                     </table>
@@ -182,8 +180,7 @@ include 'database.php';
           { data: 'concepto' },
           { data: 'categoria' },
           { data: 'stock' },
-          { data: 'reservado' },
-          { data: 'activo' }
+          { data: 'reservado' }
         ],
         lengthMenu: [[10, 25, 50, 100, 500, 1000], [10, 25, 50, 100, 500, 1000]],
         dom: 'Bfrtp<"bottom"l>',

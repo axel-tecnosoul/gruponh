@@ -63,9 +63,9 @@ foreach ($detalles as $det) {
   $detallesConImputaciones[] = $det;
 }
 
-$qRet = $pdo->prepare("SELECT r.*, rf.regimen AS regimen_text
+$qRet = $pdo->prepare("SELECT r.*, COALESCE(r.regimen_text, rf.regimen) AS regimen_text
     FROM facturas_compra_retenciones r
-    INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+    LEFT JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
     WHERE r.id_factura_compra = ?");
 $qRet->execute([$id]);
 $retenciones = $qRet->fetchAll(PDO::FETCH_ASSOC);
@@ -137,8 +137,6 @@ function fmt($val) {
                     <div class="col-sm-4"><?= $estadoTexto ?></div>
                   </div>
                   <div class="form-group row mt-1">
-                    <label class="col-sm-2 font-weight-bold">Pagada</label>
-                    <div class="col-sm-4"><?= $data['pagada'] ? 'Sí' : 'No' ?></div>
                     <label class="col-sm-2 font-weight-bold">Exportada</label>
                     <div class="col-sm-4"><?= $data['exportada'] ? 'Sí' : 'No' ?></div>
                   </div>
@@ -170,14 +168,14 @@ function fmt($val) {
                   <?php if (!empty($detallesConImputaciones)): ?>
                     <?php $sumaSubtotal = 0; ?>
                     <div class="table-responsive">
-                      <table class="table table-sm table-bordered w-100" style="font-size:13px;">
+                      <table class="table table-sm table-bordered w-100" style="font-size:13px;background:#fff;">
                         <thead class="thead-light">
                           <tr>
                             <th>#</th>
                             <th>Concepto</th>
                             <th>Descripción</th>
-                            <th class="text-right">Cantidad</th>
-                            <th class="text-right">Descuento</th>
+                            <th>Imputaciones</th>
+                            <th class="text-right">% Desc</th>
                             <th class="text-right">Subtotal</th>
                           </tr>
                         </thead>
@@ -187,44 +185,34 @@ function fmt($val) {
                               $subtotalDet = (float)$det['subtotal'];
                               $sumaSubtotal += $subtotalDet;
                               $porcDesc = (float)($det['porc_descuento'] ?? 0);
+                              $impsHtml = '';
+                              if (!empty($det['imputaciones'])) {
+                                $impsHtml = '<table class="table table-sm table-borderless mb-0" style="font-size:12px;background:#fff;">';
+                                $impsHtml .= '<thead><tr>';
+                                $impsHtml .= '<th style="padding:0 2px;">Concepto</th>';
+                                $impsHtml .= '<th style="text-align:right;padding:0 2px;">Cant.</th>';
+                                $impsHtml .= '<th style="text-align:right;padding:0 2px;">Precio</th>';
+                                $impsHtml .= '<th style="text-align:right;padding:0 2px;">Subtotal</th>';
+                                $impsHtml .= '</tr></thead><tbody>';
+                                foreach ($det['imputaciones'] as $imp) {
+                                  $impsHtml .= '<tr>';
+                                  $impsHtml .= '<td style="padding:2px 4px;">OC #' . htmlspecialchars($imp['nro_oc']) . ' - ' . htmlspecialchars($imp['concepto']) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . fmt($imp['cantidad']) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmt($imp['precio']) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmt((float)$imp['cantidad'] * (float)$imp['precio']) . '</td>';
+                                  $impsHtml .= '</tr>';
+                                }
+                                $impsHtml .= '</tbody></table>';
+                              }
                             ?>
                             <tr>
                               <td><?= $i + 1 ?></td>
                               <td><?= htmlspecialchars($det['concepto_text']) ?></td>
                               <td><?= htmlspecialchars($det['descripcion'] ?? '') ?></td>
-                              <td class="text-right"><?= fmt($det['cantidad']) ?></td>
+                              <td><?= $impsHtml ?></td>
                               <td class="text-right"><?= fmt($porcDesc) ?>%</td>
                               <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmt($subtotalDet) ?></td>
                             </tr>
-                            <?php if (!empty($det['imputaciones'])): ?>
-                            <tr>
-                              <td colspan="6" class="p-2">
-                                <small class="text-muted font-weight-bold">Imputaciones</small>
-                                <table class="table table-sm table-bordered mb-0" style="font-size:12px;">
-                                  <thead class="thead-light">
-                                    <tr>
-                                      <th>OC</th>
-                                      <th>Material</th>
-                                      <th class="text-right">Cantidad</th>
-                                      <th class="text-right">Precio</th>
-                                      <th class="text-right">Subtotal</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <?php foreach ($det['imputaciones'] as $imp): ?>
-                                    <tr>
-                                      <td>OC #<?= htmlspecialchars($imp['nro_oc']) ?></td>
-                                      <td><?= htmlspecialchars($imp['concepto']) ?></td>
-                                      <td class="text-right"><?= fmt($imp['cantidad']) ?></td>
-                                      <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmt($imp['precio']) ?></td>
-                                      <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmt((float)$imp['cantidad'] * (float)$imp['precio']) ?></td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                  </tbody>
-                                </table>
-                              </td>
-                            </tr>
-                            <?php endif; ?>
                           <?php endforeach; ?>
                         </tbody>
                       </table>
@@ -239,7 +227,7 @@ function fmt($val) {
                   <h6 class="mb-3 font-weight-bold">Retenciones</h6>
                   <?php if (!empty($retenciones)): ?>
                     <div class="table-responsive">
-                          <table class="table table-sm table-bordered mb-0 w-100" style="font-size:13px;">
+                          <table class="table table-sm table-bordered mb-0 w-100" style="font-size:13px;background:#fff;">
                         <thead class="thead-light">
                           <tr>
                             <th>#</th>
@@ -292,7 +280,7 @@ function fmt($val) {
                 </div>
                 <div class="card-footer">
                   <div class="col-sm-12 text-center">
-                    <?php if ($data['id_estado'] != 3 && $data['pagada'] != 1 && $data['exportada'] != 1): ?>
+                    <?php if ($data['id_estado'] != 3 && $data['exportada'] != 1): ?>
                       <a href="nuevaFacturaCompra.php?id=<?= $id ?>" class="btn btn-primary">Modificar</a>
                     <?php endif; ?>
                     <a href="listarFacturasCompra.php" class="btn btn-light">Volver</a>

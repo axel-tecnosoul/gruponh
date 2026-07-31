@@ -30,17 +30,15 @@
 		$q = $pdo->prepare($sql);
 		$q->execute([$_GET['id']]);
 
+		$sqlReg = "SELECT regimen, codigo, articulo, porcentaje FROM regimenes_facturacion WHERE id = ?";
+		$qReg = $pdo->prepare($sqlReg);
 		foreach ($_POST['regimenes'] as $item) {
+			$qReg->execute([$item]);
+			$data = $qReg->fetch(PDO::FETCH_ASSOC);
 			
-			$sql = "SELECT porcentaje FROM `regimenes_facturacion` WHERE id = ?";
+			$sql = "INSERT INTO facturas_venta_otros(id_factura_venta, id_regimen, regimen_text, codigo, articulo, porcentaje) VALUES (?,?,?,?,?,?)";
 			$q = $pdo->prepare($sql);
-			$q->execute([$item]);
-			$data = $q->fetch(PDO::FETCH_ASSOC);
-			$porcentaje = $data['porcentaje'];
-			
-			$sql = "INSERT INTO `facturas_venta_otros`(`id_factura_venta`, `id_regimen`, `porcentaje`) VALUES (?,?,?)";
-			$q = $pdo->prepare($sql);
-			$q->execute([$_GET['id'],$item,$porcentaje]);
+			$q->execute([$_GET['id'], $item, $data['regimen'] ?? null, $data['codigo'] ?? null, $data['articulo'] ?? null, $data['porcentaje'] ?? 0]);
 		}
 		
 		$gravado = 0;

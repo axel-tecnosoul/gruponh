@@ -78,12 +78,12 @@ if (!empty($_POST)) {
       $idFactura = (int)$_POST['id_factura'];
 
       // Verificar que la factura siga siendo editable
-      $qCheckEstado = $pdo->prepare("SELECT id_estado, pagada, exportada FROM facturas_compra WHERE id = ?");
+      $qCheckEstado = $pdo->prepare("SELECT id_estado, exportada FROM facturas_compra WHERE id = ?");
       $qCheckEstado->execute([$idFactura]);
       $estadoRow = $qCheckEstado->fetch(PDO::FETCH_ASSOC);
       if (!$estadoRow) throw new Exception("Factura no encontrada.");
-      if ($estadoRow['id_estado'] == 3 || $estadoRow['pagada'] == 1 || $estadoRow['exportada'] == 1) {
-        $motivo = $estadoRow['pagada'] == 1 ? 'pagada' : ($estadoRow['exportada'] == 1 ? 'exportada' : 'definitiva');
+      if ($estadoRow['id_estado'] == 3 || $estadoRow['exportada'] == 1) {
+        $motivo = $estadoRow['exportada'] == 1 ? 'exportada' : 'definitiva';
         throw new Exception("Esta factura ya fue " . $motivo . " y no puede editarse.");
       }
 
@@ -310,12 +310,16 @@ if (!empty($_POST)) {
     $totalOtros = 0;
     $retenciones = !empty($_POST['retenciones_json']) ? json_decode($_POST['retenciones_json'], true) : [];
     if (is_array($retenciones) && count($retenciones) > 0) {
-      $qRet = $pdo->prepare("INSERT INTO facturas_compra_retenciones (id_factura_compra, id_regimen_facturacion, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?)");
+      $qRegimenData = $pdo->prepare("SELECT regimen, codigo, articulo FROM regimenes_facturacion WHERE id = ?");
+      $qRet = $pdo->prepare("INSERT INTO facturas_compra_retenciones (id_factura_compra, id_regimen_facturacion, regimen_text, codigo, articulo, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?,?,?,?)");
       foreach ($retenciones as $ret) {
+        $idRegimen = intval($ret['id_regimen']);
+        $qRegimenData->execute([$idRegimen]);
+        $regData = $qRegimenData->fetch(PDO::FETCH_ASSOC);
         $monto = floatval($ret['monto']);
         $porcentaje = floatval($ret['porcentaje'] ?? 0);
         $base = floatval($ret['base'] ?? 0);
-        $qRet->execute([$idFactura, intval($ret['id_regimen']), $monto, $porcentaje, $base]);
+        $qRet->execute([$idFactura, $idRegimen, $regData['regimen'] ?? null, $regData['codigo'] ?? null, $regData['articulo'] ?? null, $monto, $porcentaje, $base]);
         $totalOtros += $monto;
       }
     }
@@ -365,8 +369,8 @@ if (!empty($_POST)) {
     $q->execute([$editId]);
     $facturaData = $q->fetch(PDO::FETCH_ASSOC);
 
-    if (!empty($facturaData['id_estado']) && ($facturaData['id_estado'] == 3 || $facturaData['pagada'] == 1 || $facturaData['exportada'] == 1)) {
-      $msg = $facturaData['pagada'] == 1 ? 'pagada' : ($facturaData['exportada'] == 1 ? 'exportada' : 'definitiva');
+    if (!empty($facturaData['id_estado']) && ($facturaData['id_estado'] == 3 || $facturaData['exportada'] == 1)) {
+      $msg = $facturaData['exportada'] == 1 ? 'exportada' : 'definitiva';
       echo '<script>alert("Esta factura ya fue ' . $msg . ' y no puede editarse");</script>';
       echo '<div style="text-align:center;padding:40px;color:red;font-size:18px;">Esta factura ya fue ' . $msg . ' y no puede editarse.<br><a href="listarFacturasCompra.php">Volver al listado</a></div>';
       exit;

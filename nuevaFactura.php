@@ -312,7 +312,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <div class="col-sm-8">
                             <input name="fecha_emitida" id="fecha_emitida" type="date"
                               onfocus="this.showPicker()" class="form-control"
-                              value="<?= $fv('fecha_emitida', $vista === 'compra' ? date('Y-m-d') : '') ?>"
+                              value="<?= $fv('fecha_emitida', date('Y-m-d')) ?>"
                               required>
                           </div>
                         </div>
@@ -323,7 +323,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <div class="col-sm-8">
                             <input name="fecha_enviada" id="fecha_enviada" type="date"
                               onfocus="this.showPicker()" class="form-control"
-                              value="<?= $fv('fecha_enviada') ?>" required>
+                              value="<?= $fv('fecha_enviada', date('Y-m-d')) ?>" required>
                           </div>
                         </div>
                         <?php else: ?>

@@ -401,7 +401,6 @@ $id_estado = $filters['id_estado'] ?? [];
 
         $('#tablaOT').DataTable({
           stateSave: false,
-		      searching: false,
           responsive: false,
           language: {
             "decimal": "",

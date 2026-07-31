@@ -323,3 +323,8 @@ SET r.porcentaje = rf.porcentaje;
 UPDATE facturas_venta_retenciones r
 INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
 SET r.porcentaje = rf.porcentaje;
+
+ALTER TABLE conceptos_contables ADD COLUMN anulado TINYINT(1) NOT NULL DEFAULT 0;
+
+ALTER TABLE materiales DROP COLUMN activo;
+ALTER TABLE facturas_compra DROP COLUMN pagada;

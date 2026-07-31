@@ -18,7 +18,7 @@ $search  = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : ''
 $orderColumnIndex = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 0;
 $orderDir  = isset($_GET['order'][0]['dir']) && strtolower($_GET['order'][0]['dir']) === 'asc' ? 'ASC' : 'DESC';
 
-$columns = ['m.id', 'm.codigo', 'm.concepto', 'c.categoria', 'stock', 'reservado', 'm.activo'];
+$columns = ['m.id', 'm.codigo', 'm.concepto', 'c.categoria', 'stock', 'reservado'];
 $orderBy = isset($columns[$orderColumnIndex]) ? $columns[$orderColumnIndex] : 'm.id';
 
 $stockSubquery = "(SELECT COALESCE(SUM(saldo), 0) FROM ingresos_detalle WHERE id_material = m.id)";
@@ -26,8 +26,7 @@ $reservadoSubquery = "(SELECT COALESCE(SUM(cantidad_reservada), 0) FROM egresos_
 
 $sqlSelect = "SELECT m.id, m.codigo, m.concepto, c.categoria,
                      COALESCE($stockSubquery, 0) AS stock,
-                     COALESCE($reservadoSubquery, 0) AS reservado,
-                     CASE WHEN m.activo = 1 THEN 'Si' ELSE 'No' END AS activo
+                     COALESCE($reservadoSubquery, 0) AS reservado
               FROM materiales m
               INNER JOIN categorias c ON c.id = m.id_categoria
               WHERE m.anulado = 0";
@@ -62,6 +61,21 @@ if ($reservadoOp !== '' && $reservadoVal !== '') {
     $havingClauses[] = "reservado $reservadoOp :reservado_val";
     $params[':reservado_val'] = floatval($reservadoVal);
 }
+
+$colSearch = $_GET['columns'] ?? [];
+if (isset($colSearch[1]['search']['value']) && $colSearch[1]['search']['value'] !== '') {
+    $whereClauses[] = "m.codigo LIKE :col1";
+    $params[':col1'] = '%' . trim($colSearch[1]['search']['value']) . '%';
+}
+if (isset($colSearch[2]['search']['value']) && $colSearch[2]['search']['value'] !== '') {
+    $whereClauses[] = "m.concepto LIKE :col2";
+    $params[':col2'] = '%' . trim($colSearch[2]['search']['value']) . '%';
+}
+if (isset($colSearch[3]['search']['value']) && $colSearch[3]['search']['value'] !== '') {
+    $whereClauses[] = "c.categoria LIKE :col3";
+    $params[':col3'] = '%' . trim($colSearch[3]['search']['value']) . '%';
+}
+
 
 $where = !empty($whereClauses) ? ' AND ' . implode(' AND ', $whereClauses) : '';
 $having = !empty($havingClauses) ? ' HAVING ' . implode(' AND ', $havingClauses) : '';

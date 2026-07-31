@@ -13,7 +13,7 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO `materiales`(`codigo`, `concepto`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `id_categoria`, `activo`, `id_unidad_medida`, `stock_minimo`, `anulado`, `calidad`, `perimetro`) VALUES (?,?,?,?,?,?,?,?,1,?,?,0,?,?)";
+  $sql = "INSERT INTO `materiales`(`codigo`, `concepto`, `descripcion`, `espesor`, `ancho`, `largo`, `peso_metro`, `id_categoria`, `id_unidad_medida`, `stock_minimo`, `anulado`, `calidad`, `perimetro`) VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)";
   $q = $pdo->prepare($sql);
   $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['descripcion'], $_POST['espesor'] ?: null, $_POST['ancho'] ?: null, $_POST['largo'] ?: 0, $_POST['peso_metro'] ?: 0, $_POST['id_categoria'], $_POST['id_unidad_medida'], $_POST['stock_minimo'] ?: 0, $_POST['calidad'], $_POST['perimetro'] ?: null]);
   $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Concepto','Conceptos','verConcepto.php?id=$id')";
