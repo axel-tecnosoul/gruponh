@@ -89,13 +89,15 @@
 
                 $insertados = 0;
                 $actualizados = 0;
+                $anulados = 0;
+                $codigosArchivo = [];
+                $categoriasArchivo = [];
                 $pdo->beginTransaction();
 
                 $qCategoria = $pdo->prepare("SELECT id FROM categorias WHERE id = ?");
                 $qUnidad = $pdo->prepare("SELECT id FROM unidades_medida WHERE id = ?");
                 $qExiste = $pdo->prepare("SELECT id FROM materiales WHERE codigo = ?");
                 $qInsert = $pdo->prepare("INSERT INTO materiales (codigo, concepto, descripcion, largo, peso_metro, id_categoria, id_unidad_medida, stock_minimo, anulado, calidad, perimetro, espesor, ancho) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                $qUpdate = $pdo->prepare("UPDATE materiales SET concepto = ?, descripcion = ?, largo = ?, peso_metro = ?, id_categoria = ?, id_unidad_medida = ?, stock_minimo = ?, anulado = ?, calidad = ?, perimetro = ?, espesor = ?, ancho = ? WHERE codigo = ?");
 
                 foreach ($rows as $i => $row) {
                     $id_col = trim($row[0] ?? '');
@@ -105,9 +107,9 @@
                     $largo = str_replace(',', '.', trim($row[4] ?? ''));
                     $peso_metro = str_replace(',', '.', trim($row[5] ?? ''));
                     $id_categoria = str_replace(',', '.', trim($row[6] ?? ''));
-                    $id_unidad_medida = str_replace(',', '.', trim($row[7] ?? ''));
-                    $stock_minimo = str_replace(',', '.', trim($row[8] ?? ''));
-                    $anulado = trim($row[9] ?? '');
+                    // Columna H = activo (se ignora) | Columna K = anulado (se ignora)
+                    $id_unidad_medida = str_replace(',', '.', trim($row[8] ?? ''));
+                    $stock_minimo = str_replace(',', '.', trim($row[9] ?? ''));
 
                     $esEncabezado = (
                         stripos($id_col, 'Base de datos') !== false ||
@@ -121,6 +123,10 @@
                     );
                     if ($esEncabezado) {
                         continue;
+                    }
+
+                    if ($codigo !== '') {
+                        $codigosArchivo[$codigo] = true;
                     }
 
                     if (empty($codigo) || empty($concepto)) {
@@ -150,20 +156,11 @@
                         $errores[] = "Fila " . ($i + 1) . " (código: " . htmlspecialchars($codigo) . "): Categoría ID '$id_categoria' no encontrada.";
                         continue;
                     }
-
-                    $id_unidad_medida = $id_unidad_medida !== '' ? (int)$id_unidad_medida : null;
-                    if ($id_unidad_medida !== null) {
-                        $qUnidad->execute([$id_unidad_medida]);
-                        if (!$qUnidad->fetch(PDO::FETCH_ASSOC)) {
-                            $errores[] = "Fila " . ($i + 1) . ": Unidad de medida ID '$id_unidad_medida' no encontrada.";
-                            continue;
-                        }
-                    }
+                    $categoriasArchivo[$id_categoria] = true;
 
                     $largo = $largo !== '' ? (float)$largo : 0;
                     $peso_metro = $peso_metro !== '' ? (float)$peso_metro : 0;
                     $stock_minimo = $stock_minimo !== '' ? (float)$stock_minimo : 0;
-                    $anulado = $anulado !== '' ? (int)$anulado : 0;
                     $descripcion = $descripcion !== '' ? $descripcion : '';
 
                     // Parsear dimensiones desde el concepto
@@ -184,17 +181,60 @@
                     $qExiste->execute([$codigo]);
                     $existente = $qExiste->fetch(PDO::FETCH_ASSOC);
 
-                    if ($existente) {
-                        $qUpdate->execute([$concepto, $descripcion, $largo, $peso_metro, $id_categoria, $id_unidad_medida, $stock_minimo, $anulado, '', 0, $espesor, $ancho, $codigo]);
-                        $actualizados++;
-                    } else {
-                        $qInsert->execute([$codigo, $concepto, $descripcion, $largo, $peso_metro, $id_categoria, $id_unidad_medida, $stock_minimo, $anulado, '', 0, $espesor, $ancho]);
-                        $insertados++;
+                    $id_unidad_medida = trim($id_unidad_medida);
+                    $id_unidad_medida_final = null;
+                    if ($id_unidad_medida !== '') {
+                        if (!preg_match('/^\d+(\.\d+)?$/', $id_unidad_medida) || (int)$id_unidad_medida <= 0) {
+                            $errores[] = "Fila " . ($i + 1) . " (código: " . htmlspecialchars($codigo) . "): Unidad de medida '" . htmlspecialchars($id_unidad_medida) . "' no válida.";
+                            continue;
+                        }
+                        $id_unidad_medida_final = (int)$id_unidad_medida;
+                        $qUnidad->execute([$id_unidad_medida_final]);
+                        if (!$qUnidad->fetch(PDO::FETCH_ASSOC)) {
+                            $errores[] = "Fila " . ($i + 1) . " (código: " . htmlspecialchars($codigo) . "): Unidad de medida ID '$id_unidad_medida_final' no encontrada.";
+                            continue;
+                        }
+                    } elseif (!$existente) {
+                        $errores[] = "Fila " . ($i + 1) . " (código: " . htmlspecialchars($codigo) . "): Falta unidad de medida para un concepto nuevo.";
+                        continue;
+                    }
+
+                    try {
+                        if ($existente) {
+                            $sets = ['concepto = ?', 'descripcion = ?', 'largo = ?', 'peso_metro = ?', 'id_categoria = ?', 'stock_minimo = ?', 'calidad = ?', 'perimetro = ?', 'espesor = ?', 'ancho = ?', 'anulado = ?'];
+                            $params = [$concepto, $descripcion, $largo, $peso_metro, $id_categoria, $stock_minimo, '', 0, $espesor, $ancho, 0];
+                            if ($id_unidad_medida_final !== null) {
+                                array_splice($sets, 5, 0, 'id_unidad_medida = ?');
+                                array_splice($params, 5, 0, $id_unidad_medida_final);
+                            }
+                            $params[] = $codigo;
+                            $qUpdate = $pdo->prepare("UPDATE materiales SET " . implode(', ', $sets) . " WHERE codigo = ?");
+                            $qUpdate->execute($params);
+                            $actualizados++;
+                        } else {
+                            $qInsert->execute([$codigo, $concepto, $descripcion, $largo, $peso_metro, $id_categoria, $id_unidad_medida_final, $stock_minimo, 0, '', 0, $espesor, $ancho]);
+                            $insertados++;
+                        }
+                    } catch (Exception $e) {
+                        $errores[] = "Fila " . ($i + 1) . " (código: " . htmlspecialchars($codigo) . "): " . $e->getMessage();
+                    }
+                }
+
+                if ($insertados + $actualizados > 0) {
+                    foreach (array_keys($categoriasArchivo) as $cat) {
+                        $codigos = array_keys($codigosArchivo);
+                        if (empty($codigos)) {
+                            continue;
+                        }
+                        $placeholders = implode(',', array_fill(0, count($codigos), '?'));
+                        $qAnular = $pdo->prepare("UPDATE materiales SET anulado = 1 WHERE id_categoria = ? AND anulado = 0 AND codigo NOT IN ($placeholders)");
+                        $qAnular->execute(array_merge([$cat], $codigos));
+                        $anulados += $qAnular->rowCount();
                     }
                 }
 
                 $pdo->commit();
-                $resultado = "Importación completada: $insertados nuevos, $actualizados actualizados.";
+                $resultado = "Importación completada: $insertados nuevos, $actualizados actualizados, $anulados anulados.";
 
                 $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Importación Excel Conceptos','Conceptos','')";
                 $pdo->prepare($sql)->execute([$_SESSION['user']['id']]);
@@ -254,10 +294,11 @@
                       <strong>E:</strong> Largo (mm) &nbsp;|&nbsp;
                       <strong>F:</strong> Peso x Metro (kg) &nbsp;|&nbsp;
                       <strong>G:</strong> ID Categoría(*) &nbsp;|&nbsp;
-                      <strong>H:</strong> ID Unidad Medida &nbsp;|&nbsp;
-                      <strong>I:</strong> Stock Mínimo &nbsp;|&nbsp;
-                      <strong>J:</strong> Anulado<br>
-                      <small>Las dimensiones (espesor, ancho) se extraen automáticamente del concepto según la categoría. (*) obligatorio.</small>
+                      <strong>H:</strong> Activo (se ignora) &nbsp;|&nbsp;
+                      <strong>I:</strong> ID Unidad Medida &nbsp;|&nbsp;
+                      <strong>J:</strong> Stock Mínimo &nbsp;|&nbsp;
+                      <strong>K:</strong> Anulado (se ignora)<br>
+                      <small>Los conceptos presentes en el Excel quedan activos (anulado = 0). Los de la misma categoría que no estén en el Excel pasan a anulado = 1. Las dimensiones (espesor, ancho) se extraen automáticamente del concepto según la categoría. (*) obligatorio.</small>
                     </div>
 
                     <form class="form theme-form" role="form" method="post" enctype="multipart/form-data" action="importMateriales.php">

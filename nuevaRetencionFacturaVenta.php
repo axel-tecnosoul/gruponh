@@ -13,15 +13,24 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		
-		$sql = "INSERT INTO `facturas_venta_retenciones`(`id_factura_venta`, `id_regimen_facturacion`, `monto`) VALUES (?,?,?)";
+		$qSigno = $pdo->prepare("SELECT signo_vta FROM `regimenes_facturacion` WHERE id = ?");
+		$qSigno->execute([$_POST['id_regimen']]);
+		$signoVta = (int)$qSigno->fetchColumn();
+		$monto = floatval($_POST['monto']);
+		$montoSignado = $signoVta === 2 ? -abs($monto) : abs($monto);
+
+		$sql = "INSERT INTO `facturas_venta_retenciones`(`id_factura_venta`, `regimen_text`, `codigo`, `articulo`, `monto`, `porcentaje`, `base_imponible`)
+		        SELECT ?, rf.`regimen`, rf.`codigo`, rf.`articulo`, ?, rf.`porcentaje`,
+		               CASE WHEN rf.`porcentaje` > 0 THEN ? / (rf.`porcentaje` / 100) ELSE ? END
+		        FROM `regimenes_facturacion` rf WHERE rf.`id` = ?";
 		$q = $pdo->prepare($sql);		   
-		$q->execute([$_GET['id'],$_POST['id_regimen'],$_POST['monto']]);
+		$q->execute([$_GET['id'],$montoSignado,$monto,$monto,$_POST['id_regimen']]);
         
 		$idRetencion = $pdo->lastInsertId();
 		
 		$sql = "update `facturas_venta` set  `otros` = `otros` + ?, `total` = `total` + ? where id = ?";
 		$q = $pdo->prepare($sql);		   
-		$q->execute([$_POST['monto'], $_POST['monto'], $_GET['id']]);
+		$q->execute([$montoSignado, $montoSignado, $_GET['id']]);
 		
 		
         Database::disconnect();
@@ -88,7 +97,7 @@
 								  <?php
 									$pdo = Database::connect();
 									if (!empty($_GET['id'])) {
-										$sql = " SELECT r.`id`, f.regimen, r.`monto` FROM `facturas_venta_retenciones` r inner join regimenes_facturacion f on f.id = r.`id_regimen_facturacion` WHERE r.`id_factura_venta` = ".$_GET['id'];
+										$sql = " SELECT r.`id`, COALESCE(r.`regimen_text`, r.`codigo`, r.`articulo`, ''), r.`monto` FROM `facturas_venta_retenciones` r WHERE r.`id_factura_venta` = ".$_GET['id'];
 										foreach ($pdo->query($sql) as $row) {
 									
 											echo '<tr>';

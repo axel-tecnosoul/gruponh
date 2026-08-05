@@ -63,9 +63,8 @@ foreach ($detalles as $det) {
   $detallesConImputaciones[] = $det;
 }
 
-$qRet = $pdo->prepare("SELECT r.*, COALESCE(r.regimen_text, rf.regimen) AS regimen_text
+$qRet = $pdo->prepare("SELECT r.*, COALESCE(r.regimen_text, r.codigo, r.articulo, '') AS regimen_text
     FROM facturas_compra_retenciones r
-    LEFT JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
     WHERE r.id_factura_compra = ?");
 $qRet->execute([$id]);
 $retenciones = $qRet->fetchAll(PDO::FETCH_ASSOC);

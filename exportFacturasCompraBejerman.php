@@ -53,10 +53,9 @@ try {
   $itemsRaw = $qDet->fetchAll(PDO::FETCH_ASSOC);
 
   // Todas las retenciones
-  $qRet = $pdo->prepare("SELECT fc.id as factura_id, r.monto, rf.regimen
+  $qRet = $pdo->prepare("SELECT fc.id as factura_id, r.monto, COALESCE(r.regimen_text, r.codigo, r.articulo, '') AS regimen
                        FROM facturas_compra fc
                        INNER JOIN facturas_compra_retenciones r ON r.id_factura_compra = fc.id
-                       LEFT JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
                        WHERE 1 $extraFilter $idFilter
                        ORDER BY fc.id");
   $qRet->execute($params);

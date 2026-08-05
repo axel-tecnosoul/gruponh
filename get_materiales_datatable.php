@@ -44,9 +44,17 @@ if ($search !== '') {
     $params[':s3'] = "%$search%";
 }
 
+$colSearch = $_GET['columns'] ?? [];
+
 $stockOp  = $_GET['stock_op'] ?? '';
 $stockVal = $_GET['stock_val'] ?? '';
-if ($stockOp !== '' && $stockVal !== '') {
+if ($stockVal === '' && isset($colSearch[4]['search']['value']) && trim($colSearch[4]['search']['value']) !== '') {
+    $stockVal = trim($colSearch[4]['search']['value']);
+}
+if ($stockVal !== '') {
+    if ($stockOp === '') {
+        $stockOp = '=';
+    }
     $allowedOps = ['<', '<=', '>', '>=', '=', '!='];
     $stockOp = in_array(str_replace('==', '=', $stockOp), $allowedOps) ? str_replace('==', '=', $stockOp) : '=';
     $havingClauses[] = "stock $stockOp :stock_val";
@@ -55,14 +63,23 @@ if ($stockOp !== '' && $stockVal !== '') {
 
 $reservadoOp  = $_GET['reservado_op'] ?? '';
 $reservadoVal = $_GET['reservado_val'] ?? '';
-if ($reservadoOp !== '' && $reservadoVal !== '') {
+if ($reservadoVal === '' && isset($colSearch[5]['search']['value']) && trim($colSearch[5]['search']['value']) !== '') {
+    $reservadoVal = trim($colSearch[5]['search']['value']);
+}
+if ($reservadoVal !== '') {
+    if ($reservadoOp === '') {
+        $reservadoOp = '=';
+    }
     $allowedOps = ['<', '<=', '>', '>=', '=', '!='];
     $reservadoOp = in_array(str_replace('==', '=', $reservadoOp), $allowedOps) ? str_replace('==', '=', $reservadoOp) : '=';
     $havingClauses[] = "reservado $reservadoOp :reservado_val";
     $params[':reservado_val'] = floatval($reservadoVal);
 }
 
-$colSearch = $_GET['columns'] ?? [];
+if (isset($colSearch[0]['search']['value']) && $colSearch[0]['search']['value'] !== '') {
+    $whereClauses[] = "m.id LIKE :col0";
+    $params[':col0'] = '%' . trim($colSearch[0]['search']['value']) . '%';
+}
 if (isset($colSearch[1]['search']['value']) && $colSearch[1]['search']['value'] !== '') {
     $whereClauses[] = "m.codigo LIKE :col1";
     $params[':col1'] = '%' . trim($colSearch[1]['search']['value']) . '%';
@@ -80,7 +97,14 @@ if (isset($colSearch[3]['search']['value']) && $colSearch[3]['search']['value'] 
 $where = !empty($whereClauses) ? ' AND ' . implode(' AND ', $whereClauses) : '';
 $having = !empty($havingClauses) ? ' HAVING ' . implode(' AND ', $havingClauses) : '';
 
-$sqlCountFiltered = "SELECT COUNT(*) FROM materiales m INNER JOIN categorias c ON c.id = m.id_categoria WHERE m.anulado = 0 $where";
+$sqlCountFiltered = "SELECT COUNT(*) FROM (
+                        SELECT m.id, COALESCE($stockSubquery, 0) AS stock, COALESCE($reservadoSubquery, 0) AS reservado
+                        FROM materiales m INNER JOIN categorias c ON c.id = m.id_categoria
+                        WHERE m.anulado = 0 $where
+                    ) sub";
+if (!empty($havingClauses)) {
+    $sqlCountFiltered .= ' WHERE ' . implode(' AND ', $havingClauses);
+}
 $qCount = $pdo->prepare($sqlCountFiltered);
 $qCount->execute($params);
 $recordsFiltered = (int)$qCount->fetchColumn();

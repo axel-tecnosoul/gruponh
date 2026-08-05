@@ -768,6 +768,10 @@ if($prodQuery){
                   '</tr>';
               });
 
+              if (conj.posiciones.length === 0) {
+                posicionesHtml += '<tr><td colspan="9" class="text-center">No hay registros</td></tr>';
+              }
+
               posicionesHtml += '</tbody></table>';
 
               html += '<tr>' +

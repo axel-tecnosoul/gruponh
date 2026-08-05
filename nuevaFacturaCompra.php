@@ -310,8 +310,8 @@ if (!empty($_POST)) {
     $totalOtros = 0;
     $retenciones = !empty($_POST['retenciones_json']) ? json_decode($_POST['retenciones_json'], true) : [];
     if (is_array($retenciones) && count($retenciones) > 0) {
-      $qRegimenData = $pdo->prepare("SELECT regimen, codigo, articulo FROM regimenes_facturacion WHERE id = ?");
-      $qRet = $pdo->prepare("INSERT INTO facturas_compra_retenciones (id_factura_compra, id_regimen_facturacion, regimen_text, codigo, articulo, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?,?,?,?)");
+      $qRegimenData = $pdo->prepare("SELECT regimen, codigo, articulo, signo_cpr FROM regimenes_facturacion WHERE id = ?");
+      $qRet = $pdo->prepare("INSERT INTO facturas_compra_retenciones (id_factura_compra, regimen_text, codigo, articulo, monto, porcentaje, base_imponible) VALUES (?,?,?,?,?,?,?)");
       foreach ($retenciones as $ret) {
         $idRegimen = intval($ret['id_regimen']);
         $qRegimenData->execute([$idRegimen]);
@@ -319,7 +319,12 @@ if (!empty($_POST)) {
         $monto = floatval($ret['monto']);
         $porcentaje = floatval($ret['porcentaje'] ?? 0);
         $base = floatval($ret['base'] ?? 0);
-        $qRet->execute([$idFactura, $idRegimen, $regData['regimen'] ?? null, $regData['codigo'] ?? null, $regData['articulo'] ?? null, $monto, $porcentaje, $base]);
+        if (isset($regData['signo_cpr']) && (int)$regData['signo_cpr'] === 2) {
+          $monto = -abs($monto);
+        } else {
+          $monto = abs($monto);
+        }
+        $qRet->execute([$idFactura, $regData['regimen'] ?? null, $regData['codigo'] ?? null, $regData['articulo'] ?? null, $monto, $porcentaje, $base]);
         $totalOtros += $monto;
       }
     }
@@ -341,7 +346,7 @@ if (!empty($_POST)) {
     }
 
     // Actualizar totales
-    if ($detallesProcesados || $totalOtros > 0) {
+    if ($detallesProcesados || $totalOtros != 0) {
       $qu = $pdo->prepare("UPDATE facturas_compra SET subtotal_gravado=?, subtotal_no_gravado=?, otros=?, iva=?, total=? WHERE id=?");
       $qu->execute([$gravado, $noGravado, $totalOtros, $iva, $total + $totalOtros, $idFactura]);
     }
@@ -453,12 +458,15 @@ if (!empty($_POST)) {
         ];
       }
 
-      $qRet = $pdo->prepare("SELECT r.*, rf.regimen AS regimen_text, rf.porcentaje FROM facturas_compra_retenciones r INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion WHERE r.id_factura_compra = ?");
+      $qRet = $pdo->prepare("SELECT r.*,
+                             (SELECT rf.id FROM regimenes_facturacion rf WHERE rf.regimen = r.regimen_text AND rf.anulado = 0 ORDER BY rf.id LIMIT 1) AS id_regimen
+                             FROM facturas_compra_retenciones r
+                             WHERE r.id_factura_compra = ?");
       $qRet->execute([$editId]);
       while ($row = $qRet->fetch(PDO::FETCH_ASSOC)) {
         $porc = (float)$row['porcentaje'];
         $retencionesExistentes[] = [
-          'id_regimen' => $row['id_regimen_facturacion'],
+          'id_regimen' => $row['id_regimen'] ?? $row['id'],
           'regimen_text' => $row['regimen_text'],
           'monto' => (float)$row['monto'],
           'porcentaje' => $porc,

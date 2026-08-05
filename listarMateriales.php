@@ -182,7 +182,7 @@ include 'database.php';
           { data: 'stock' },
           { data: 'reservado' }
         ],
-        lengthMenu: [[10, 25, 50, 100, 500, 1000], [10, 25, 50, 100, 500, 1000]],
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
         dom: 'Bfrtp<"bottom"l>',
         buttons: ['excel'],
         language: {
@@ -215,16 +215,9 @@ include 'database.php';
           var isNumericColumn = (columnIndex === 4 || columnIndex === 5);
 
           if (isNumericColumn) {
-            var op = $(that.footer()).find('select.numeric-operator').val() || '';
             var num = $(that.footer()).find('input.numeric-value').val() || '';
-
-            if (op && num) {
-              that.search('');
-            } else {
-              var val = $(that.footer()).find('input').val() || '';
-              if (that.search() !== val) {
-                that.search(val);
-              }
+            if (that.search() !== num) {
+              that.search(num);
             }
           } else {
             var val = $(that.footer()).find('input').val() || '';

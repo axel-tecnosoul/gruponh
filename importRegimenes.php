@@ -35,8 +35,8 @@
                 $pdo->beginTransaction();
 
                 $qExiste = $pdo->prepare("SELECT id FROM regimenes_facturacion WHERE codigo = ? AND COALESCE(articulo,'') = COALESCE(?,'')");
-                $qInsert = $pdo->prepare("INSERT INTO regimenes_facturacion (codigo, articulo, regimen, porcentaje, monto, anulado) VALUES (?, ?, ?, ?, ?, 0)");
-                $qUpdate = $pdo->prepare("UPDATE regimenes_facturacion SET regimen = ?, porcentaje = ?, monto = ?, anulado = 0 WHERE codigo = ? AND COALESCE(articulo,'') = COALESCE(?,'')");
+                $qInsert = $pdo->prepare("INSERT INTO regimenes_facturacion (codigo, articulo, regimen, porcentaje, monto, signo_cpr, signo_vta, anulado) VALUES (?, ?, ?, ?, ?, ?, ?, 0)");
+                $qUpdate = $pdo->prepare("UPDATE regimenes_facturacion SET regimen = ?, porcentaje = ?, monto = ?, signo_cpr = ?, signo_vta = ?, anulado = 0 WHERE codigo = ? AND COALESCE(articulo,'') = COALESCE(?,'')");
 
                 foreach ($rows as $i => $row) {
                     $codigo     = trim((string)($row[0] ?? ''));
@@ -44,6 +44,8 @@
                     $regimen    = trim((string)($row[2] ?? ''));
                     $monto      = str_replace(',', '.', trim((string)($row[8] ?? '')));
                     $porcentaje = str_replace(',', '.', trim((string)($row[9] ?? '')));
+                    $signoCpr   = trim((string)($row[13] ?? ''));
+                    $signoVta   = trim((string)($row[15] ?? ''));
 
                     $esEncabezado = (
                         stripos($codigo, 'res_cod')  !== false ||
@@ -62,15 +64,17 @@
 
                     $porcentaje = $porcentaje !== '' ? (float)$porcentaje : 0;
                     $monto      = $monto      !== '' ? (float)$monto      : 0;
+                    $signoCpr   = in_array($signoCpr, ['1', '2']) ? (int)$signoCpr : 1;
+                    $signoVta   = in_array($signoVta, ['1', '2']) ? (int)$signoVta : 1;
 
                     $qExiste->execute([$codigo, $articulo]);
                     $existente = $qExiste->fetch(PDO::FETCH_ASSOC);
 
                     if ($existente) {
-                        $qUpdate->execute([$regimen, $porcentaje, $monto, $codigo, $articulo]);
+                        $qUpdate->execute([$regimen, $porcentaje, $monto, $signoCpr, $signoVta, $codigo, $articulo]);
                         $actualizados++;
                     } else {
-                        $qInsert->execute([$codigo, $articulo, $regimen, $porcentaje, $monto]);
+                        $qInsert->execute([$codigo, $articulo, $regimen, $porcentaje, $monto, $signoCpr, $signoVta]);
                         $insertados++;
                     }
 
@@ -147,8 +151,10 @@
                       <strong>B:</strong> Artículo (res_Art) &nbsp;|&nbsp;
                       <strong>C:</strong> Descripción (res_Desc) &nbsp;|&nbsp;
                       <strong>I:</strong> Porcentaje (res_Porcentaje) &nbsp;|&nbsp;
-                      <strong>J:</strong> Monto (res_Monto)<br>
-                      <small>Si el código + artículo ya existe, se actualiza régimen, porcentaje y monto. Registros no presentes en el Excel se marcan como anulados.</small>
+                      <strong>J:</strong> Monto (res_Monto) &nbsp;|&nbsp;
+                      <strong>N:</strong> Signo Compras (res_SignoCpr) &nbsp;|&nbsp;
+                      <strong>P:</strong> Signo Ventas (res_SignoVta)<br>
+                      <small>Signo = 1 ⇒ el importe se suma al comprobante (positivo); Signo = 2 ⇒ resta (negativo). Si el código + artículo ya existe, se actualiza régimen, porcentaje, monto y signos. Registros no presentes en el Excel se marcan como anulados.</small>
                     </div>
 
                     <form class="form theme-form" role="form" method="post" enctype="multipart/form-data" action="importRegimenes.php">

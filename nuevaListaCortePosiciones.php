@@ -37,7 +37,7 @@ if (!empty($_POST)) {
 
     $id_posicion_ajax = trim($_POST['id_posicion'] ?? 0);
 
-    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND pos.id != ? AND lc.id_estado_lista_corte IN (3,4,5) LIMIT 1";
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND pos.id != ? AND lc.id_estado_lista_corte IN (1,2,3,4,5,8) LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
     $qNum->execute([$id_proyecto, $posicion, $id_posicion_ajax]);
     $dataNum = $qNum->fetch(PDO::FETCH_ASSOC);
@@ -173,7 +173,7 @@ if (!empty($_POST)) {
     $id_proyecto = $qProyecto->fetchColumn();
 
     //validación del número de posición a nivel de proyecto
-    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND pos.id != ? AND lc.id_estado_lista_corte IN (3,4,5) LIMIT 1";
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND pos.id != ? AND lc.id_estado_lista_corte IN (1,2,3,4,5,8) LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
     $params = [$id_proyecto, $nombre_posicion, $id_lista_corte_posicion];
     $qNum->execute($params);
@@ -323,7 +323,7 @@ if (!empty($_POST)) {
     $id_proyecto = $qProyecto->fetchColumn();
 
     //validación del número de posición a nivel de proyecto
-    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND lc.id_estado_lista_corte IN (3,4,5) LIMIT 1";
+    $sqlNum = "SELECT pos.id_material, pos.ancho, pos.largo, pos.diametro FROM lista_corte_posiciones pos JOIN listas_corte_conjuntos lcc ON pos.id_lista_corte_conjunto = lcc.id JOIN listas_corte lc ON lcc.id_lista_corte = lc.id WHERE lc.id_proyecto = ? AND pos.posicion = ? AND lc.id_estado_lista_corte IN (1,2,3,4,5,8) LIMIT 1";
     $qNum = $pdo->prepare($sqlNum);
     $params = [$id_proyecto, $nombre_posicion];
     $qNum->execute($params);
@@ -689,6 +689,14 @@ Database::disconnect();?>
           <!-- Container-fluid Ends-->
         </div>
         <!-- Modal con todas las posiciones del proyecto -->
+        <?php
+          $pdoEstados = Database::connect();
+          $pdoEstados->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+          $qEstados = $pdoEstados->prepare("SELECT estado FROM estados_lista_corte WHERE id IN (1,2,3,4,5,8) ORDER BY id");
+          $qEstados->execute();
+          $nombresEstados = $qEstados->fetchAll(PDO::FETCH_COLUMN);
+          Database::disconnect();
+        ?>
         <div class="modal fade" id="modalPosicionesProyecto" tabindex="-1" role="dialog" aria-labelledby="modalPosicionesProyectoLabel" aria-hidden="true">
           <div class="modal-dialog modal-xl" style="max-width: 80%;" role="document">
             <div class="modal-content">
@@ -697,6 +705,7 @@ Database::disconnect();?>
                 <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
               </div>
               <div class="modal-body">
+                <small class="text-muted">Se toman en cuenta todas las listas de corte en estado: <?= implode(', ', $nombresEstados) ?></small>
                 <div class="table-responsive">
                   <table class="table" id="tablaPosicionesProyecto">
                     <thead>
@@ -726,7 +735,7 @@ Database::disconnect();?>
                         LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion = pos.id
                         LEFT JOIN tipos_procesos tp ON tp.id = lcp.id_tipo_proceso
                         LEFT JOIN estados_lista_corte els ON els.id = lc.id_estado_lista_corte
-                      WHERE lc.id_proyecto = ? AND lc.id_estado_lista_corte IN (3,4,5) GROUP BY pos.id ORDER BY lc.numero, lcc.nombre, pos.posicion";
+                      WHERE lc.id_proyecto = ? AND lc.id_estado_lista_corte IN (1,2,3,4,5,8) GROUP BY pos.id ORDER BY lc.numero, lcc.nombre, pos.posicion";
                       $qModal = $pdoModal->prepare($sqlModal);
                       $qModal->execute([$data['id_proyecto']]);
                       while ($rowModal = $qModal->fetch(PDO::FETCH_ASSOC)) {?>

@@ -328,3 +328,46 @@ ALTER TABLE conceptos_contables ADD COLUMN anulado TINYINT(1) NOT NULL DEFAULT 0
 
 ALTER TABLE materiales DROP COLUMN activo;
 ALTER TABLE facturas_compra DROP COLUMN pagada;
+
+-- ---------------------------------------------------------------------------
+-- ELIMINAR id_regimen_facturacion de facturas_compra_retenciones y
+-- facturas_venta_retenciones (la info ya está desnormalizada en regimen_text,
+-- codigo, articulo, porcentaje, base_imponible)
+-- ---------------------------------------------------------------------------
+
+-- 1) Backfill histórico antes de borrar la FK
+UPDATE facturas_compra_retenciones r
+INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+SET r.regimen_text    = COALESCE(NULLIF(r.regimen_text, ''), rf.regimen),
+    r.codigo          = COALESCE(NULLIF(r.codigo, ''), rf.codigo),
+    r.articulo        = COALESCE(NULLIF(r.articulo, ''), rf.articulo),
+    r.porcentaje      = CASE WHEN r.porcentaje IS NULL OR r.porcentaje = 0 THEN rf.porcentaje ELSE r.porcentaje END,
+    r.base_imponible  = CASE WHEN r.base_imponible IS NULL OR r.base_imponible = 0
+                             THEN CASE WHEN rf.porcentaje > 0 THEN r.monto / (rf.porcentaje / 100) ELSE r.monto END
+                             ELSE r.base_imponible END;
+
+UPDATE facturas_venta_retenciones r
+INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
+SET r.regimen_text    = COALESCE(NULLIF(r.regimen_text, ''), rf.regimen),
+    r.codigo          = COALESCE(NULLIF(r.codigo, ''), rf.codigo),
+    r.articulo        = COALESCE(NULLIF(r.articulo, ''), rf.articulo),
+    r.porcentaje      = CASE WHEN r.porcentaje IS NULL OR r.porcentaje = 0 THEN rf.porcentaje ELSE r.porcentaje END,
+    r.base_imponible  = CASE WHEN r.base_imponible IS NULL OR r.base_imponible = 0
+                             THEN CASE WHEN rf.porcentaje > 0 THEN r.monto / (rf.porcentaje / 100) ELSE r.monto END
+                             ELSE r.base_imponible END;
+
+-- 2) Drop de FK, índice y columna
+ALTER TABLE facturas_compra_retenciones DROP FOREIGN KEY facturas_compra_retenciones_ibfk_2;
+ALTER TABLE facturas_compra_retenciones DROP KEY id_regimen_facturacion;
+ALTER TABLE facturas_compra_retenciones DROP COLUMN id_regimen_facturacion;
+
+ALTER TABLE facturas_venta_retenciones DROP FOREIGN KEY facturas_venta_retenciones_ibfk_2;
+ALTER TABLE facturas_venta_retenciones DROP KEY id_regimen_facturacion;
+ALTER TABLE facturas_venta_retenciones DROP COLUMN id_regimen_facturacion;
+
+-- ---------------------------------------------------------------------------
+-- SIGNOS DE REGIMENES (res_SignoCpr / res_SignoVta)
+-- 1 = suma (importe positivo) | 2 = resta (importe negativo)
+-- ---------------------------------------------------------------------------
+ALTER TABLE regimenes_facturacion ADD COLUMN signo_cpr TINYINT NOT NULL DEFAULT 1 AFTER monto;
+ALTER TABLE regimenes_facturacion ADD COLUMN signo_vta TINYINT NOT NULL DEFAULT 1 AFTER signo_cpr;

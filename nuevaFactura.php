@@ -646,10 +646,11 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <option value="">Seleccione...</option>
                           <?php
                           $pdo = Database::connect();
-                          $q = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
+                          $q = $pdo->prepare("SELECT id, regimen, porcentaje, signo_cpr, signo_vta FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
                           $q->execute();
+                          $signoCampo = $vista === 'venta' ? 'signo_vta' : 'signo_cpr';
                           while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                            echo "<option value='{$f['id']}' data-porcentaje='{$f['porcentaje']}'>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
+                            echo "<option value='{$f['id']}' data-porcentaje='{$f['porcentaje']}' data-signo='{$f[$signoCampo]}'>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
                           }
                           Database::disconnect();
                           ?>
@@ -670,7 +671,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <div class="input-group-prepend">
                             <span class="input-group-text">$</span>
                           </div>
-                          <input id="ret_monto" type="number" step="0.01" min="0" class="form-control" placeholder="Monto retención">
+                          <input id="ret_monto" type="number" step="0.01" class="form-control" placeholder="Monto retención">
                         </div>
                       </div>
                     </div>
@@ -989,9 +990,16 @@ $fv = function($key, $default = '') use ($facturaData) {
       }
       editRetencionIndex = index;
       var item = retenciones[index];
+      var opt = $('#ret_regimen option[value="' + item.id_regimen + '"]');
+      if (opt.length === 0) {
+        var newOpt = new Option(item.regimen_text + ' (' + (parseFloat(item.porcentaje || 0).toFixed(2)) + '%)', item.id_regimen, false, false);
+        $(newOpt).data('porcentaje', item.porcentaje || 0);
+        $(newOpt).data('signo', item.signo || (item.monto < 0 ? 2 : 1));
+        $('#ret_regimen').append(newOpt);
+      }
       $('#ret_regimen').val(item.id_regimen).trigger('change');
       $('#ret_base').val(item.base);
-      calcularRetencion();
+      $('#ret_monto').val(item.monto);
       $('#btnAgregarRetencion').text('Modificar Retención');
       $('#btnCancelarRetencion').show();
     }
@@ -1007,7 +1015,9 @@ $fv = function($key, $default = '') use ($facturaData) {
     function calcularRetencion() {
       var base = parseFloat($('#ret_base').val()) || 0;
       var porc = parseFloat($('#ret_regimen option:selected').data('porcentaje')) || 0;
+      var signo = parseInt($('#ret_regimen option:selected').data('signo')) || 1;
       var monto = base * porc / 100;
+      if (signo === 2) { monto = -monto; }
       $('#ret_monto').val(monto.toFixed(2));
     }
 
@@ -1015,7 +1025,7 @@ $fv = function($key, $default = '') use ($facturaData) {
       var monto = parseFloat($('#ret_monto').val()) || 0;
       var porc = parseFloat($('#ret_regimen option:selected').data('porcentaje')) || 0;
       if (porc > 0) {
-        var base = monto / (porc / 100);
+        var base = Math.abs(monto) / (porc / 100);
         $('#ret_base').val(base.toFixed(2));
       }
     }
@@ -1393,28 +1403,32 @@ $fv = function($key, $default = '') use ($facturaData) {
           return;
         }
 
-        var monto = parseFloat($('#ret_monto').val()) || (base * porc / 100);
+      var monto = parseFloat($('#ret_monto').val()) || (base * porc / 100);
+      var signo = parseInt($('#ret_regimen option:selected').data('signo')) || 1;
+      if (signo === 2) { monto = -Math.abs(monto); }
 
-        if (editRetencionIndex >= 0) {
-          retenciones[editRetencionIndex] = {
-            id_regimen: idRegimen,
-            regimen_text: regimenText,
-            monto: monto,
-            base: base,
-            porcentaje: porc
-          };
-          editRetencionIndex = -1;
-          $('#btnAgregarRetencion').text('Agregar Retención');
-          $('#btnCancelarRetencion').hide();
-        } else {
-          retenciones.push({
-            id_regimen: idRegimen,
-            regimen_text: regimenText,
-            monto: monto,
-            base: base,
-            porcentaje: porc
-          });
-        }
+      if (editRetencionIndex >= 0) {
+        retenciones[editRetencionIndex] = {
+          id_regimen: idRegimen,
+          regimen_text: regimenText,
+          monto: monto,
+          base: base,
+          porcentaje: porc,
+          signo: signo
+        };
+        editRetencionIndex = -1;
+        $('#btnAgregarRetencion').text('Agregar Retención');
+        $('#btnCancelarRetencion').hide();
+      } else {
+        retenciones.push({
+          id_regimen: idRegimen,
+          regimen_text: regimenText,
+          monto: monto,
+          base: base,
+          porcentaje: porc,
+          signo: signo
+        });
+      }
 
         $('#ret_regimen').val('').trigger('change');
         $('#ret_base').val('');
