@@ -333,6 +333,14 @@ ALTER TABLE facturas_venta_retenciones ADD COLUMN articulo VARCHAR(99) DEFAULT N
 -- ---------------------------------------------------------------------------
 
 -- 1) Backfill histórico antes de borrar la FK
+ALTER TABLE facturas_compra_retenciones ADD COLUMN regimen_text VARCHAR(99) DEFAULT NULL AFTER id_factura_compra;
+ALTER TABLE facturas_compra_retenciones ADD COLUMN codigo VARCHAR(99) DEFAULT NULL AFTER regimen_text;
+ALTER TABLE facturas_compra_retenciones ADD COLUMN articulo VARCHAR(99) DEFAULT NULL AFTER codigo;
+
+ALTER TABLE facturas_venta_retenciones ADD COLUMN regimen_text VARCHAR(99) DEFAULT NULL AFTER id_factura_venta;
+ALTER TABLE facturas_venta_retenciones ADD COLUMN codigo VARCHAR(99) DEFAULT NULL AFTER regimen_text;
+ALTER TABLE facturas_venta_retenciones ADD COLUMN articulo VARCHAR(99) DEFAULT NULL AFTER codigo;
+
 UPDATE facturas_compra_retenciones r
 INNER JOIN regimenes_facturacion rf ON rf.id = r.id_regimen_facturacion
 SET r.regimen_text    = COALESCE(NULLIF(r.regimen_text, ''), rf.regimen),
