@@ -1,10 +1,9 @@
 <?php
-session_start();
+require("config.php");
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
-}
-?>
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -45,10 +44,8 @@ if (empty($_SESSION['user'])) {
                       if (!empty(tienePermiso(324))) { ?>
                         <a href="nuevaDevolucion.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Ingreso x Devolución" title="Nuevo Ingreso x Devolución"></a>&nbsp;<?php
                       }?>
-                      <a href="exportIngresos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>
-                      &nbsp;&nbsp;
+                      <a href="exportIngresos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;
                       <a href="#" id="link_ver_ingreso"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
-                      &nbsp;&nbsp;
                     </h5>
                   </div>
                   <div class="card-body">
@@ -73,17 +70,17 @@ if (empty($_SESSION['user'])) {
                           
                           $sql = " SELECT i.id, date_format(i.fecha_hora,'%d/%m/%y %H:%i') AS fecha_hora, ti.tipo, i.nro, c.nombre, i.lugar_entrega, i.observaciones, date_format(i.fecha_remito,'%d/%m/%Y') AS fecha_remito, i.nro_remito, date_format(i.fecha_remito,'%Y%m%d%H%i') AS fecha_remito_order, date_format(i.fecha_hora,'%Y%m%d%H%i') AS fecha_hora_order FROM ingresos i inner join tipos_ingreso ti on ti.id = i.id_tipo_ingreso inner join cuentas c on c.id = i.id_cuenta_recibe WHERE 1 ";
                           foreach ($pdo->query($sql) as $row) {?>
-                              <tr>
-                                <td><?=$row["id"]?></td>
-                                <td data-order="<?=$row["fecha_hora_order"]?>"><?=$row["fecha_hora"]?>hs</td>
-                                <td><?=$row["tipo"]?></td>
-                                <td><?=$row["nro"]?></td>
-                                <td><?=$row["nombre"]?></td>
-                                <td><?=$row["lugar_entrega"]?></td>
-                                <td data-order="<?=$row["fecha_remito_order"]?>"><?=$row["fecha_remito"]?></td>
-                                <td><?=$row["nro_remito"]?></td>
-                                <td><?=$row["observaciones"]?></td>
-                              </tr><?php
+                            <tr>
+                              <td><?=$row["id"]?></td>
+                              <td data-order="<?=$row["fecha_hora_order"]?>"><?=$row["fecha_hora"]?>hs</td>
+                              <td><?=$row["tipo"]?></td>
+                              <td><?=$row["nro"]?></td>
+                              <td><?=$row["nombre"]?></td>
+                              <td><?=$row["lugar_entrega"]?></td>
+                              <td data-order="<?=$row["fecha_remito_order"]?>"><?=$row["fecha_remito"]?></td>
+                              <td><?=$row["nro_remito"]?></td>
+                              <td><?=$row["observaciones"]?></td>
+                            </tr><?php
                           }
                           Database::disconnect();?>
                         </tbody>
@@ -113,16 +110,13 @@ if (empty($_SESSION['user'])) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Conceptos
-                      &nbsp;&nbsp;
-                      <?php
+                    <h5>Conceptos<?php
                       if (!empty(tienePermiso(327))) {?>
                         <!-- <a href="#" id="link_nueva_colada"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Vincular Colada" title="Vincular Colada"></a>
                         &nbsp;&nbsp; -->
                         <a href="#" id="btn_asignar_coladas_internas"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Asignar Coladas Internas" title="Asignar Coladas Internas"></a>
                         <!-- <button type="button" class="btn btn-primary btn-sm">Asignar Coladas Internas</button> --><?php
-                      }
-                      ?>
+                      }?>
                     </h5>
                   </div>
                   <div class="card-body">
@@ -256,40 +250,39 @@ if (empty($_SESSION['user'])) {
         });
 
         $('#dataTables-example666').DataTable({
-            stateSave: false,
-            responsive: false,
-            dom: 'Bfrtp<"bottom"l>',
-            buttons: ['excel'],
-            order: [[0, 'desc']],
-            lengthMenu: [
-                [10, 25, 50, 100, 500, 1000],
-                [10, 25, 50, 100, 500, 1000]
-            ],
-            language: {
-                "decimal": "",
-                "emptyTable": "No hay información",
-                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-                "infoFiltered": "(Filtrado de _MAX_ total registros)",
-                "infoPostFix": "",
-                "thousands": ",",
-                "lengthMenu": "Mostrar _MENU_ Registros",
-                "loadingRecords": "Cargando...",
-                "processing": "Procesando...",
-                "search": "Buscar:",
-                "zeroRecords": "No hay resultados",
-                "paginate": {
-                    "first": "Primero",
-                    "last": "Ultimo",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
-                }
+          stateSave: false,
+          responsive: false,
+          dom: 'Bfrtp<"bottom"l>',
+          buttons: ['excel'],
+          order: [[0, 'desc']],
+          lengthMenu: [
+            [10, 25, 50, 100, 500, 1000],
+            [10, 25, 50, 100, 500, 1000]
+          ],
+          language: {
+            "decimal": "",
+            "emptyTable": "No hay información",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+            "infoFiltered": "(Filtrado de _MAX_ total registros)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "Mostrar _MENU_ Registros",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar:",
+            "zeroRecords": "No hay resultados",
+            "paginate": {
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
             }
+          }
         });
 
         // DataTable
         var table = $('#dataTables-example666').DataTable();
-
         // Apply the search
         table.columns().every(function() {
           var that = this;
@@ -329,9 +322,7 @@ if (empty($_SESSION['user'])) {
         });
 
       });
-    </script>
-
-    <script>
+    
       var conceptTable = null;
       var currentIngresoId = null;
       var pendingInternalAssignments = [];
@@ -444,7 +435,6 @@ if (empty($_SESSION['user'])) {
         });
 
         conceptTable = $('#dataTables-example667').DataTable();
-
         conceptTable.columns().every(function() {
           var that = this;
           $('input', this.footer()).on('keyup change', function() {
@@ -586,7 +576,6 @@ if (empty($_SESSION['user'])) {
             });
 
             conceptTable = $('#dataTables-example667').DataTable();
-
             conceptTable.columns().every(function() {
               var that = this;
               $('input', this.footer()).on('keyup change', function() {

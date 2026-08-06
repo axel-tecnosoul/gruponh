@@ -1,22 +1,21 @@
 <?php
-session_start();
+require("config.php");
 if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
-}
-?>
+  header("Location: index.php");
+  die("Redirecting to index.php");
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
-  <?php include('head_tables.php');?>
-  <style>
-	.truncate {
-	  max-width:50px;
-	  white-space: nowrap;
-	  overflow: hidden;
-	  text-overflow: ellipsis;
-	}
-  </style>
+    <?php include('head_tables.php');?>
+    <style>
+      .truncate {
+        max-width:50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    </style>
   </head>
   <body>
     <!-- page-wrapper Start-->
@@ -42,12 +41,12 @@ if (empty($_SESSION['user'])) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(312))) { ?><a href="nuevoEgreso.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a>&nbsp;<?php } ?><a href="exportEgresos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>
-                    &nbsp;&nbsp;
-                    <?php 
-                    echo '<a href="#" id="link_ver_egreso"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
-                    echo '&nbsp;&nbsp;';   
-                    ?>
+                    <h5><?php echo $ubicacion;
+                      if (!empty(tienePermiso(312))) {?>
+                        <a href="nuevoEgreso.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a>&nbsp;&nbsp;<?php
+                      } ?>
+                      <a href="exportEgresos.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;
+                      <a href="#" id="link_ver_egreso"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>
                     </h5>
                     </div>
                     <div class="card-body">
@@ -65,49 +64,29 @@ if (empty($_SESSION['user'])) {
                               <th>Observaciones</th>
                             </tr>
                           </thead>
-                          <tbody>
-                            <?php
-                              include 'database.php';
-                              $pdo = Database::connect();
-                              $sql = "SELECT 
-                                  e.`id`, 
-                                  date_format(e.`fecha_hora`,'%d/%m/%y %H:%i'), 
-                                  te.`tipo`, 
-                                  e.`nro`, 
-                                  c.`nombre`, 
-                                  s.`nombre`, 
-                                  t.estructura, 
-                                  e.`observaciones`, 
-                                  p.nombre, 
-                                  te.`id`,
-                                  date_format(e.`fecha_hora`,'%Y%m%d%H%i')
-                              FROM `egresos` e 
-                              inner join tipos_egreso te on te.id = e.`id_tipo_egreso` 
-                              inner join cuentas c on c.id = e.`id_cuenta_retira` 
-                              inner join sitios s on s.id = e.`id_sitio_destino` 
-                              left join tareas t on t.id = e.`id_tarea` 
-                              left join proyectos p on p.id = e.`id_proyecto` 
-                              WHERE 1";        
-
-                              foreach ($pdo->query($sql) as $row) {
-                                  echo '<tr>';
-                                  echo '<td>' . $row[0] . '</td>';
-                                  echo '<td data-order="' . $row[10] . '">' . $row[1] . 'hs</td>';
-                                  echo '<td>' . $row[2] . '</td>';
-                                  echo '<td>' . $row[3] . '</td>';
-                                  echo '<td>' . $row[4] . '</td>';
-                                  echo '<td>' . $row[5] . '</td>';
-                                  if ($row[9] == 1) {
-                                      echo '<td>' . $row[8] . '</td>';
-                                  } else if ($row[9] == 2) {
-                                      echo '<td>' . $row[6] . '</td>';
-                                  }
-                                  echo '<td>' . $row[7] . '</td>';
-                                  echo '</tr>';
-                              }
-
-                              Database::disconnect();
-                            ?>
+                          <tbody><?php
+                            include 'database.php';
+                            $pdo = Database::connect();
+                            $sql = "SELECT e.id AS id_egreso, date_format(e.fecha_hora,'%d/%m/%y %H:%i') AS fecha_hora_formateada, te.tipo, e.nro, c.nombre AS cuenta, s.nombre AS sitio, t.estructura, e.observaciones, p.nombre AS proyecto, te.id AS id_tipo_egreso, date_format(e.fecha_hora,'%Y%m%d%H%i') AS fecha_hora_orden FROM egresos e inner join tipos_egreso te on te.id = e.id_tipo_egreso inner join cuentas c on c.id = e.id_cuenta_retira inner join sitios s on s.id = e.id_sitio_destino left join tareas t on t.id = e.id_tarea left join proyectos p on p.id = e.id_proyecto WHERE 1";
+                            foreach ($pdo->query($sql) as $row) {
+                              $mostrarProyectoTarea="";
+                              if ($row["id_tipo_egreso"] == 1) {
+                                $mostrarProyectoTarea = $row["proyecto"];
+                              } else if ($row["id_tipo_egreso"] == 2) {
+                                $mostrarProyectoTarea = $row["estructura"];
+                              }?>
+                              <tr>
+                                <td><?=$row["id_egreso"]; ?></td>
+                                <td data-order="<?=$row["fecha_hora_orden"]; ?>"><?=$row["fecha_hora_formateada"]; ?>hs</td>
+                                <td><?=$row["tipo"]; ?></td>
+                                <td><?=$row["nro"]; ?></td>
+                                <td><?=$row["cuenta"]; ?></td>
+                                <td><?=$row["sitio"]; ?></td>
+                                <td><?=$mostrarProyectoTarea; ?></td>
+                                <td><?=$row["observaciones"]; ?></td>
+                              </tr><?php
+                            }
+                            Database::disconnect();?>
                           </tbody>
                           <tfoot>
                             <tr>
@@ -134,9 +113,7 @@ if (empty($_SESSION['user'])) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Conceptos
-                    &nbsp;&nbsp;
-                    </h5>
+                    <h5>Conceptos</h5>
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
@@ -152,11 +129,10 @@ if (empty($_SESSION['user'])) {
                             <th>Efectivizado</th>
                           </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
+                        <tbody></tbody>
                         <tfoot>
                           <tr>
-                              <th>ID</th>
+                            <th>ID</th>
                             <th>Código</th>
                             <th>Concepto</th>
                             <th>Categoría</th>
@@ -217,25 +193,25 @@ if (empty($_SESSION['user'])) {
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-  <script>
-    $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example666 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-    
-    $('#dataTables-example666').DataTable({
-        stateSave: false,
-        responsive: false,
-        dom: 'Bfrtp<"bottom"l>',
-        buttons: ['excel'],
-        order: [[0, 'desc']],
-        lengthMenu: [
+    <script>
+      $(document).ready(function() {
+        // Setup - add a text input to each footer cell
+        $('#dataTables-example666 tfoot th').each( function () {
+          var title = $(this).text();
+          $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+        });
+      
+        $('#dataTables-example666').DataTable({
+          stateSave: false,
+          responsive: false,
+          dom: 'Bfrtp<"bottom"l>',
+          buttons: ['excel'],
+          order: [[0, 'desc']],
+          lengthMenu: [
             [10, 25, 50, 100, 500, 1000],
             [10, 25, 50, 100, 500, 1000]
-        ],
-        language: {
+          ],
+          language: {
             "decimal": "",
             "emptyTable": "No hay información",
             "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
@@ -249,198 +225,184 @@ if (empty($_SESSION['user'])) {
             "search": "Buscar:",
             "zeroRecords": "No hay resultados",
             "paginate": {
-                "first": "Primero",
-                "last": "Ultimo",
-                "next": "Siguiente",
-                "previous": "Anterior"
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
             }
-        }
-    });
+          }
+        });
  
-    // DataTable
-    var table = $('#dataTables-example666').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
+        // DataTable
+        var table = $('#dataTables-example666').DataTable();
+        // Apply the search
+        table.columns().every( function () {
+          var that = this;
+          $( 'input', this.footer() ).on( 'keyup change', function () {
             if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
+              that.search( this.value ).draw();
             }
-        } );
-		} );
-	
-	
-	$("#link_ver_egreso").on("click",function(){
-        let l=document.location.href;
-        if(this.href==l || this.href==l+"#"){
-          alert("Por favor seleccione un egreso para ver detalle")
-        }
-      })
-	//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
-    $(document).on("click","#dataTables-example666 tbody tr td", function(){
-        var t=$(this).parent();
-        //t.parent().find("tr").removeClass("selected");
-
-        let id_egreso=t.find("td:first-child").html();
-		
-        if(t.hasClass('selected')){
-          deselectRow(t);
-		      get_conceptos(id_egreso)
-          $("#link_ver_egreso").attr("href","#");
-          
-        }else{
-          table.rows().nodes().each( function (rowNode, index) {
-            $(rowNode).removeClass("selected");
           });
-          selectRow(t);
-          get_conceptos(id_egreso)
-          $("#link_ver_egreso").attr("href","verEgreso.php?id="+id_egreso);
-        }
+        });
+	
+        $("#link_ver_egreso").on("click",function(){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            alert("Por favor seleccione un egreso para ver detalle")
+          }
+        })
+	  
+        //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
+        $(document).on("click","#dataTables-example666 tbody tr td", function(){
+          var t=$(this).parent();
+          //t.parent().find("tr").removeClass("selected");
+
+          let id_egreso=t.find("td:first-child").html();
+      
+          if(t.hasClass('selected')){
+            deselectRow(t);
+            get_conceptos(id_egreso)
+            $("#link_ver_egreso").attr("href","#");
+            
+          }else{
+            table.rows().nodes().each( function (rowNode, index) {
+              $(rowNode).removeClass("selected");
+            });
+            selectRow(t);
+            get_conceptos(id_egreso)
+            $("#link_ver_egreso").attr("href","verEgreso.php?id="+id_egreso);
+          }
+        });
+	    } );
+    
+      $(document).ready(function() {
+        // Setup - add a text input to each footer cell
+        $('#dataTables-example667 tfoot th').each( function () {
+          var title = $(this).text();
+          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
+        } );
+    
+        $('#dataTables-example667').DataTable({
+          stateSave: false,
+          responsive: false,
+          language: {
+            "decimal": "",
+            "emptyTable": "No hay información",
+            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+            "infoFiltered": "(Filtrado de _MAX_ total registros)",
+            "infoPostFix": "",
+            "thousands": ",",
+            "lengthMenu": "Mostrar _MENU_ Registros",
+            "loadingRecords": "Cargando...",
+            "processing": "Procesando...",
+            "search": "Buscar:",
+            "zeroRecords": "No hay resultados",
+            "paginate": {
+              "first": "Primero",
+              "last": "Ultimo",
+              "next": "Siguiente",
+              "previous": "Anterior"
+            }
+          }
+        });
+  
+        // DataTable
+        var table = $('#dataTables-example667').DataTable();
+        // Apply the search
+        table.columns().every( function () {
+          var that = this;
+          $( 'input', this.footer() ).on( 'keyup change', function () {
+            if ( that.search() !== this.value ) {
+              that.search( this.value ).draw();
+            }
+          });
+        });
       });
     
-	} );
-    </script>
-	
-	<script>
-    $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example667 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
-	
-	function selectRow(t){
-      t.addClass('selected');
-    }
-    function deselectRow(t){
-      t.removeClass('selected');
-    }
+      function selectRow(t){
+        t.addClass('selected');
+      }
+      function deselectRow(t){
+        t.removeClass('selected');
+      }
 
-    function get_conceptos(id_egreso){
-      let datosUpdate = new FormData();
-      datosUpdate.append('id_egreso', id_egreso);
-      $.ajax({
-        data: datosUpdate,
-        url: 'get_conceptos_egreso.php',
-        method: "post",
-        cache: false,
-        contentType: false,
-        processData: false,
-        success: function(data){
-          // console.log(data);
-          data = JSON.parse(data);
-          // console.log(data);
+      function get_conceptos(id_egreso){
+        let datosUpdate = new FormData();
+        datosUpdate.append('id_egreso', id_egreso);
+        $.ajax({
+          data: datosUpdate,
+          url: 'get_conceptos_egreso.php',
+          method: "post",
+          cache: false,
+          contentType: false,
+          processData: false,
+          success: function(data){
+            // console.log(data);
+            data = JSON.parse(data);
+            // console.log(data);
 
-          $('#dataTables-example667').DataTable().destroy();
-          $('#dataTables-example667').DataTable({
-            stateSave: false,
-            responsive: false,
-            data: data,
-            columnDefs: [
+            $('#dataTables-example667').DataTable().destroy();
+            $('#dataTables-example667').DataTable({
+              stateSave: false,
+              responsive: false,
+              data: data,
+              columnDefs: [
                 { targets: [0, 1, 2, 3, 4, 5, 6], className: 'text-center' }
-            ],
-            language: {
-              "decimal": "",
-              "emptyTable": "No hay información",
-              "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-              "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-              "infoFiltered": "(Filtrado de _MAX_ total registros)",
-              "infoPostFix": "",
-              "thousands": ",",
-              "lengthMenu": "Mostrar _MENU_ Registros",
-              "loadingRecords": "Cargando...",
-              "processing": "Procesando...",
-              "search": "Buscar:",
-              "zeroRecords": "No hay resultados",
-              "paginate": {
+              ],
+              language: {
+                "decimal": "",
+                "emptyTable": "No hay información",
+                "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+                "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+                "infoFiltered": "(Filtrado de _MAX_ total registros)",
+                "infoPostFix": "",
+                "thousands": ",",
+                "lengthMenu": "Mostrar _MENU_ Registros",
+                "loadingRecords": "Cargando...",
+                "processing": "Procesando...",
+                "search": "Buscar:",
+                "zeroRecords": "No hay resultados",
+                "paginate": {
                   "first": "Primero",
                   "last": "Ultimo",
                   "next": "Siguiente",
                   "previous": "Anterior"
-              }
-            }
-          });
-      
-          // DataTable
-          var table = $('#dataTables-example667').DataTable();
-          // Apply the search
-          table.columns().every( function () {
-            var that = this;
-            $( 'input', this.footer() ).on( 'keyup change', function () {
-              if ( that.search() !== this.value ) {
-                that
-                  .search( this.value )
-                  .draw();
+                }
               }
             });
-          });
-		  
-		  //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
-      $(document).on("click","#dataTables-example667 tbody tr td", function(){
-        var t=$(this).parent();
-        //t.parent().find("tr").removeClass("selected");
-        let id_egreso=t.find("td:first-child").html();
-        if(t.hasClass('selected')){
-          deselectRow(t);
-        }else{
-          table.rows().nodes().each( function (rowNode, index) {
-            $(rowNode).removeClass("selected");
-          });
-          selectRow(t);
-        }
-		  });
-
-          
-        }
-      });
-    }
-    
+        
+            // DataTable
+            var table = $('#dataTables-example667').DataTable();
+            // Apply the search
+            table.columns().every( function () {
+              var that = this;
+              $( 'input', this.footer() ).on( 'keyup change', function () {
+                if ( that.search() !== this.value ) {
+                  that.search( this.value ).draw();
+                }
+              });
+            });
+        
+            //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
+            $(document).on("click","#dataTables-example667 tbody tr td", function(){
+              var t=$(this).parent();
+              //t.parent().find("tr").removeClass("selected");
+              let id_egreso=t.find("td:first-child").html();
+              if(t.hasClass('selected')){
+                deselectRow(t);
+              }else{
+                table.rows().nodes().each( function (rowNode, index) {
+                  $(rowNode).removeClass("selected");
+                });
+                selectRow(t);
+              }
+            });
+            
+          }
+        });
+      }
     </script>
-    
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
   </body>

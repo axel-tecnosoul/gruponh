@@ -1,5 +1,5 @@
 <?php
-session_start();
+require("config.php");
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
@@ -8,15 +8,13 @@ if (empty($_SESSION['user'])) {
 <html lang="en">
   <head>
     <?php include('head_tables.php');?>
-	<style>
-	.truncate {
-	  max-width:50px;
-	  white-space: nowrap;
-	  overflow: hidden;
-	  text-overflow: ellipsis;
-	}
-  </style>
     <style>
+      .truncate {
+        max-width:50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
       .faClass{
         width: 24px;
         height: 20px;
@@ -53,14 +51,12 @@ if (empty($_SESSION['user'])) {
                 <div class="card">
                   <div class="card-header">
                     <h5><?php
-                      echo $ubicacion; 
+                      echo $ubicacion;
                       if (!empty(tienePermiso(315))) { ?>
-                        &nbsp;
-                        <?php
+                        &nbsp;<?php
                       }
-                      if (!empty(tienePermiso(317))) {
-                        echo '<a href="#" id="link_eliminar_consumo"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Cancelar" title="Cancelar"></a>';
-                        echo '&nbsp;&nbsp;';
+                      if (!empty(tienePermiso(317))) {?>
+                        <a href="#" id="link_eliminar_consumo"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Cancelar" title="Cancelar"></a>&nbsp;&nbsp;<?php
                       }?>
                     </h5>
                   </div>
@@ -77,17 +73,17 @@ if (empty($_SESSION['user'])) {
                         <tbody><?php 
                           include 'database.php';
                           $pdo = Database::connect();
-                          $sql = "SELECT c.id, date_format(c.fecha,'%d/%m/%y') AS fecha, otr.id AS id_orden_trabajo
-                          FROM consumos c INNER JOIN ordenes_trabajo otr ON c.id_orden_trabajo_revision=otr.id WHERE c.anulado = 0";
-                          //echo $sql;
-                          foreach ($pdo->query($sql) as $row) {
-                            echo '<tr>';
-                            echo '<td>'.$row["id"].'</td>';
-                            echo '<td>'.$row["fecha"].'</td>';
-                            echo '<td>'.$row["id_orden_trabajo"].'</td>';
-                            echo '</tr>';?>
 
-                            <div class="modal fade" id="eliminarModal_<?=$row["id"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                          $sql = "SELECT c.id AS id_consumo, date_format(c.fecha,'%d/%m/%y') AS fecha, otr.id AS id_orden_trabajo FROM consumos c INNER JOIN ordenes_trabajo otr ON c.id_orden_trabajo_revision=otr.id WHERE c.anulado = 0";
+                          //echo $sql;
+                          foreach ($pdo->query($sql) as $row) {?>
+                            <tr>
+                              <td><?=$row["id_consumo"]; ?></td>
+                              <td><?=$row["fecha"]; ?></td>
+                              <td><?=$row["id_orden_trabajo"]; ?></td>
+                            </tr>
+
+                            <div class="modal fade" id="eliminarModal_<?=$row["id_consumo"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                               <div class="modal-dialog" role="document">
                                 <div class="modal-content">
                                   <div class="modal-header">
@@ -96,7 +92,7 @@ if (empty($_SESSION['user'])) {
                                   </div>
                                   <div class="modal-body">¿Está seguro que desea anular el consumo?</div>
                                   <div class="modal-footer">
-                                    <a href="eliminarConsumo.php?id=<?=$row["id"]; ?>" class="btn btn-primary">Eliminar</a>
+                                    <a href="eliminarConsumo.php?id=<?=$row["id_consumo"]; ?>" class="btn btn-primary">Eliminar</a>
                                     <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
                                   </div>
                                 </div>

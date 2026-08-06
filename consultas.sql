@@ -172,8 +172,6 @@ UPDATE `certificados_maestros_lotes_occ_detalle`
     SET `lote` = `aperturado`
     WHERE `lote` IS NULL;
 
---TODO APLICADO HASTA ACA //Lo borré sin querér
-
 -- Migración: múltiples OC por factura de compra
 -- Paso 1: Crear tabla pivote
 CREATE TABLE IF NOT EXISTS `facturas_compra_x_compras` (
@@ -232,15 +230,11 @@ ALTER TABLE `facturas_compra_detalle`
   ADD COLUMN `porc_descuento` double NOT NULL DEFAULT 0 AFTER `descripcion`;
 
 UPDATE facturas_compra SET id_estado = 2 WHERE id_estado = 1;
-
 UPDATE facturas_venta SET id_estado = 2 WHERE id_estado = 1;
 
 DELETE FROM estados_factura WHERE id = 1;
 
-UPDATE facturas_compra SET id_estado = 3 WHERE id_estado IN (4, 5);
-UPDATE facturas_venta SET id_estado = 3 WHERE id_estado IN (4, 5);
-
-DELETE FROM estados_factura WHERE id IN (4, 5);
+--TODO APLICADO HASTA ACA
 
 INSERT INTO tipos_notificacion (id, tipo, mensaje, redirect) VALUES
 (22, 'Exceso en Facturación de OC', 'Se detectó un exceso de cantidad al facturar respecto a la OC', 'verFacturaCompra.php?id=');
@@ -265,9 +259,7 @@ UPDATE facturas_venta SET observaciones = TRIM(CONCAT(
 
 SET FOREIGN_KEY_CHECKS = 0;
 
-DELETE FROM categorias;
-
-ALTER TABLE categorias AUTO_INCREMENT = 1;
+TRUNCATE `categorias`;
 
 INSERT INTO categorias (id, categoria) VALUES
 (1, 'Metales (alum/cobre/bronce)'),
@@ -307,9 +299,6 @@ ALTER TABLE regimenes_facturacion ADD COLUMN codigo VARCHAR(99) DEFAULT NULL AFT
 ALTER TABLE regimenes_facturacion ADD COLUMN articulo VARCHAR(99) DEFAULT NULL AFTER codigo;
 ALTER TABLE regimenes_facturacion ADD COLUMN monto DOUBLE DEFAULT 0 AFTER porcentaje;
 
-DELETE FROM regimenes_facturacion;
-ALTER TABLE regimenes_facturacion AUTO_INCREMENT = 1;
-
 ALTER TABLE facturas_compra_retenciones ADD COLUMN porcentaje DOUBLE DEFAULT 0 AFTER monto;
 ALTER TABLE facturas_compra_retenciones ADD COLUMN base_imponible DOUBLE DEFAULT 0 AFTER porcentaje;
 
@@ -328,6 +317,14 @@ ALTER TABLE conceptos_contables ADD COLUMN anulado TINYINT(1) NOT NULL DEFAULT 0
 
 ALTER TABLE materiales DROP COLUMN activo;
 ALTER TABLE facturas_compra DROP COLUMN pagada;
+
+ALTER TABLE facturas_compra_retenciones ADD COLUMN regimen_text VARCHAR(99) DEFAULT NULL AFTER id_factura_compra;
+ALTER TABLE facturas_compra_retenciones ADD COLUMN codigo VARCHAR(99) DEFAULT NULL AFTER regimen_text;
+ALTER TABLE facturas_compra_retenciones ADD COLUMN articulo VARCHAR(99) DEFAULT NULL AFTER codigo;
+
+ALTER TABLE facturas_venta_retenciones ADD COLUMN regimen_text VARCHAR(99) DEFAULT NULL AFTER id_factura_venta;
+ALTER TABLE facturas_venta_retenciones ADD COLUMN codigo VARCHAR(99) DEFAULT NULL AFTER regimen_text;
+ALTER TABLE facturas_venta_retenciones ADD COLUMN articulo VARCHAR(99) DEFAULT NULL AFTER codigo;
 
 -- ---------------------------------------------------------------------------
 -- ELIMINAR id_regimen_facturacion de facturas_compra_retenciones y
@@ -364,6 +361,8 @@ ALTER TABLE facturas_compra_retenciones DROP COLUMN id_regimen_facturacion;
 ALTER TABLE facturas_venta_retenciones DROP FOREIGN KEY facturas_venta_retenciones_ibfk_2;
 ALTER TABLE facturas_venta_retenciones DROP KEY id_regimen_facturacion;
 ALTER TABLE facturas_venta_retenciones DROP COLUMN id_regimen_facturacion;
+
+TRUNCATE `regimenes_facturacion`;
 
 -- ---------------------------------------------------------------------------
 -- SIGNOS DE REGIMENES (res_SignoCpr / res_SignoVta)

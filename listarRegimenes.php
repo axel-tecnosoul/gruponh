@@ -1,29 +1,27 @@
 <?php
 session_start();
 if (empty($_SESSION['user'])) {
-    header("Location: index.php");
-    die("Redirecting to index.php");
-}
-?>
+  header("Location: index.php");
+  die("Redirecting to index.php");
+}?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
-  <?php include('head_tables.php');?>
-  <style>
-	.truncate {
-	  max-width:50px;
-	  white-space: nowrap;
-	  overflow: hidden;
-	  text-overflow: ellipsis;
-	}
-  </style>
+    <?php include('head_tables.php');?>
+    <style>
+      .truncate {
+        max-width:50px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    </style>
   </head>
   <body>
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <!-- Page Header Start-->
       <?php include('header.php');?>
-     
       <!-- Page Header Ends                              -->
       <!-- Page Body Start-->
       <div class="page-body-wrapper">
@@ -42,62 +40,72 @@ if (empty($_SESSION['user'])) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?php echo $ubicacion; if (!empty(tienePermiso(387))) { ?><a href="nuevoRegimen.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a><?php } ?>
-					&nbsp;&nbsp;
-					<?php 
-					if (!empty(tienePermiso(388))) {
-						echo '<a href="#" id="link_modificar_material"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
-						echo '&nbsp;&nbsp;';
-					}
-					if (!empty(tienePermiso(389))) {
-						echo '<a href="#" id="link_eliminar_material"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
-						echo '&nbsp;&nbsp;';
-					}
-					?>
-					&nbsp;&nbsp;
-					<a href="importRegimenes.php" title="Importar Excel"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Excel" title="Importar Excel"></a>
-					</h5>
+                    <h5><?php echo $ubicacion;
+                    /*if (!empty(tienePermiso(387))) { ?>
+                      <a href="nuevoRegimen.php"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo" title="Nuevo"></a>&nbsp;&nbsp;<?php
+                    }
+                    if (!empty(tienePermiso(388))) {?>
+                      <a href="#" id="link_modificar_material"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>&nbsp;&nbsp;<?php
+                    }
+                    if (!empty(tienePermiso(389))) {?>
+                      <a href="#" id="link_eliminar_material"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>&nbsp;&nbsp;<?php
+                    }*/?>
+                    <a href="importRegimenes.php" title="Importar Excel"><img src="img/xls.png" width="24" height="25" border="0" alt="Importar Excel" title="Importar Excel"></a>
+                  </h5>
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
                           <tr>
-							  <th>ID</th>
-							  <th>Código</th>
-							  <th>Artículo</th>
-							  <th>Regimen</th>
-							  <th>Porcentaje</th>
-							  <th>Monto</th>
+                            <th>ID</th>
+                            <th>Código</th>
+                            <th>Artículo</th>
+                            <th>Regimen</th>
+                            <th>Porcentaje</th>
+                            <th>Monto</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          <?php
-                            include 'database.php';
-                            $pdo = Database::connect();
-                            $sql = " SELECT `id`, `codigo`, `articulo`, `regimen`, `porcentaje`, `monto` FROM `regimenes_facturacion` WHERE `anulado` = 0 ";
-                            
-                            foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
-                                echo '<td>'. $row[0] . '</td>';
-                                echo '<td>'. $row[1] . '</td>';
-                                echo '<td>'. $row[2] . '</td>';
-                                echo '<td>'. $row[3] . '</td>';
-                                echo '<td>'. number_format($row[4],1) . '%</td>';
-                                echo '<td>'. number_format($row[5],2) . '</td>';
-                                echo '</tr>';
-                            }
-                           Database::disconnect();
-                          ?>
+                        <tbody><?php
+                          include 'database.php';
+                          $pdo = Database::connect();
+                          $sql = " SELECT id, codigo, articulo, regimen, porcentaje, monto FROM regimenes_facturacion WHERE anulado = 0 ";
+                          foreach ($pdo->query($sql) as $row) {?>
+                            <tr>
+                              <td><?=$row["id"]; ?></td>
+                              <td><?=$row["codigo"]; ?></td>
+                              <td><?=$row["articulo"]; ?></td>
+                              <td><?=$row["regimen"]; ?></td>
+                              <td><?=number_format($row["porcentaje"],1) . '%'; ?></td>
+                              <td><?=number_format($row["monto"],2); ?></td>
+                            </tr>
+
+                            <div class="modal fade" id="eliminarModal_<?=$row["id"]?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                              <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
+                                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+                                  </div>
+                                  <div class="modal-body">¿Está seguro que desea eliminar el regimen?</div>
+                                  <div class="modal-footer">
+                                    <a href="eliminarRegimen.php?id=<?=$row["id"]?>" class="btn btn-primary">Eliminar</a>
+                                    <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div><?php
+                          }
+                          Database::disconnect();?>
                         </tbody>
-						<tfoot>
+						            <tfoot>
                           <tr>
-							  <th>ID</th>
-							  <th>Código</th>
-							  <th>Artículo</th>
-							  <th>Regimen</th>
-							  <th>Porcentaje</th>
-							  <th>Monto</th>
+                            <th>ID</th>
+                            <th>Código</th>
+                            <th>Artículo</th>
+                            <th>Regimen</th>
+                            <th>Porcentaje</th>
+                            <th>Monto</th>
                           </tr>
                         </tfoot>
                       </table>
@@ -115,30 +123,6 @@ if (empty($_SESSION['user'])) {
         <?php include("footer.php"); ?>
       </div>
     </div>
-  <?php
-    $pdo = Database::connect();
-    $sql = " SELECT `id`, `codigo`, `articulo`, `regimen`, `porcentaje`, `monto` FROM `regimenes_facturacion` WHERE `anulado` = 0 ";
-    foreach ($pdo->query($sql) as $row) {
-        ?>
-  <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea eliminar el regimen?</div>
-      <div class="modal-footer">
-      <a href="eliminarRegimen.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-      </div>
-    </div>
-    </div>
-  </div>
-  <?php
-    }
-    Database::disconnect();
-    ?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
@@ -179,60 +163,59 @@ if (empty($_SESSION['user'])) {
     <script src="assets/js/script.js"></script>
   <script>
     $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example666 tfoot th').each( function () {
+      // Setup - add a text input to each footer cell
+      $('#dataTables-example666 tfoot th').each( function () {
         var title = $(this).text();
         $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example666').DataTable({
+      } );
+
+	    $('#dataTables-example666').DataTable({
         stateSave: false,
         responsive: false,
         language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
+          "decimal": "",
+          "emptyTable": "No hay información",
+          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+          "infoFiltered": "(Filtrado de _MAX_ total registros)",
+          "infoPostFix": "",
+          "thousands": ",",
+          "lengthMenu": "Mostrar _MENU_ Registros",
+          "loadingRecords": "Cargando...",
+          "processing": "Procesando...",
+          "search": "Buscar:",
+          "zeroRecords": "No hay resultados",
+          "paginate": {
             "first": "Primero",
             "last": "Ultimo",
             "next": "Siguiente",
             "previous": "Anterior"
-        }}
+          }
+        }
       });
  
-    // DataTable
-    var table = $('#dataTables-example666').DataTable();
+      // DataTable
+      var table = $('#dataTables-example666').DataTable();
  
-    // Apply the search
-    table.columns().every( function () {
+      // Apply the search
+      table.columns().every( function () {
         var that = this;
  
         $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
+          if ( that.search() !== this.value ) {
+            that.search( this.value ).draw();
+          }
+        });
+		  });
 		
-	
-	  $("#link_modificar_material").on("click",function(){
+	    $("#link_modificar_material").on("click",function(){
         let l=document.location.href;
         if(this.href==l || this.href==l+"#"){
           alert("Por favor seleccione un regimen para modificar")
         }
       })
 	  
-	  $("#link_eliminar_material").on("click",function(){
+	    $("#link_eliminar_material").on("click",function(){
         /*let l=document.location.href;
         if(this.href==l || this.href==l+"#"){*/
         let target=this.dataset.target;
@@ -241,8 +224,8 @@ if (empty($_SESSION['user'])) {
         }
       })
 
-	  //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
-    $(document).on("click","#dataTables-example666 tbody tr td", function(){
+      //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
+      $(document).on("click","#dataTables-example666 tbody tr td", function(){
         var t=$(this).parent();
         //t.parent().find("tr").removeClass("selected");
 
@@ -257,25 +240,13 @@ if (empty($_SESSION['user'])) {
           });
           selectRow(t);
           $("#link_modificar_material").attr("href","modificarRegimen.php?id="+id_material);
-		  $("#link_eliminar_material").attr("data-toggle","modal");
+		      $("#link_eliminar_material").attr("data-toggle","modal");
 		      $("#link_eliminar_material").attr("data-target","#eliminarModal_"+id_material);
         }
       });
-
-      /*table.on('page.dt', function () {
-          //alert('La página ha cambiado');
-          // Hacer algo más aquí...
-      });
-
-      // Ejecutar una función al cambiar la cantidad de filas mostradas
-      table.on('length.dt', function (e, settings, len) {
-          //alert('La cantidad de filas mostradas ha cambiado a ' + len);
-          // Hacer algo más aquí...
-      });*/
-    
-	} );
+	  } );
 	
-	function selectRow(t){
+	  function selectRow(t){
       t.addClass('selected');
     }
     function deselectRow(t){

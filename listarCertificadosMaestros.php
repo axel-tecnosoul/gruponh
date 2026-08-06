@@ -1,11 +1,10 @@
 <?php
-session_start();
+require("config.php");
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
 }
-include 'database.php';
-?>
+include 'database.php';?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -42,28 +41,28 @@ include 'database.php';
           <!-- Container-fluid starts-->
           <div class="container-fluid">
             <div class="row">
-			<div class="col-md-12">
-				<div class="card">
-				  <div class="card-body">
-					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCertificadosMaestros.php">
-					  <div class="form-group mb-0">
-						Nro CM:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
-					  </div>
-					  <div class="form-group mb-0">
-						Nro OCC:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['occ'])) echo $_POST['occ'] ?>" name="occ">
-					  </div>
-					  <div class="form-group mb-0">
-						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
-					  </div>
-					  <div class="form-group mb-0">
-						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarCertificadosMaestros.php'">Buscar</button>
-					  </div>
-					</form>
-				</div>
-			  </div>
-			</div>
-			</div>
-			<div class="row">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCertificadosMaestros.php">
+                      <div class="form-group mb-0">
+                        Nro CM:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
+                      </div>
+                      <div class="form-group mb-0">
+                        Nro OCC:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['occ'])) echo $_POST['occ'] ?>" name="occ">
+                      </div>
+                      <div class="form-group mb-0">
+                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
+                      </div>
+                      <div class="form-group mb-0">
+                        <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarCertificadosMaestros.php'">Buscar</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">
                 <div class="card">
@@ -71,23 +70,20 @@ include 'database.php';
                     <h5><?php
                       echo $ubicacion; 
                       if (!empty(tienePermiso(374))) { ?>
-                        &nbsp;
                         <a href="nuevoCertificadoMaestro.php" title="Nuevo Certificado Maestro" style="color: midnightblue;" class="fa fa-lg"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo">CM</a>&nbsp;&nbsp;<?php
                       }
-                      //echo '<a href="exportCertificadosMaestro.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;';
-                      echo '<a href="#" id="link_exportar_certificado"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;';
-                      if (!empty(tienePermiso(375))) {
-                        echo '<a href="#" id="link_modificar_ot"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
-                        echo '&nbsp;';
+                      //echo '<a href="exportCertificadosMaestro.php"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;';?>
+                      <a href="#" id="link_exportar_certificado"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;<?php
+                      if (!empty(tienePermiso(375))) {?>
+                        <a href="#" id="link_modificar_ot"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>&nbsp;&nbsp;<?php
                       }
-                      if (!empty(tienePermiso(382))) {
-                        echo '<a href="#" id="link_eliminar_maestro"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
-                        echo '&nbsp;&nbsp;';
+                      if (!empty(tienePermiso(382))) {?>
+                        <a href="#" id="link_eliminar_maestro"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>&nbsp;&nbsp;<?php
                       }
                       /*echo '<a href="#" id="link_imprimir_pl"><img src="img/print.png" width="25" height="20" border="0" alt="Imprimir" title="Imprimir"></a>';
 					            echo '&nbsp;&nbsp;';*/?>
 
-                      <a href="#" id="link_ver_occ" title="Ver Certificado Maestro" style="color: midnightblue;" class="fa fa-lg"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver">CM</a>&nbsp;<?php
+                      <a href="#" id="link_ver_occ" title="Ver Certificado Maestro" style="color: midnightblue;" class="fa fa-lg"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver">CM</a>&nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(376))) { ?>
                         <a href="#" id="link_nuevo_consumo" title="Ver Certificados de Avance"><i style="width: 72px; height: 20px;color: midnightblue;" class='fa fa-lg fa-certificate'>CA</i></a><?php
                       }?>
@@ -111,7 +107,7 @@ include 'database.php';
                             <th>Monto desacopios</th>
                             <th>Monto descuentos</th>
                             <th>Monto ajustes</th>
-							<th>Saldo Pendiente</th>
+                            <th>Saldo Pendiente</th>
                             <th>Observaciones</th>
                             <th class="d-none">Cant CA</th>
                           </tr>
@@ -131,7 +127,7 @@ include 'database.php';
                             <th>Monto desacopios</th>
                             <th>Monto descuentos</th>
                             <th>Monto ajustes</th>
-							<th>Saldo Pendiente</th>
+                            <th>Saldo Pendiente</th>
                             <th>Observaciones</th>
                             <th class="d-none">Cant CA</th>
                           </tr>
@@ -139,58 +135,57 @@ include 'database.php';
                         <tbody><?php 
                           if (!empty($_POST)) {
 							  
-                          $pdo = Database::connect();
-                          $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
-                          if (!empty($_POST['nro'])) {
-                            $sql .= " AND cm.numero = '".$_POST['nro']."' ";
-                          }
-                          if (!empty($_POST['occ'])) {
-                            $sql .= " AND occ.numero = '".$_POST['occ']."' ";
-                          }
-                          if (!empty($_POST['fecha'])) {
-                            $sql .= " AND cm.fecha_emision >= '".$_POST['fecha']."' ";
-                          }
-                          if (!empty($_POST['fechah'])) {
-                            $sql .= " AND cm.fecha_emision <= '".$_POST['fechah']."' ";
-                          }
+                            $pdo = Database::connect();
+                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
+                            if (!empty($_POST['nro'])) {
+                              $sql .= " AND cm.numero = '".$_POST['nro']."' ";
+                            }
+                            if (!empty($_POST['occ'])) {
+                              $sql .= " AND occ.numero = '".$_POST['occ']."' ";
+                            }
+                            if (!empty($_POST['fecha'])) {
+                              $sql .= " AND cm.fecha_emision >= '".$_POST['fecha']."' ";
+                            }
+                            if (!empty($_POST['fechah'])) {
+                              $sql .= " AND cm.fecha_emision <= '".$_POST['fechah']."' ";
+                            }
 
-						              foreach ($pdo->query($sql) as $row) {
-                            $sql2 = "SELECT COALESCE(sum(`monto_total`),0) monto_total, COALESCE(sum(`monto_acumulado_avances`),0) monto_acumulado_avances, COALESCE(sum(`monto_acumulado_anticipos`),0) monto_acumulado_anticipos, COALESCE(sum(`monto_acumulado_desacopios`),0) monto_acumulado_desacopios, COALESCE(sum(`monto_acumulado_descuentos`),0) monto_acumulado_descuentos, COALESCE(sum(`monto_acumulado_ajustes`),0) monto_acumulado_ajustes FROM `certificados_avances_cabecera` WHERE `id_certificado_maestro` = ? ";
-                            $q2 = $pdo->prepare($sql2);
-                            $q2->execute([$row["id_cm"]]);
-                            $data2 = $q2->fetch(PDO::FETCH_ASSOC);
-                            
-                            $montoTotalAvances = (float) ($data2["monto_acumulado_avances"] ?? 0);
-                            $montoTotalAnticipos = (float) ($data2["monto_acumulado_anticipos"] ?? 0);
-                            $montoTotalDesacopios = (float) ($data2["monto_acumulado_desacopios"] ?? 0);
-                            $montoTotalDescuentos = (float) ($data2["monto_acumulado_descuentos"] ?? 0);
-                            $montoTotalAjustes = (float) ($data2["monto_acumulado_ajustes"] ?? 0);
-                            $montoTotalCertificado = (float) ($data2["monto_total"] ?? 0);
-                            
-                            $saldoPendiente=$montoTotalCertificado-$montoTotalAvances-$montoTotalAnticipos-$montoTotalDesacopios-$montoTotalDescuentos-$montoTotalAjustes?>
+                            foreach ($pdo->query($sql) as $row) {
+                              $sql2 = "SELECT COALESCE(sum(`monto_total`),0) monto_total, COALESCE(sum(`monto_acumulado_avances`),0) monto_acumulado_avances, COALESCE(sum(`monto_acumulado_anticipos`),0) monto_acumulado_anticipos, COALESCE(sum(`monto_acumulado_desacopios`),0) monto_acumulado_desacopios, COALESCE(sum(`monto_acumulado_descuentos`),0) monto_acumulado_descuentos, COALESCE(sum(`monto_acumulado_ajustes`),0) monto_acumulado_ajustes FROM `certificados_avances_cabecera` WHERE `id_certificado_maestro` = ? ";
+                              $q2 = $pdo->prepare($sql2);
+                              $q2->execute([$row["id_cm"]]);
+                              $data2 = $q2->fetch(PDO::FETCH_ASSOC);
+                              
+                              $montoTotalAvances = (float) ($data2["monto_acumulado_avances"] ?? 0);
+                              $montoTotalAnticipos = (float) ($data2["monto_acumulado_anticipos"] ?? 0);
+                              $montoTotalDesacopios = (float) ($data2["monto_acumulado_desacopios"] ?? 0);
+                              $montoTotalDescuentos = (float) ($data2["monto_acumulado_descuentos"] ?? 0);
+                              $montoTotalAjustes = (float) ($data2["monto_acumulado_ajustes"] ?? 0);
+                              $montoTotalCertificado = (float) ($data2["monto_total"] ?? 0);
+                              
+                              $saldoPendiente=$montoTotalCertificado-$montoTotalAvances-$montoTotalAnticipos-$montoTotalDesacopios-$montoTotalDescuentos-$montoTotalAjustes?>
 
-                            <tr>
-                              <td class="d-none"><?=$row["id_cm"]?></td>
-                              <td><?=$row["id_cm"]?></td>
-                              <td><?=$row["numero_occ"]?></td>
-                              <td><?=$row["fecha_emision"]?></td>
-                              <td><?=$row["fecha_inicio"]?></td>
-                              <td><?=$row["fecha_fin"]?></td>
-                              <td><?=$row["moneda"]." ".number_format($row["monto_total"],2)?></td>
-                              <td>$<?=$row["cotizacion_dolar"]?></td>
-
-                              <td><?=$row["moneda"]." ".number_format($montoTotalAvances,2)?></td>
-                              <td><?=$row["moneda"]." ".number_format($montoTotalAnticipos,2)?></td>
-                              <td><?=$row["moneda"]." ".number_format($montoTotalDesacopios,2)?></td>
-                              <td><?=$row["moneda"]." ".number_format($montoTotalDescuentos,2)?></td>
-                              <td><?=$row["moneda"]." ".number_format($montoTotalAjustes,2)?></td>
-                              <td><?=$row["moneda"]." ".number_format($saldoPendiente,2)?></td>
-                              <td><?= $row["observaciones"]?></td>
-                              <td class="d-none"><?= $row["cant_ca"]?></td>
-                            </tr><?php
-                          }
-                          Database::disconnect();
-						            }?>
+                              <tr>
+                                <td class="d-none"><?=$row["id_cm"]?></td>
+                                <td><?=$row["id_cm"]?></td>
+                                <td><?=$row["numero_occ"]?></td>
+                                <td><?=$row["fecha_emision"]?></td>
+                                <td><?=$row["fecha_inicio"]?></td>
+                                <td><?=$row["fecha_fin"]?></td>
+                                <td><?=$row["moneda"]." ".number_format($row["monto_total"],2)?></td>
+                                <td>$<?=$row["cotizacion_dolar"]?></td>
+                                <td><?=$row["moneda"]." ".number_format($montoTotalAvances,2)?></td>
+                                <td><?=$row["moneda"]." ".number_format($montoTotalAnticipos,2)?></td>
+                                <td><?=$row["moneda"]." ".number_format($montoTotalDesacopios,2)?></td>
+                                <td><?=$row["moneda"]." ".number_format($montoTotalDescuentos,2)?></td>
+                                <td><?=$row["moneda"]." ".number_format($montoTotalAjustes,2)?></td>
+                                <td><?=$row["moneda"]." ".number_format($saldoPendiente,2)?></td>
+                                <td><?= $row["observaciones"]?></td>
+                                <td class="d-none"><?= $row["cant_ca"]?></td>
+                              </tr><?php
+                            }
+                            Database::disconnect();
+                          }?>
                         </tbody>
                       </table>
                     </div>
@@ -311,17 +306,16 @@ include 'database.php';
 
         $('#tablaOCC').DataTable({
           stateSave: false,
-		  searching: false,
-		  
+		      searching: false,
           responsive: false,
-		  dom: 'Bfrtp<"bottom"l>',
-        buttons: [
+          dom: 'Bfrtp<"bottom"l>',
+          buttons: [
             'excel'
-        ],
-		lengthMenu: [
-        [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
-        [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
-		],
+          ],
+          lengthMenu: [
+            [10, 25, 50, 100, 500, 1000], // Cantidades de registros disponibles
+            [10, 25, 50, 100, 500, 1000]  // Texto mostrado en el menú desplegable
+          ],
           language: {
             "decimal": "",
             "emptyTable": "No hay información",
@@ -467,12 +461,10 @@ include 'database.php';
             $('#tablaDetalleOCC').DataTable({
               stateSave: false,
               responsive: false,
-			  "columnDefs": [
-				{
-				  "targets": [0],
-				  "className": 'd-none'
-				}
-			  ],
+              "columnDefs": [{
+                "targets": [0],
+                "className": 'd-none'
+              }],
               data: data,
               language: {
                 "decimal": "",
@@ -488,10 +480,10 @@ include 'database.php';
                 "search": "Buscar:",
                 "zeroRecords": "No hay resultados",
                 "paginate": {
-                    "first": "Primero",
-                    "last": "Ultimo",
-                    "next": "Siguiente",
-                    "previous": "Anterior"
+                  "first": "Primero",
+                  "last": "Ultimo",
+                  "next": "Siguiente",
+                  "previous": "Anterior"
                 }
               },
               /*"fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
