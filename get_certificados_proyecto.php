@@ -22,7 +22,6 @@ try {
     // y los avances son certificados_avances_cabecera (id_certificado_maestro)
     $sql = "SELECT DISTINCT
                 ca.id,
-                cm.numero,
                 cm.revision,
                 DATE_FORMAT(ca.fecha_emision, '%d/%m/%Y') AS fecha_emision,
                 DATE_FORMAT(ca.fecha_inicio,  '%d/%m/%Y') AS fecha_inicio,
@@ -37,7 +36,7 @@ try {
             INNER JOIN certificados_maestros_detalles cmd
                 ON cmd.id_certificado_maestro = cm.id
             WHERE cmd.id_proyecto = ?
-            ORDER BY cm.numero ASC, ca.fecha_emision DESC";
+            ORDER BY ca.id ASC, ca.fecha_emision DESC";
 
     $q = $pdo->prepare($sql);
     $q->execute([$id_proyecto]);

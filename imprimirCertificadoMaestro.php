@@ -19,7 +19,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT cm.id,cm.numero AS numero_cm,occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ? ";
+  $sql = "SELECT cm.id,occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -30,8 +30,81 @@ if (!empty($_POST)) {
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
-	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      .tabla-detalle-cm {
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      @media print {
+        @page {
+          size: landscape;
+          margin: 10mm;
+        }
+
+        .page-wrapper,
+        .page-body,
+        .container-fluid,
+        .card,
+        .card-body,
+        .row,
+        .col-sm-12 {
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+        }
+
+        .tabla-detalle-cm {
+          width: 100% !important;
+          max-width: 100% !important;
+          table-layout: auto;
+          font-size: 8pt;
+          overflow-wrap: anywhere;
+        }
+
+        .tabla-detalle-cm col {
+          width: auto;
+          max-width: 10%;
+        }
+
+        .tabla-detalle-cm th,
+        .tabla-detalle-cm td {
+          max-width: 10%;
+          padding: 2px 3px;
+          white-space: normal;
+        }
+
+        .tabla-detalle-cm th,
+        .tabla-detalle-cm td {
+          overflow-wrap: anywhere;
+          word-break: normal;
+        }
+
+        .encabezado-cm .row {
+          display: -webkit-box;
+          display: -ms-flexbox;
+          display: flex;
+        }
+        .encabezado-cm .col-md-6 {
+          -webkit-box-flex: 0 !important;
+          -ms-flex: 0 0 50% !important;
+          flex: 0 0 50% !important;
+          max-width: 50% !important;
+        }
+        .encabezado-cm .col-md-12 {
+          -webkit-box-flex: 0 !important;
+          -ms-flex: 0 0 100% !important;
+          flex: 0 0 100% !important;
+          max-width: 100% !important;
+        }
+        .tabla-detalle-cm {
+          border-collapse: separate !important;
+          border-spacing: 0;
+        }
+      }
+    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -54,41 +127,53 @@ if (!empty($_POST)) {
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Orden de Compra Cliente(*)</label>
-                            <div class="col-sm-9"><?=$data['numero_occ']?></div>
+                          <div class="encabezado-cm">
+                          <div class="row">
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Orden de Compra Cliente:</label>
+                              <span><?=$data['numero_occ']?></span>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Número:</label>
+                              <span><?=$data['id'];?></span>
+                            </div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Número(*)</label>
-                            <div class="col-sm-9"><?=$data['numero_cm'];?></div>
+                          <div class="row mt-3">
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Fecha Emisión:</label>
+                              <span><?=$data['fecha_emision'];?></span>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Fecha Inicio:</label>
+                              <span><?=$data['fecha_inicio'];?></span>
+                            </div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_emision'];?></div>
+                          <div class="row mt-3">
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Fecha Fin:</label>
+                              <span><?=$data['fecha_fin'];?></span>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Moneda:</label>
+                              <span><?=$data['moneda']?></span>
+                            </div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Inicio(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_inicio'];?></div>
+                          <div class="row mt-3">
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Cotización Dólar:</label>
+                              <span>$<?=$data['cotizacion_dolar'];?></span>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Monto Total:</label>
+                              <span>$<?=number_format($data['monto_total'],2);?></span>
+                            </div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_fin'];?></div>
+                          <div class="row mt-3">
+                            <div class="col-md-12 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Observaciones:</label>
+                              <span><?=$data['observaciones'];?></span>
+                            </div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Moneda(*)</label>
-                            <div class="col-sm-9"><?=$data['moneda']?></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Cotizacion Dolar</label>
-                            <div class="col-sm-9">$<?=$data['cotizacion_dolar'];?></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Monto total(*)</label>
-                            <div class="col-sm-9">$<?=number_format($data['monto_total'],2);?></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Observaciones</label>
-                            <div class="col-sm-9"><?=$data['observaciones'];?></div>
                           </div>
                           <div class="row">
                             <div class="col-sm-12">
@@ -97,20 +182,30 @@ if (!empty($_POST)) {
                           </div>
                           <div class="row">
                             <div class="col-sm-12">
-                              <table class="display" id="dataTables-example667">
+<table class="table table-sm table-bordered tabla-detalle-cm">
+                                <colgroup>
+                                  <col class="cm-col-id">
+                                  <col class="cm-col-proyecto">
+                                  <col class="cm-col-sitio">
+                                  <col class="cm-col-subsite">
+                                  <col class="cm-col-descripcion">
+                                  <col class="cm-col-cantidad">
+                                  <col class="cm-col-unidad">
+                                  <col class="cm-col-precio">
+                                  <col class="cm-col-subtotal">
+                                  <col class="cm-col-lote">
+                                </colgroup>
                                 <thead>
                                     <tr>
                                       <th>ID</th>
                                       <th>Proyecto</th>
                                       <th>Sitio</th>
                                       <th>Subsitio</th>
-                                      <th>Tipo</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
                                       <th>Unidad de Medida</th>
                                       <th>Precio Unitario</th>
                                       <th>Subtotal</th>
-                                      <th>Aperturado</th>
                                       <th>Lote</th>
                                     </tr>
                                   </thead>
@@ -118,37 +213,21 @@ if (!empty($_POST)) {
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                   
-                                  $sql = "SELECT cmd.id,s.nombre AS sitio,s2.nombre AS subsitio,cmd.id_proyecto,p.nombre AS proyecto,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario,cmd.subtotal,cmd.aperturado,cmd.lote FROM certificados_maestros_detalles cmd INNER JOIN proyectos p ON cmd.id_proyecto=p.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id inner join sitios s on s.id = p.id_sitio left join sitios s2 on s2.id = s.id_sitio_superior WHERE id_certificado_maestro = ".$id;
+                                  $sql = "SELECT cmd.id,s.nombre AS sitio,COALESCE(s2.nombre, '') AS subsitio,cmd.id_proyecto,p.nombre AS proyecto,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario,cmd.subtotal,cmd.aperturado,cmd.lote FROM certificados_maestros_detalles cmd INNER JOIN proyectos p ON cmd.id_proyecto=p.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id inner join sitios s on s.id = p.id_sitio left join sitios s2 on s2.id = s.id_sitio_superior WHERE id_certificado_maestro = ".$id;
                                 foreach ($pdo->query($sql) as $row) {
                                   echo "<tr>";
                                   echo "<td>".$row["id"]."</td>";
                                   echo "<td>".$row["proyecto"]."</td>";
-                                  echo "<td>".$row["subsitio"]."</td>";
                                   echo "<td>".$row["sitio"]."</td>";
-                                  echo "<td>".$row["tipo"]."</td>";
+                                  echo "<td>".$row["subsitio"]."</td>";
                                   echo "<td>".$row["descripcion"]."</td>";
                                   echo "<td>".$row["cantidad"]."</td>";
                                   echo "<td>".$row["unidad_medida"]."</td>";
                                   echo "<td>$".number_format($row["precio_unitario"],2)."</td>";
                                   echo "<td>$".number_format($row["subtotal"],2)."</td>";
-                                  echo "<td>".$row["aperturado"]."</td>";
                                   echo "<td>".$row["lote"]."</td>";
                                   echo "</tr>";
                                 }?></tbody>
-                                <tfoot>
-                                  <tr>
-                                    <th>ID</th>
-                                    <th>Proyecto</th>
-                                    <th>Sitio</th>
-                                    <th>Subsitio</th>
-                                    <th>Tipo</th>
-                                    <th>Descripcion</th>
-                                    <th>Cantidad</th>
-                                    <th>Unidad de Medida</th>
-                                    <th>Precio Unitario</th>
-                                    <th>Subtotal</th>
-                                  </tr>
-                                </tfoot>
                               </table>
                             </div>
                             <!-- Zero Configuration  Ends-->
@@ -189,66 +268,6 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
-	  <script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
-	  <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-	<script>
-    $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-	  $('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-	} );
-    
-    </script>
-    <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>
 </html>
-<script>window.print();</script>
+<script>window.addEventListener('load', function () { window.print(); });</script>

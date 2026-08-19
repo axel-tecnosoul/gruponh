@@ -21,7 +21,6 @@ if (!empty($_POST)) {
   try {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
-    $_POST['descripcion'] = '';
     $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
 
     if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
@@ -53,9 +52,8 @@ if (!empty($_POST)) {
       $idEmpresa       = !empty($_POST['id_empresa'])        ? intval($_POST['id_empresa'])        : null;
       $idCuentaDest    = !empty($_POST['id_cuenta_destino']) ? intval($_POST['id_cuenta_destino']) : null;
 
-      $q = $pdo->prepare("UPDATE facturas_venta SET descripcion=?, id_tipo_comprobante=?, id_letra_comprobante=?, id_proyecto=?, numero=?, id_cuenta_destino=?, id_empresa=?, fecha_emitida=?, fecha_enviada=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
+      $q = $pdo->prepare("UPDATE facturas_venta SET id_tipo_comprobante=?, id_letra_comprobante=?, id_proyecto=?, numero=?, id_cuenta_destino=?, id_empresa=?, fecha_emitida=?, fecha_enviada=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
       $q->execute([
-        $_POST['descripcion'],
         intval($_POST['id_tipo_comprobante']),
         intval($_POST['id_letra_comprobante']),
         $idProyecto,
@@ -85,12 +83,11 @@ if (!empty($_POST)) {
       $idCuentaDest    = !empty($_POST['id_cuenta_destino']) ? intval($_POST['id_cuenta_destino']) : null;
 
       $q = $pdo->prepare("INSERT INTO facturas_venta
-                    (descripcion, id_tipo_comprobante, id_letra_comprobante, id_proyecto,
+                    (id_tipo_comprobante, id_letra_comprobante, id_proyecto,
                      numero, id_cuenta_destino, id_empresa, fecha_emitida, fecha_enviada,
                      id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado)
-                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
       $q->execute([
-        $_POST['descripcion'],
         intval($_POST['id_tipo_comprobante']),
         intval($_POST['id_letra_comprobante']),
         $idProyecto,
@@ -118,8 +115,8 @@ if (!empty($_POST)) {
 
     if (is_array($detalles)) {
       $qDet = $pdo->prepare("INSERT INTO facturas_venta_detalle
-                                     (id_factura_venta, id_concepto_contable, cantidad, precio, subtotal)
-                                     VALUES (?,?,?,?,?)");
+                                     (id_factura_venta, id_concepto_contable, descripcion, cantidad, precio, subtotal)
+                                     VALUES (?,?,?,?,?,?)");
       $qImp = $pdo->prepare("INSERT INTO facturas_venta_detalle_x_certificados_avance
                                      (id_factura_venta_detalle, id_certificado_avance) VALUES (?,?)");
 
@@ -128,7 +125,7 @@ if (!empty($_POST)) {
         $precio   = floatval($det['precio']);
         $subtotal = $cant * $precio;
 
-        $qDet->execute([$idFactura, intval($det['id_concepto']), $cant, $precio, $subtotal]);
+        $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal]);
         $idDetalle = $pdo->lastInsertId();
 
         if (!empty($det['imputaciones']) && is_array($det['imputaciones'])) {
@@ -295,15 +292,15 @@ if ($editMode && $editId) {
       $imputacionesData = [];
       $imputacionesText = [];
       foreach ($certIdsDet as $cid) {
-        $qC = $pdo->prepare("SELECT ca.id, cm.numero, ca.monto_total
+        $qC = $pdo->prepare("SELECT ca.id, ca.monto_total
                                FROM certificados_avances_cabecera ca
                                INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
                                WHERE ca.id = ?");
         $qC->execute([$cid]);
         $c = $qC->fetch(PDO::FETCH_ASSOC);
         if ($c) {
-          $imputacionesData[] = ['id_cd' => $c['id'], 'concepto_text' => 'Cert. #' . $c['numero']];
-          $imputacionesText[] = 'Cert. #' . $c['numero'];
+          $imputacionesData[] = ['id_cd' => $c['id'], 'concepto_text' => 'Cert. #' . $c['id']];
+          $imputacionesText[] = 'Cert. #' . $c['id'];
         }
       }
 
@@ -311,7 +308,7 @@ if ($editMode && $editId) {
         'id' => $row['id'],
         'id_concepto' => $row['id_concepto_contable'],
         'concepto_text' => $row['concepto_text'],
-        'descripcion' => '',
+        'descripcion' => $row['descripcion'] ?? '',
         'cantidad' => (float)$row['cantidad'],
         'precio' => (float)$row['precio'],
         'subtotal' => (float)$row['subtotal'],

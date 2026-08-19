@@ -7,15 +7,34 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
+$hoy = date("Y-m-d");
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$sql = "SELECT m.moneda FROM certificados_maestros cm INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$_GET["id"]]);
+$monedaMaster = $q->fetch(PDO::FETCH_ASSOC);
+$esDolar = false;
+if (!empty($monedaMaster) && (stripos($monedaMaster["moneda"], 'dolar') !== false ||
+    stripos($monedaMaster["moneda"], 'dólar') !== false ||
+    stripos($monedaMaster["moneda"], 'usd')   !== false ||
+    stripos($monedaMaster["moneda"], 'u$d')   !== false ||
+    stripos($monedaMaster["moneda"], 'u$s')   !== false)) {
+  $esDolar = true;
+}
+Database::disconnect();
+
 if (!empty($_POST)) {
     
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO certificados_avances_cabecera (id_certificado_maestro, fecha_emision, fecha_inicio, fecha_fin, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,?,?,0,0,0,0,0,0,?)";
+  $sql = "INSERT INTO certificados_avances_cabecera (id_certificado_maestro, fecha_emision, fecha_inicio, fecha_fin, cotizacion_dolar, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,?,?,?,0,0,0,0,0,0,?)";
   $q = $pdo->prepare($sql);
-  $q->execute([$_GET["id_certificado_maestro"], $_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"],$_POST["observaciones"]]);
+  $q->execute([$_GET["id_certificado_maestro"], $_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"], !empty($_POST["cotizacion_dolar"]) ? $_POST["cotizacion_dolar"] : 0, $_POST["observaciones"]]);
 
   $id_certificado_avance = $pdo->lastInsertId();
 
@@ -65,7 +84,7 @@ if (!empty($_POST)) {
                         <div class="col">
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-9"><input name="fecha_emision" type="date" onfocus="this.showPicker()" autofocus class="form-control" required="required" value=""></div>
+                            <div class="col-sm-9"><input name="fecha_emision" type="date" onfocus="this.showPicker()" autofocus class="form-control" required="required" value="<?= $hoy ?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Inicio(*)</label>
@@ -74,6 +93,18 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
                             <div class="col-sm-9"><input name="fecha_fin" id="fecha_fin" type="date" onfocus="this.showPicker()" class="form-control" required="required" value=""></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Cotización Dólar</label>
+                            <div class="col-sm-9">
+                              <div class="input-group">
+                                <input name="cotizacion_dolar" id="cotizacion_dolar" type="number" step="0.01" min="0" class="form-control" placeholder="">
+                                <div class="input-group-append">
+                                  <span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;"></span>
+                                </div>
+                              </div>
+                              <small id="infoCotizacion" class="text-muted"></small>
+                            </div>
                           </div>
                           <!-- <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Monto total(*)</label>
@@ -211,6 +242,42 @@ if (!empty($_POST)) {
 				document.getElementById("fecha_fin").value = "";
 			}
 		});
+
+		var esDolar = <?= $esDolar ? 'true' : 'false' ?>;
+		if (esDolar) {
+			var badge = $('#estadoDolar');
+			var input = $('#cotizacion_dolar');
+			var info = $('#infoCotizacion');
+			badge.text('Cargando...').removeClass('text-danger text-success').addClass('text-secondary');
+			input.prop('readonly', true);
+			fetch('https://dolarapi.com/v1/dolares/blue', {
+					headers: {
+						'Accept': 'application/json'
+					}
+				})
+				.then(function(r) {
+					if (!r.ok) throw new Error('HTTP ' + r.status);
+					return r.json();
+				})
+				.then(function(d) {
+					if (!d.venta) throw new Error('Sin venta');
+					input.val(parseFloat(d.venta).toFixed(2));
+					badge.html('Dólar Blue').removeClass('text-secondary text-danger').addClass('text-success');
+					var fecha = d.fechaActualizacion ? ' — Act: ' + new Date(d.fechaActualizacion).toLocaleString('es-AR') : '';
+					info.html('Compra: <strong>$' + parseFloat(d.compra).toLocaleString('es-AR', {
+							minimumFractionDigits: 2
+						}) + '</strong>' +
+						' | Venta: <strong>$' + parseFloat(d.venta).toLocaleString('es-AR', {
+							minimumFractionDigits: 2
+						}) + '</strong>' + fecha);
+					input.prop('readonly', false);
+				})
+				.catch(function() {
+					badge.text('Error al obtener').removeClass('text-secondary text-success').addClass('text-danger');
+					info.html('<span class="text-danger">No se pudo obtener la cotización. Ingrésela manualmente.</span>');
+					input.val('').prop('readonly', false);
+				});
+		}
 		</script>
       <!-- Plugin used-->
 	

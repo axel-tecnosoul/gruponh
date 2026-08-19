@@ -27,107 +27,78 @@ if (!empty($_POST)) {
     5 => "monto_acumulado_ajustes",
   ];
 
-  //$id_tipo_item=$_POST["id_tipo_item"];
+  $id_certificado_avance=$_GET['id_certificado_avance'];
 
-  //btn2 y btn3 son parar modificar
-  if (isset($_POST['btn3'])) {
+  $sql = "SELECT id_certificado_maestro FROM certificados_avances_cabecera WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_certificado_avance]);
+  $data = $q->fetch(PDO::FETCH_ASSOC);
+  $id_certificado_maestro=$data["id_certificado_maestro"];
 
-    //obtenemos la informacion del detalle del certificado antes de editarlo
-    $sql = "SELECT id_tipo_item_certificado,subtotal FROM certificados_maestros_detalles WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$_POST['id_certificado_maestro_detalle']]);
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $id_tipo_item_old=$data["id_tipo_item_certificado"];
-    $subtotal_old=$data["subtotal"];
-
-    //obtenemos el nombre de la columna del tipo de detalle en la tabla certificado_maestro para restar el subtotal
-    $column_name_old = $column_names[$id_tipo_item_old];
-    //restamos el viejo subtotal en la columna segun el viejo tipo de detalle
-    $sql = "UPDATE certificados_maestros SET $column_name_old = $column_name_old - ? WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$subtotal_old,$_GET['id_certificado_maestro']]);
-
-    //obtenemos el nombre de la columna en la tabla certificado_maestro para sumar el subtotal
-    $column_name = $column_names[$id_tipo_item];
-    //sumamos el nuevo subtotal en la columna segun el nuevo tipo de detalle
-    $sql = "UPDATE certificados_maestros SET $column_name = $column_name + ? WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$subtotal,$_GET['id_certificado_maestro']]);
-
-    $sql = "UPDATE certificados_maestros_detalles SET id_proyecto=?, id_tipo_item_certificado=?, descripcion=?, cantidad=?, id_unidad_medida=?, precio_unitario=?, subtotal=? WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$_POST["id_proyecto"], $id_tipo_item, $_POST["descripcion"], $_POST["cantidad"], $_POST["id_unidad_medida"], $_POST["precio_unitario"],$subtotal,$_POST['id_certificado_maestro_detalle']]);
-    
-    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificacion de Detalle ID #".$_POST['id_certificado_maestro_detalle']." de Certificado Maestro','Certificado Maestro','')";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
-
-    header("Location: nuevoCertificadoMaestroDetalle.php?id_certificado_maestro=".$_GET['id_certificado_maestro']);
-
-  }else{
-
-    /*$column_name = $column_names[$id_tipo_item];
-
-    $sql = "UPDATE certificados_maestros SET $column_name = $column_name + ? WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$subtotal,$_GET['id_certificado_maestro']]);*/
-
-    /*$precio_unitario=$_POST["precio_unitario"];
-    $id_certificado_maestro_detalle=$_POST["id_certificado_maestro_detalle"];
-    $avance=$_POST["avance"];
-    $precio_unitario=$_POST["precio_unitario"];
-    $subtotal=$_POST["subtotal"];*/
-
-    $id_certificado_avance=$_GET['id_certificado_avance'];
-
-    $sql = "SELECT id_certificado_maestro FROM certificados_avances_cabecera WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_certificado_avance]);
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-    $id_certificado_maestro=$data["id_certificado_maestro"];
-
-    $suma_subtotal=0;
+  $sql = "SELECT COUNT(*) FROM certificados_avances_detalle WHERE id_certificado_avance = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_certificado_avance]);
+  $modo_post = ($q->fetchColumn() > 0) ? 'modificar' : 'crear';
 
     foreach ($_POST["id_certificado_maestro_detalle"] as $key => $id_certificado_maestro_detalle) {
       
-      /*$cantidad_actual=$_POST['cantidad'][$key];*/
       $avance=$_POST['avance'][$key];
+      $id_certificado_avance_detalle = isset($_POST['id_certificado_avance_detalle'][$key]) ? $_POST['id_certificado_avance_detalle'][$key] : 0;
 
-      //if($cantidad_actual>0 and $precio_unitario>0){
       if($avance>0){
 
         $precio_unitario=$_POST['precio_unitario'][$key];
         $id_tipo_item=$_POST['id_tipo_item'][$key];
 
-        /*$cantidad_anterior=0;
-        $cantidad_acumulado=$cantidad_anterior+$cantidad_actual;*/
+        if($id_certificado_avance_detalle>0){
 
-        $sql = "SELECT cantidad_acumulado FROM certificados_avances_detalle WHERE id_certificado_maestro_detalle = ?";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id_certificado_maestro_detalle]);
-        $data = $q->fetch(PDO::FETCH_ASSOC);
+          $sql = "SELECT cantidad_actual, cantidad_acumulado, subtotal FROM certificados_avances_detalle WHERE id = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$id_certificado_avance_detalle]);
+          $data = $q->fetch(PDO::FETCH_ASSOC);
 
-        $cantidad_acumulado_anterior=0;
-        
-        if($data and !is_null($data["cantidad_acumulado"])){
-          $cantidad_acumulado_anterior=$data["cantidad_acumulado"];
+          $cantidad_actual_anterior = ($data and !is_null($data["cantidad_actual"])) ? $data["cantidad_actual"] : 0;
+          $cantidad_acumulado_anterior = ($data and !is_null($data["cantidad_acumulado"])) ? $data["cantidad_acumulado"] : 0;
+          $subtotal_viejo = ($data and !is_null($data["subtotal"])) ? $data["subtotal"] : 0;
+
+          $total_acumulado=$cantidad_acumulado_anterior-$cantidad_actual_anterior+$avance;
+          $subtotal=$avance*$precio_unitario;
+
+          $sql = "UPDATE certificados_avances_detalle SET cantidad_actual = ?, cantidad_acumulado = ?, precio_unitario = ?, subtotal = ? WHERE id = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$avance,$total_acumulado,$precio_unitario,$subtotal,$id_certificado_avance_detalle]);
+
+          $column_name = $column_names[$id_tipo_item];
+          //restamos el subtotal viejo y sumamos el nuevo subtotal en la columna segun el tipo de detalle
+          $sql = "UPDATE certificados_avances_cabecera SET $column_name = $column_name - ? WHERE id = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$subtotal_viejo,$id_certificado_avance]);
+
+          $sql = "UPDATE certificados_avances_cabecera SET $column_name = $column_name + ? WHERE id = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$subtotal,$id_certificado_avance]);
+
+        } else {
+
+          $sql = "SELECT COALESCE(SUM(cantidad_actual),0) FROM certificados_avances_detalle WHERE id_certificado_maestro_detalle = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$id_certificado_maestro_detalle]);
+          $cantidad_acumulado_anterior = $q->fetchColumn();
+
+          $total_acumulado=$cantidad_acumulado_anterior+$avance;
+          $subtotal=$avance*$precio_unitario;
+
+          $sql = "INSERT INTO certificados_avances_detalle (id_certificado_avance, id_certificado_maestro_detalle, cantidad_anterior, cantidad_actual, cantidad_acumulado, precio_unitario, subtotal) VALUES (?,?,?,?,?,?,?)";
+          $q = $pdo->prepare($sql);
+          $q->execute([$id_certificado_avance,$id_certificado_maestro_detalle, $cantidad_acumulado_anterior, $avance, $total_acumulado, $precio_unitario,$subtotal]);
+
+          $column_name = $column_names[$id_tipo_item];
+          //sumamos el nuevo subtotal en la columna segun el nuevo tipo de detalle
+          $sql = "UPDATE certificados_avances_cabecera SET $column_name = $column_name + ? WHERE id = ?";
+          $q = $pdo->prepare($sql);
+          $q->execute([$subtotal,$id_certificado_avance]);
+
         }
-
-        
-        $total_acumulado=$cantidad_acumulado_anterior+$avance;
-        
-        $subtotal=$avance*$precio_unitario;
-        $suma_subtotal+=$subtotal;
-
-        $sql = "INSERT INTO certificados_avances_detalle (id_certificado_avance, id_certificado_maestro_detalle, cantidad_anterior, cantidad_actual, cantidad_acumulado, precio_unitario, subtotal) VALUES (?,?,?,?,?,?,?)";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id_certificado_avance,$id_certificado_maestro_detalle, $cantidad_acumulado_anterior, $avance, $total_acumulado, $precio_unitario,$subtotal]);
-
-        $column_name = $column_names[$id_tipo_item];
-        //sumamos el nuevo subtotal en la columna segun el nuevo tipo de detalle
-        $sql = "UPDATE certificados_avances_cabecera SET $column_name = $column_name + ? WHERE id = ?";
-        $q = $pdo->prepare($sql);
-        $q->execute([$subtotal,$id_certificado_avance]);
 
         if ($modoDebug==1) {
           $q->debugDumpParams();
@@ -139,9 +110,14 @@ if (!empty($_POST)) {
 
     }
 
+    $sql = "SELECT COALESCE(SUM(subtotal),0) FROM certificados_avances_detalle WHERE id_certificado_avance = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id_certificado_avance]);
+    $monto_total = $q->fetchColumn();
+
     $sql = "UPDATE certificados_avances_cabecera SET monto_total = ? WHERE id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$suma_subtotal,$id_certificado_avance]);
+    $q->execute([$monto_total,$id_certificado_avance]);
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -149,7 +125,8 @@ if (!empty($_POST)) {
       echo "<br><br>";
     }
     
-    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Detalle Certificado de Avance #$id_certificado_avance','Certificado de Avance','verCertificadoAvance.php?id=$id_certificado_avance')";
+    $accion_log = ($modo_post == 'modificar') ? 'Modificacion Detalle Certificado de Avance #' : 'Nuevo Detalle Certificado de Avance #';
+    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'".$accion_log.$id_certificado_avance."','Certificado de Avance','verCertificadoAvance.php?id=$id_certificado_avance')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
 
@@ -168,8 +145,6 @@ if (!empty($_POST)) {
     //header("Location: listarCertificadosMaestro.php?id_certificado_avance=".$_GET["id_certificado_avance"]);
     header("Location: listarCertificadosAvances.php?id_certificado_maestro=".$id_certificado_maestro);
 
-  }
-
 }
 
 $id_certificado_avance=$_GET['id_certificado_avance'];
@@ -183,6 +158,11 @@ $q->execute([$id_certificado_avance]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 $id_certificado_maestro=$data["id_certificado_maestro"];
 
+$sql = "SELECT COUNT(*) FROM certificados_avances_detalle WHERE id_certificado_avance = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$id_certificado_avance]);
+$modo = ($q->fetchColumn() > 0) ? 'modificar' : 'crear';
+
 Database::disconnect();
 
 ?>
@@ -192,6 +172,39 @@ Database::disconnect();
     <?php include('head_forms.php');?>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      #dataTables-example667 {
+        border: none;
+      }
+      #dataTables-example667 tbody {
+        border: 1px solid #dee2e6;
+      }
+      #dataTables-example667 tbody td {
+        border-top: 1px solid #dee2e6;
+      }
+      #dataTables-example667 tbody tr:first-child td {
+        border-top: none;
+      }
+      #dataTables-example667 tbody tr.fila-aperturada td {
+        background-color: #eef8ff;
+      }
+      #dataTables-example667 tbody tr.fila-aperturado-start td {
+        border-top: 2px solid #2b8dbf;
+      }
+      #dataTables-example667 tbody tr.fila-aperturado-end td {
+        border-bottom: 2px solid #2b8dbf;
+      }
+      #dataTables-example667 tbody tr.fila-aperturado-start td:nth-child(3),
+      #dataTables-example667 tbody tr.fila-aperturado-middle td:nth-child(3),
+      #dataTables-example667 tbody tr.fila-aperturado-end td:nth-child(3) {
+        border-left: 3px solid #2b8dbf;
+      }
+      #dataTables-example667 tbody tr.fila-aperturado-start td:last-child,
+      #dataTables-example667 tbody tr.fila-aperturado-middle td:last-child,
+      #dataTables-example667 tbody tr.fila-aperturado-end td:last-child {
+        border-right: 3px solid #2b8dbf;
+      }
+    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -212,7 +225,7 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Nuevo Detalle del Certificado de Avance #<?=$id_certificado_avance?>
+                    <h5><?= $modo == 'modificar' ? 'Modificar' : 'Nuevo' ?> Detalle del Certificado de Avance #<?=$id_certificado_avance?>
                       &nbsp;&nbsp;
                     </h5>
                   </div>
@@ -224,11 +237,10 @@ Database::disconnect();
                             <div class="col-12">
                               <div class="dt-ext table-responsive">
                                 
-                                <table class="display" id="dataTables-example667">
+                                <table class="table table-sm display" id="dataTables-example667" style="width:100%">
                                   <thead>
                                     <tr>
                                       <th class="d-none">ID</th>
-                                      <th>Tipo</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
 									  <th>Acumulado</th>
@@ -237,12 +249,13 @@ Database::disconnect();
                                       <th>Precio U.</th>
                                       <th>Avance Actual</th>
                                       <th>Subtotal</th>
+                                      <th>Aperturado</th>
+                                      <th>Lote</th>
                                     </tr>
                                   </thead>
                                   <tfoot>
                                     <tr>
                                       <th class="d-none">ID</th>
-                                      <th>Tipo</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
 									  <th>Acumulado</th>
@@ -251,15 +264,19 @@ Database::disconnect();
                                       <th>Precio U.</th>
                                       <th>Avance Actual</th>
                                       <th>Subtotal</th>
+                                      <th>Aperturado</th>
+                                      <th>Lote</th>
                                     </tr>
                                   </tfoot>
                                   <tbody><?php
                                     $pdo = Database::connect();
                                     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                                    $sql = " SELECT cmd.id AS id_certificado_maestro_detalle,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario AS precio_unitario_cm,cmd.subtotal AS subtotal_cm,m.moneda FROM certificados_maestros_detalles cmd INNER JOIN certificados_maestros cm ON cmd.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id WHERE cmd.id_certificado_maestro=$id_certificado_maestro";
+                                    $sql = " SELECT cmd.id AS id_certificado_maestro_detalle,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario AS precio_unitario_cm,cmd.subtotal AS subtotal_cm,m.moneda,cad.id AS id_certificado_avance_detalle,cad.cantidad_actual,cad.subtotal AS subtotal_ca,cmd.aperturado,cmd.lote FROM certificados_maestros_detalles cmd INNER JOIN certificados_maestros cm ON cmd.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id LEFT JOIN certificados_avances_detalle cad ON cad.id_certificado_maestro_detalle=cmd.id AND cad.id_certificado_avance=$id_certificado_avance WHERE cmd.id_certificado_maestro=$id_certificado_maestro ORDER BY cmd.aperturado, cmd.id";
 
-                                    foreach ($pdo->query($sql) as $row) {
+                                    $rows_tabla = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+                                    $total_filas = count($rows_tabla);
+                                    foreach ($rows_tabla as $i => $row) {
 										$acumulado = 0;
 										$sql2 = "select sum(cantidad_actual) acumulado from certificados_avances_detalle where id_certificado_maestro_detalle = ? ";
 										$q2 = $pdo->prepare($sql2);
@@ -268,10 +285,28 @@ Database::disconnect();
 										if (!empty($data2['acumulado'])) {
 											$acumulado = $data2['acumulado'];
 										}
+
+										$ap_actual = (string) ($row["aperturado"] ?? '');
+										$ap_prev = ($i > 0) ? (string) ($rows_tabla[$i - 1]["aperturado"] ?? '') : '';
+										$ap_next = ($i < $total_filas - 1) ? (string) ($rows_tabla[$i + 1]["aperturado"] ?? '') : '';
+										$clase_aperturado = '';
+										if ($ap_actual !== '') {
+											if ($ap_actual !== $ap_prev && $ap_actual !== $ap_next) {
+												$clase_aperturado = 'fila-aperturada';
+											} elseif ($ap_actual !== $ap_prev) {
+												$clase_aperturado = 'fila-aperturada fila-aperturado-start';
+											} elseif ($ap_actual !== $ap_next) {
+												$clase_aperturado = 'fila-aperturada fila-aperturado-end';
+											} else {
+												$clase_aperturado = 'fila-aperturada fila-aperturado-middle';
+											}
+										}
 									   ?>
-                                      <tr>
-                                        <td class="d-none"><?=$row["id_certificado_maestro_detalle"]?></td>
-                                        <td data-id="<?=$row["id_tipo_item_certificado"]?>">
+                                      <tr class="<?=$clase_aperturado?>">
+                                        <td class="d-none"><?=$row["id_certificado_maestro_detalle"]?>
+                                          <input type="hidden" name="id_certificado_avance_detalle[]" value="<?=($row["id_certificado_avance_detalle"]!==null)?$row["id_certificado_avance_detalle"]:'';?>">
+                                        </td>
+                                        <td class="d-none" data-id="<?=$row["id_tipo_item_certificado"]?>">
                                           <input type="hidden" name="id_tipo_item[]" value="<?=$row["id_tipo_item_certificado"]?>">
                                           <?=$row["tipo"]?>
                                         </td>
@@ -286,12 +321,14 @@ Database::disconnect();
                                         </td>
                                         <td>
                                           <input type="hidden" name="id_certificado_maestro_detalle[]" value="<?=$row["id_certificado_maestro_detalle"]?>">
-                                          <input type="number" step="0.01" class="form-control" name="avance[]" placeholder="Avance" min="0" max="<?=$row["cantidad"]-$acumulado;?>">
+                                          <input type="number" step="0.01" class="form-control" name="avance[]" placeholder="Avance" min="0" max="<?=$row["cantidad"]-$acumulado+(($row["cantidad_actual"]!==null)?$row["cantidad_actual"]:0);?>" value="<?=($row["cantidad_actual"]!==null)?$row["cantidad_actual"]:'';?>" oninput="calcularSubtotalAvance(this)" onchange="calcularSubtotalAvance(this)">
                                         </td>
                                         <td style="text-align:right">
-                                          <?=$row["moneda"]?> <label class='subtotal_formatted'>0.00</label>
-                                          <input type="hidden" name="subtotal[]">
+                                          <?=$row["moneda"]?> <label class='subtotal_formatted'><?=($row["subtotal_ca"]!==null)?number_format($row["subtotal_ca"],2):'0.00'?></label>
+                                          <input type="hidden" name="subtotal[]" value="<?=($row["subtotal_ca"]!==null)?$row["subtotal_ca"]:'';?>">
                                         </td>
+                                        <td><?=$row["aperturado"]?></td>
+                                        <td><?=$row["lote"]?></td>
                                       </tr><?php
                                     }
                                     Database::disconnect();?>
@@ -306,11 +343,9 @@ Database::disconnect();
                     <div class="card-footer">
                       <div class="col-12">
 
-                        <button type="submit" value="1" name="btn1" class="btn btn-success addPosicion">Crear Certificado de Avance</button>
+                        <button type="submit" value="1" name="btn1" class="btn btn-success addPosicion"><?= $modo == 'modificar' ? 'Modificar' : 'Crear' ?> Certificado de Avance</button>
                         <!-- <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear e ir a Certificados</button> -->
-                        <button type="submit" value="3" name="btn3" id="editPosicion" class="btn btn-primary d-none">Modificar</button>
-                        <button type="button" id="cancelEditPosicion" class="btn btn-danger d-none">Cancelar Modificar</button>
-                        <a href='listarCertificadosMaestros.php' class="btn btn-light">Volver</a>
+                        <a href='listarCertificadosAvances.php?id_certificado_maestro=<?=$id_certificado_maestro?>' class="btn btn-light">Volver</a>
 
                       </div>
                     </div>
@@ -321,23 +356,7 @@ Database::disconnect();
           </div>
           <!-- Container-fluid Ends-->
         </div>
-        <!-- Modal para eliminas conjuntos -->
-        <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalConjuntoLabel">Confirmación</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              </div>
-              <div class="modal-body">¿Está seguro que desea eliminar el detalle?</div>
-              <div class="modal-footer">
-                <a href="#" class="btn btn-primary">Eliminar</a>
-                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- footer start-->
+          <!-- footer start-->
         <?php include("footer.php"); ?>
       </div>
     </div>
@@ -382,6 +401,22 @@ Database::disconnect();
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
+      function calcularSubtotalAvance(input) {
+        var fila = input.closest('tr');
+        var precioInput = fila.querySelector("input[name='precio_unitario[]']");
+        var subtotalInput = fila.querySelector("input[name='subtotal[]']");
+        var subtotalLabel = fila.querySelector('.subtotal_formatted');
+        var avance = parseFloat(String(input.value || '').replace(',', '.')) || 0;
+        var precioUnitario = parseFloat(String(precioInput.value || '').replace(',', '.')) || 0;
+        var subtotal = avance * precioUnitario;
+
+        subtotalInput.value = subtotal.toFixed(2);
+        subtotalLabel.textContent = subtotal.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+
       $(document).ready(function () {
 
         // Setup - add a text input to each footer cell
@@ -393,6 +428,7 @@ Database::disconnect();
 	      $('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
+          order: [],
           language: {
             "decimal": "",
             "emptyTable": "No hay información",
@@ -431,6 +467,7 @@ Database::disconnect();
           e.preventDefault();
           let ok=0;
           $("#dataTables-example667 tbody tr").each(function(){
+            actualizarSubtotal($(this));
             let avance=$(this).find("input[name='avance[]']").val()
             //let precio_unitario=$(this).find("input[name='precio_unitario[]']").val()
             if(avance.length>0){// && precio_unitario.length>0
@@ -445,109 +482,31 @@ Database::disconnect();
           }
         })
 
-        $(document).on("input","input[name='avance[]']", function(){
-          let avance=this.value
-          if(isNaN(avance)){
-            avance=0;
-          }
-          let fila=$(this).parents("tr");
-          console.log(fila);
-          let precio_unitario=fila.find("input[name='precio_unitario[]']").val();
-          let subtotal=avance*parseFloat(precio_unitario)
-          
-          console.log(subtotal);
-          subtotal_formatted = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          console.log(subtotal_formatted);
-          
-          fila.find("input[name='subtotal[]']").val(subtotal);
-          fila.find(".subtotal_formatted").html(subtotal_formatted);
-
-        });
-
-        //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
-        $(document).on("click","#dataTables-example667 tbody tr td", function(){
-          var t=$(this).parent();
-          //t.parent().find("tr").removeClass("selected");
-
-          let id_conjunto=t.find("td:first-child").html();
-          if(t.hasClass('selected')){
-            deselectRow(t);
-            $("#link_ver_conjunto_lc").attr("href","#");
-            $("#link_modificar_conjunto").attr("href","#");
-            $("#link_eliminar_conjunto").data("id","");
-            $("#link_nueva_posicion").attr("href","#");
-          }else{
-            table.rows().nodes().each( function (rowNode, index) {
-              $(rowNode).removeClass("selected");
-            });
-            //selectRow(t);
-            $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_conjunto);
-            //$("#link_modificar_conjunto").attr("href","modificarListaCorteConjunto.php?id="+id_conjunto);
-            $("#link_modificar_conjunto").on("click",function(){
-              let id_certificado_maestro_detalle = t.find("td:nth-child(1)").html();
-              let id_proyecto = t.find("td:nth-child(2)").data("id");
-              let id_tipo = t.find("td:nth-child(5)").data("id");
-              let descripcion = t.find("td:nth-child(6)").html();
-              let cantidad = t.find("td:nth-child(7)").html();
-              let id_unidad_medida = t.find("td:nth-child(8)").data("id");
-              let precio_unitario = t.find("td:nth-child(9)").html();
-              $("input[name='id_certificado_maestro_detalle']").val(id_certificado_maestro_detalle)
-              $("select[name='id_proyecto']").val(id_proyecto).trigger('change');
-              $("select[name='id_tipo_item']").val(id_tipo).trigger('change');
-              $("input[name='descripcion']").val(descripcion).focus()
-              $("input[name='cantidad']").val(cantidad);
-              $("select[name='id_unidad_medida']").val(id_unidad_medida).trigger('change');
-              $("input[name='precio_unitario']").val(precio_unitario);
-              $("#editPosicion").val(id_conjunto)
-
-              if($("#editPosicion").hasClass("d-none")){
-                $(".addPosicion").toggleClass("d-none")
-                $("#editPosicion").toggleClass("d-none")
-                $("#cancelEditPosicion").toggleClass("d-none")
-                $("#volverListaCorte").toggleClass("d-none")
-              }
-            })
-            $("#link_eliminar_conjunto").data("id",id_conjunto);
-            $("#link_nueva_posicion").attr("href","nuevaListaCortePosiciones.php?id_lista_corte_conjunto="+id_conjunto);
-          }
-        });
-    
-      });
-
-      $("#link_eliminar_conjunto").on("click",function(){
-        let id_conjunto=$(this).data("id")
-        if(id_conjunto!="" && id_conjunto>0){
-          let modal=$("#eliminarConjunto")
-          modal.modal("show")
-          modal.find(".modal-footer a").attr("href","eliminarDetalleCertificadoMaestro.php?id="+id_conjunto)
+        function obtenerNumero(valor) {
+          valor = String(valor || '').trim().replace(',', '.');
+          let numero = parseFloat(valor);
+          return isNaN(numero) ? 0 : numero;
         }
+
+        function actualizarSubtotal(fila) {
+          let avance = obtenerNumero(fila.find("input[name='avance[]']").val());
+          let precioUnitario = obtenerNumero(fila.find("input[name='precio_unitario[]']").val());
+          let subtotal = avance * precioUnitario;
+          let subtotalFormateado = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+          fila.find("input[name='subtotal[]']").val(subtotal.toFixed(2));
+          fila.find(".subtotal_formatted").html(subtotalFormateado);
+        }
+
+        $("#dataTables-example667 tbody tr").each(function() {
+          calcularSubtotalAvance($(this).find("input[name='avance[]']")[0]);
+        });
+
+        $(document).on("input change keyup", "input[name='avance[]']", function() {
+          actualizarSubtotal($(this).closest("tr"));
+        });
+
       });
-
-      $("#cancelEditPosicion").on("click",function(){
-        $("input[name='id_certificado_maestro_detalle']").val("")
-        $("select[name='id_proyecto']").val("").trigger('change');
-        $("select[name='id_tipo_item']").val("").trigger('change');
-        $("input[name='descripcion']").val("").focus()
-        $("input[name='cantidad']").val("");
-        $("select[name='id_unidad_medida']").val("").trigger('change');
-        $("input[name='precio_unitario']").val("");
-
-        $(".addPosicion").toggleClass("d-none")
-        $("#editPosicion").toggleClass("d-none")
-        $("#editPosicion").val("")
-        $("#cancelEditPosicion").toggleClass("d-none")
-
-        /*$("#addConjunto").toggleClass("d-none")
-        $("#cancelEditPosicion").toggleClass("d-none")
-        $("#volverListaCorte").toggleClass("d-none")*/
-      })
-
-      function selectRow(t){
-        t.addClass('selected');
-      }
-      function deselectRow(t){
-        t.removeClass('selected');
-      }
     </script>
   </body>
 </html>

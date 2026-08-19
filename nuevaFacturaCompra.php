@@ -49,8 +49,6 @@ if (!empty($_POST)) {
   try {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
-    $_POST['descripcion'] = '';
-
     $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
 
     // Concatenar punto_venta + nro_comprobante en numero
@@ -88,8 +86,8 @@ if (!empty($_POST)) {
       }
 
       // UPDATE header
-      $q = $pdo->prepare("UPDATE facturas_compra SET descripcion=?, id_tipo_comprobante=?, id_letra_comprobante=?, numero=?, id_cuenta_origen=?, id_empresa=?, fecha_emitida=?, fecha_recibida=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
-      $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$idEstado,$idFactura]);
+      $q = $pdo->prepare("UPDATE facturas_compra SET id_tipo_comprobante=?, id_letra_comprobante=?, numero=?, id_cuenta_origen=?, id_empresa=?, fecha_emitida=?, fecha_recibida=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
+      $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$idEstado,$idFactura]);
 
       // OC diff logic
       $qActuales = $pdo->prepare("SELECT id, id_compra, estado_anterior FROM facturas_compra_x_compras WHERE id_factura_compra = ?");
@@ -145,8 +143,8 @@ if (!empty($_POST)) {
 
     } else {
       // CREATE mode
-      $q = $pdo->prepare("INSERT INTO facturas_compra(descripcion, id_tipo_comprobante, id_letra_comprobante, numero, id_cuenta_origen, id_empresa, fecha_emitida, fecha_recibida, id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-      $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_SESSION['user']['id'],$idEstado]);
+      $q = $pdo->prepare("INSERT INTO facturas_compra(id_tipo_comprobante, id_letra_comprobante, numero, id_cuenta_origen, id_empresa, fecha_emitida, fecha_recibida, id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+      $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_SESSION['user']['id'],$idEstado]);
       $idFactura = $pdo->lastInsertId();
 
       // Asociar cada OC a la factura

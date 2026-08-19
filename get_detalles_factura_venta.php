@@ -14,7 +14,7 @@ $id_fv = intval($_POST['id_fv']);
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT d.id, cc.descripcion, d.precio, d.cantidad, d.subtotal
+$sql = "SELECT d.id, COALESCE(d.descripcion, cc.descripcion, ''), d.precio, d.cantidad, d.subtotal
         FROM facturas_venta_detalle d
         INNER JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable
         WHERE d.id_factura_venta = ?";

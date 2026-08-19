@@ -18,7 +18,6 @@ if($_GET["id"]){
         <thead>
           <tr>
             <th>ID</th>
-            <th><?=htmlentities("N° CM")?></th>
             <th><?=htmlentities("N° OCC")?></th>
             <th>Fecha emision</th>
             <th>Fecha inicio</th>
@@ -37,12 +36,11 @@ if($_GET["id"]){
         <tbody><?php
           include 'database.php';
           $pdo = Database::connect();
-          $sql = "SELECT cm.id,cm.numero AS numero_cm,occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ".$id;
+          $sql = "SELECT cm.id,occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ".$id;
           //echo $sql;
           foreach ($pdo->query($sql) as $row) {
             echo '<tr>';
             echo '<td>'.$row["id"].'</td>';
-            echo '<td>'.$row["numero_cm"].'</td>';
             echo '<td>'.$row["numero_occ"].'</td>';
             echo '<td>'.$row["fecha_emision"].'</td>';
             echo '<td>'.$row["fecha_inicio"].'</td>';
@@ -103,8 +101,8 @@ if($_GET["id"]){
             echo '<tr>';
             echo '<td>'.$row["id"].'</td>';
             echo '<td>'.htmlentities($row["proyecto"]).'</td>';
-            echo '<td>'.htmlentities($row["subsitio"]).'</td>';
-            echo '<td>'.htmlentities($row["sitio"]).'</td>';
+            echo '<td>'.htmlentities($row["subsitio"] ?? '').'</td>';
+            echo '<td>'.htmlentities($row["sitio"] ?? '').'</td>';
             echo '<td>'.$row["tipo"].'</td>';
             echo '<td>'.htmlentities($row["descripcion"]).'</td>';
             echo '<td>'.$row["cantidad"].'</td>';

@@ -14,7 +14,7 @@ $id_fc = intval($_POST['id_fc']);
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = " SELECT d.`id`, cc.descripcion, d.`precio`, d.`cantidad`, d.`subtotal` FROM `facturas_compra_detalle` d inner join conceptos_contables cc on cc.id = d.id_concepto_contable WHERE d.id_factura_compra = ".$id_fc;
+$sql = " SELECT d.`id`, COALESCE(d.descripcion, cc.descripcion, ''), d.`precio`, d.`cantidad`, d.`subtotal` FROM `facturas_compra_detalle` d inner join conceptos_contables cc on cc.id = d.id_concepto_contable WHERE d.id_factura_compra = ".$id_fc;
 $aDetalles=[];
 foreach ($pdo->query($sql) as $row) {
 	

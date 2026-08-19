@@ -46,9 +46,6 @@ include 'database.php';?>
                   <div class="card-body">
                     <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCertificadosMaestros.php">
                       <div class="form-group mb-0">
-                        Nro CM:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
-                      </div>
-                      <div class="form-group mb-0">
                         Nro OCC:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['occ'])) echo $_POST['occ'] ?>" name="occ">
                       </div>
                       <div class="form-group mb-0">
@@ -87,6 +84,7 @@ include 'database.php';?>
                       if (!empty(tienePermiso(376))) { ?>
                         <a href="#" id="link_nuevo_consumo" title="Ver Certificados de Avance"><i style="width: 72px; height: 20px;color: midnightblue;" class='fa fa-lg fa-certificate'>CA</i></a><?php
                       }?>
+                      <a href="#" id="link_nuevo_anticipo" title="Nuevo Anticipo" style="color: midnightblue;" class="fa fa-lg"><img src="img/dolar.png" width="24" height="25" border="0" alt="Nuevo Anticipo"></a>
                     </h5>
                   </div>
                   <div class="card-body">
@@ -136,10 +134,7 @@ include 'database.php';?>
                           if (!empty($_POST)) {
 							  
                             $pdo = Database::connect();
-                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
-                            if (!empty($_POST['nro'])) {
-                              $sql .= " AND cm.numero = '".$_POST['nro']."' ";
-                            }
+                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,CASE WHEN cm.fecha_fin = '0000-00-00' THEN '-' ELSE date_format(cm.fecha_fin,'%d/%m/%y') END AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,(SELECT ca2.monto_anticipo FROM certificados_anticipos ca2 WHERE ca2.id_certificado_maestro=cm.id ORDER BY ca2.id DESC LIMIT 1) AS monto_anticipo_registrado,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
                             if (!empty($_POST['occ'])) {
                               $sql .= " AND occ.numero = '".$_POST['occ']."' ";
                             }
@@ -158,10 +153,13 @@ include 'database.php';?>
                               
                               $montoTotalAvances = (float) ($data2["monto_acumulado_avances"] ?? 0);
                               $montoTotalAnticipos = (float) ($data2["monto_acumulado_anticipos"] ?? 0);
+                              if ($row["monto_anticipo_registrado"] !== null) {
+                                $montoTotalAnticipos = (float) $row["monto_anticipo_registrado"];
+                              }
                               $montoTotalDesacopios = (float) ($data2["monto_acumulado_desacopios"] ?? 0);
                               $montoTotalDescuentos = (float) ($data2["monto_acumulado_descuentos"] ?? 0);
                               $montoTotalAjustes = (float) ($data2["monto_acumulado_ajustes"] ?? 0);
-                              $montoTotalCertificado = (float) ($data2["monto_total"] ?? 0);
+                              $montoTotalCertificado = (float) ($row["monto_total"] ?? 0);
                               
                               $saldoPendiente=$montoTotalCertificado-$montoTotalAvances-$montoTotalAnticipos-$montoTotalDesacopios-$montoTotalDescuentos-$montoTotalAjustes?>
 
@@ -214,7 +212,6 @@ include 'database.php';?>
                             <th>Proyecto</th>
                             <th>Sitio</th>
                             <th>Subsitio</th>
-                            <th>Tipo</th>
                             <th>Descripcion</th>
                             <th>Cantidad</th>
                             <th>Unidad de Medida</th>
@@ -231,7 +228,6 @@ include 'database.php';?>
                             <th>Proyecto</th>
                             <th>Sitio</th>
                             <th>Subsitio</th>
-                            <th>Tipo</th>
                             <th>Descripcion</th>
                             <th>Cantidad</th>
                             <th>Unidad de Medida</th>
@@ -254,6 +250,22 @@ include 'database.php';?>
         </div>
         <!-- footer start-->
         <?php include("footer.php"); ?>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalEliminar" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el certificado maestro?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnEliminarMaestro">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -362,6 +374,7 @@ include 'database.php';?>
             $("#link_exportar_certificado").attr("href","#");
             $("#link_modificar_ot").attr("href","#");
             $("#link_nuevo_consumo").attr("href","#");
+            $("#link_nuevo_anticipo").attr("href","#");
             $("#link_ver_occ").attr("href","#");
           }else{
             //t.parent().find("tr").removeClass("selected");
@@ -374,6 +387,7 @@ include 'database.php';?>
             $("#link_exportar_certificado").attr("href","exportCertificadosMaestro.php?id="+id_cm);
             $("#link_modificar_ot").attr("href","modificarCertificadoMaestro.php?id="+id_cm);
             $("#link_nuevo_consumo").attr("href","listarCertificadosAvances.php?id_certificado_maestro="+id_cm);
+            $("#link_nuevo_anticipo").attr("href","nuevoAnticipoCertificadoMaestro.php?id_certificado_maestro="+id_cm);
             $("#link_ver_occ").attr("href","verCertificadosMaestro.php?id="+id_cm);
           }
         });
@@ -412,8 +426,8 @@ include 'database.php';?>
             let id=fila_selected.find("td:nth-child(1)").html();
             console.log(id);
             if(cant_ca=="0"){
-              //alert("eliminar")
-              document.location.href="eliminarCertificadoMaestro.php?id="+id
+              $("#btnEliminarMaestro").attr("href","eliminarCertificadoMaestro.php?id="+id);
+              $("#modalEliminar").modal("show");
             }else{
               alert("El certificado no puede ser eliminado debido a que posee avances")
             }
@@ -424,6 +438,14 @@ include 'database.php';?>
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
             alert("Por favor seleccione un certificado maestro para ver sus certificados de avance")
+          }
+        })
+
+        $("#link_nuevo_anticipo").on("click",function(e){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            e.preventDefault();
+            alert("Por favor seleccione un certificado maestro para cargar un anticipo")
           }
         })
 

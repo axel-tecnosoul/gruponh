@@ -43,7 +43,7 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
         <!-- Right sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Certificados de Avance (CM #".$data['numero_cm'].")";
+          $ubicacion="Certificados de Avance (CM #".$data['id'].")";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -117,7 +117,7 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
                         <tbody><?php
                           
                           $pdo = Database::connect();
-                          $sql = "SELECT cac.id,cm.numero AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones,cac.aprobado_cliente FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".$_GET["id_certificado_maestro"];
+                          $sql = "SELECT cac.id,cm.id AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones,cac.aprobado_cliente FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".$_GET["id_certificado_maestro"];
                           //echo $sql;
 						  $count = 1;
                           foreach ($pdo->query($sql) as $row) {

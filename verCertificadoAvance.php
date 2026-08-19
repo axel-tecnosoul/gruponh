@@ -20,12 +20,17 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   //$sql = "SELECT cac.id,cm.numero AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ? ";
-  $sql = "SELECT cac.id,cm.numero AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id = ? ";
+  $sql = "SELECT cac.id,cac.id_certificado_maestro,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   
   Database::disconnect();
+  
+  if (empty($data)) {
+    header("Location: listarCertificadosMaestros.php");
+    die("Redirecting to listarCertificadosMaestros.php");
+  }
 }?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,32 +59,36 @@ if (!empty($_POST)) {
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
+                    <h5><?=$ubicacion?> #<?=$data['id']?></h5>
                   </div>
                   <form class="form theme-form" role="form" method="post" action="#">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
 
-                         <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_emision'];?></div>
+                         <div class="row">
+                            <div class="col-md-4 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Fecha Emisión:</label>
+                              <span><?=$data['fecha_emision'];?></span>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Fecha Inicio:</label>
+                              <span><?=$data['fecha_inicio'];?></span>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Fecha Fin:</label>
+                              <span><?=$data['fecha_fin'];?></span>
+                            </div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Inicio(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_inicio'];?></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_fin'];?></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Monto total(*)</label>
-                            <div class="col-sm-9">$<?=number_format($data['monto_total'],2);?></div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Observaciones</label>
-                            <div class="col-sm-9"><?=$data['observaciones'];?></div>
+                          <div class="row mt-3">
+                            <div class="col-md-4 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Monto total:</label>
+                              <span><?=$data['moneda']." ".number_format($data['monto_total'],2);?></span>
+                            </div>
+                            <div class="col-md-8 d-flex align-items-center">
+                              <label class="col-form-label mb-0 mr-1">Observaciones:</label>
+                              <span><?=$data['observaciones'];?></span>
+                            </div>
                           </div>
                           <div class="form-group row my-4">
                             <div class="col-sm-12">
@@ -94,7 +103,6 @@ if (!empty($_POST)) {
                                   <thead>
                                     <tr>
                                       <th class="d-none">ID</th>
-                                      <th>Tipo</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
                                       <th>Unidad</th>
@@ -116,7 +124,6 @@ if (!empty($_POST)) {
                                     $aIdComprobantes[]=$row["id_comprobante"];
                                     echo '<tr>';
                                     echo '<td class="d-none">'.$row["id_certificado_maestro_detalle"].'</td>';
-                                    echo '<td data-id="'.$row["id_tipo_item_certificado"].'">'.$row["tipo"].'</td>';
                                     echo '<td>'.$row["descripcion"].'</td>';
                                     echo '<td style="text-align:right">'.$row["cantidad"].'</td>';
                                     echo '<td data-id="'.$row["id_unidad_medida"].'">'.$row["unidad_medida"].'</td>';
@@ -130,7 +137,6 @@ if (!empty($_POST)) {
                                   <tfoot>
                                     <tr>
                                       <th class="d-none">ID</th>
-                                      <th>Tipo</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
                                       <th>Unidad</th>
@@ -160,7 +166,7 @@ if (!empty($_POST)) {
                                   <thead>
                                     <tr>
                                       <th class="d-none">ID</th>
-                                      <th>Descripción</th>
+                                      <th>Observación</th>
                                       <th>Tipo</th>
                                       <th>Letra</th>
                                       <th>Número</th>
@@ -177,7 +183,7 @@ if (!empty($_POST)) {
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                                   if(count($aIdComprobantes)>0){
-                                    $sql = " SELECT distinct fc.id, fc.descripcion, tc.tipo, lc.letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y'), fp.forma_pago, fc.total, m.moneda, ef.estado  FROM facturas_venta_detalle_x_certificados_avance fxc inner join facturas_venta_detalle fvd on fvd.id = fxc.id_factura_venta_detalle inner join facturas_venta fc on fc.id = fvd.id_factura_venta inner join tipos_comprobante tc on tc.id = fc.id_tipo_comprobante inner join letras_comprobante lc on lc.id = fc.id_letra_comprobante inner join cuentas c on c.id = fc.id_cuenta_destino inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda inner join estados_factura ef on ef.id = fc.id_estado WHERE fxc.id_certificado_avance = ".$_GET['id'];
+                                    $sql = " SELECT distinct fc.id, fc.observaciones, tc.tipo, lc.letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y'), fp.forma_pago, fc.total, m.moneda, ef.estado  FROM facturas_venta_detalle_x_certificados_avance fxc inner join facturas_venta_detalle fvd on fvd.id = fxc.id_factura_venta_detalle inner join facturas_venta fc on fc.id = fvd.id_factura_venta inner join tipos_comprobante tc on tc.id = fc.id_tipo_comprobante inner join letras_comprobante lc on lc.id = fc.id_letra_comprobante inner join cuentas c on c.id = fc.id_cuenta_destino inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda inner join estados_factura ef on ef.id = fc.id_estado WHERE fxc.id_certificado_avance = ".$_GET['id'];
                                     foreach ($pdo->query($sql) as $row) {
                                       echo '<tr>';
                                       echo '<td class="d-none">'. $row[0] . '</td>';
@@ -197,7 +203,7 @@ if (!empty($_POST)) {
                                   <tfoot>
                                     <tr>
                                       <th class="d-none">ID</th>
-                                      <th>Descripción</th>
+                                      <th>Observación</th>
                                       <th>Tipo</th>
                                       <th>Letra</th>
                                       <th>Número</th>
@@ -221,7 +227,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
 						            <a class="btn btn-primary" target="_blank" href="imprimirCertificadoAvance.php?id=<?=$id?>">Imprimir</a>
-                        <a href="listarCertificadosAvances.php?id_certificado_maestro=<?=$id?>" class="btn btn-light">Volver</a>
+                        <a href="listarCertificadosAvances.php?id_certificado_maestro=<?=$data['id_certificado_maestro']?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

@@ -16,14 +16,13 @@ foreach ($pdo->query($sql) as $row) {
     1=>$row["proyecto"],
     2=>$row["subsitio"],
     3=>$row["sitio"],
-    4=>$row["tipo"],
-    5=>$row["descripcion"],
-    6=>$row["cantidad"],
-    7=>$row["unidad_medida"],
-    8=>number_format($row["precio_unitario"],2),
-    9=>number_format($row["subtotal"],2),
-    10=>$row["aperturado"],
-    11=>$row["lote"],
+    4=>$row["descripcion"],
+    5=>$row["cantidad"],
+    6=>$row["unidad_medida"],
+    7=>number_format($row["precio_unitario"],2),
+    8=>number_format($row["subtotal"],2),
+    9=>$row["aperturado"],
+    10=>$row["lote"],
   ];
 }
 

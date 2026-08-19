@@ -23,7 +23,7 @@ if (!empty($ids)) {
 
 try {
   // Cabeceras de facturas compra
-  $qCab = $pdo->prepare("SELECT fc.id, fc.descripcion, tc.tipo, lc.letra, fc.numero,
+  $qCab = $pdo->prepare("SELECT fc.id, tc.tipo, lc.letra, fc.numero,
                               cu.razon_social, cu.cuit, e.empresa,
                               DATE_FORMAT(fc.fecha_emitida,'%Y%m%d') as fe,
                               fc.total
@@ -43,7 +43,7 @@ try {
 
   // Todos los items
   $qDet = $pdo->prepare("SELECT fc.id as factura_id, d.cantidad, d.precio,
-                              COALESCE(d.descripcion, d.texto_impreso, cc.descripcion, '') as descripcion_det
+                              COALESCE(d.descripcion, cc.descripcion, '') as descripcion_det
                        FROM facturas_compra fc
                        INNER JOIN facturas_compra_detalle d ON d.id_factura_compra = fc.id
                        LEFT JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable

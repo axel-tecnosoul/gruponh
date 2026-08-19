@@ -440,7 +440,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                       $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                       $placeholders = implode(',', array_fill(0, count($certIds), '?'));
                       $qCert = $pdo->prepare(
-                        "SELECT ca.id, cm.numero, cm.revision,
+                        "SELECT ca.id, cm.revision,
                                   DATE_FORMAT(ca.fecha_emision,'%d/%m/%Y') AS fecha_emision,
                                   ca.monto_total, ca.aprobado_cliente
                            FROM certificados_avances_cabecera ca
@@ -461,7 +461,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                                   <div class="list-group-item py-2">
                                     <div class="d-flex align-items-center justify-content-between">
                                       <div>
-                                        <strong>Cert. #<?= htmlspecialchars($cr['numero']) ?></strong>
+                                        <strong>Cert. #<?= htmlspecialchars($cr['id']) ?></strong>
                                         <span class="badge <?= $cr['aprobado_cliente'] ? 'badge-success' : 'badge-secondary' ?> ml-1">
                                           <?= $cr['aprobado_cliente'] ? 'Aprobado' : 'Pendiente' ?>
                                         </span>

@@ -378,3 +378,72 @@ TRUNCATE `regimenes_facturacion`;
 -- ---------------------------------------------------------------------------
 ALTER TABLE regimenes_facturacion ADD COLUMN signo_cpr TINYINT NOT NULL DEFAULT 1 AFTER monto;
 ALTER TABLE regimenes_facturacion ADD COLUMN signo_vta TINYINT NOT NULL DEFAULT 1 AFTER signo_cpr;
+
+-- ---------------------------------------------------------------------------
+-- TEXTO A IMPRIMIR POR LINEA EN FACTURAS DE VENTA + LIMPIEZA DE CAMPOS
+-- 1) facturas_venta_detalle: agregar descripcion (igual que facturas_compra_detalle)
+-- 2) texto_impreso nunca se escribia: se reemplaza por descripcion
+-- 3) Cabecera: descripcion de facturas_compra/facturas_venta se unifica en
+--    observaciones (el backfill de datos ya esta en las lineas 252-262)
+-- ---------------------------------------------------------------------------
+ALTER TABLE `facturas_venta_detalle`
+  ADD COLUMN `descripcion` varchar(255) DEFAULT NULL AFTER `id_concepto_contable`;
+
+ALTER TABLE `facturas_compra_detalle` DROP COLUMN `texto_impreso`;
+ALTER TABLE `facturas_venta_detalle` DROP COLUMN `texto_impreso`;
+
+ALTER TABLE `facturas_compra` DROP COLUMN `descripcion`;
+ALTER TABLE `facturas_venta` DROP COLUMN `descripcion`;
+
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 14: Cambiar nombre de columna numero a numero_x en certificados_maestros para evitar conflicto con palabra reservada.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE `certificados_maestros` CHANGE `numero` `numero_x` VARCHAR(99) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 15: Agregar columna cotizacion_dolar en certificados_avances_cabecera para registrar la cotización del dólar al momento de la certificación.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE certificados_avances_cabecera
+  ADD COLUMN cotizacion_dolar double NOT NULL DEFAULT 0 AFTER fecha_fin;
+
+-- Ejecutar manualmente. Este archivo no es ejecutado por la aplicación.
+-- Anticipos: vinculados al Certificado Maestro.
+CREATE TABLE IF NOT EXISTS `certificados_anticipos` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_certificado_maestro` INT(11) NOT NULL,
+  `fecha` DATE NOT NULL,
+  `monto_base` DOUBLE NOT NULL DEFAULT 0,
+  `porcentaje` DOUBLE NOT NULL DEFAULT 0,
+  `monto_anticipo` DOUBLE NOT NULL DEFAULT 0,
+  `observaciones` TEXT NULL,
+  `id_usuario` INT(11) NOT NULL,
+  `fecha_hora_alta` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_certificados_anticipos_cm` (`id_certificado_maestro`),
+  CONSTRAINT `fk_certificados_anticipos_cm`
+    FOREIGN KEY (`id_certificado_maestro`) REFERENCES `certificados_maestros` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Ajustes: vinculados a un Certificado de Avance.
+CREATE TABLE IF NOT EXISTS `certificados_ajustes` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_certificado_avance` INT(11) NOT NULL,
+  `fecha` DATE NOT NULL,
+  `tipo_ajuste` VARCHAR(50) NOT NULL,
+  `observaciones` TEXT NULL,
+  `monto` DOUBLE NOT NULL DEFAULT 0,
+  `id_usuario` INT(11) NOT NULL,
+  `fecha_hora_alta` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_certificados_ajustes_ca` (`id_certificado_avance`),
+  CONSTRAINT `fk_certificados_ajustes_ca`
+    FOREIGN KEY (`id_certificado_avance`) REFERENCES `certificados_avances_cabecera` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Esta primera etapa no actualiza los acumulados de certificados_maestros
+-- ni de certificados_avances_cabecera.

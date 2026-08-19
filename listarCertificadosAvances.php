@@ -7,7 +7,7 @@ if (empty($_SESSION['user'])) {
 include 'database.php';
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT cm.id,cm.numero AS numero_cm,occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ? ";
+$sql = "SELECT cm.id,occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$_GET["id_certificado_maestro"]]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -43,7 +43,7 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
         <!-- Right sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Certificados de Avance ("."CM #".$data['numero_cm'].")";
+          $ubicacion="Certificados de Avance ("."CM #".$data['id'].")";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -73,6 +73,8 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
 					            echo '&nbsp;&nbsp;';*/?>
 
                       <a href="#" id="link_ver_occ" title="Ver Certificado de Avance" style="color: midnightblue;" class="fa fa-lg"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver"></a>&nbsp;
+                      <a href="#" id="link_ver_ajustes" title="Ver Ajustes" style="color: midnightblue;" class="fa fa-lg"><img src="img/edit3.png" width="24" height="20" border="0" alt="Ver Ajustes"></a>&nbsp;
+                      <a href="#" id="link_nuevo_ajuste" title="Nuevo Ajuste" style="color: midnightblue;" class="fa fa-lg"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Ajuste"></a>&nbsp;
                     </h5>
                   </div>
                   <div class="card-body">
@@ -82,11 +84,11 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
                           <tr>
                             <th class="d-none">ID</th>
 							<th>Orden</th>
-                            <th>N° CM</th>
                             <th>Fecha emision</th>
                             <th>Fecha inicio</th>
                             <th>Fecha fin</th>
                             <th>Monto</th>
+                            <th>Cotiz. dolar</th>
                             <th class="d-none">Acumulado avances</th>
                             <th class="d-none">Acumulado anticipos</th>
                             <th class="d-none">Acumulado desacopios</th>
@@ -100,11 +102,11 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
                           <tr>
                             <th class="d-none">ID</th>
 							<th>Orden</th>
-                            <th>N° CM</th>
                             <th>Fecha emision</th>
                             <th>Fecha inicio</th>
                             <th>Fecha fin</th>
                             <th>Monto</th>
+                            <th>Cotiz. dolar</th>
                             <th class="d-none">Acumulado avances</th>
                             <th class="d-none">Acumulado anticipos</th>
                             <th class="d-none">Acumulado desacopios</th>
@@ -117,17 +119,17 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
                         <tbody><?php
                           
                           $pdo = Database::connect();
-                          $sql = "SELECT cac.id,cm.numero AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones,cac.aprobado_cliente FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".$_GET["id_certificado_maestro"];
+                          $sql = "SELECT cac.id,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.cotizacion_dolar,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones,cac.aprobado_cliente FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".$_GET["id_certificado_maestro"];
                           $count = 1;
                           foreach ($pdo->query($sql) as $row) {
                             echo '<tr>';
                             echo '<td class="d-none">'.$row["id"].'</td>';
 							echo '<td>'.$count.'</td>';
-                            echo '<td>'.$row["numero_cm"].'</td>';
                             echo '<td>'.$row["fecha_emision"].'</td>';
                             echo '<td>'.$row["fecha_inicio"].'</td>';
                             echo '<td>'.$row["fecha_fin"].'</td>';
                             echo '<td>'.$row["moneda"]." ".number_format($row["monto_total"],2).'</td>';
+                            echo '<td>$'.$row["cotizacion_dolar"].'</td>';
                             echo '<td class="d-none">'.$row["moneda"]." ".number_format($row["monto_acumulado_avances"],2)."</td>";
                             echo '<td class="d-none">'.$row["moneda"]." ".number_format($row["monto_acumulado_anticipos"],2)."</td>";
                             echo '<td class="d-none">'.$row["moneda"]." ".number_format($row["monto_acumulado_desacopios"],2)."</td>";
@@ -172,7 +174,6 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
                         <thead>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th>Tipo</th>
                             <th>Descripcion</th>
                             <th>Cantidad</th>
                             <th>Unidad de Medida</th>
@@ -185,7 +186,6 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
 						            <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
-                            <th>Tipo</th>
                             <th>Descripcion</th>
                             <th>Cantidad</th>
                             <th>Unidad de Medida</th>
@@ -207,6 +207,38 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
         </div>
         <!-- footer start-->
         <?php include("footer.php"); ?>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalAprobarAvance" tabindex="-1" role="dialog" aria-labelledby="modalAprobarAvanceLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalAprobarAvanceLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea aprobar el certificado de avance?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnAprobarAvance">Aprobar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalEliminar" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el certificado de avance?</div>
+          <div class="modal-footer">
+            <a href="#" class="btn btn-primary" id="btnEliminarAvance">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -321,6 +353,8 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
             $("#link_modificar_ot").attr("href","#");
 			      $("#link_aprobar_avance").attr("href","#");
             $("#link_ver_occ").attr("href","#");
+            $("#link_ver_ajustes").attr("href","#");
+            $("#link_nuevo_ajuste").attr("href","#");
           }else{
             table.rows().nodes().each( function (rowNode, index) {
               $(rowNode).removeClass("selected");
@@ -331,6 +365,8 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
             $("#link_modificar_ot").attr("href","modificarCertificadoAvance.php?id="+id_occ);
             $("#link_aprobar_avance").attr("href","aprobarCertificadoAvance.php?id="+id_occ);
             $("#link_ver_occ").attr("href","verCertificadoAvance.php?id="+id_occ);
+            $("#link_ver_ajustes").attr("href","listarAjustesCertificadoAvance.php?id_certificado_avance="+id_occ);
+            $("#link_nuevo_ajuste").attr("href","nuevoAjusteCertificadoAvance.php?id_certificado_avance="+id_occ);
           }
         });
 
@@ -348,11 +384,21 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
           }
         })
 		
-        $("#link_aprobar_avance").on("click",function(){
-          let l=document.location.href;
-            if(this.href==l || this.href==l+"#"){
-              alert("Por favor seleccione un certificado para aprobar")
+        $("#link_aprobar_avance").on("click",function(e){
+          e.preventDefault();
+          let fila_selected=$(document).find("#tablaOCC tbody tr.selected");
+          if(fila_selected.length==0){
+            alert("Por favor seleccione un certificado para aprobar")
+          }else{
+            let aprobado=fila_selected.find("td:nth-child(14)").html();
+            let id=fila_selected.find("td:nth-child(1)").html();
+            if(aprobado=="Si"){
+              alert("El certificado ya esta aprobado")
+            }else{
+              $("#btnAprobarAvance").attr("href","aprobarCertificadoAvance.php?id="+id);
+              $("#modalAprobarAvance").modal("show");
             }
+          }
         })
 
         $("#link_eliminar_avance").on("click",function(){
@@ -370,7 +416,8 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
             if(aprobado=="Si"){
               alert("El certificado ya esta aprobado y no puede ser eliminado")
             }else{
-              document.location.href="eliminarCertificadoAvance.php?id="+id
+              $("#btnEliminarAvance").attr("href","eliminarCertificadoAvance.php?id="+id);
+              $("#modalEliminar").modal("show");
             }
           }
         })
@@ -379,6 +426,22 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
             alert("Por favor seleccione una orden de compra cliente para ver detalle")
+          }
+        })
+
+        $("#link_ver_ajustes").on("click",function(e){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            e.preventDefault();
+            alert("Por favor seleccione un certificado para ver sus ajustes")
+          }
+        })
+
+        $("#link_nuevo_ajuste").on("click",function(e){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            e.preventDefault();
+            alert("Por favor seleccione un certificado para cargar un ajuste")
           }
         })
 
@@ -433,7 +496,7 @@ $data = $q->fetch(PDO::FETCH_ASSOC);
               responsive: false,
 			  "columnDefs": [
 				{
-				  "targets": [0,7],
+				  "targets": [0,6],
 				  "className": 'd-none'
 				}
 			  ],

@@ -69,13 +69,12 @@ if (!empty($_POST)) {
   $fechaFin = $dataOcc['fecha_vencimiento'];
   $idMoneda = $dataOcc['id_moneda'];
   $montoTotal = $dataOcc['monto'];
-  $numero = "0";
   $cotizacionDolar = 0;
 
   if ($isEdit) {
-    $sql = "UPDATE certificados_maestros SET id_occ=?, numero=?, fecha_emision=?, fecha_inicio=?, fecha_fin=?, id_moneda=?, cotizacion_dolar=?, porcentaje_anticipo=?, monto_total=?, observaciones=? WHERE id = ?";
+    $sql = "UPDATE certificados_maestros SET id_occ=?, fecha_emision=?, fecha_inicio=?, fecha_fin=?, id_moneda=?, cotizacion_dolar=?, porcentaje_anticipo=?, monto_total=?, observaciones=? WHERE id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$idOcc, $numero, $fechaEmision, $fechaInicio, $fechaFin, $idMoneda, $cotizacionDolar, $porcentajeAnticipo, $montoTotal, $observaciones, $id]);
+    $q->execute([$idOcc, $fechaEmision, $fechaInicio, $fechaFin, $idMoneda, $cotizacionDolar, $porcentajeAnticipo, $montoTotal, $observaciones, $id]);
 
     $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de Certificado Maestro','Certificado Maestro','verCertificadoMaestro.php?id=$id')";
     $q = $pdo->prepare($sql);
@@ -90,9 +89,9 @@ if (!empty($_POST)) {
     exit;
   }
 
-  $sql = "INSERT INTO certificados_maestros (id_occ, numero, revision, fecha_emision, fecha_inicio, fecha_fin, id_moneda, cotizacion_dolar, porcentaje_anticipo, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,0,?,?,?,?,?,?,?,0,0,0,0,0,?)";
+  $sql = "INSERT INTO certificados_maestros (id_occ, revision, fecha_emision, fecha_inicio, fecha_fin, id_moneda, cotizacion_dolar, porcentaje_anticipo, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,0,?,?,?,?,?,?,?,0,0,0,0,0,?)";
   $q = $pdo->prepare($sql);
-  $q->execute([$idOcc, $numero, $fechaEmision, $fechaInicio, $fechaFin, $idMoneda, $cotizacionDolar, $porcentajeAnticipo, $montoTotal, $observaciones]);
+  $q->execute([$idOcc, $fechaEmision, $fechaInicio, $fechaFin, $idMoneda, $cotizacionDolar, $porcentajeAnticipo, $montoTotal, $observaciones]);
 
   $id_certificado_maestro = $pdo->lastInsertId();
 

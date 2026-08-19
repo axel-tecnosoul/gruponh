@@ -55,7 +55,7 @@ if (!empty($_POST)) {
   if(isset($_POST['btn1'])){
     $redirect="listarCertificadosAvances.php?id_certificado_maestro=".$id_certificado_maestro;
   }elseif(isset($_POST['btn2'])){
-    $redirect="modificarCertificadoAvanceDetalle.php?id_certificado_avance=".$id;
+    $redirect="nuevoCertificadoAvanceDetalle.php?id_certificado_avance=".$id;
   }
 
   if ($modoDebug==1) {

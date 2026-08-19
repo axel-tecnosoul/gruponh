@@ -38,9 +38,9 @@
                     . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
             }
 
-            $sql = "UPDATE `facturas_compra` set `descripcion` = ?, `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `numero` = ?, `id_cuenta_origen` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_recibida` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ?, `id_estado` = ? where id = ?";
+            $sql = "UPDATE `facturas_compra` set `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `numero` = ?, `id_cuenta_origen` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_recibida` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ?, `id_estado` = ? where id = ?";
             $q = $pdo->prepare($sql);
-            $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$id]);
+            $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$id]);
 
             // Gestionar OC vinculadas
             $nuevasOCs = !empty($_POST['id_orden_compra']) ? (is_array($_POST['id_orden_compra']) ? array_map('intval', $_POST['id_orden_compra']) : [intval($_POST['id_orden_compra'])]) : [];
@@ -119,7 +119,7 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `descripcion`, `id_tipo_comprobante`, `id_letra_comprobante`, `numero`, `id_cuenta_origen`, `id_empresa`, `fecha_emitida`, `fecha_recibida`, `id_condicion_pago`, `subtotal_gravado`, `subtotal_no_gravado`, `otros`, `iva`, `total`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario`, `id_estado`, `exportada` FROM `facturas_compra` WHERE id = ? ";
+        $sql = "SELECT `id`, `id_tipo_comprobante`, `id_letra_comprobante`, `numero`, `id_cuenta_origen`, `id_empresa`, `fecha_emitida`, `fecha_recibida`, `id_condicion_pago`, `subtotal_gravado`, `subtotal_no_gravado`, `otros`, `iva`, `total`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario`, `id_estado`, `exportada` FROM `facturas_compra` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -174,10 +174,6 @@
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Descripción(*)</label>
-							<div class="col-sm-9"><textarea name="descripcion" autofocus class="form-control" required="required"><?php echo $data['descripcion']; ?></textarea></div>
-							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Tipo Comprobante(*)</label>
 							<div class="col-sm-9">

@@ -22,9 +22,9 @@
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         
-        $sql = "UPDATE `facturas_venta` set `descripcion` = ?, `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `id_proyecto` = ?, `numero` = ?, `id_cuenta_destino` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_enviada` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ? where id = ?";
+        $sql = "UPDATE `facturas_venta` set `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `id_proyecto` = ?, `numero` = ?, `id_cuenta_destino` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_enviada` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ? where id = ?";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['descripcion'],$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['id_proyecto'],$_POST['numero'],$_POST['id_cuenta_destino'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_enviada'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_GET['id']]);
+        $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['id_proyecto'],$_POST['numero'],$_POST['id_cuenta_destino'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_enviada'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_GET['id']]);
 		
 		$sql = "delete from facturas_venta_otros where id_factura_venta = ? ";
 		$q = $pdo->prepare($sql);
@@ -79,7 +79,7 @@
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $sql = "SELECT `id`, `descripcion`, `id_tipo_comprobante`, `id_letra_comprobante`, `id_proyecto`, `numero`, `id_cuenta_destino`, `id_empresa`, `fecha_emitida`, `fecha_enviada`, `id_condicion_pago`, `subtotal_gravado`, `subtotal_no_gravado`, `otros`, `iva`, `total`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario` FROM `facturas_venta` WHERE id = ? ";
+        $sql = "SELECT `id`, `id_tipo_comprobante`, `id_letra_comprobante`, `id_proyecto`, `numero`, `id_cuenta_destino`, `id_empresa`, `fecha_emitida`, `fecha_enviada`, `id_condicion_pago`, `subtotal_gravado`, `subtotal_no_gravado`, `otros`, `iva`, `total`, `id_moneda`, `cotizacion`, `observaciones`, `id_usuario` FROM `facturas_venta` WHERE id = ? ";
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -239,10 +239,6 @@
 							</select>
 							</div>
 							</div>	
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Descripción(*)</label>
-							<div class="col-sm-9"><textarea name="descripcion" autofocus class="form-control" required="required"><?php echo $data['descripcion']; ?></textarea></div>
-							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Fecha Emitida(*)</label>
 							<div class="col-sm-9"><input name="fecha_emitida" id="fecha_emitida" type="date" onfocus="this.showPicker()" maxlength="99" class="form-control" value="<?php echo $data['fecha_emitida']; ?>" required="required"></div>

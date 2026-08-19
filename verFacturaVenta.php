@@ -48,7 +48,7 @@ $detalles = $qDet->fetchAll(PDO::FETCH_ASSOC);
 
 $detallesConImputaciones = [];
 foreach ($detalles as $det) {
-  $qImp = $pdo->prepare("SELECT ca.id, cm.numero, ca.monto_total, ca.fecha_emision,
+  $qImp = $pdo->prepare("SELECT ca.id, ca.monto_total, ca.fecha_emision,
           ca.aprobado_cliente, cm.revision
       FROM facturas_venta_detalle_x_certificados_avance fvdxca
       INNER JOIN certificados_avances_cabecera ca ON ca.id = fvdxca.id_certificado_avance
@@ -196,7 +196,7 @@ function fmtV($val) {
                                 $impsHtml .= '</tr></thead><tbody>';
                                 foreach ($det['imputaciones'] as $imp) {
                                   $impsHtml .= '<tr>';
-                                  $impsHtml .= '<td style="padding:2px 4px;">Cert. #' . htmlspecialchars($imp['numero']) . ' (Rev ' . htmlspecialchars($imp['revision']) . ')</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;">Cert. #' . htmlspecialchars($imp['id']) . ' (Rev ' . htmlspecialchars($imp['revision']) . ')</td>';
                                   $impsHtml .= '<td style="padding:2px 4px;text-align:right;">1</td>';
                                   $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
                                   $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';

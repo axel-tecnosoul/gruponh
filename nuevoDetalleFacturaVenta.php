@@ -170,7 +170,7 @@
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sql = "SELECT cac.id,cm.numero AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id inner join occ occ on occ.id = cm.id_occ WHERE cac.aprobado_cliente = 1 and occ.id_cuenta_cliente = ".$idCuentaCliente;
+							$sql = "SELECT cac.id,cm.id AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id inner join occ occ on occ.id = cm.id_occ WHERE cac.aprobado_cliente = 1 and occ.id_cuenta_cliente = ".$idCuentaCliente;
 							$count = 1;
 							foreach ($pdo->query($sql) as $row) {
 								echo "<option value='".$row['id']."'";

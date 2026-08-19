@@ -9,7 +9,7 @@ if (!$idCliente) { echo '[]'; exit; }
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT cac.id, cm.numero AS numero_cm,
+$sql = "SELECT cac.id, cm.id AS numero_cm,
                date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,
                date_format(cac.fecha_inicio,'%d/%m/%y')  AS fecha_inicio,
                date_format(cac.fecha_fin,'%d/%m/%y')     AS fecha_fin,

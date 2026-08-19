@@ -188,7 +188,7 @@ $id_estado = $filters['id_estado'] ?? [];
                         if ($hasSearched):
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sql = "SELECT fv.id, fv.descripcion, tc.tipo, lc.letra, fv.numero,
+                          $sql = "SELECT fv.id, fv.observaciones, tc.tipo, lc.letra, fv.numero,
                                          c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'), fp.forma_pago,
                                           fv.subtotal_no_gravado, m.moneda,
                                           ef.estado,

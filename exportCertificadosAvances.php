@@ -14,7 +14,6 @@ header('Content-Disposition: attachment; filename="certificados_de_avance.xls"')
 					<thead>
 		        <tr>
               <th>ID</th>
-              <th><?=htmlentities("N° CM")?></th>
               <th>Fecha emision</th>
               <th>Fecha inicio</th>
               <th>Fecha fin</th>
@@ -31,12 +30,11 @@ header('Content-Disposition: attachment; filename="certificados_de_avance.xls"')
           <tbody><?php 
             include 'database.php';
             $pdo = Database::connect();
-            $sql = "SELECT cac.id,cm.numero AS numero_cm,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".$_GET["id_certificado_maestro"];
+            $sql = "SELECT cac.id, date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".$_GET["id_certificado_maestro"];
             //echo $sql;
             foreach ($pdo->query($sql) as $row) {
               echo '<tr>';
               echo '<td>'.$row["id"].'</td>';
-              echo '<td>'.$row["numero_cm"].'</td>';
               echo '<td>'.$row["fecha_emision"].'</td>';
               echo '<td>'.$row["fecha_inicio"].'</td>';
               echo '<td>'.$row["fecha_fin"].'</td>';

@@ -17,15 +17,25 @@ function abrirMenu($op) {
     } else if ($op == "3") {
         if (($current_page == "listarCuentas.php") ||
         ($current_page == "reporteCentrosCosto.php") || 		
-        ($current_page == "listarSubcuentas.php") || 
-        ($current_page == "listarFacturasVenta.php") || 
-        ($current_page == "listarEventos.php") || 
-        ($current_page == "listarOrdenesCompraClientes.php") || 
-        ($current_page == "listarCertificadosMaestros.php") || 
-        ($current_page == "listarRegimenes.php") || 
-		($current_page == "listarConceptosContables.php") || 
-        ($current_page == "listarPolizas.php") || 
-        ($current_page == "listarSucesos.php")) {
+		($current_page == "listarSubcuentas.php") ||
+		($current_page == "listarFacturasVenta.php") ||
+		($current_page == "listarEventos.php") ||
+		($current_page == "listarOrdenesCompraClientes.php") ||
+		($current_page == "listarCertificadosMaestros.php") ||
+		($current_page == "listarCertificadosAvances.php") ||
+		($current_page == "listarAjustesCertificadoAvance.php") ||
+		($current_page == "nuevoAjusteCertificadoAvance.php") ||
+		($current_page == "nuevoCertificadoAvance.php") ||
+		($current_page == "modificarCertificadoAvance.php") ||
+		($current_page == "nuevoCertificadoAvanceDetalle.php") ||
+		($current_page == "modificarCertificadoAvanceDetalle.php") ||
+		($current_page == "verCertificadoAvance.php") ||
+		($current_page == "imprimirCertificadoAvance.php") ||
+		($current_page == "exportCertificadosAvances.php") ||
+		($current_page == "listarRegimenes.php") ||
+		($current_page == "listarConceptosContables.php") ||
+		($current_page == "listarPolizas.php") ||
+		($current_page == "listarSucesos.php")) {
             echo 'class="active"';
         }
     } else if ($op == "4") {
