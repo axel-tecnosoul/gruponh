@@ -330,35 +330,9 @@ function renderGruposAvance($grupos, $moneda) {
       $total_anterior_grupo += $cantidad_anterior_total * $precio_unitario_total;
       $total_actual_grupo += $cantidad_actual_total * $precio_unitario_total;
       $total_acumulado_grupo += ($cantidad_anterior_total + $cantidad_actual_total) * $precio_unitario_total;
-    }
-    ?>
-    <div class="<?=$modo === 'agrupar' ? 'occ-group-aperturado-wrap ' : ''?>mb-3"><?php
-      if ($modo === 'agrupar') { ?>
-        <small class="d-block text-muted mb-2">Aplica al grupo OCC: <?=escaparAvance(implode(', ', $grupo['occ_ids']))?></small><?php
-      } else { ?>
-        <small class="d-block font-weight-bold text-primary mb-1">Lotes por item</small><?php
-      } ?>
-      <div class="border rounded px-2 py-2 occ-lote-inline-row">
-      <div class="table-responsive mb-2">
-        <table class="table table-sm table-bordered mb-0 occ-lote-summary-table">
-          <thead>
-            <tr>
-              <th>Aperturado</th>
-              <th>Lote</th>
-              <th>Proyecto</th>
-              <th class="text-right">Monto CM</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><?=escaparAvance($grupo['aperturado'] !== '' ? $grupo['aperturado'] : 'Sin identificador')?></td>
-              <td><?=escaparAvance($grupo['lote'] !== '' ? $grupo['lote'] : '-')?></td>
-              <td><?=escaparAvance($grupo['proyecto'] !== '' ? $grupo['proyecto'] : '-')?></td>
-              <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $grupo['subtotal_cm'], 2, ',', '.')?></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    }?>
+    
+    <div class="occ-group-aperturado-wrap border rounded px-2 py-2 occ-lote-inline-row">
       <div class="table-responsive">
         <table class="table table-bordered mb-0 occ-breakdown-table">
           <thead>
@@ -444,8 +418,8 @@ function renderGruposAvance($grupos, $moneda) {
           </tfoot>
         </table>
       </div>
-      </div>
     </div><?php
+
   }
 }
 
