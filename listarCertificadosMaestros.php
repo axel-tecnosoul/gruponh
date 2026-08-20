@@ -4,7 +4,15 @@ if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
 }
-include 'database.php';?>
+include 'database.php';
+require_once 'manejarFiltros.php';
+
+$filters = gestionarFiltros('listarCertificadosMaestros');
+
+$occ = $filters['occ'] ?? '';
+$fecha = $filters['fecha'] ?? '';
+$fechah = $filters['fechah'] ?? '';?>
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -46,13 +54,14 @@ include 'database.php';?>
                   <div class="card-body">
                     <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarCertificadosMaestros.php">
                       <div class="form-group mb-0">
-                        Nro OCC:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['occ'])) echo $_POST['occ'] ?>" name="occ">
+                        Nro OCC:&nbsp;<input class="form-control" size="3" type="text" value="<?=htmlspecialchars($occ, ENT_QUOTES, 'UTF-8')?>" name="occ">
                       </div>
                       <div class="form-group mb-0">
-                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
+                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=htmlspecialchars($fecha, ENT_QUOTES, 'UTF-8')?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=htmlspecialchars($fechah, ENT_QUOTES, 'UTF-8')?>" name="fechah">
                       </div>
                       <div class="form-group mb-0">
                         <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarCertificadosMaestros.php'">Buscar</button>
+                        <a href="listarCertificadosMaestros.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                       </div>
                     </form>
                   </div>
@@ -96,6 +105,7 @@ include 'database.php';?>
                             <th>N° CM</th>
                             <th>N° OCC</th>
                             <th>Fecha emision</th>
+                            <th>% Anticipo</th>
                             <th>Fecha inicio</th>
                             <th>Fecha fin</th>
                             <th>Monto</th>
@@ -116,6 +126,7 @@ include 'database.php';?>
                             <th>N° CM</th>
                             <th>N° OCC</th>
                             <th>Fecha emision</th>
+                            <th>% Anticipo</th>
                             <th>Fecha inicio</th>
                             <th>Fecha fin</th>
                             <th>Monto</th>
@@ -131,18 +142,18 @@ include 'database.php';?>
                           </tr>
                         </tfoot>
                         <tbody><?php 
-                          if (!empty($_POST)) {
+                          if (!empty($filters)) {
 							  
                             $pdo = Database::connect();
-                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,CASE WHEN cm.fecha_fin = '0000-00-00' THEN '-' ELSE date_format(cm.fecha_fin,'%d/%m/%y') END AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,(SELECT ca2.monto_anticipo FROM certificados_anticipos ca2 WHERE ca2.id_certificado_maestro=cm.id ORDER BY ca2.id DESC LIMIT 1) AS monto_anticipo_registrado,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
-                            if (!empty($_POST['occ'])) {
-                              $sql .= " AND occ.numero = '".$_POST['occ']."' ";
+                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,CASE WHEN cm.fecha_fin = '0000-00-00' THEN '-' ELSE date_format(cm.fecha_fin,'%d/%m/%y') END AS fecha_fin, cm.porcentaje_anticipo, m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,(SELECT ca2.monto_anticipo FROM certificados_anticipos ca2 WHERE ca2.id_certificado_maestro=cm.id ORDER BY ca2.id DESC LIMIT 1) AS monto_anticipo_registrado,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
+                            if (!empty($occ)) {
+                              $sql .= " AND occ.numero = '".$occ."' ";
                             }
-                            if (!empty($_POST['fecha'])) {
-                              $sql .= " AND cm.fecha_emision >= '".$_POST['fecha']."' ";
+                            if (!empty($fecha)) {
+                              $sql .= " AND cm.fecha_emision >= '".$fecha."' ";
                             }
-                            if (!empty($_POST['fechah'])) {
-                              $sql .= " AND cm.fecha_emision <= '".$_POST['fechah']."' ";
+                            if (!empty($fechah)) {
+                              $sql .= " AND cm.fecha_emision <= '".$fechah."' ";
                             }
 
                             foreach ($pdo->query($sql) as $row) {
@@ -163,11 +174,12 @@ include 'database.php';?>
                               
                               $saldoPendiente=$montoTotalCertificado-$montoTotalAvances-$montoTotalAnticipos-$montoTotalDesacopios-$montoTotalDescuentos-$montoTotalAjustes?>
 
-                              <tr>
+                              <tr data-tiene-anticipo="<?=$row["monto_anticipo_registrado"] !== null ? '1' : '0'?>">
                                 <td class="d-none"><?=$row["id_cm"]?></td>
                                 <td><?=$row["id_cm"]?></td>
                                 <td><?=$row["numero_occ"]?></td>
                                 <td><?=$row["fecha_emision"]?></td>
+                                <td><?=$row["porcentaje_anticipo"]?>%</td>
                                 <td><?=$row["fecha_inicio"]?></td>
                                 <td><?=$row["fecha_fin"]?></td>
                                 <td><?=$row["moneda"]." ".number_format($row["monto_total"],2)?></td>
@@ -441,13 +453,37 @@ include 'database.php';?>
           }
         })
 
-        $("#link_nuevo_anticipo").on("click",function(e){
-          let l=document.location.href;
-          if(this.href==l || this.href==l+"#"){
+        $("#link_nuevo_anticipo").on("click", function(e) {
+          let filaSeleccionada = $("#tablaOCC tbody tr.selected");
+
+          if (filaSeleccionada.length === 0) {
             e.preventDefault();
-            alert("Por favor seleccione un certificado maestro para cargar un anticipo")
+            alert("Por favor seleccione un certificado maestro para cargar un anticipo");
+            return;
           }
-        })
+
+          let textoPorcentaje = filaSeleccionada.find("td:nth-child(5)").text().trim().replace("%", "").replace(",", ".");
+
+          let porcentajeAnticipo = parseFloat(textoPorcentaje);
+          let tieneAnticipo = filaSeleccionada.attr("data-tiene-anticipo") === "1";
+          let advertencias = [];
+
+          if (tieneAnticipo) {
+            advertencias.push("El Certificado Maestro ya tiene un anticipo registrado. Si continua, editara ese anticipo.");
+          }
+
+          if (porcentajeAnticipo === 0) {
+            advertencias.push("El Certificado Maestro tiene un porcentaje de anticipo del 0%.");
+          }
+
+          if (advertencias.length > 0) {
+            let continuar = confirm(advertencias.join("\n\n") + "\n\n¿Esta seguro de que desea continuar?");
+
+            if (!continuar) {
+              e.preventDefault();
+            }
+          }
+        });
 
         $("#link_ver_occ").on("click",function(){
           let l=document.location.href;
