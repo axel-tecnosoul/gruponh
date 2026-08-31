@@ -8,14 +8,29 @@ if (empty($_SESSION['user'])) {
 require 'database.php';
 
 $hoy = date("Y-m-d");
+$mesAnterior = (new DateTime('first day of this month'))->modify('-1 month');
+$fechaInicioSugerida = $mesAnterior->format('Y-m-d');
+$fechaFinSugerida = $mesAnterior->format('Y-m-t');
+$idCertificadoMaestro = (int) ($_GET['id'] ?? $_GET['id_certificado_maestro'] ?? 0);
+
+if ($idCertificadoMaestro <= 0) {
+  header("Location: listarCertificadosMaestros.php");
+  exit;
+}
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT m.moneda FROM certificados_maestros cm INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ?";
+$sql = "SELECT m.moneda, cm.aprobado_cliente FROM certificados_maestros cm INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ?";
 $q = $pdo->prepare($sql);
-$q->execute([$_GET["id"]]);
+$q->execute([$idCertificadoMaestro]);
 $monedaMaster = $q->fetch(PDO::FETCH_ASSOC);
+
+if (empty($monedaMaster) || (int) ($monedaMaster['aprobado_cliente'] ?? 0) !== 1) {
+  Database::disconnect();
+  die("El Certificado Maestro debe estar aprobado antes de crear un Certificado de Avance.");
+}
+
 $esDolar = false;
 if (!empty($monedaMaster) && (stripos($monedaMaster["moneda"], 'dolar') !== false ||
     stripos($monedaMaster["moneda"], 'dólar') !== false ||
@@ -32,9 +47,17 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "INSERT INTO certificados_avances_cabecera (id_certificado_maestro, fecha_emision, fecha_inicio, fecha_fin, cotizacion_dolar, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,?,?,?,0,0,0,0,0,0,?)";
+  $sql = "SELECT COALESCE(MAX(nro_certificado),0) + 1 AS proximo_nro FROM certificados_avances_cabecera WHERE id_certificado_maestro = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$_GET["id_certificado_maestro"], $_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"], !empty($_POST["cotizacion_dolar"]) ? $_POST["cotizacion_dolar"] : 0, $_POST["observaciones"]]);
+  $q->execute([$idCertificadoMaestro]);
+  $nroCertificado = (int) $q->fetchColumn();
+  if ($nroCertificado <= 0) {
+    $nroCertificado = 1;
+  }
+
+  $sql = "INSERT INTO certificados_avances_cabecera (id_certificado_maestro, nro_certificado, nro_revision, fecha_emision, fecha_inicio, fecha_fin, cotizacion_dolar, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,1,?,?,?,?,0,0,0,0,0,0,?)";
+  $q = $pdo->prepare($sql);
+   $q->execute([$idCertificadoMaestro, $nroCertificado, $_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"], !empty($_POST["cotizacion_dolar"]) ? $_POST["cotizacion_dolar"] : 0, $_POST["observaciones"]]);
 
   $id_certificado_avance = $pdo->lastInsertId();
 
@@ -43,8 +66,9 @@ if (!empty($_POST)) {
   $q->execute(array($_SESSION['user']['id']));
 
   Database::disconnect();
-  //header("Location: listarOrdenesCompraClientes.php");
-  header("Location: nuevoCertificadoAvanceDetalle.php?id_certificado_avance=".$id_certificado_avance);
+   //header("Location: listarOrdenesCompraClientes.php");
+   header("Location: nuevoCertificadoAvanceDetalle.php?id_certificado_avance=".$id_certificado_avance);
+   exit;
 }?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,7 +102,7 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" action="nuevoCertificadoAvance.php?id_certificado_maestro=<?=$_GET["id"]?>" enctype="multipart/form-data">
+                    <form class="form theme-form" role="form" method="post" action="nuevoCertificadoAvance.php?id=<?=$idCertificadoMaestro?>" enctype="multipart/form-data">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -88,11 +112,11 @@ if (!empty($_POST)) {
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Inicio(*)</label>
-                            <div class="col-sm-9"><input name="fecha_inicio" id="fecha_inicio" type="date" onfocus="this.showPicker()" class="form-control" required="required" value=""></div>
+                            <div class="col-sm-9"><input name="fecha_inicio" id="fecha_inicio" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$fechaInicioSugerida?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
-                            <div class="col-sm-9"><input name="fecha_fin" id="fecha_fin" type="date" onfocus="this.showPicker()" class="form-control" required="required" value=""></div>
+                            <div class="col-sm-9"><input name="fecha_fin" id="fecha_fin" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$fechaFinSugerida?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Cotización Dólar</label>
@@ -120,7 +144,7 @@ if (!empty($_POST)) {
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
                         <button class="btn btn-primary" type="submit">Crear y agregar Detalle</button>
-						            <a href="listarCertificadosAvances.php?id_certificado_maestro=<?=$_GET["id"]?>" class="btn btn-light">Volver</a>
+                            <a href="listarCertificadosAvances.php?id_certificado_maestro=<?=$idCertificadoMaestro?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>
                   </form>

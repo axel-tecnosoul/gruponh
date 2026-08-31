@@ -65,6 +65,13 @@ try {
 
     $pdo->beginTransaction();
 
+    $sqlApproval = "SELECT aprobado_cliente FROM certificados_maestros WHERE id = ? FOR UPDATE";
+    $qApproval = $pdo->prepare($sqlApproval);
+    $qApproval->execute([$id_certificado_maestro]);
+    if ((int) $qApproval->fetchColumn() === 1) {
+      throw new Exception("El Certificado Maestro está aprobado y no puede modificarse.");
+    }
+
     // Verificar avances antes de eliminar
     $sqlAv = "SELECT COUNT(*) FROM certificados_avances_detalle 
               WHERE id_certificado_maestro_detalle IN (
@@ -98,6 +105,13 @@ try {
     $id_certificado_maestro = $data['id_certificado_maestro'];
     $id_tipo_item_old=$data["id_tipo_item_certificado"];
     $subtotal_old=$data["subtotal"];
+
+    $sqlApproval = "SELECT aprobado_cliente FROM certificados_maestros WHERE id = ?";
+    $qApproval = $pdo->prepare($sqlApproval);
+    $qApproval->execute([$id_certificado_maestro]);
+    if ((int) $qApproval->fetchColumn() === 1) {
+      throw new Exception("El Certificado Maestro está aprobado y no puede modificarse.");
+    }
 
     $column_name_old = $column_names[$id_tipo_item_old];
     $sql = "UPDATE certificados_maestros SET $column_name_old = $column_name_old - ? WHERE id = ?";

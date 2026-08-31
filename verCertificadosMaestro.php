@@ -19,7 +19,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT cm.id, occ.numero AS numero_occ,date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.cotizacion_dolar,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ? ";
+  $sql = "SELECT cm.id, occ.numero AS numero_occ, c.nombre AS cliente, date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cm.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,cm.aprobado_cliente FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN cuentas c ON c.id=occ.id_cuenta_cliente INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cm.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -47,7 +47,7 @@ if (!empty($data_occ)) {
 }
 
 if ($id_occ > 0) {
-  $sql = "SELECT id, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ?";
+  $sql = "SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ? ORDER BY posicion, id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_occ]);
   $occ_detalles = $q->fetchAll(PDO::FETCH_ASSOC);
@@ -146,7 +146,7 @@ foreach ($lotes_editables as $idx => $le) {
 }
 foreach ($occ_detalles as &$occ_row) {
   $occ_id = (int) $occ_row['id'];
-  $meta = $occ_orden_meta[$occ_id] ?? ['grupo' => 3, 'clave' => $occ_id];
+  $meta = $occ_orden_meta[$occ_id] ?? ['grupo' => 3, 'clave' => $occ_row['posicion']];
   $occ_row['__grupo'] = $meta['grupo'];
   $occ_row['__clave'] = $meta['clave'];
 }
@@ -158,7 +158,7 @@ usort($occ_detalles, function ($a, $b) {
   if ($a['__clave'] != $b['__clave']) {
     return $a['__clave'] <=> $b['__clave'];
   }
-  return (int) $a['id'] <=> (int) $b['id'];
+  return ((int) $a['posicion'] <=> (int) $b['posicion']) ?: ((int) $a['id'] <=> (int) $b['id']);
 });
 
 Database::disconnect();?>
@@ -251,18 +251,22 @@ Database::disconnect();?>
                                 <label class="col-sm-5 col-form-label font-weight-bold">Moneda</label>
                                 <div class="col-sm-7"><span class="form-control-plaintext"><?=$data['moneda']?></span></div>
                               </div>
-                              <div class="form-group row mb-2">
-                                <label class="col-sm-5 col-form-label font-weight-bold">Cotización Dolar</label>
-                                <div class="col-sm-7"><span class="form-control-plaintext">$<?=$data['cotizacion_dolar'];?></span></div>
-                              </div>
+                               <div class="form-group row mb-2">
+                                 <label class="col-sm-5 col-form-label font-weight-bold">Cliente</label>
+                                 <div class="col-sm-7"><span class="form-control-plaintext"><?=htmlspecialchars($data['cliente'] ?? '', ENT_QUOTES, 'UTF-8')?></span></div>
+                               </div>
                               <div class="form-group row mb-2">
                                 <label class="col-sm-5 col-form-label font-weight-bold">Monto total</label>
                                 <div class="col-sm-7"><span class="form-control-plaintext">$<?=number_format($data['monto_total'],2);?></span></div>
                               </div>
-                              <div class="form-group row mb-2">
-                                <label class="col-sm-5 col-form-label font-weight-bold">Observaciones</label>
-                                <div class="col-sm-7"><span class="form-control-plaintext"><?=$data['observaciones'];?></span></div>
-                              </div>
+                               <div class="form-group row mb-2">
+                                 <label class="col-sm-5 col-form-label font-weight-bold">Observaciones</label>
+                                 <div class="col-sm-7"><span class="form-control-plaintext"><?=$data['observaciones'];?></span></div>
+                               </div>
+                               <div class="form-group row mb-2">
+                                 <label class="col-sm-5 col-form-label font-weight-bold">Estado CM</label>
+                                 <div class="col-sm-7"><span class="badge <?=$data['aprobado_cliente'] ? 'badge-success' : 'badge-warning'?>"><?=$data['aprobado_cliente'] ? 'Aprobado' : 'Pendiente'?></span></div>
+                               </div>
                             </div>
                           </div>
                           <div class="row">
@@ -279,6 +283,7 @@ Database::disconnect();?>
                                       <thead>
                                         <tr>
                                           <th>ID</th>
+                                          <th>Posición</th>
                                           <th>Descripcion</th>
                                           <th>Cantidad</th>
                                           <th class="text-right">Precio unitario</th>
@@ -290,12 +295,13 @@ Database::disconnect();?>
                                       <tbody><?php
                                         if (empty($occ_detalles)) { ?>
                                           <tr>
-                                            <td colspan="7">La Orden de Compra seleccionada no tiene items.</td>
+                                            <td colspan="8">La Orden de Compra seleccionada no tiene items.</td>
                                           </tr><?php
                                         } else {
                                           foreach ($occ_detalles as $row) { ?>
                                           <tr class="occ-item-row" data-id="<?= $row['id'] ?>" data-subtotal="<?= $row['subtotal'] ?>">
                                             <td><?= $row['id'] ?></td>
+                                            <td><?= $row['posicion'] ?></td>
                                             <td><?= htmlspecialchars($row['descripcion']) ?></td>
                                             <td><?= number_format($row['cantidad'], 2, ',', '.') ?></td>
                                             <td class="text-right"><?= $moneda_occ ?> <?= number_format($row['precio_unitario'], 2, ',', '.') ?></td>
@@ -503,7 +509,6 @@ Database::disconnect();?>
 
         function renderLoteHtml(lote) {
           const rowsLote = Array.isArray(lote.aperturado_rows) ? lote.aperturado_rows : [];
-          const proyectoLabel = getProyectoLabelById(lote.id_proyecto);
           const baseLote = parseFloat(lote.monto_base_occ) || 0;
           const filasHtml = rowsLote.length ?
             rowsLote.map(function(row) {
@@ -521,7 +526,7 @@ Database::disconnect();?>
                           <td class="text-right">${simboloMonedaOcc} ${formatNumber(totalFila)}</td>
                         </tr>`;
             }).join('') :
-            '<tr><td colspan="6" class="text-muted">Sin filas de aperturado guardadas para este lote.</td></tr>';
+            '<tr><td colspan="6" class="text-muted">Sin filas de detalle guardadas.</td></tr>';
 
           const sumaTotal = rowsLote.reduce(function(sum, row) {
             const incidencia = parseFloat(row.incidencia) || 0;
@@ -530,26 +535,6 @@ Database::disconnect();?>
 
           return `
                 <div class="border rounded px-2 py-2 mb-2 occ-lote-inline-row">
-                  <div class="table-responsive mb-2">
-                    <table class="table table-sm table-bordered mb-0 occ-lote-summary-table">
-                      <thead>
-                        <tr>
-                          <th>Aperturado</th>
-                          <th>Lote</th>
-                          <th>Proyecto</th>
-                          <th class="text-right">Monto</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>${escapeHtml(lote.aperturado)}</td>
-                          <td>${escapeHtml(lote.lote || '')}</td>
-                          <td>${escapeHtml(proyectoLabel)}</td>
-                          <td class="text-right">${simboloMonedaOcc} ${formatNumber(parseFloat(lote.subtotal_lote) || 0)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
                   <div class="table-responsive">
                     <table class="table table-sm table-bordered mb-0 occ-breakdown-table">
                       <thead>
@@ -581,8 +566,7 @@ Database::disconnect();?>
             const idsGrupo = entry.ids_grupo || [];
             return `
                   <div class="occ-group-aperturado-wrap mb-2">
-                    <small class="d-block text-muted mb-2">Aplica al grupo OCC: ${escapeHtml(idsGrupo.join(', '))}</small>
-                    ${renderLoteHtml(entry.lote)}
+                   ${renderLoteHtml(entry.lote)}
                   </div>`;
           }).join('') :
           '';
@@ -596,7 +580,7 @@ Database::disconnect();?>
         }
 
         const lotesSeparadosHtml = lotesSeparados.length ?
-          `<small class="d-block font-weight-bold text-primary mb-1">Lotes por item</small>${lotesSeparados.map(renderLoteHtml).join('')}` :
+          lotesSeparados.map(renderLoteHtml).join('') :
           '';
 
         const lotesHtml = (groupedLotesForThisItem.length || lotesSeparados.length) ?
@@ -604,7 +588,7 @@ Database::disconnect();?>
               ${loteAgrupadoDetalleHtml}
               ${lotesSeparadosHtml}
             ` :
-          '<small class="text-muted d-block mb-2">Sin lotes asociados para este item OCC.</small>';
+          '<small class="text-muted d-block mb-2">Sin detalles asociados para este item OCC.</small>';
 
         return `
             <div class="occ-breakdown-panel">

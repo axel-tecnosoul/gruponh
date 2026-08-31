@@ -2,30 +2,119 @@
 require("config.php");
 require 'database.php';
 
-$id_certificado_maestro = $_POST['id_certificado_maestro'];
+header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-store');
+
+$id_certificado_maestro = filter_input(INPUT_POST, 'id_certificado_maestro', FILTER_VALIDATE_INT);
+if (!$id_certificado_maestro) {
+  echo json_encode([]);
+  exit;
+}
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT cmd.id,s.nombre AS sitio,s2.nombre AS subsitio,cmd.id_proyecto,p.nombre AS proyecto,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario,cmd.subtotal,cmd.aperturado,cmd.lote FROM certificados_maestros_detalles cmd INNER JOIN proyectos p ON cmd.id_proyecto=p.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id left join sitios s on s.id = p.id_sitio left join sitios s2 on s2.id = s.id_sitio_superior WHERE id_certificado_maestro = ".$id_certificado_maestro;
-//echo $sql;
-$aConjuntos=[];
+$sql = "SELECT cm.id_occ, m.moneda
+        FROM certificados_maestros cm
+        INNER JOIN occ ON occ.id = cm.id_occ
+        INNER JOIN monedas m ON m.id = cm.id_moneda
+        WHERE cm.id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$id_certificado_maestro]);
+$cm = $q->fetch(PDO::FETCH_ASSOC);
+if (!$cm) {
+  echo json_encode([]);
+  exit;
+}
+$id_occ = (int) $cm['id_occ'];
+$moneda = (string) $cm['moneda'];
+
+ $sql = "SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal
+         FROM occ_detalles
+         WHERE id_occ = ?
+         ORDER BY posicion, id";
+$q = $pdo->prepare($sql);
+$q->execute([$id_occ]);
+$items = [];
+foreach ($q as $row) {
+  $items[] = [
+      'id' => (int) $row['id'],
+      'posicion' => (int) $row['posicion'],
+      'descripcion' => (string) $row['descripcion'],
+    'cantidad' => (float) $row['cantidad'],
+    'precio_unitario' => (float) $row['precio_unitario'],
+    'descuento' => (float) $row['descuento'],
+    'subtotal' => (float) $row['subtotal'],
+  ];
+}
+
+$unidadesMap = [];
+$sql = "SELECT id, unidad_medida FROM unidades_medida";
 foreach ($pdo->query($sql) as $row) {
-  $aConjuntos[]=[
-    0=>$row["id"],
-    1=>$row["proyecto"],
-    2=>$row["subsitio"],
-    3=>$row["sitio"],
-    4=>$row["descripcion"],
-    5=>$row["cantidad"],
-    6=>$row["unidad_medida"],
-    7=>number_format($row["precio_unitario"],2),
-    8=>number_format($row["subtotal"],2),
-    9=>$row["aperturado"],
-    10=>$row["lote"],
+  $unidadesMap[(int) $row['id']] = (string) $row['unidad_medida'];
+}
+
+$sqlLotesBase = "SELECT aperturado, lote, modo_generacion,
+                        COALESCE(MAX(monto_base_occ),0) AS monto_base_occ,
+                        COALESCE(SUM(subtotal),0) AS subtotal_lote,
+                        COUNT(*) AS cantidad_filas
+                 FROM certificados_maestros_detalles
+                 WHERE id_certificado_maestro = ?
+                   AND aperturado IS NOT NULL AND aperturado <> ''
+                   AND modo_generacion IN ('agrupar','separar')
+                 GROUP BY aperturado, lote, modo_generacion
+                 ORDER BY MAX(id) DESC";
+$q = $pdo->prepare($sqlLotesBase);
+$q->execute([$id_certificado_maestro]);
+$lotesBase = $q->fetchAll(PDO::FETCH_ASSOC);
+
+$grupos = [];
+foreach ($lotesBase as $loteRow) {
+  $aperturadoId = (string) $loteRow['aperturado'];
+
+  $sql = "SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle
+          WHERE id_certificado_maestro = ? AND aperturado = ?
+          ORDER BY id_occ_detalle";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_certificado_maestro, $aperturadoId]);
+  $occIds = array_map('intval', $q->fetchAll(PDO::FETCH_COLUMN, 0));
+
+  $sql = "SELECT descripcion, id_unidad_medida, cantidad, incidencia_porcentaje, id_occ_detalle
+          FROM certificados_maestros_detalles
+          WHERE id_certificado_maestro = ? AND aperturado = ?
+          ORDER BY id";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_certificado_maestro, $aperturadoId]);
+
+  $filas = [];
+  foreach ($q as $r) {
+    if (empty($occIds) && !empty($r['id_occ_detalle'])) {
+      $occIds[] = (int) $r['id_occ_detalle'];
+    }
+    $filas[] = [
+      'descripcion' => (string) $r['descripcion'],
+      'unidad' => (string) ($unidadesMap[(int) $r['id_unidad_medida']] ?? ''),
+      'cantidad' => (float) $r['cantidad'],
+      'incidencia' => (float) $r['incidencia_porcentaje'],
+    ];
+  }
+
+  $occIds = array_values(array_unique($occIds));
+  if (empty($occIds)) {
+    continue;
+  }
+
+  $grupos[] = [
+    'occ_ids' => $occIds,
+    'monto_base_occ' => (float) $loteRow['monto_base_occ'],
+    'filas' => $filas,
   ];
 }
 
 Database::disconnect();
-echo json_encode($aConjuntos);
-?>
+
+echo json_encode([
+  'moneda' => $moneda,
+  'items' => $items,
+  'grupos' => $grupos,
+]);

@@ -136,17 +136,19 @@ if (!empty($_POST)) {
                                 <thead>
                                   <tr>
                                     <th>ID</th>
-                                    <th>Descripcion</th>
+                                     <th>Posición</th>
+                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
                                     <th>Precio Unitario</th>
                                     <th>Descuento</th>
                                     <th>Subtotal</th>
                                   </tr>
                                 </thead>
-                                <tfoot>
-                                  <tr>
-                                    <th>ID</th>
-                                    <th>Descripcion</th>
+                                 <tfoot>
+                                   <tr>
+                                     <th>ID</th>
+                                     <th>Posición</th>
+                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
                                     <th>Precio Unitario</th>
                                     <th>Descuento</th>
@@ -157,11 +159,12 @@ if (!empty($_POST)) {
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                   
-                                  $sql = " SELECT id, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ".$id;
-                                  foreach ($pdo->query($sql) as $row) {
-                                    echo '<tr>';
-                                    echo '<td>'. $row["id"] . '</td>';
-                                    echo '<td>'. $row["descripcion"] . '</td>';
+                                   $sql = " SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ".$id." ORDER BY posicion, id";
+                                   foreach ($pdo->query($sql) as $row) {
+                                     echo '<tr>';
+                                      echo '<td>'. $row["id"] . '</td>';
+                                      echo '<td>'. $row["posicion"] . '</td>';
+                                     echo '<td>'. $row["descripcion"] . '</td>';
                                     echo '<td>'. $row["cantidad"] . '</td>';
                                     echo '<td>'.$signo. number_format($row["precio_unitario"],2) . '</td>';
                                     echo '<td>'.$signo. number_format($row["descuento"],2) . '</td>';

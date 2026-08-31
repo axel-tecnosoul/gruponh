@@ -14,6 +14,23 @@ if (!$idCertificadoMaestro) {
 
 $error = '';
 
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sql = "SELECT aprobado_cliente FROM certificados_maestros WHERE id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$idCertificadoMaestro]);
+$estadoCertificado = $q->fetch(PDO::FETCH_ASSOC);
+Database::disconnect();
+
+if (empty($estadoCertificado)) {
+  header("Location: listarCertificadosMaestros.php");
+  die("Redirecting to listarCertificadosMaestros.php");
+}
+
+if ((int) ($estadoCertificado['aprobado_cliente'] ?? 0) === 1) {
+  die("El Certificado Maestro está aprobado y no puede modificarse.");
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $fecha = $_POST['fecha'] ?? '';
   $montoBase = isset($_POST['monto_base']) && $_POST['monto_base'] !== '' ? (float) $_POST['monto_base'] : 0;

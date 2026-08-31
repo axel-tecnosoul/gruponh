@@ -447,3 +447,134 @@ CREATE TABLE IF NOT EXISTS `certificados_ajustes` (
 
 -- Esta primera etapa no actualiza los acumulados de certificados_maestros
 -- ni de certificados_avances_cabecera.
+
+-- CORRECCIÓN 16: Aprobación del Certificado Maestro.
+-- Los certificados existentes quedan pendientes al crear la columna.
+ALTER TABLE `certificados_maestros`
+ADD COLUMN `aprobado_cliente` TINYINT(1) NOT NULL DEFAULT 0
+AFTER `porcentaje_anticipo`;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 17: Numeración y revisiones de Certificados de Avance.
+-- Sintaxis compatible con MySQL/MariaDB sin ADD COLUMN IF NOT EXISTS.
+-- Ejecutar una sola vez; si alguna columna ya existe, omitir esa sentencia.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE `certificados_avances_cabecera`
+  ADD COLUMN `nro_certificado` INT(11) NOT NULL DEFAULT 0 AFTER `id_certificado_maestro`;
+
+ALTER TABLE `certificados_avances_cabecera`
+  ADD COLUMN `nro_revision` INT(11) NOT NULL DEFAULT 1 AFTER `nro_certificado`;
+
+ALTER TABLE `certificados_avances_cabecera`
+  ADD COLUMN `id_certificado_avance_origen` INT(11) NULL DEFAULT NULL AFTER `nro_revision`;
+
+ALTER TABLE `certificados_avances_cabecera`
+  ADD COLUMN `motivo_revision` VARCHAR(255) NULL DEFAULT NULL AFTER `id_certificado_avance_origen`;
+
+ALTER TABLE `certificados_avances_cabecera`
+  ADD COLUMN `fecha_hora_revision` DATETIME NULL DEFAULT NULL AFTER `motivo_revision`;
+
+ALTER TABLE `certificados_avances_cabecera`
+  ADD COLUMN `id_usuario_revision` INT(11) NULL DEFAULT NULL AFTER `fecha_hora_revision`;
+
+-- Backfill: numerar los certificados de avance por Certificado Maestro (1, 2, 3...).
+UPDATE `certificados_avances_cabecera` cac
+INNER JOIN (
+    SELECT t.id,
+           @rn := IF(@grp = t.id_certificado_maestro, @rn + 1, 1) AS rn,
+           @grp := t.id_certificado_maestro AS grp
+    FROM (
+        SELECT id, id_certificado_maestro
+        FROM certificados_avances_cabecera
+        ORDER BY id_certificado_maestro, id
+    ) t
+    CROSS JOIN (SELECT @rn := 0, @grp := 0) v
+) seq ON seq.id = cac.id
+SET cac.`nro_certificado` = seq.rn;
+
+UPDATE `certificados_avances_cabecera` SET `nro_revision` = 1 WHERE `nro_revision` = 0;
+
+-- Impacto del ajuste: -1 resta, 1 suma. Desacopio y descuento siempre restan.
+-- Redeterminación admite ambos signos desde el formulario.
+ALTER TABLE `certificados_ajustes`
+  ADD COLUMN `impacto` TINYINT(4) NOT NULL DEFAULT -1 AFTER `monto`;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 18: Numeración de posiciones en los detalles de OCC.
+-- Ejecutar una sola vez; si la columna ya existe, omitir estas sentencias.
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE `occ_detalles`
+  ADD COLUMN `posicion` INT(11) NULL AFTER `id_occ`;
+
+UPDATE `occ_detalles` d
+INNER JOIN (
+    SELECT t.id,
+           @pos := IF(@grupo = t.id_occ, @pos + 10, 10) AS nueva_pos,
+           @grupo := t.id_occ AS grupo
+    FROM (
+        SELECT id, id_occ
+        FROM occ_detalles
+        ORDER BY id_occ, id
+    ) t
+    CROSS JOIN (SELECT @pos := 0, @grupo := NULL) v
+) secuencia ON secuencia.id = d.id
+SET d.posicion = secuencia.nueva_pos;
+
+ALTER TABLE `occ_detalles`
+  MODIFY COLUMN `posicion` INT(11) NOT NULL;
+
+ALTER TABLE `occ_detalles`
+  ADD INDEX `idx_occ_detalles_posicion` (`id_occ`, `posicion`);
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 19: Perfil Operaciones — acceso CM/CA sin información económica
+-- Opción A: nuevo permiso/acción para vista medición-only
+-- ---------------------------------------------------------------------------
+-- Perfil
+SET @next_perfil := (SELECT COALESCE(MAX(id),0)+1 FROM perfiles);
+INSERT INTO perfiles (id, perfil, anulado)
+SELECT @next_perfil, 'Operaciones', 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM perfiles WHERE perfil='Operaciones');
+SET @idOp := (SELECT id FROM perfiles WHERE perfil='Operaciones' LIMIT 1);
+
+-- Permiso contenedor
+SET @next_permiso := (SELECT COALESCE(MAX(id),0)+1 FROM permisos);
+INSERT INTO permisos (id, permiso, anulado)
+SELECT @next_permiso, 'Operaciones_Sin_Economico', 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM permisos WHERE permiso='Operaciones_Sin_Economico');
+SET @idPermOp := (SELECT id FROM permisos WHERE permiso='Operaciones_Sin_Economico' LIMIT 1);
+
+-- Acción para gatear vista sin montos
+SET @next_accion := (SELECT COALESCE(MAX(id),0)+1 FROM acciones);
+INSERT INTO acciones (id, accion)
+SELECT @next_accion, 'Ver_Certificados_Sin_Montos' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM acciones WHERE accion='Ver_Certificados_Sin_Montos');
+SET @idAccSinMontos := (SELECT id FROM acciones WHERE accion='Ver_Certificados_Sin_Montos' LIMIT 1);
+
+-- Vincular acción <-> permiso
+SET @next_ap := (SELECT COALESCE(MAX(id),0)+1 FROM acciones_permisos);
+INSERT INTO acciones_permisos (id, id_accion, id_permiso)
+SELECT @next_ap, @idAccSinMontos, @idPermOp FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM acciones_permisos WHERE id_accion=@idAccSinMontos AND id_permiso=@idPermOp);
+
+-- Asignar al permiso Operaciones las acciones mínimas: 373 (Menu Certificados), 376 (Ver CA), 377 (Nuevo CA), 378 (Modificar CA)
+-- Corrección: acciones_permisos vincula permiso -> acción; permisos_perfil vincula perfil -> permiso (1 fila)
+SET @next_ap := (SELECT COALESCE(MAX(id),0)+1 FROM acciones_permisos);
+INSERT INTO acciones_permisos (id, id_accion, id_permiso)
+SELECT @next_ap, 373, @idPermOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM acciones_permisos WHERE id_accion=373 AND id_permiso=@idPermOp);
+SET @next_ap := (SELECT COALESCE(MAX(id),0)+1 FROM acciones_permisos);
+INSERT INTO acciones_permisos (id, id_accion, id_permiso)
+SELECT @next_ap, 376, @idPermOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM acciones_permisos WHERE id_accion=376 AND id_permiso=@idPermOp);
+SET @next_ap := (SELECT COALESCE(MAX(id),0)+1 FROM acciones_permisos);
+INSERT INTO acciones_permisos (id, id_accion, id_permiso)
+SELECT @next_ap, 377, @idPermOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM acciones_permisos WHERE id_accion=377 AND id_permiso=@idPermOp);
+SET @next_ap := (SELECT COALESCE(MAX(id),0)+1 FROM acciones_permisos);
+INSERT INTO acciones_permisos (id, id_accion, id_permiso)
+SELECT @next_ap, 378, @idPermOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM acciones_permisos WHERE id_accion=378 AND id_permiso=@idPermOp);
+
+-- Vincular perfil Operaciones -> permiso Operaciones (único vínculo)
+SET @next_pp := (SELECT COALESCE(MAX(id),0)+1 FROM permisos_perfil);
+INSERT INTO permisos_perfil (id, id_permiso, id_perfil)
+SELECT @next_pp, @idPermOp, @idOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM permisos_perfil WHERE id_permiso=@idPermOp AND id_perfil=@idOp);

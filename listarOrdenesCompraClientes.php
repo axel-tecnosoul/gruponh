@@ -201,8 +201,9 @@ include 'database.php';
                       <table class="display truncate" id="tablaDetalleOCC">
                         <thead>
                           <tr>
-                            <th class="d-none">ID</th>
-                            <th>Descripcion</th>
+                                    <th class="d-none">ID</th>
+                                    <th>Posición</th>
+                                    <th>Descripcion</th>
                             <th>Cantidad</th>
                             <th>Precio unitario</th>
                             <th>Descuento</th>
@@ -213,6 +214,7 @@ include 'database.php';
 						            <tfoot>
                           <tr>
                             <th class="d-none">ID</th>
+                            <th>Posición</th>
                             <th>Descripcion</th>
                             <th>Cantidad</th>
                             <th>Precio unitario</th>

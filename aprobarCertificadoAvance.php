@@ -1,5 +1,9 @@
 <?php
     require("config.php");
+    if (function_exists('esOperacionesSinEconomico') && esOperacionesSinEconomico()) {
+        http_response_code(403);
+        die("Perfil Operaciones no puede aprobar Certificados de Avance.");
+    }
     if (empty($_SESSION['user'])) {
         header("Location: index.php");
         die("Redirecting to index.php");
@@ -24,7 +28,18 @@
 	$q->execute([$id]);
 	$data = $q->fetch(PDO::FETCH_ASSOC);
 	$id_certificado_maestro=$data["id_certificado_maestro"];
-        
+
+    $sqlUlt = "SELECT COUNT(*) FROM certificados_avances_cabecera c
+               WHERE c.id_certificado_maestro = ?
+                 AND c.nro_certificado = (SELECT nro_certificado FROM certificados_avances_cabecera WHERE id = ?)
+                 AND c.nro_revision > (SELECT nro_revision FROM certificados_avances_cabecera WHERE id = ?)";
+    $qUlt = $pdo->prepare($sqlUlt);
+    $qUlt->execute([$id_certificado_maestro, $id, $id]);
+    if ((int) $qUlt->fetchColumn() > 0) {
+      Database::disconnect();
+      die("Solo la ultima revision del certificado puede aprobarse.");
+    }
+
     $sql = "UPDATE `certificados_avances_cabecera`  SET 	aprobado_cliente = 1 WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);

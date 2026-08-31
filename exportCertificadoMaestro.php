@@ -13,7 +13,7 @@ if (!$idCm) {
 }
 
 // --------------------------------------------------------------
-// Funciones auxiliares (iguales a las del Excel)
+// Funciones auxiliares
 // --------------------------------------------------------------
 function cmPdfEsc($value): string {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -31,7 +31,7 @@ function cmFmtFecha($v) {
 }
 
 // --------------------------------------------------------------
-// Datos de la empresa (logo)
+// Logo
 // --------------------------------------------------------------
 $logoPath = __DIR__ . '/assets/images/logo.jpg';
 $logoData = is_file($logoPath) ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($logoPath)) : '';
@@ -42,7 +42,6 @@ $logoData = is_file($logoPath) ? 'data:image/jpeg;base64,' . base64_encode(file_
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-// Datos del CM
 $sql = "SELECT cm.id, cm.id_occ, cm.fecha_emision, cm.fecha_inicio, cm.fecha_fin, cm.monto_total, cm.porcentaje_anticipo,
                cm.monto_acumulado_avances, cm.monto_acumulado_anticipos, cm.monto_acumulado_desacopios,
                cm.monto_acumulado_descuentos, cm.monto_acumulado_ajustes, cm.observaciones, cm.aprobado_cliente,
@@ -61,12 +60,11 @@ if (!$cm) {
     die('Certificado Maestro no encontrado.');
 }
 
-// Proyectos agrupados (para cabecera)
 $q = $pdo->prepare("SELECT GROUP_CONCAT(DISTINCT p.nombre SEPARATOR ', ') FROM certificados_maestros_detalles cmd LEFT JOIN proyectos p ON p.id = cmd.id_proyecto WHERE cmd.id_certificado_maestro = ?");
 $q->execute([$idCm]);
 $proyectosNombre = (string) ($q->fetchColumn() ?: '-');
 
-// Items del CM con avance acumulado (para totales y fallback)
+// Items del CM
 $sql = "SELECT
         od.posicion as posicion_occ,
         cmd.id as cmd_id,
@@ -91,7 +89,7 @@ $q = $pdo->prepare($sql);
 $q->execute([$idCm]);
 $items = $q->fetchAll(PDO::FETCH_ASSOC);
 
-// Construir desglose agrupado (replica get_detalle_certificado_maestro)
+// Desglose agrupado (replica Excel)
 $occStmt = $pdo->prepare("SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ? ORDER BY posicion, id");
 $occStmt->execute([$cm['id_occ']]);
 $occRows = $occStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -105,19 +103,16 @@ $qGrupos->execute([$idCm]);
 $rawGrupos = $qGrupos->fetchAll(PDO::FETCH_ASSOC);
 
 $grupos = [];
-$occToGrupoIdx = [];
 foreach ($rawGrupos as $rg) {
     $ap = $rg['aperturado'];
     $qOccIds = $pdo->prepare("SELECT id_occ_detalle FROM certificados_maestros_lotes_occ_detalle WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id_occ_detalle");
     $qOccIds->execute([$idCm, $ap]);
     $occIds = array_map('intval', $qOccIds->fetchAll(PDO::FETCH_COLUMN));
     if (empty($occIds)) {
-        // fallback legacy: usar id_occ_detalle de las filas
         $qF = $pdo->prepare("SELECT DISTINCT id_occ_detalle FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? AND id_occ_detalle IS NOT NULL");
         $qF->execute([$idCm, $ap]);
         $occIds = array_map('intval', $qF->fetchAll(PDO::FETCH_COLUMN));
     }
-    // ordenar occIds por posicion
     usort($occIds, function ($a, $b) use ($occMap) {
         $pa = (int)($occMap[$a]['posicion'] ?? 9999);
         $pb = (int)($occMap[$b]['posicion'] ?? 9999);
@@ -137,14 +132,9 @@ foreach ($rawGrupos as $rg) {
         'owner' => $owner,
         'filas' => $filas
     ];
-    foreach ($occIds as $oid) {
-        if (!isset($occToGrupoIdx[$oid])) {
-            $occToGrupoIdx[$oid] = $rg['aperturado'];
-        }
-    }
 }
 
-// Orden visual: occ agrupados primero en orden de grupos, luego huérfanos
+// Orden visual
 $ordenOccIds = [];
 $vistos = [];
 foreach ($grupos as $g) {
@@ -171,23 +161,17 @@ if (empty($ordenOccIds)) {
         $ordenOccIds[] = (int)$or['id'];
     }
 }
-$gruposByOwner = [];
-foreach ($grupos as $g) {
-    if ($g['owner'] !== null) {
-        $gruposByOwner[(int)$g['owner']] = $g;
-    }
-}
 
 Database::disconnect();
 
 // --------------------------------------------------------------
-// Inicio del HTML (con estilos CSS)
+// CSS (con encabezado mejorado)
 // --------------------------------------------------------------
 $css = '
 <style>
     @page {
         size: A4 landscape;
-        margin: 22mm 8mm 16mm 8mm;
+        margin: 24mm 8mm 16mm 8mm;
     }
     * { box-sizing: border-box; }
     body {
@@ -196,41 +180,56 @@ $css = '
         color: #20252b;
         margin: 0;
     }
-    /* Cabecera fija (logo + título) */
+    /* Cabecera fija con tabla de 3 columnas */
     .pdf-header {
         position: fixed;
-        top: -17mm;
+        top: -18mm;
         left: 0;
         right: 0;
-        height: 12mm;
+        height: 14mm;
         background: white;
-        padding: 0 8mm;
+        padding: 1mm 8mm 0;
         border-bottom: 1px solid #17365d;
+        width: 100%;
+    }
+    .pdf-header table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        height: 100%;
+    }
+    .pdf-header td {
+        vertical-align: middle;
+        padding: 0 2mm;
     }
     .pdf-header-logo {
-        width: 22mm;
+        width: 16mm;
         height: 10mm;
         object-fit: contain;
-        vertical-align: middle;
     }
-    .pdf-header-title {
+    .header-center {
+        text-align: center;
+    }
+    .header-title {
         color: #111;
         font-size: 13pt;
         font-weight: bold;
-        display: inline-block;
-        width: 55%;
-        text-align: center;
-        vertical-align: middle;
+        display: block;
     }
-    .pdf-header-meta {
-        float: right;
-        color: #555;
-        text-align: right;
+    .header-sub {
         font-size: 6.5pt;
-        vertical-align: middle;
-        margin-top: 1mm;
+        color: #555;
+        margin-top: 0.5mm;
     }
-    /* Pie de página fijo */
+    .header-company {
+        border: 1px solid #999;
+        padding: 0.8mm 1.5mm;
+        font-size: 6pt;
+        color: #555;
+        line-height: 1.3;
+        text-align: right;
+    }
+    /* Pie de página */
     .pdf-footer {
         position: fixed;
         bottom: -10mm;
@@ -245,7 +244,7 @@ $css = '
     }
     .pdf-footer-right { float: right; }
 
-    /* Tabla principal (y de medición) */
+    /* Tablas principales */
     .ca-table, .med-table {
         width: 100%;
         border-collapse: collapse;
@@ -265,14 +264,12 @@ $css = '
         font-weight: bold;
         text-align: center;
     }
-    /* Colores de fondo (similares al Excel) */
     .parent-yellow { background: #FFE080; }
     .parent-blue   { background: #9BC2E6; }
     .child-yellow  { background: #FFE080; }
     .total-row td  { background: #EEF3F8 !important; font-weight: bold; }
     .subtotal-row td { background: #E8E8E8 !important; font-weight: bold; }
 
-    /* Bordes derechos gruesos (columnas G y P) */
     .col-precio-total { border-right: 2px solid #000 !important; }
     .col-acu-monto    { border-right: 2px solid #000 !important; }
 
@@ -281,7 +278,6 @@ $css = '
     .text-left   { text-align: left; }
     .num         { text-align: right; font-variant-numeric: tabular-nums; }
 
-    /* Subcabecera con datos del proyecto/CA */
     .sub-header td {
         background: #FFFFFF;
         border: 1px solid #B0B0B0;
@@ -297,7 +293,6 @@ $css = '
         padding: 0.5mm 0.5mm;
     }
 
-    /* Bloques finales (Notas, Totales, Firmas) */
     .footer-block {
         width: 100%;
         border-collapse: collapse;
@@ -321,22 +316,8 @@ $css = '
         min-height: 6mm;
         font-size: 6pt;
     }
-    .firma-cell {
-        border: 1px solid #000;
-        padding: 3mm 0;
-        text-align: center;
-        font-weight: bold;
-        font-size: 8pt;
-        background: white;
-    }
     .page-break {
         page-break-before: always;
-    }
-    .med-title {
-        font-size: 12pt;
-        font-weight: bold;
-        text-align: center;
-        margin: 5mm 0 2mm;
     }
 </style>
 ';
@@ -344,22 +325,36 @@ $css = '
 $html = '<!doctype html><html lang="es"><head><meta charset="UTF-8">' . $css . '</head><body>';
 
 // --------------------------------------------------------------
-// CONSTANTES DE CERTIFICADO MAESTRO
+// Datos del CM
 // --------------------------------------------------------------
 $moneda = (string) $cm['moneda'];
 $nroCM = (int) $cm['id'];
 $nroOCC = (string) $cm['numero_occ'];
-
-// --------------------------------------------------------------
-// CABECERA FIJA (logo + título) - se repite en todas las páginas
-// --------------------------------------------------------------
 $logoHtml = $logoData !== '' ? '<img class="pdf-header-logo" src="' . $logoData . '">' : '';
-$html .= '<div class="pdf-header">'
-       . $logoHtml
-       . '<span class="pdf-header-title">CERTIFICADO MAESTRO</span>'
-       . '<span class="pdf-header-meta">CM #' . $nroCM . '<br>OCC #' . $nroOCC . '</span>'
-       . '</div>';
 
+// --------------------------------------------------------------
+// CABECERA FIJA (usando tabla de 3 columnas)
+// --------------------------------------------------------------
+$html .= '<div class="pdf-header">';
+$html .= '<table>';
+$html .= '<tr>';
+$html .= '<td style="width:20%;">' . $logoHtml . '</td>';
+$html .= '<td class="header-center" style="width:50%;">';
+$html .= '<span class="header-title">CERTIFICADO MAESTRO</span>';
+$html .= '<span class="header-sub">CM #' . $nroCM . ' | OCC #' . $nroOCC . '</span>';
+$html .= '</td>';
+$html .= '<td style="width:30%;">';
+$html .= '<div class="header-company">';
+$html .= 'NH Construcciones SRL<br>';
+$html .= 'Ricardo Gutiérrez 2874 (C1417EBL) - CABA<br>';
+$html .= 'Tel./Fax (54 11) 4505-8300';
+$html .= '</div>';
+$html .= '</td>';
+$html .= '</tr>';
+$html .= '</table>';
+$html .= '</div>';
+
+// Pie de página fijo
 $html .= '<div class="pdf-footer"><span>Grupo NH | Certificado Maestro</span><span class="pdf-footer-right">Generado el ' . date('d/m/Y H:i') . ' | Página </span></div>';
 
 // --------------------------------------------------------------
@@ -420,19 +415,14 @@ $html .= '</tr>';
 $html .= '</thead>';
 $html .= '<tbody>';
 
-// Variables de totales globales (solo para la fila "Total Orden de Compra")
 $totalMontoCM = 0;
 $totalCantCM = 0;
-$totalAcumAnt = 0;
-$totalAcumAct = 0;
-$totalAcumAcu = 0;
 
 if (empty($grupos) && empty($ordenOccIds)) {
     $html .= '<tr><td colspan="16" class="text-center">Sin ítems</td></tr>';
 } else {
-    // Agrupados juntos: iterar por grupo, primero todos los padres del grupo, luego su desglose
     foreach ($grupos as $g) {
-        // Padres del grupo juntos
+        // Padres del grupo
         foreach ($g['occ_ids'] as $oid) {
             $occ = $occMap[$oid] ?? null;
             if (!$occ) continue;
@@ -444,7 +434,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $totalMontoCM += $ptOcc;
             $totalCantCM += $cantOcc;
 
-            // Fila padre
             $html .= '<tr>';
             $html .= '<td class="text-center parent-yellow">' . cmPdfEsc($pos) . '</td>';
             $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
@@ -453,7 +442,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $html .= '<td class="num parent-blue">0,00%</td>';
             $html .= '<td class="num parent-blue">' . cmPdfMoney($puOcc, $moneda) . '</td>';
             $html .= '<td class="num parent-yellow col-precio-total">' . cmPdfMoney($ptOcc, $moneda) . '</td>';
-            // Anterior/Actual/Acumulado (todo 0)
             $html .= '<td class="num parent-blue">0,00</td>';
             $html .= '<td class="num parent-blue">0,00%</td>';
             $html .= '<td class="num parent-blue">' . cmPdfMoney(0, $moneda) . '</td>';
@@ -466,10 +454,9 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $html .= '</tr>';
         }
 
-        // Desglose único por grupo
+        // Desglose (hijos)
         if (!empty($g['filas'])) {
             $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
-            $sumDesglose = 0;
             foreach ($g['filas'] as $fi => $fila) {
                 $posDes = $ownerPos . '.' . ($fi + 1);
                 $descDes = (string)$fila['descripcion'];
@@ -480,9 +467,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
                 $totalDes = (float)$fila['subtotal'];
                 if ($totalDes == 0) $totalDes = $g['base'] * $incDes / 100;
                 if ($puDes == 0 && $cantDes > 0) $puDes = $totalDes / $cantDes;
-                $sumDesglose += $totalDes;
 
-                // Acumular totales (solo hijos, para la fila Total Orden de Compra)
                 $totalMontoCM += $totalDes;
                 $totalCantCM += $cantDes;
 
@@ -554,7 +539,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
     }
 }
 
-// Fila Total Orden de Compra
+// Total Orden de Compra
 $html .= '<tr class="total-row">';
 $html .= '<td colspan="6" class="text-right">Total Orden de Compra</td>';
 $html .= '<td class="num col-precio-total">' . cmPdfMoney($totalMontoCM, $moneda) . '</td>';
@@ -576,11 +561,9 @@ $html .= '</tbody></table>';
 // --------------------------------------------------------------
 $html .= '<table class="footer-block">';
 
-// Notas
 $html .= '<tr><td class="label" colspan="4">Notas:</td></tr>';
 $html .= '<tr><td colspan="4" class="notas-cell" style="min-height:8mm;">' . cmPdfEsc($cm['observaciones'] ?? '') . '</td></tr>';
 
-// Total Certificado y Desacopio
 $html .= '<tr>';
 $html .= '<td class="label" style="width:25%;">Total Certificado</td>';
 $html .= '<td class="num" style="width:25%;">' . cmPdfMoney(0, $moneda) . '</td>';
@@ -588,7 +571,6 @@ $html .= '<td class="label" style="width:25%;">Desacopio de anticipo</td>';
 $html .= '<td class="num" style="width:25%;">' . cmPdfMoney(0, $moneda) . '</td>';
 $html .= '</tr>';
 
-// CAC (dos filas)
 $html .= '<tr>';
 $html .= '<td class="label" rowspan="2" style="width:25%;">CAC</td>';
 $html .= '<td style="width:25%;">ENE</td>';
@@ -601,14 +583,12 @@ $html .= '<td class="num">0,00</td>';
 $html .= '<td class="num">0,00%</td>';
 $html .= '</tr>';
 
-// Fondo de reparo
 $html .= '<tr>';
 $html .= '<td class="label">Fondo de reparo</td>';
 $html .= '<td class="num">' . cmPdfMoney(0, $moneda) . '</td>';
 $html .= '<td colspan="2"></td>';
 $html .= '</tr>';
 
-// Firmas (con borde y espacio)
 $html .= '<tr><td colspan="4" style="padding:0; border:0;">';
 $html .= '<table style="width:100%; border-collapse:collapse;">';
 $html .= '<tr><td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA NH</td>';
@@ -624,12 +604,25 @@ $html .= '</table>';
 // --------------------------------------------------------------
 $html .= '<div class="page-break"></div>';
 
-// Cabecera fija para la hoja de medición (mismo logo y título, pero con "MEDICION")
-$html .= '<div class="pdf-header">'
-       . $logoHtml
-       . '<span class="pdf-header-title">MEDICION</span>'
-       . '<span class="pdf-header-meta">CM #' . $nroCM . '<br>OCC #' . $nroOCC . '</span>'
-       . '</div>';
+// Cabecera para medición
+$html .= '<div class="pdf-header">';
+$html .= '<table>';
+$html .= '<tr>';
+$html .= '<td style="width:20%;">' . $logoHtml . '</td>';
+$html .= '<td class="header-center" style="width:50%;">';
+$html .= '<span class="header-title">MEDICION</span>';
+$html .= '<span class="header-sub">CM #' . $nroCM . ' | OCC #' . $nroOCC . '</span>';
+$html .= '</td>';
+$html .= '<td style="width:30%;">';
+$html .= '<div class="header-company">';
+$html .= 'NH Construcciones SRL<br>';
+$html .= 'Ricardo Gutiérrez 2874 (C1417EBL) - CABA<br>';
+$html .= 'Tel./Fax (54 11) 4505-8300';
+$html .= '</div>';
+$html .= '</td>';
+$html .= '</tr>';
+$html .= '</table>';
+$html .= '</div>';
 
 $html .= '<div class="pdf-footer"><span>Grupo NH | Medición</span><span class="pdf-footer-right">Generado el ' . date('d/m/Y H:i') . ' | Página </span></div>';
 
@@ -637,7 +630,6 @@ $html .= '<div class="pdf-footer"><span>Grupo NH | Medición</span><span class="
 $html .= '<table class="med-table">';
 $html .= '<thead>';
 
-// Subcabecera (similar a la del certificado)
 $html .= '<tr class="sub-header">';
 $html .= '<td colspan="5" style="border-right: 2px solid #000;">';
 $html .= '<table style="width:100%; border-collapse:collapse; font-size:6pt;">';
@@ -685,9 +677,7 @@ $html .= '</tr>';
 $html .= '</thead>';
 $html .= '<tbody>';
 
-// Datos de medición (mismos grupos pero sin montos)
 foreach ($grupos as $g) {
-    // Padres
     foreach ($g['occ_ids'] as $oid) {
         $occ = $occMap[$oid] ?? null;
         if (!$occ) continue;
@@ -709,7 +699,6 @@ foreach ($grupos as $g) {
         $html .= '</tr>';
     }
 
-    // Hijos
     if (!empty($g['filas'])) {
         $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
         $i = 1;
@@ -738,7 +727,7 @@ foreach ($grupos as $g) {
 
 $html .= '</tbody></table>';
 
-// Notas y Firmas para la hoja de medición
+// Notas y Firmas para Medición
 $html .= '<table class="footer-block">';
 $html .= '<tr><td class="label" colspan="4">Notas:</td></tr>';
 $html .= '<tr><td colspan="4" class="notas-cell" style="min-height:8mm;">' . cmPdfEsc($cm['observaciones'] ?? '') . '</td></tr>';
@@ -764,7 +753,6 @@ $dompdf->loadHtml($html, 'UTF-8');
 $dompdf->setPaper('A4', 'landscape');
 $dompdf->render();
 
-// Pie de página con número de página (para el total)
 $canvas = $dompdf->getCanvas();
 $font = $dompdf->getFontMetrics()->getFont('DejaVu Sans', 'normal');
 $canvas->page_text(760, 570, '{PAGE_NUM} de {PAGE_COUNT}', $font, 7.5, [0.4, 0.4, 0.4]);

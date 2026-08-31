@@ -34,6 +34,19 @@ if (!empty($_POST)) {
     exit;
   }
 
+  $sql = "SELECT aprobado_cliente FROM certificados_maestros WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id_certificado_maestro_post]);
+  $approvalData = $q->fetch(PDO::FETCH_ASSOC);
+  if (empty($approvalData)) {
+    Database::disconnect();
+    die("El Certificado Maestro no existe.");
+  }
+  if ((int) ($approvalData['aprobado_cliente'] ?? 0) === 1) {
+    Database::disconnect();
+    die("El Certificado Maestro está aprobado y sus detalles no pueden modificarse.");
+  }
+
   // Fase 1: tipo de item fijo interno en Avance (id=1)
   $id_tipo_item = 1;
 
@@ -644,7 +657,7 @@ $lotes_editables = [];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT cm.id, DATE_FORMAT(cm.fecha_emision, '%d/%m/%Y') AS fecha_emision_cm, cm.porcentaje_anticipo, cm.id_occ, occ.id_cuenta_cliente AS id_cliente_occ, occ.numero, DATE_FORMAT(occ.fecha_emision, '%d/%m/%Y') AS fecha_emision_occ, occ.monto, occ.monto_total_certificados, occ.monto_total_facturados, cu.nombre AS cliente_occ, m.moneda FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ = occ.id INNER JOIN cuentas cu ON cu.id = occ.id_cuenta_cliente INNER JOIN monedas m ON occ.id_moneda = m.id WHERE cm.id = ?";
+$sql = "SELECT cm.id, DATE_FORMAT(cm.fecha_emision, '%d/%m/%Y') AS fecha_emision_cm, cm.porcentaje_anticipo, cm.aprobado_cliente, cm.id_occ, occ.id_cuenta_cliente AS id_cliente_occ, occ.numero, DATE_FORMAT(occ.fecha_emision, '%d/%m/%Y') AS fecha_emision_occ, occ.monto, occ.monto_total_certificados, occ.monto_total_facturados, cu.nombre AS cliente_occ, m.moneda FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ = occ.id INNER JOIN cuentas cu ON cu.id = occ.id_cuenta_cliente INNER JOIN monedas m ON occ.id_moneda = m.id WHERE cm.id = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id_certificado_maestro]);
 $data_occ = $q->fetch(PDO::FETCH_ASSOC);
@@ -656,8 +669,14 @@ if (!empty($data_occ)) {
   $moneda_occ = $data_occ['moneda'];
 }
 
+if (!empty($data_occ) && (int) ($data_occ['aprobado_cliente'] ?? 0) === 1) {
+  Database::disconnect();
+  header("Location: verCertificadosMaestro.php?id=" . $id_certificado_maestro);
+  exit;
+}
+
 if ($id_occ > 0) {
-  $sql = "SELECT id, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ?";
+  $sql = "SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ? ORDER BY posicion, id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_occ]);
   $occ_detalles = $q->fetchAll(PDO::FETCH_ASSOC);
@@ -845,6 +864,7 @@ Database::disconnect();
                                   <tr>
                                     <th style="width:40px;"><input type="checkbox" id="check_all_occ_items" title="Seleccionar todos"></th>
                                     <th>ID</th>
+                                    <th>Posición</th>
                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
                                     <th class="text-right">Precio unitario</th>
@@ -856,13 +876,14 @@ Database::disconnect();
                                 <tbody><?php
                                         if (empty($occ_detalles)) { ?>
                                     <tr>
-                                      <td colspan="8">La Orden de Compra seleccionada no tiene items.</td>
+                                      <td colspan="9">La Orden de Compra seleccionada no tiene items.</td>
                                     </tr><?php
                                         } else {
                                           foreach ($occ_detalles as $row) { ?>
                                       <tr class="occ-item-row" data-id="<?= $row['id'] ?>" data-subtotal="<?= $row['subtotal'] ?>">
                                         <td class="text-center" data-order="1"><input type="checkbox" class="occ-item-checkbox" data-id="<?= $row['id'] ?>"></td>
                                         <td><?= $row['id'] ?></td>
+                                        <td><?= $row['posicion'] ?></td>
                                         <td><?= htmlspecialchars($row['descripcion']) ?></td>
                                         <td><?= number_format($row['cantidad'], 2, ',', '.') ?></td>
                                         <td class="text-right"><?= $moneda_occ ?> <?= number_format($row['precio_unitario'], 2, ',', '.') ?></td>

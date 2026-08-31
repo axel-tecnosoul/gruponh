@@ -23,6 +23,30 @@ $q = $pdo->prepare($sqlZon);
 $q->execute();
 $fila = $q->fetch(PDO::FETCH_ASSOC);
 
+if (!$fila) {
+  Database::disconnect();
+  die("El Certificado de Avance no existe.");
+}
+
+$sqlUlt = "SELECT COUNT(*) FROM certificados_avances_cabecera c
+           WHERE c.id_certificado_maestro = ?
+             AND c.nro_certificado = (SELECT nro_certificado FROM certificados_avances_cabecera WHERE id = ?)
+             AND c.nro_revision > (SELECT nro_revision FROM certificados_avances_cabecera WHERE id = ?)";
+$qUlt = $pdo->prepare($sqlUlt);
+$qUlt->execute([$fila["id_certificado_maestro"], $id, $id]);
+if ((int) $qUlt->fetchColumn() > 0) {
+  Database::disconnect();
+  die("Solo la ultima revision del certificado puede eliminarse.");
+}
+
+$sqlAprob = "SELECT aprobado_cliente FROM certificados_avances_cabecera WHERE id = ?";
+$qAprob = $pdo->prepare($sqlAprob);
+$qAprob->execute([$id]);
+if ((int) $qAprob->fetchColumn() === 1) {
+  Database::disconnect();
+  die("El certificado esta aprobado y no puede ser eliminado.");
+}
+
 $sql = "DELETE FROM certificados_avances_detalle WHERE id_certificado_avance = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id]);

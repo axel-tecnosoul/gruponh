@@ -33,7 +33,30 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$id_certificado_avance]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+  if (!$data) {
+    Database::disconnect();
+    die("El Certificado de Avance no existe.");
+  }
   $id_certificado_maestro=$data["id_certificado_maestro"];
+
+  $sqlUlt = "SELECT COUNT(*) FROM certificados_avances_cabecera c
+             WHERE c.id_certificado_maestro = ?
+               AND c.nro_certificado = (SELECT nro_certificado FROM certificados_avances_cabecera WHERE id = ?)
+               AND c.nro_revision > (SELECT nro_revision FROM certificados_avances_cabecera WHERE id = ?)";
+  $qUlt = $pdo->prepare($sqlUlt);
+  $qUlt->execute([$id_certificado_maestro, $id_certificado_avance, $id_certificado_avance]);
+  if ((int) $qUlt->fetchColumn() > 0) {
+    Database::disconnect();
+    die("Solo la ultima revision del certificado puede modificarse.");
+  }
+
+  $sqlAprobPost = "SELECT aprobado_cliente FROM certificados_avances_cabecera WHERE id = ?";
+  $qAprobPost = $pdo->prepare($sqlAprobPost);
+  $qAprobPost->execute([$id_certificado_avance]);
+  if ((int) $qAprobPost->fetchColumn() === 1) {
+    Database::disconnect();
+    die("El certificado esta aprobado. Genere una nueva revision para modificarlo.");
+  }
 
   $sql = "SELECT COUNT(*) FROM certificados_avances_detalle WHERE id_certificado_avance = ?";
   $q = $pdo->prepare($sql);
@@ -142,7 +165,6 @@ if (!empty($_POST)) {
     }
 
     Database::disconnect();
-    //header("Location: listarCertificadosMaestro.php?id_certificado_avance=".$_GET["id_certificado_avance"]);
     header("Location: listarCertificadosAvances.php?id_certificado_maestro=".$id_certificado_maestro);
 
 }
@@ -152,31 +174,65 @@ $id_certificado_avance=$_GET['id_certificado_avance'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT cac.id_certificado_maestro, cm.id_occ, m.moneda
+$sql = "SELECT cac.id, cac.id_certificado_maestro, cac.nro_certificado, cac.nro_revision,
+               DATE_FORMAT(cac.fecha_emision,'%d/%m/%Y') AS fecha_emision_ca,
+               DATE_FORMAT(cac.fecha_inicio,'%d/%m/%Y') AS fecha_inicio_ca,
+               DATE_FORMAT(cac.fecha_fin,'%d/%m/%Y') AS fecha_fin_ca,
+               cac.cotizacion_dolar, cac.monto_total, cac.monto_acumulado_avances,
+               cac.monto_acumulado_anticipos, cac.monto_acumulado_desacopios,
+               cac.monto_acumulado_descuentos, cac.monto_acumulado_ajustes,
+               cac.observaciones, cac.aprobado_cliente,
+               cm.id_occ, occ.numero AS numero_occ, cu.nombre AS cliente_occ, m.moneda
         FROM certificados_avances_cabecera cac
         INNER JOIN certificados_maestros cm ON cm.id = cac.id_certificado_maestro
+        INNER JOIN occ occ ON occ.id = cm.id_occ
+        INNER JOIN cuentas cu ON cu.id = occ.id_cuenta_cliente
         INNER JOIN monedas m ON m.id = cm.id_moneda
         WHERE cac.id = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id_certificado_avance]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
+if (!$data) {
+  Database::disconnect();
+  header("Location: listarCertificadosMaestros.php");
+  exit;
+}
 $id_certificado_maestro=$data["id_certificado_maestro"];
 $id_occ = (int) $data["id_occ"];
+$esOpAvance = function_exists('esOperacionesSinEconomico') ? esOperacionesSinEconomico() : false;
 $moneda = (string) $data["moneda"];
+$cabecera_avance = $data;
+
+$sqlUlt = "SELECT COUNT(*) FROM certificados_avances_cabecera c
+           WHERE c.id_certificado_maestro = ?
+             AND c.nro_certificado = (SELECT nro_certificado FROM certificados_avances_cabecera WHERE id = ?)
+             AND c.nro_revision > (SELECT nro_revision FROM certificados_avances_cabecera WHERE id = ?)";
+$qUlt = $pdo->prepare($sqlUlt);
+$qUlt->execute([$id_certificado_maestro, $id_certificado_avance, $id_certificado_avance]);
+if ((int) $qUlt->fetchColumn() > 0) {
+  Database::disconnect();
+  die("Solo la ultima revision del certificado puede modificarse.");
+}
+
+if ((int) ($cabecera_avance['aprobado_cliente'] ?? 0) === 1) {
+  Database::disconnect();
+  die("El certificado esta aprobado. Genere una nueva revision para modificarlo.");
+}
 
 $sql = "SELECT COUNT(*) FROM certificados_avances_detalle WHERE id_certificado_avance = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id_certificado_avance]);
 $modo = ($q->fetchColumn() > 0) ? 'modificar' : 'crear';
 
-$sql = "SELECT id, descripcion, cantidad, precio_unitario, descuento, subtotal
-        FROM occ_detalles
-        WHERE id_occ = ?
-        ORDER BY id";
+ $sql = "SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal
+         FROM occ_detalles
+         WHERE id_occ = ?
+         ORDER BY posicion, id";
 $q = $pdo->prepare($sql);
 $q->execute([$id_occ]);
 $occ_detalles = $q->fetchAll(PDO::FETCH_ASSOC);
 
+// CONSULTA CORREGIDA: ahora acumulado es el total acumulado (anterior + actual)
 $sql = "SELECT cmd.id AS id_certificado_maestro_detalle,
                cmd.id_occ_detalle,
                cmd.id_tipo_item_certificado,
@@ -200,7 +256,8 @@ $sql = "SELECT cmd.id AS id_certificado_maestro_detalle,
                cad.id AS id_certificado_avance_detalle,
                cad.cantidad_actual,
                cad.subtotal AS subtotal_ca,
-               COALESCE(acumulados.acumulado, 0) AS acumulado
+               -- Si existe registro en cad, usamos su cantidad_acumulado (total acumulado); si no, usamos la suma de CAs anteriores (que en creación es el total, ya que actual=0)
+               COALESCE(cad.cantidad_acumulado, acumulados.acumulado) AS acumulado
         FROM certificados_maestros_detalles cmd
         INNER JOIN tipos_item_certificado tic ON tic.id = cmd.id_tipo_item_certificado
         INNER JOIN unidades_medida um ON um.id = cmd.id_unidad_medida
@@ -210,14 +267,25 @@ $sql = "SELECT cmd.id AS id_certificado_maestro_detalle,
           ON cad.id_certificado_maestro_detalle = cmd.id
          AND cad.id_certificado_avance = ?
         LEFT JOIN (
-          SELECT id_certificado_maestro_detalle, SUM(cantidad_actual) AS acumulado
-          FROM certificados_avances_detalle
-          GROUP BY id_certificado_maestro_detalle
+          SELECT cad2.id_certificado_maestro_detalle,
+                 SUM(cad2.cantidad_actual) AS acumulado
+          FROM certificados_avances_detalle cad2
+          INNER JOIN certificados_avances_cabecera cac2 ON cac2.id = cad2.id_certificado_avance
+          WHERE cac2.id_certificado_maestro = ?
+            AND cac2.nro_certificado < ?
+            AND NOT EXISTS (
+              SELECT 1 FROM certificados_avances_cabecera y
+              WHERE y.id_certificado_maestro = cac2.id_certificado_maestro
+                AND y.nro_certificado = cac2.nro_certificado
+                AND y.nro_revision > cac2.nro_revision
+          )
+          GROUP BY cad2.id_certificado_maestro_detalle
         ) acumulados ON acumulados.id_certificado_maestro_detalle = cmd.id
         WHERE cmd.id_certificado_maestro = ?
         ORDER BY cmd.lote, cmd.aperturado, cmd.id";
 $q = $pdo->prepare($sql);
-$q->execute([$id_certificado_avance, $id_certificado_maestro]);
+// OJO: parámetros: id_certificado_avance, id_certificado_maestro, nro_certificado, id_certificado_maestro
+$q->execute([$id_certificado_avance, $id_certificado_maestro, $cabecera_avance['nro_certificado'], $id_certificado_maestro]);
 $filas_detalle = $q->fetchAll(PDO::FETCH_ASSOC);
 
 $sql = "SELECT aperturado, id_occ_detalle
@@ -270,30 +338,28 @@ foreach ($grupos_aperturado as $clave_grupo => &$grupo_aperturado) {
   $grupo_aperturado['occ_ids'] = array_values($grupo_aperturado['occ_ids']);
 }
 unset($grupo_aperturado);
-
 $grupos_por_occ = [];
 $grupos_legacy = [];
 $orden_grupos_agrupados = [];
+
 foreach ($grupos_aperturado as $clave_grupo => $grupo_aperturado) {
   if (empty($grupo_aperturado['occ_ids'])) {
     $grupos_legacy[$clave_grupo] = $grupo_aperturado;
     continue;
   }
 
-  // En la pantalla de detalle del CM el desglose agrupado se muestra
-  // despues del ultimo item del grupo, no despues del primero.
   $id_occ_propietario = (int) end($grupo_aperturado['occ_ids']);
   $grupos_por_occ[$id_occ_propietario][$clave_grupo] = $grupo_aperturado;
 
-  if ($grupo_aperturado['modo_generacion'] === 'agrupar') {
-    foreach ($grupo_aperturado['occ_ids'] as $posicion => $id_occ_grupo) {
-      $orden_grupos_agrupados[(int) $id_occ_grupo] = [
-        'grupo' => $clave_grupo,
-        'posicion' => $posicion,
-        'cantidad' => count($grupo_aperturado['occ_ids']),
-        'propietario' => $id_occ_propietario,
-      ];
-    }
+  // Asignar posiciones a TODOS los occ_ids del grupo
+  $cantidad = count($grupo_aperturado['occ_ids']);
+  foreach ($grupo_aperturado['occ_ids'] as $posicion => $id_occ_grupo) {
+    $orden_grupos_agrupados[(int) $id_occ_grupo] = [
+      'grupo' => $clave_grupo,
+      'posicion' => $posicion,
+      'cantidad' => $cantidad,
+      'propietario' => $id_occ_propietario,
+    ];
   }
 }
 
@@ -309,7 +375,7 @@ usort($occ_detalles, function ($a, $b) use ($orden_grupos_agrupados) {
   if ($meta_a && !$meta_b) return -1;
   if (!$meta_a && $meta_b) return 1;
   if ($meta_a && $meta_b) return strcmp($meta_a['grupo'], $meta_b['grupo']);
-  return $id_a <=> $id_b;
+   return ((int) ($a['posicion'] ?? 0) <=> (int) ($b['posicion'] ?? 0)) ?: ($id_a <=> $id_b);
 });
 
 function escaparAvance($valor) {
@@ -317,19 +383,26 @@ function escaparAvance($valor) {
 }
 
 function renderGruposAvance($grupos, $moneda) {
+  global $esOpAvance;
+  $esOp = !empty($esOpAvance);
   foreach ($grupos as $clave_grupo => $grupo) {
     $modo = (string) ($grupo['modo_generacion'] ?? 'legacy');
     $total_anterior_grupo = 0.0;
     $total_actual_grupo = 0.0;
     $total_acumulado_grupo = 0.0;
+    $total_saldo_grupo = 0.0;
+    $total_cm_grupo = 0.0;
     foreach ($grupo['filas'] as $fila_total) {
       $cantidad_actual_total = (float) ($fila_total['cantidad_actual'] ?? 0);
       $cantidad_acumulada_total = (float) ($fila_total['acumulado'] ?? 0);
       $cantidad_anterior_total = max(0, $cantidad_acumulada_total - $cantidad_actual_total);
       $precio_unitario_total = (float) ($fila_total['precio_unitario_cm'] ?? 0);
+      $subtotal_cm_total = (float) ($fila_total['subtotal_cm'] ?? 0);
       $total_anterior_grupo += $cantidad_anterior_total * $precio_unitario_total;
       $total_actual_grupo += $cantidad_actual_total * $precio_unitario_total;
       $total_acumulado_grupo += ($cantidad_anterior_total + $cantidad_actual_total) * $precio_unitario_total;
+      $total_cm_grupo += $subtotal_cm_total;
+      $total_saldo_grupo += $subtotal_cm_total - (($cantidad_anterior_total + $cantidad_actual_total) * $precio_unitario_total);
     }?>
     
     <div class="occ-group-aperturado-wrap border rounded px-2 py-2 occ-lote-inline-row">
@@ -341,31 +414,35 @@ function renderGruposAvance($grupos, $moneda) {
               <th rowspan="2">Unidad</th>
               <th rowspan="2" class="text-right">Cantidad</th>
               <th rowspan="2" class="text-right">Incidencia</th>
-              <th rowspan="2" class="text-right">Precio unitario</th>
-              <th rowspan="2" class="text-right">Total CM</th>
-              <th colspan="3" class="text-center avance-periodo avance-periodo-anterior">Anterior</th>
-              <th colspan="3" class="text-center avance-periodo avance-periodo-actual">Actual</th>
-              <th colspan="3" class="text-center avance-periodo avance-periodo-acumulado">Acumulado</th>
+              <?php if (!$esOp) { ?><th rowspan="2" class="text-right">Precio unitario</th>
+              <th rowspan="2" class="text-right">Total CM</th><?php } ?>
+              <th colspan="<?php echo $esOp ? 2 : 3; ?>" class="text-center avance-periodo avance-periodo-anterior">Anterior</th>
+              <th colspan="<?php echo $esOp ? 2 : 3; ?>" class="text-center avance-periodo avance-periodo-actual">Actual</th>
+              <th colspan="<?php echo $esOp ? 2 : 3; ?>" class="text-center avance-periodo avance-periodo-acumulado">Acumulado</th>
+              <th colspan="<?php echo $esOp ? 2 : 3; ?>" class="text-center avance-periodo avance-periodo-saldo">Saldo</th>
             </tr>
             <tr>
               <th class="text-right avance-col-inicio avance-cantidad-col">Cantidad</th>
               <th class="text-center avance-porcentaje-col">%</th>
-              <th class="text-right">Monto</th>
+              <?php if (!$esOp) { ?><th class="text-right">Monto</th><?php } ?>
               <th class="text-right avance-col-inicio avance-cantidad-col avance-cantidad-actual-col">Cantidad</th>
               <th class="text-center avance-porcentaje-col">%</th>
-              <th class="text-right">Monto</th>
+              <?php if (!$esOp) { ?><th class="text-right">Monto</th><?php } ?>
               <th class="text-right avance-col-inicio avance-cantidad-col">Cantidad</th>
               <th class="text-center avance-porcentaje-col">%</th>
-              <th class="text-right">Monto</th>
+              <?php if (!$esOp) { ?><th class="text-right">Monto</th><?php } ?>
+              <th class="text-right avance-col-inicio avance-cantidad-col">Cantidad</th>
+              <th class="text-center avance-porcentaje-col">%</th>
+              <?php if (!$esOp) { ?><th class="text-right">Monto</th><?php } ?>
             </tr>
           </thead>
           <tbody><?php
             foreach ($grupo['filas'] as $fila) {
               $cantidad = (float) ($fila['cantidad'] ?? 0);
-              $cantidad_acumulada = (float) ($fila['acumulado'] ?? 0);
+              $cantidad_acumulada = (float) ($fila['acumulado'] ?? 0); // ahora es el total acumulado (anterior + actual)
               $cantidad_actual = (float) ($fila['cantidad_actual'] ?? 0);
               $cantidad_anterior = max(0, $cantidad_acumulada - $cantidad_actual);
-              $cantidad_acumulada = $cantidad_anterior + $cantidad_actual;
+              $cantidad_acumulada = $cantidad_anterior + $cantidad_actual; // redundante pero queda claro
               $maximo_avance = max(0, $cantidad - $cantidad_anterior);
               $porcentaje_anterior = $cantidad > 0 ? ($cantidad_anterior / $cantidad) * 100 : 0;
               $porcentaje_actual = $cantidad > 0 ? ($cantidad_actual / $cantidad) * 100 : 0;
@@ -373,9 +450,13 @@ function renderGruposAvance($grupos, $moneda) {
               $monto_anterior = $cantidad_anterior * (float) $fila['precio_unitario_cm'];
               $monto_actual = $cantidad_actual * (float) $fila['precio_unitario_cm'];
               $monto_acumulado = $cantidad_acumulada * (float) $fila['precio_unitario_cm'];
+              $saldo_cantidad = max(0, $cantidad - $cantidad_acumulada);
+              $porcentaje_saldo = $cantidad > 0 ? ($saldo_cantidad / $cantidad) * 100 : 0;
+              $subtotal_cm_fila = (float) ($fila['subtotal_cm'] ?? 0);
+              $saldo_monto = $subtotal_cm_fila - ($cantidad_acumulada * (float) $fila['precio_unitario_cm']);
               $incidencia = $fila['incidencia_porcentaje'];
               ?>
-              <tr class="fila-detalle-avance" data-cantidad-total="<?=escaparAvance($cantidad)?>" data-cantidad-anterior="<?=escaparAvance($cantidad_anterior)?>">
+              <tr class="fila-detalle-avance" data-cantidad-total="<?=escaparAvance($cantidad)?>" data-cantidad-anterior="<?=escaparAvance($cantidad_anterior)?>" data-subtotal-cm="<?=escaparAvance($subtotal_cm_fila)?>">
                 <td>
                   <?=escaparAvance($fila['descripcion'])?>
                   <input type="hidden" name="id_certificado_avance_detalle[]" value="<?=escaparAvance($fila['id_certificado_avance_detalle'] ?? '')?>">
@@ -386,34 +467,43 @@ function renderGruposAvance($grupos, $moneda) {
                 <td><?=escaparAvance($fila['unidad_medida'])?></td>
                 <td class="text-right"><?=number_format($cantidad, 2, ',', '.')?></td>
                 <td class="text-right"><?=$incidencia !== null ? number_format((float) $incidencia, 2, ',', '.') . '%' : '-'?></td>
-                <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $fila['precio_unitario_cm'], 2, ',', '.')?></td>
-                <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $fila['subtotal_cm'], 2, ',', '.')?></td>
+                <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $fila['precio_unitario_cm'], 2, ',', '.')?></td>
+                <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $fila['subtotal_cm'], 2, ',', '.')?></td><?php } ?>
                 <td class="text-right avance-col-inicio avance-cantidad-col cantidad-anterior"><?=number_format($cantidad_anterior, 2, ',', '.')?></td>
                 <td class="text-center avance-porcentaje-col porcentaje-anterior"><?=number_format($porcentaje_anterior, 2, ',', '.')?>%</td>
-                <td class="text-right"><?=escaparAvance($moneda)?> <span class="monto-anterior"><?=number_format($monto_anterior, 2, ',', '.')?></span></td>
+                <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="monto-anterior"><?=number_format($monto_anterior, 2, ',', '.')?></span></td><?php } ?>
                 <td class="avance-col-inicio avance-cantidad-col avance-cantidad-actual-col">
                   <input type="number" step="0.01" class="form-control form-control-sm" name="avance[]" placeholder="Avance" min="0" max="<?=escaparAvance($maximo_avance)?>" value="<?=$fila['cantidad_actual'] !== null ? escaparAvance($fila['cantidad_actual']) : ''?>">
                 </td>
                 <td class="text-center avance-porcentaje-col porcentaje-actual"><?=number_format($porcentaje_actual, 2, ',', '.')?>%</td>
-                <td class="text-right">
+                <?php if (!$esOp) { ?><td class="text-right">
                   <?=escaparAvance($moneda)?> <span class="subtotal_formatted"><?=number_format($monto_actual, 2, ',', '.')?></span>
                   <input type="hidden" name="subtotal[]" value="<?=escaparAvance($fila['subtotal_ca'] ?? '')?>">
-                </td>
+                </td><?php } ?>
                 <td class="text-right avance-col-inicio avance-cantidad-col cantidad-acumulada"><?=number_format($cantidad_acumulada, 2, ',', '.')?></td>
                 <td class="text-center avance-porcentaje-col porcentaje-acumulado"><?=number_format($porcentaje_acumulado, 2, ',', '.')?>%</td>
-                <td class="text-right"><?=escaparAvance($moneda)?> <span class="monto-acumulado"><?=number_format($monto_acumulado, 2, ',', '.')?></span></td>
+                <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="monto-acumulado"><?=number_format($monto_acumulado, 2, ',', '.')?></span></td><?php } ?>
+                <td class="text-right avance-col-inicio avance-cantidad-col cantidad-saldo"><?=number_format($saldo_cantidad, 2, ',', '.')?></td>
+                <td class="text-center avance-porcentaje-col porcentaje-saldo"><?=number_format($porcentaje_saldo, 2, ',', '.')?>%</td>
+                <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="monto-saldo"><?=number_format($saldo_monto, 2, ',', '.')?></span></td><?php } ?>
               </tr><?php
             }
           ?></tbody>
           <tfoot class="bg-light">
             <tr class="font-weight-bold">
-              <td colspan="6" class="text-right">Totales del grupo</td>
-              <td colspan="2" class="text-right avance-col-inicio">Anterior</td>
-              <td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-anterior"><?=number_format($total_anterior_grupo, 2, ',', '.')?></span></td>
-              <td colspan="2" class="text-right avance-col-inicio">Actual</td>
-              <td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-avance"><?=number_format($total_actual_grupo, 2, ',', '.')?></span></td>
-              <td colspan="2" class="text-right avance-col-inicio">Acumulado</td>
-              <td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-acumulado"><?=number_format($total_acumulado_grupo, 2, ',', '.')?></span></td>
+              <td colspan="<?php echo $esOp ? 4 : 6; ?>" class="text-right">Totales del grupo</td>
+              <td class="text-right avance-col-inicio">Anterior</td>
+              <td class="text-center avance-porcentaje-col"></td>
+              <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-anterior"><?=number_format($total_anterior_grupo, 2, ',', '.')?></span></td><?php } ?>
+              <td class="text-right avance-col-inicio">Actual</td>
+              <td class="text-center avance-porcentaje-col"></td>
+              <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-avance"><?=number_format($total_actual_grupo, 2, ',', '.')?></span></td><?php } ?>
+              <td class="text-right avance-col-inicio">Acumulado</td>
+              <td class="text-center avance-porcentaje-col"></td>
+              <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-acumulado"><?=number_format($total_acumulado_grupo, 2, ',', '.')?></span></td><?php } ?>
+              <td class="text-right avance-col-inicio">Saldo</td>
+              <td class="text-center avance-porcentaje-col"></td>
+              <?php if (!$esOp) { ?><td class="text-right total-grupo-saldo" data-total-saldo="<?=escaparAvance($total_saldo_grupo)?>" data-moneda="<?=escaparAvance($moneda)?>"><?=escaparAvance($moneda)?> <?=number_format($total_saldo_grupo, 2, ',', '.')?></td><?php } ?>
             </tr>
           </tfoot>
         </table>
@@ -494,6 +584,9 @@ Database::disconnect();
       .occ-breakdown-table .avance-periodo-acumulado {
         background-color: #eef7ee;
       }
+      .occ-breakdown-table .avance-periodo-saldo {
+        background-color: #fdf3f3;
+      }
       .occ-breakdown-table .avance-col-inicio {
         border-left: 2px solid #2b8dbf;
       }
@@ -545,7 +638,9 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5><?= $modo == 'modificar' ? 'Modificar' : 'Nuevo' ?> Detalle del Certificado de Avance #<?=$id_certificado_avance?>
+                    <h5><?= $modo == 'modificar' ? 'Modificar' : 'Nuevo' ?> Detalle del Certificado de Avance
+                      N° <?=escaparAvance($cabecera_avance['nro_certificado'] ?? '-')?> Rev. <?=escaparAvance($cabecera_avance['nro_revision'] ?? '-')?>
+                      (CM #<?=escaparAvance($id_certificado_maestro)?>)
                       &nbsp;&nbsp;
                     </h5>
                   </div>
@@ -553,28 +648,93 @@ Database::disconnect();
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
+                          <h6 class="mb-3 font-weight-bold">Datos del Certificado</h6>
+                          <div class="row mb-2">
+                            <div class="col-lg-6">
+                              <div class="form-group row mb-2">
+                                <label class="col-sm-5 col-form-label font-weight-bold">Cliente</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($cabecera_avance['cliente_occ'] ?? '')?></span></div>
+                              </div>
+                              <div class="form-group row mb-2">
+                                <label class="col-sm-5 col-form-label font-weight-bold">Orden de Compra Cliente</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($cabecera_avance['numero_occ'] ?? '')?></span></div>
+                              </div>
+                              <div class="form-group row mb-2">
+                                <label class="col-sm-5 col-form-label font-weight-bold">Fecha Emisión CA</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($cabecera_avance['fecha_emision_ca'] ?? '')?></span></div>
+                              </div>
+                            </div>
+                            <div class="col-lg-6">
+                              <div class="form-group row mb-2">
+                                <label class="col-sm-5 col-form-label font-weight-bold">Periodo (Inicio - Fin)</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($cabecera_avance['fecha_inicio_ca'] ?? '')?> - <?=escaparAvance($cabecera_avance['fecha_fin_ca'] ?? '')?></span></div>
+                              </div>
+                              <?php if (!$esOpAvance) { ?><div class="form-group row mb-2">
+                                <label class="col-sm-5 col-form-label font-weight-bold">Moneda / Cotización Dólar</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($moneda)?> / <?=number_format((float)($cabecera_avance['cotizacion_dolar'] ?? 0), 2, ',', '.')?></span></div>
+                              </div>
+                              <div class="form-group row mb-2">
+                                <label class="col-sm-5 col-form-label font-weight-bold">Monto Total del Certificado</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext font-weight-bold"><?=escaparAvance($moneda)?> <?=number_format((float)($cabecera_avance['monto_total'] ?? 0), 2, ',', '.')?></span></div>
+                              </div><?php } ?>
+                            </div>
+                          </div>
+                          <?php if (!$esOpAvance) { ?><div class="row">
+                            <div class="col-lg-6">
+                              <div class="form-group row mb-1">
+                                <label class="col-sm-5 col-form-label">Acumulado avances</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($moneda)?> <?=number_format((float)($cabecera_avance['monto_acumulado_avances'] ?? 0), 2, ',', '.')?></span></div>
+                              </div>
+                              <div class="form-group row mb-1">
+                                <label class="col-sm-5 col-form-label">Acumulado anticipos</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($moneda)?> <?=number_format((float)($cabecera_avance['monto_acumulado_anticipos'] ?? 0), 2, ',', '.')?></span></div>
+                              </div>
+                              <div class="form-group row mb-1">
+                                <label class="col-sm-5 col-form-label">Acumulado desacopios</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($moneda)?> <?=number_format((float)($cabecera_avance['monto_acumulado_desacopios'] ?? 0), 2, ',', '.')?></span></div>
+                              </div>
+                            </div>
+                            <div class="col-lg-6">
+                              <div class="form-group row mb-1">
+                                <label class="col-sm-5 col-form-label">Acumulado descuentos</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($moneda)?> <?=number_format((float)($cabecera_avance['monto_acumulado_descuentos'] ?? 0), 2, ',', '.')?></span></div>
+                              </div>
+                              <div class="form-group row mb-1">
+                                <label class="col-sm-5 col-form-label">Acumulado redeterminaciones</label>
+                                <div class="col-sm-7"><span class="form-control-plaintext"><?=escaparAvance($moneda)?> <?=number_format((float)($cabecera_avance['monto_acumulado_ajustes'] ?? 0), 2, ',', '.')?></span></div>
+                              </div><?php } ?>
+                              <div class="form-group row mb-1">
+                                <label class="col-sm-5 col-form-label">Estado de aprobación</label>
+                                <div class="col-sm-7"><span class="badge <?=($cabecera_avance['aprobado_cliente'] ?? 0) == 1 ? 'badge-success' : 'badge-warning'?>"><?=($cabecera_avance['aprobado_cliente'] ?? 0) == 1 ? 'Aprobado Cliente' : 'Pendiente'?></span></div>
+                              </div>
+                            </div>
+                          </div>
+                          <?php if (!empty(trim((string)($cabecera_avance['observaciones'] ?? '')))) { ?>
+                          <div class="form-group row mb-2">
+                            <label class="col-sm-2 col-form-label">Observaciones</label>
+                            <div class="col-sm-10"><span class="form-control-plaintext"><?=escaparAvance($cabecera_avance['observaciones'])?></span></div>
+                          </div>
+                          <?php } ?>
+                          <hr class="mt-3 mb-3">
                           <div class="form-group row">
                             <div class="col-12">
-                              <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h6 class="mb-0 font-weight-bold">Items OCC y aperturados</h6>
-                                <button type="button" id="btn_toggle_todos_desgloses" class="btn btn-secondary btn-sm">Ocultar todos los desgloses</button>
-                              </div>
+                              <h6 class="mb-3 font-weight-bold">Items OCC y aperturados</h6>
                               <div class="table-responsive">
                                 <table class="table table-sm table-bordered" id="tabla_occ_avances" style="width:100%">
                                   <thead>
                                     <tr>
                                       <th>ID</th>
+                                      <th>Posición</th>
                                       <th>Descripcion</th>
                                       <th class="text-right">Cantidad</th>
-                                      <th class="text-right">Precio unitario</th>
-                                      <th class="text-right">Descuento</th>
-                                      <th class="text-right">Subtotal</th>
-                                      <th class="text-center" style="width:95px;">Acciones</th>
+                                      <th class="text-right <?= $esOpAvance ? 'd-none' : '' ?>">Precio unitario</th>
+                                      <th class="text-right <?= $esOpAvance ? 'd-none' : '' ?>">Descuento</th>
+                                      <th class="text-right <?= $esOpAvance ? 'd-none' : '' ?>">Subtotal</th>
                                     </tr>
                                   </thead>
                                   <tbody><?php
                                     if (empty($occ_detalles)) { ?>
-                                      <tr><td colspan="7">La Orden de Compra seleccionada no tiene items.</td></tr><?php
+                                       <tr><td colspan="7">La Orden de Compra seleccionada no tiene items.</td></tr><?php
                                     } else {
                                       foreach ($occ_detalles as $occ_row) {
                                         $id_occ_fila = (int) $occ_row['id'];
@@ -597,24 +757,16 @@ Database::disconnect();
                                         ?>
                                         <tr class="occ-item-row <?=escaparAvance(implode(' ', $clases_occ))?>">
                                           <td><?=$id_occ_fila?></td>
+                                          <td><?=escaparAvance($occ_row['posicion'])?></td>
                                           <td><?=escaparAvance($occ_row['descripcion'])?></td>
                                           <td class="text-right"><?=number_format((float) $occ_row['cantidad'], 2, ',', '.')?></td>
-                                          <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $occ_row['precio_unitario'], 2, ',', '.')?></td>
-                                          <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $occ_row['descuento'], 2, ',', '.')?></td>
-                                          <td class="text-right"><?=escaparAvance($moneda)?> <?=number_format((float) $occ_row['subtotal'], 2, ',', '.')?></td>
-                                          <td class="text-center"><?php
-                                            if (!empty($grupos_fila)) { ?>
-                                              <button type="button" class="btn btn-secondary btn-sm btn-toggle-desglose" data-target="#<?=$id_desglose?>" title="Ocultar desglose" aria-label="Ocultar desglose">Ocultar</button><?php
-                                            } elseif ($meta_agrupado && (int) $meta_agrupado['propietario'] !== $id_occ_fila) { ?>
-                                              <span class="sr-only">Desglose agrupado en item #<?=escaparAvance($meta_agrupado['propietario'])?></span><?php
-                                            } else { ?>
-                                              <span class="text-muted">Sin aperturado</span><?php
-                                            } ?>
-                                          </td>
+                                          <td class="text-right <?= $esOpAvance ? 'd-none' : '' ?>"><?=escaparAvance($moneda)?> <?=number_format((float) $occ_row['precio_unitario'], 2, ',', '.')?></td>
+                                          <td class="text-right <?= $esOpAvance ? 'd-none' : '' ?>"><?=escaparAvance($moneda)?> <?=number_format((float) $occ_row['descuento'], 2, ',', '.')?></td>
+                                          <td class="text-right <?= $esOpAvance ? 'd-none' : '' ?>"><?=escaparAvance($moneda)?> <?=number_format((float) $occ_row['subtotal'], 2, ',', '.')?></td>
                                         </tr><?php
                                         if (!empty($grupos_fila)) { ?>
                                           <tr class="occ-breakdown-row" id="<?=$id_desglose?>">
-                                            <td colspan="7"><?php renderGruposAvance($grupos_fila, $moneda); ?></td>
+                                             <td colspan="7"><?php renderGruposAvance($grupos_fila, $moneda); ?></td>
                                           </tr><?php
                                         }
                                       }
@@ -640,7 +792,6 @@ Database::disconnect();
                       <div class="col-12">
 
                         <button type="submit" value="1" name="btn1" class="btn btn-success addPosicion"><?= $modo == 'modificar' ? 'Modificar' : 'Crear' ?> Certificado de Avance</button>
-                        <!-- <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Crear e ir a Certificados</button> -->
                         <a href='listarCertificadosAvances.php?id_certificado_maestro=<?=$id_certificado_maestro?>' class="btn btn-light">Volver</a>
 
                       </div>
@@ -696,118 +847,6 @@ Database::disconnect();
     <!-- Plugin used-->
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    <script type="text/plain" id="script-tabla-plana-anterior">
-      function calcularSubtotalAvance(input) {
-        var fila = input.closest('tr');
-        var precioInput = fila.querySelector("input[name='precio_unitario[]']");
-        var subtotalInput = fila.querySelector("input[name='subtotal[]']");
-        var subtotalLabel = fila.querySelector('.subtotal_formatted');
-        var avance = parseFloat(String(input.value || '').replace(',', '.')) || 0;
-        var precioUnitario = parseFloat(String(precioInput.value || '').replace(',', '.')) || 0;
-        var subtotal = avance * precioUnitario;
-
-        subtotalInput.value = subtotal.toFixed(2);
-        subtotalLabel.textContent = subtotal.toLocaleString('en-US', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        });
-      }
-
-      $(document).ready(function () {
-
-        if (!document.getElementById('dataTables-example667')) {
-          return;
-        }
-
-        // Setup - add a text input to each footer cell
-        $('#dataTables-example667 tfoot th').each( function () {
-          var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-
-	      $('#dataTables-example667').DataTable({
-          stateSave: false,
-          responsive: false,
-          order: [],
-          language: {
-            "decimal": "",
-            "emptyTable": "No hay información",
-            "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-            "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-            "infoFiltered": "(Filtrado de _MAX_ total registros)",
-            "infoPostFix": "",
-            "thousands": ",",
-            "lengthMenu": "Mostrar _MENU_ Registros",
-            "loadingRecords": "Cargando...",
-            "processing": "Procesando...",
-            "search": "Buscar:",
-            "zeroRecords": "No hay resultados",
-            "paginate": {
-                "first": "Primero",
-                "last": "Ultimo",
-                "next": "Siguiente",
-                "previous": "Anterior"
-            }
-          }
-        });
- 
-        // DataTable
-        var table = $('#dataTables-example667').DataTable();
-        // Apply the search
-        table.columns().every( function () {
-          var that = this;
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that.search( this.value ).draw();
-            }
-          });
-        } );
-
-        $("form").on("submit",function(e){
-          e.preventDefault();
-          let ok=0;
-          $("#dataTables-example667 tbody tr").each(function(){
-            actualizarSubtotal($(this));
-            let avance=$(this).find("input[name='avance[]']").val()
-            //let precio_unitario=$(this).find("input[name='precio_unitario[]']").val()
-            if(avance.length>0){// && precio_unitario.length>0
-              ok=1;
-            }
-          })
-          if(ok==0){
-            alert("Debe completar el avance de al menos una fila");
-          }else{
-            this.submit();
-            //console.log("submit");
-          }
-        })
-
-        function obtenerNumero(valor) {
-          valor = String(valor || '').trim().replace(',', '.');
-          let numero = parseFloat(valor);
-          return isNaN(numero) ? 0 : numero;
-        }
-
-        function actualizarSubtotal(fila) {
-          let avance = obtenerNumero(fila.find("input[name='avance[]']").val());
-          let precioUnitario = obtenerNumero(fila.find("input[name='precio_unitario[]']").val());
-          let subtotal = avance * precioUnitario;
-          let subtotalFormateado = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-          fila.find("input[name='subtotal[]']").val(subtotal.toFixed(2));
-          fila.find(".subtotal_formatted").html(subtotalFormateado);
-        }
-
-        $("#dataTables-example667 tbody tr").each(function() {
-          calcularSubtotalAvance($(this).find("input[name='avance[]']")[0]);
-        });
-
-        $(document).on("input change keyup", "input[name='avance[]']", function() {
-          actualizarSubtotal($(this).closest("tr"));
-        });
-
-      });
-    </script>
     <script>
       function obtenerNumeroAvance(valor) {
         valor = String(valor || '').trim().replace(',', '.');
@@ -829,14 +868,21 @@ Database::disconnect();
 
         let totalActual = 0;
         let totalAcumulado = 0;
+        let totalCm = 0;
         grupo.find('.fila-detalle-avance').each(function() {
           let fila = $(this);
           totalActual += obtenerNumeroAvance(fila.find("input[name='subtotal[]']").val());
           totalAcumulado += obtenerNumeroAvance(fila.attr('data-monto-acumulado'));
+          totalCm += obtenerNumeroAvance(fila.attr('data-subtotal-cm'));
         });
+
+        const celdaSaldo = grupo.find('.total-grupo-saldo');
+        const monedaGrupo = celdaSaldo.attr('data-moneda') || '';
+        const totalSaldo = totalCm - totalAcumulado;
 
         grupo.find('.total-grupo-avance').text(formatearNumeroAvance(totalActual));
         grupo.find('.total-grupo-acumulado').text(formatearNumeroAvance(totalAcumulado));
+        celdaSaldo.text(monedaGrupo + ' ' + formatearNumeroAvance(totalSaldo)).attr('data-total-saldo', totalSaldo.toFixed(2));
       }
 
       function actualizarSubtotalAvance(fila) {
@@ -844,11 +890,15 @@ Database::disconnect();
         let precioUnitario = obtenerNumeroAvance(fila.find("input[name='precio_unitario[]']").val());
         let cantidadTotal = obtenerNumeroAvance(fila.attr('data-cantidad-total'));
         let cantidadAnterior = obtenerNumeroAvance(fila.attr('data-cantidad-anterior'));
+        let subtotalCm = obtenerNumeroAvance(fila.attr('data-subtotal-cm'));
         let cantidadAcumulada = cantidadAnterior + avance;
         let porcentajeActual = cantidadTotal > 0 ? (avance / cantidadTotal) * 100 : 0;
         let porcentajeAcumulado = cantidadTotal > 0 ? (cantidadAcumulada / cantidadTotal) * 100 : 0;
+        let saldoCantidad = Math.max(0, cantidadTotal - cantidadAcumulada);
+        let porcentajeSaldo = cantidadTotal > 0 ? (saldoCantidad / cantidadTotal) * 100 : 0;
         let subtotal = avance * precioUnitario;
         let montoAcumulado = cantidadAcumulada * precioUnitario;
+        let montoSaldo = subtotalCm - montoAcumulado;
 
         fila.find("input[name='subtotal[]']").val(subtotal.toFixed(2));
         fila.find('.porcentaje-actual').text(formatearNumeroAvance(porcentajeActual) + '%');
@@ -856,6 +906,9 @@ Database::disconnect();
         fila.find('.cantidad-acumulada').text(formatearNumeroAvance(cantidadAcumulada));
         fila.find('.porcentaje-acumulado').text(formatearNumeroAvance(porcentajeAcumulado) + '%');
         fila.find('.monto-acumulado').text(formatearNumeroAvance(montoAcumulado));
+        fila.find('.cantidad-saldo').text(formatearNumeroAvance(saldoCantidad));
+        fila.find('.porcentaje-saldo').text(formatearNumeroAvance(porcentajeSaldo) + '%');
+        fila.find('.monto-saldo').text(formatearNumeroAvance(montoSaldo));
         fila.attr('data-monto-acumulado', montoAcumulado.toFixed(2));
         recalcularTotalGrupoAvance(fila.closest('.occ-lote-inline-row'));
       }
@@ -871,28 +924,6 @@ Database::disconnect();
 
         $(document).on('input change keyup', "input[name='avance[]']", function() {
           actualizarSubtotalAvance($(this).closest('.fila-detalle-avance'));
-        });
-
-        $(document).on('click', '.btn-toggle-desglose', function() {
-          let target = $($(this).data('target'));
-          target.toggle();
-          let accion = target.is(':visible') ? 'Ocultar' : 'Mostrar';
-          $(this)
-            .text(accion)
-            .attr('title', accion + ' desglose')
-            .attr('aria-label', accion + ' desglose');
-        });
-
-        $('#btn_toggle_todos_desgloses').on('click', function() {
-          let filas = $('.occ-breakdown-row');
-          let hayVisible = filas.filter(':visible').length > 0;
-          filas.toggle(!hayVisible);
-          let accionIndividual = hayVisible ? 'Mostrar' : 'Ocultar';
-          $('.btn-toggle-desglose')
-            .text(accionIndividual)
-            .attr('title', accionIndividual + ' desglose')
-            .attr('aria-label', accionIndividual + ' desglose');
-          $(this).text(hayVisible ? 'Mostrar todos los desgloses' : 'Ocultar todos los desgloses');
         });
 
         $('form').on('submit', function(e) {

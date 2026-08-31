@@ -24,6 +24,7 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+  $esOpVer = function_exists('esOperacionesSinEconomico') ? esOperacionesSinEconomico() : false;
   
   Database::disconnect();
   
@@ -81,11 +82,11 @@ if (!empty($_POST)) {
                             </div>
                           </div>
                           <div class="row mt-3">
-                            <div class="col-md-4 d-flex align-items-center">
+                            <?php if (!$esOpVer) { ?><div class="col-md-4 d-flex align-items-center">
                               <label class="col-form-label mb-0 mr-1">Monto total:</label>
                               <span><?=$data['moneda']." ".number_format($data['monto_total'],2);?></span>
-                            </div>
-                            <div class="col-md-8 d-flex align-items-center">
+                            </div><?php } ?>
+                            <div class="<?php echo $esOpVer ? 'col-md-12' : 'col-md-8'; ?> d-flex align-items-center">
                               <label class="col-form-label mb-0 mr-1">Observaciones:</label>
                               <span><?=$data['observaciones'];?></span>
                             </div>
@@ -107,9 +108,8 @@ if (!empty($_POST)) {
                                       <th>Cantidad</th>
                                       <th>Unidad</th>
                                       <th>Avance Actual</th>
-                                      <!-- <th>Monto Avance</th> -->
-                                      <th>Precio U.</th>
-                                      <th>Subtotal</th>
+                                      <?php if (!$esOpVer) { ?><th>Precio U.</th>
+                                      <th>Subtotal</th><?php } ?>
                                     </tr>
                                   </thead>
                                   <tbody><?php
@@ -128,9 +128,7 @@ if (!empty($_POST)) {
                                     echo '<td style="text-align:right">'.$row["cantidad"].'</td>';
                                     echo '<td data-id="'.$row["id_unidad_medida"].'">'.$row["unidad_medida"].'</td>';
                                     echo '<td>'.$row["cantidad_actual"].'</td>';
-                                    //echo '<td>'.$row["precio_unitario_ca"].'</td>';
-                                    echo '<td style="text-align:right">'.$row["moneda"]." ".number_format($row["precio_unitario_cm"],2).'</td>';
-                                    echo '<td style="text-align:right">'.$row["moneda"]." ".number_format($row["subtotal_ca"],2).'</td>';
+                                    if (!$esOpVer) { echo '<td style="text-align:right">'.$row["moneda"]." ".number_format($row["precio_unitario_cm"],2).'</td>'; echo '<td style="text-align:right">'.$row["moneda"]." ".number_format($row["subtotal_ca"],2).'</td>'; }
                                     //echo '<td>'.$row["observaciones"].'</td>';
                                     echo '</tr>';
                                   }?></tbody>
@@ -141,9 +139,8 @@ if (!empty($_POST)) {
                                       <th>Cantidad</th>
                                       <th>Unidad</th>
                                       <th>Avance Actual</th>
-                                      <!-- <th>Monto Avance</th> -->
-                                      <th>Precio U.</th>
-                                      <th>Subtotal</th>
+                                      <?php if (!$esOpVer) { ?><th>Precio U.</th>
+                                      <th>Subtotal</th><?php } ?>
                                     </tr>
                                   </tfoot>
                                 </table>

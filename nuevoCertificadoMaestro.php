@@ -18,11 +18,12 @@ $formData = [
   'observaciones' => '',
   'id_moneda' => '',
 ];
+$isApproved = false;
 
 if ($isEdit) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id, id_occ, fecha_emision, porcentaje_anticipo, observaciones, id_moneda FROM certificados_maestros WHERE id = ?";
+  $sql = "SELECT id, id_occ, fecha_emision, porcentaje_anticipo, observaciones, id_moneda, aprobado_cliente FROM certificados_maestros WHERE id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -38,12 +39,30 @@ if ($isEdit) {
   $formData['porcentaje_anticipo'] = (string) ($data['porcentaje_anticipo'] ?? '0');
   $formData['observaciones'] = (string) ($data['observaciones'] ?? '');
   $formData['id_moneda'] = (string) ($data['id_moneda'] ?? '');
+  $isApproved = (int) ($data['aprobado_cliente'] ?? 0) === 1;
 }
 
 if (!empty($_POST)) {
 
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+  if ($isEdit) {
+    $sql = "SELECT aprobado_cliente FROM certificados_maestros WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $approvalData = $q->fetch(PDO::FETCH_ASSOC);
+
+    if (empty($approvalData)) {
+      Database::disconnect();
+      die("El Certificado Maestro no existe.");
+    }
+
+    if ((int) ($approvalData['aprobado_cliente'] ?? 0) === 1) {
+      Database::disconnect();
+      die("El Certificado Maestro está aprobado y no puede modificarse.");
+    }
+  }
 
   $idOcc = (int) ($_POST["id_occ"] ?? 0);
   $fechaEmision = (string) ($_POST["fecha_emision"] ?? '');
@@ -142,7 +161,7 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Orden de Compra Cliente(*)</label>
                             <div class="col-sm-9">
-                              <select name="id_occ" id="id_occ" class="js-example-basic-single col-sm-12" required="required" autofocus>
+                              <select name="id_occ" id="id_occ" class="js-example-basic-single col-sm-12" required="required" autofocus <?=$isApproved ? 'disabled' : ''?>>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -169,7 +188,7 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
                             <div class="col-sm-9">
-                              <input name="fecha_emision" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=htmlspecialchars($formData['fecha_emision'], ENT_QUOTES)?>">
+                               <input name="fecha_emision" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=htmlspecialchars($formData['fecha_emision'], ENT_QUOTES)?>" <?=$isApproved ? 'readonly' : ''?>>
                             </div>
                           </div>
                           <div class="form-group row">
@@ -187,18 +206,20 @@ if (!empty($_POST)) {
                           -->
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">% Anticipo</label>
-                            <div class="col-sm-9"><input name="porcentaje_anticipo" type="number" step="0.01" min="0" max="100" class="form-control" value="<?=htmlspecialchars($formData['porcentaje_anticipo'], ENT_QUOTES)?>"></div>
+                             <div class="col-sm-9"><input name="porcentaje_anticipo" type="number" step="0.01" min="0" max="100" class="form-control" value="<?=htmlspecialchars($formData['porcentaje_anticipo'], ENT_QUOTES)?>" <?=$isApproved ? 'readonly' : ''?>></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Observaciones</label>
-                            <div class="col-sm-9"><textarea name="observaciones" class="form-control"><?=htmlspecialchars($formData['observaciones'], ENT_QUOTES)?></textarea></div>
+                             <div class="col-sm-9"><textarea name="observaciones" class="form-control" <?=$isApproved ? 'readonly' : ''?>><?=htmlspecialchars($formData['observaciones'], ENT_QUOTES)?></textarea></div>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3"><?php
-                        if ($isEdit) {?>
+                        if ($isApproved) {?>
+                          <div class="alert alert-warning d-inline-block mb-0 mr-2">Este Certificado Maestro está aprobado y no puede modificarse.</div><?php
+                        } elseif ($isEdit) {?>
                           <button class="btn btn-success" type="submit" name="btn_ir_certificados" value="1">Guardar e ir a Certificados</button>
                           <button class="btn btn-primary" type="submit" name="btn_ver_detalle" value="1">Guardar y ver Detalle</button><?php
                         } else {?>

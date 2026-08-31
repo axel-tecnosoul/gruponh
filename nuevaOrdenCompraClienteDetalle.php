@@ -12,6 +12,11 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   $subtotal=($_POST['cantidad']*$_POST['precio_unitario'])-$_POST['descuento'];
+  $posicion = filter_var($_POST['posicion'] ?? null, FILTER_VALIDATE_INT);
+  if ($posicion === false || $posicion < 1) {
+    Database::disconnect();
+    die('La posición debe ser un número entero positivo.');
+  }
 
   //btn2 y btn3 son parar modificar
   if (isset($_POST['btn3'])) {
@@ -20,9 +25,17 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute([$_POST['id_orden_compra_cliente_detalle'],$subtotal,$_GET['id_orden_compra_cliente']]);
 
-    $sql = "UPDATE occ_detalles SET descripcion = ?, cantidad = ?, precio_unitario = ?, descuento = ?, subtotal = ? WHERE id = ?";
+    $sql = "SELECT COUNT(*) FROM occ_detalles WHERE id_occ = ? AND posicion = ? AND id <> ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST['descripcion'],$_POST['cantidad'],$_POST['precio_unitario'],$_POST['descuento'],$subtotal,$_POST['id_orden_compra_cliente_detalle']]);
+    $q->execute([$_GET['id_orden_compra_cliente'], $posicion, $_POST['id_orden_compra_cliente_detalle']]);
+    if ((int) $q->fetchColumn() > 0) {
+      Database::disconnect();
+      die('La posición ya existe en esta Orden de Compra Cliente.');
+    }
+
+    $sql = "UPDATE occ_detalles SET posicion = ?, descripcion = ?, cantidad = ?, precio_unitario = ?, descuento = ?, subtotal = ? WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$posicion,$_POST['descripcion'],$_POST['cantidad'],$_POST['precio_unitario'],$_POST['descuento'],$subtotal,$_POST['id_orden_compra_cliente_detalle']]);
     
     $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificacion de Detalle ID #".$_POST['id_orden_compra_cliente_detalle']." de Orden de Compra Cliente','Orden de Compra Cliente','verOrdenCompraCliente.php?id=".$_GET['id_orden_compra_cliente']."')";
     $q = $pdo->prepare($sql);
@@ -31,14 +44,21 @@ if (!empty($_POST)) {
     header("Location: nuevaOrdenCompraClienteDetalle.php?id_orden_compra_cliente=".$_GET['id_orden_compra_cliente']);
 
   }else{
+    $sql = "SELECT COUNT(*) FROM occ_detalles WHERE id_occ = ? AND posicion = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_GET['id_orden_compra_cliente'], $posicion]);
+    if ((int) $q->fetchColumn() > 0) {
+      Database::disconnect();
+      die('La posición ya existe en esta Orden de Compra Cliente.');
+    }
 
     $sql = "UPDATE occ SET monto = monto + ? WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$subtotal,$_GET['id_orden_compra_cliente']]);
 
-    $sql = "INSERT INTO occ_detalles (id_occ, descripcion, cantidad, precio_unitario, descuento, subtotal) VALUES (?,?,?,?,?,?)";
+    $sql = "INSERT INTO occ_detalles (id_occ, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal) VALUES (?,?,?,?,?,?,?)";
     $q = $pdo->prepare($sql);
-    $q->execute([$_GET['id_orden_compra_cliente'],$_POST['descripcion'],$_POST['cantidad'],$_POST['precio_unitario'],$_POST['descuento'],$subtotal]);
+    $q->execute([$_GET['id_orden_compra_cliente'],$posicion,$_POST['descripcion'],$_POST['cantidad'],$_POST['precio_unitario'],$_POST['descuento'],$subtotal]);
     $id_lista_corte_conjunto = $pdo->lastInsertId();
     
     $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Detalle #$id_lista_corte_conjunto de Orden de Compra Cliente','Orden de Compra Cliente','verOrdenCompraCliente.php?id=".$_GET['id_orden_compra_cliente']."')";
@@ -59,6 +79,11 @@ if (!empty($_POST)) {
 }
 
 $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
+$pdo = Database::connect();
+$q = $pdo->prepare("SELECT COALESCE(MAX(posicion), 0) + 10 FROM occ_detalles WHERE id_occ = ?");
+$q->execute([$id_orden_compra_cliente]);
+$siguiente_posicion = (int) $q->fetchColumn();
+Database::disconnect();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -109,7 +134,8 @@ $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
                                 <thead>
                                   <tr>
                                     <th>ID</th>
-                                    <th>Descripcion</th>
+                                     <th>Posición</th>
+                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
                                     <th>Precio Unitario</th>
                                     <th>Descuento</th>
@@ -119,7 +145,8 @@ $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
                                 <tfoot>
                                   <tr>
                                     <th>ID</th>
-                                    <th>Descripcion</th>
+                                     <th>Posición</th>
+                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
                                     <th>Precio Unitario</th>
                                     <th>Descuento</th>
@@ -130,11 +157,12 @@ $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                   
-                                  $sql = " SELECT id, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ".$id_orden_compra_cliente;
+                                   $sql = " SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ".$id_orden_compra_cliente." ORDER BY posicion, id";
                                   foreach ($pdo->query($sql) as $row) {
                                     echo '<tr>';
-                                    echo '<td>'. $row["id"] . '</td>';
-                                    echo '<td>'. $row["descripcion"] . '</td>';
+                                     echo '<td>'. $row["id"] . '</td>';
+                                     echo '<td>'. $row["posicion"] . '</td>';
+                                     echo '<td>'. $row["descripcion"] . '</td>';
                                     echo '<td>'. $row["cantidad"] . '</td>';
                                     echo '<td>'. $row["precio_unitario"] . '</td>';
                                     echo '<td>'. $row["descuento"] . '</td>';
@@ -147,8 +175,12 @@ $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
                             </div>
                           </div>
                           <div class="form-group row">
-                            <input type="hidden" name="id_orden_compra_cliente_detalle">
-                            <label class="col-sm-3 col-form-label">Descripcion(*)</label>
+                           <input type="hidden" name="id_orden_compra_cliente_detalle">
+                           <label class="col-sm-3 col-form-label">Posición(*)</label>
+                           <div class="col-sm-9"><input name="posicion" type="number" min="1" step="1" class="form-control" required value="<?=$siguiente_posicion?>"></div>
+                         </div>
+                         <div class="form-group row">
+                           <label class="col-sm-3 col-form-label">Descripcion(*)</label>
                             <div class="col-sm-9"><input name="descripcion" type="text" autofocus maxlength="199" class="form-control" required></div>
                           </div>
                           <div class="form-group row">
@@ -312,11 +344,13 @@ $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
             $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_conjunto);
             $("#link_modificar_conjunto").on("click",function(){
               let id_orden_compra_cliente_detalle = t.find("td:nth-child(1)").html();
-              let descripcion = t.find("td:nth-child(2)").html();
-              let cantidad = t.find("td:nth-child(3)").html();
-              let precio_unitario = t.find("td:nth-child(4)").html();
-              let descuento = t.find("td:nth-child(5)").html();
+              let posicion = t.find("td:nth-child(2)").html();
+              let descripcion = t.find("td:nth-child(3)").html();
+              let cantidad = t.find("td:nth-child(4)").html();
+              let precio_unitario = t.find("td:nth-child(5)").html();
+              let descuento = t.find("td:nth-child(6)").html();
               $("input[name='id_orden_compra_cliente_detalle']").val(id_orden_compra_cliente_detalle)
+              $("input[name='posicion']").val(posicion)
               $("input[name='descripcion']").val(descripcion).focus()
               $("input[name='cantidad']").val(cantidad).attr("data-original",cantidad)
               $("input[name='precio_unitario']").val(precio_unitario).attr("data-original",precio_unitario)
@@ -348,6 +382,7 @@ $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
 
       $("#cancelEditPosicion").on("click",function(){
         $("input[name='id_orden_compra_cliente_detalle']").val("")
+        $("input[name='posicion']").val(<?=$siguiente_posicion?>)
         $("input[name='descripcion']").val("")
         $("input[name='cantidad']").val("")
         $("input[name='precio_unitario']").val("")

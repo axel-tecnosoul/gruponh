@@ -7,7 +7,7 @@ $id_occ = $_POST['id_occ'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT d.id, d.descripcion, d.cantidad, d.precio_unitario, d.descuento, d.subtotal, c.id_moneda FROM occ_detalles d inner join occ c on c.id = d.id_occ WHERE d.id_occ = ".$id_occ;
+$sql = "SELECT d.id, d.posicion, d.descripcion, d.cantidad, d.precio_unitario, d.descuento, d.subtotal, c.id_moneda FROM occ_detalles d inner join occ c on c.id = d.id_occ WHERE d.id_occ = ".$id_occ." ORDER BY d.posicion, d.id";
 //echo $sql;
 $aConjuntos=[];
 foreach ($pdo->query($sql) as $row) {
@@ -19,11 +19,12 @@ foreach ($pdo->query($sql) as $row) {
 	
   $aConjuntos[]=[
     0=>$row["id"],
-    1=>$row["descripcion"],
-    2=>$row["cantidad"],
-    3=>$signo.number_format($row["precio_unitario"],2),
-    4=>$signo.number_format($row["descuento"],2),
-    5=>$signo.number_format($row["subtotal"],2),
+    1=>$row["posicion"],
+    2=>$row["descripcion"],
+    3=>$row["cantidad"],
+    4=>$signo.number_format($row["precio_unitario"],2),
+    5=>$signo.number_format($row["descuento"],2),
+    6=>$signo.number_format($row["subtotal"],2),
   ];
 }
 

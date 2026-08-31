@@ -1,4 +1,4 @@
-<?php include("permisos.php");?>
+<?php require_once __DIR__ . "/permisos.php";?>
 <?php
 function abrirMenu($op) {
     $current_page = basename($_SERVER['SCRIPT_NAME']);

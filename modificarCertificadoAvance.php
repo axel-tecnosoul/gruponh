@@ -14,6 +14,29 @@ if (!empty($_GET['id'])) {
 
 if (null==$id) {
   header("Location: listarCertificadosMaestros.php");
+  exit;
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$sqlUlt = "SELECT COUNT(*) FROM certificados_avances_cabecera c
+           WHERE c.id_certificado_maestro = (SELECT id_certificado_maestro FROM certificados_avances_cabecera WHERE id = ?)
+             AND c.nro_certificado = (SELECT nro_certificado FROM certificados_avances_cabecera WHERE id = ?)
+             AND c.nro_revision > (SELECT nro_revision FROM certificados_avances_cabecera WHERE id = ?)";
+$qUlt = $pdo->prepare($sqlUlt);
+$qUlt->execute([$id, $id, $id]);
+if ((int) $qUlt->fetchColumn() > 0) {
+  Database::disconnect();
+  die("Solo la ultima revision del certificado puede modificarse.");
+}
+
+$sqlAprob = "SELECT aprobado_cliente FROM certificados_avances_cabecera WHERE id = ?";
+$qAprob = $pdo->prepare($sqlAprob);
+$qAprob->execute([$id]);
+if ((int) $qAprob->fetchColumn() === 1) {
+  Database::disconnect();
+  die("El Certificado de Avance esta aprobado. Genere una nueva revision desde el listado para modificarlo.");
 }
 
 if (!empty($_POST)) {
@@ -52,6 +75,7 @@ if (!empty($_POST)) {
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
 
+  $redirect = "listarCertificadosAvances.php?id_certificado_maestro=" . $id_certificado_maestro;
   if(isset($_POST['btn1'])){
     $redirect="listarCertificadosAvances.php?id_certificado_maestro=".$id_certificado_maestro;
   }elseif(isset($_POST['btn2'])){
