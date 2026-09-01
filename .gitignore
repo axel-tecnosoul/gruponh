@@ -11,7 +11,7 @@ github-deploy-key
 # Dependencies
 /vendor/
 /node_modules/
-composer.lock
+#composer.lock
 
 #.env
 #.env.*
