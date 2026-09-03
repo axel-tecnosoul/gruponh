@@ -79,7 +79,7 @@ foreach ($lotesBase as $loteRow) {
   $q->execute([$id_certificado_maestro, $aperturadoId]);
   $occIds = array_map('intval', $q->fetchAll(PDO::FETCH_COLUMN, 0));
 
-  $sql = "SELECT descripcion, id_unidad_medida, cantidad, incidencia_porcentaje, id_occ_detalle
+  $sql = "SELECT descripcion, id_unidad_medida, cantidad, incidencia_porcentaje, id_occ_detalle, posicion_aperturado
           FROM certificados_maestros_detalles
           WHERE id_certificado_maestro = ? AND aperturado = ?
           ORDER BY id";
@@ -96,6 +96,7 @@ foreach ($lotesBase as $loteRow) {
       'unidad' => (string) ($unidadesMap[(int) $r['id_unidad_medida']] ?? ''),
       'cantidad' => (float) $r['cantidad'],
       'incidencia' => (float) $r['incidencia_porcentaje'],
+      'posicion_aperturado' => (string) ($r['posicion_aperturado'] ?? ''),
     ];
   }
 

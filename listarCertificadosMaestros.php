@@ -161,6 +161,7 @@ $esOpCM = esOperacionesSinEconomico();?>
                             <th>Fecha inicio</th>
                             <th>Fecha fin</th>
                             <th>Monto</th>
+                            <th>Estado CM</th>
                             <th>Monto avances</th>
                             <th>Monto anticipos</th>
                             <th>Monto desacopios</th>
@@ -168,7 +169,6 @@ $esOpCM = esOperacionesSinEconomico();?>
                             <th>Monto redeterminacion</th>
                             <th>Saldo Pendiente</th>
                             <th>Observaciones</th>
-                            <th>Estado CM</th>
                             <th class="d-none">Cant CA</th>
                           </tr>
                         </thead>
@@ -183,6 +183,7 @@ $esOpCM = esOperacionesSinEconomico();?>
                             <th>Fecha inicio</th>
                             <th>Fecha fin</th>
                             <th>Monto</th>
+                            <th>Estado CM</th>
                             <th>Monto avances</th>
                             <th>Monto anticipos</th>
                             <th>Monto desacopios</th>
@@ -190,7 +191,6 @@ $esOpCM = esOperacionesSinEconomico();?>
                             <th>Monto redeterminacion</th>
                             <th>Saldo Pendiente</th>
                             <th>Observaciones</th>
-                            <th>Estado CM</th>
                             <th class="d-none">Cant CA</th>
                           </tr>
                         </tfoot>
@@ -237,6 +237,7 @@ $esOpCM = esOperacionesSinEconomico();?>
                                 <td><?=$row["fecha_inicio"]?></td>
                                 <td><?=$row["fecha_fin"]?></td>
                                 <td><?=$row["moneda"]." ".number_format($row["monto_total"],2)?></td>
+                                <td><span class="badge <?=$row["aprobado_cliente"] ? 'badge-success' : 'badge-warning'?>"><?=$row["aprobado_cliente"] ? 'Aprobado' : 'Pendiente'?></span></td>
                                 <td><?=$row["moneda"]." ".number_format($montoTotalAvances,2)?></td>
                                 <td><?=$row["moneda"]." ".number_format($montoTotalAnticipos,2)?></td>
                                 <td><?=$row["moneda"]." ".number_format($montoTotalDesacopios,2)?></td>
@@ -244,7 +245,6 @@ $esOpCM = esOperacionesSinEconomico();?>
                                 <td><?=$row["moneda"]." ".number_format($montoTotalAjustes,2)?></td>
                                 <td><?=$row["moneda"]." ".number_format($saldoPendiente,2)?></td>
                                 <td><?=htmlspecialchars($row["observaciones"], ENT_QUOTES, 'UTF-8')?></td>
-                                <td><span class="badge <?=$row["aprobado_cliente"] ? 'badge-success' : 'badge-warning'?>"><?=$row["aprobado_cliente"] ? 'Aprobado' : 'Pendiente'?></span></td>
                                 <td class="d-none"><?= $row["cant_ca"]?></td>
                               </tr><?php
                             }
@@ -334,7 +334,7 @@ $esOpCM = esOperacionesSinEconomico();?>
             <h5 class="modal-title" id="modalAprobarMaestroLabel">Confirmación</h5>
             <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
           </div>
-          <div class="modal-body">¿Está seguro que desea aprobar el Certificado Maestro? Luego no podrá modificarse ni cargar nuevos certificados de avance.</div>
+          <div class="modal-body">¿Está seguro que desea aprobar el Certificado Maestro? Luego no podrá modificarse.</div>
           <div class="modal-footer">
             <a href="#" class="btn btn-primary" id="btnAprobarMaestro">Aprobar</a>
             <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
@@ -730,18 +730,19 @@ $esOpCM = esOperacionesSinEconomico();?>
                 const total = base * (inc / 100);
                 const pu = cant > 0 ? (total / cant) : 0;
                 sumaTotal += total;
+                const posicion = f.posicion_aperturado || '';
                 if (esOpCM) {
-                filas += '<tr><td>' + escapeDetalleHtml(f.descripcion) + '</td><td>' + escapeDetalleHtml(f.unidad) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td></tr>';
-              } else {
-                filas += '<tr><td>' + escapeDetalleHtml(f.descripcion) + '</td><td>' + escapeDetalleHtml(f.unidad) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(pu) + '</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(total) + '</td></tr>';
-              }
+                  filas += '<tr><td>' + escapeDetalleHtml(posicion) + '</td><td>' + escapeDetalleHtml(f.descripcion) + '</td><td>' + escapeDetalleHtml(f.unidad) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td></tr>';
+                } else {
+                  filas += '<tr><td>' + escapeDetalleHtml(posicion) + '</td><td>' + escapeDetalleHtml(f.descripcion) + '</td><td>' + escapeDetalleHtml(f.unidad) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(pu) + '</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(total) + '</td></tr>';
+                }
               });
               if (!(entry.g.filas || []).length) {
-                const colEmpty = esOpCM ? 4 : 6;
+                const colEmpty = esOpCM ? 5 : 7;
                 filas = '<tr><td colspan="'+colEmpty+'" class="text-muted">Sin filas de detalle guardadas.</td></tr>';
               }
-              const theadBreak = esOpCM ? '<thead><tr><th>Descripcion</th><th>Unidad</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th></tr></thead>' : '<thead><tr><th>Descripcion</th><th>Unidad</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th><th class="text-right">Precio Unitario</th><th class="text-right">Total</th></tr></thead>';
-              const tfootBreak = esOpCM ? '' : '<tfoot class="bg-light"><tr class="font-weight-bold"><td colspan="5" class="text-right">Total</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(sumaTotal) + '</td></tr></tfoot>';
+              const theadBreak = esOpCM ? '<thead><tr><th>Posición</th><th>Descripcion</th><th>Unidad</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th></tr></thead>' : '<thead><tr><th>Posición</th><th>Descripcion</th><th>Unidad</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th><th class="text-right">Precio Unitario</th><th class="text-right">Total</th></tr></thead>';
+              const tfootBreak = esOpCM ? '' : '<tfoot class="bg-light"><tr class="font-weight-bold"><td colspan="6" class="text-right">Total</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(sumaTotal) + '</td></tr></tfoot>';
               paneles += '<div class="border rounded px-2 py-2 mb-2 occ-lote-inline-row"><div class="table-responsive"><table class="table table-sm table-bordered mb-0 occ-breakdown-table">' + theadBreak + '<tbody>' + filas + '</tbody>' + tfootBreak + '</table></div></div>';
             });
              const colBreak = esOpCM ? 4 : 7;

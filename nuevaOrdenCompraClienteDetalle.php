@@ -133,7 +133,7 @@ Database::disconnect();
                               <table class="display" id="dataTables-example667">
                                 <thead>
                                   <tr>
-                                    <th>ID</th>
+                                    <th class="d-none">ID</th>
                                      <th>Posición</th>
                                      <th>Descripcion</th>
                                     <th>Cantidad</th>
@@ -144,7 +144,7 @@ Database::disconnect();
                                 </thead>
                                 <tfoot>
                                   <tr>
-                                    <th>ID</th>
+                                    <th class="d-none">ID</th>
                                      <th>Posición</th>
                                      <th>Descripcion</th>
                                     <th>Cantidad</th>
@@ -160,7 +160,7 @@ Database::disconnect();
                                    $sql = " SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ".$id_orden_compra_cliente." ORDER BY posicion, id";
                                   foreach ($pdo->query($sql) as $row) {
                                     echo '<tr>';
-                                     echo '<td>'. $row["id"] . '</td>';
+                                     echo '<td class="d-none">'. $row["id"] . '</td>';
                                      echo '<td>'. $row["posicion"] . '</td>';
                                      echo '<td>'. $row["descripcion"] . '</td>';
                                     echo '<td>'. $row["cantidad"] . '</td>';

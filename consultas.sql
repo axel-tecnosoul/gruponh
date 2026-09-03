@@ -151,6 +151,9 @@ MODIFY adjunto VARCHAR(500) NULL;
 -- CORRECCIÓN 13: Separar lote_aperturado en lote (batch) y aperturado (breakdown)
 
 ALTER TABLE `certificados_maestros_detalles`
+  ADD COLUMN `posicion_aperturado` VARCHAR(32) NULL AFTER `modo_generacion`;
+
+ALTER TABLE `certificados_maestros_detalles`
     CHANGE `lote_aperturado` `aperturado` VARCHAR(64) NULL;
 
 ALTER TABLE `certificados_maestros_detalles`

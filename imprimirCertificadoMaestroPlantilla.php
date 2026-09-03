@@ -69,6 +69,7 @@ $sql = "SELECT
         od.posicion as posicion_occ,
         cmd.id as cmd_id,
         cmd.descripcion,
+        cmd.posicion_aperturado,
         cmd.cantidad,
         um.unidad_medida,
         cmd.incidencia_porcentaje,
@@ -118,7 +119,7 @@ foreach ($rawGrupos as $rg) {
         $pb = (int)($occMap[$b]['posicion'] ?? 9999);
         return $pa <=> $pb ?: $a <=> $b;
     });
-    $qFilas = $pdo->prepare("SELECT cmd.descripcion, um.unidad_medida, cmd.cantidad, cmd.incidencia_porcentaje, cmd.precio_unitario, cmd.subtotal FROM certificados_maestros_detalles cmd LEFT JOIN unidades_medida um ON um.id = cmd.id_unidad_medida WHERE cmd.id_certificado_maestro = ? AND cmd.aperturado = ? ORDER BY cmd.id");
+    $qFilas = $pdo->prepare("SELECT cmd.descripcion, um.unidad_medida, cmd.cantidad, cmd.incidencia_porcentaje, cmd.precio_unitario, cmd.subtotal, cmd.posicion_aperturado FROM certificados_maestros_detalles cmd LEFT JOIN unidades_medida um ON um.id = cmd.id_unidad_medida WHERE cmd.id_certificado_maestro = ? AND cmd.aperturado = ? ORDER BY cmd.id");
     $qFilas->execute([$idCm, $ap]);
     $filas = $qFilas->fetchAll(PDO::FETCH_ASSOC);
     $owner = !empty($occIds) ? $occIds[0] : null;
@@ -171,7 +172,7 @@ $css = '
 <style>
     @page {
         size: A4 landscape;
-        margin: 24mm 8mm 16mm 8mm;
+        margin: 32mm 8mm 16mm 8mm;
     }
     * { box-sizing: border-box; }
     body {
@@ -180,13 +181,13 @@ $css = '
         color: #20252b;
         margin: 0;
     }
-    /* Cabecera fija (logo + título + datos empresa) */
+    /* Cabecera fija (logo 2,75cm + empresa a derecha de hoja, sin solape) */
     .pdf-header {
         position: fixed;
-        top: -18mm;
+        top: -32mm;
         left: 0;
         right: 0;
-        height: 14mm;
+        height: 28mm;
         background: white;
         padding: 1mm 8mm 0;
         border-bottom: 1px solid #17365d;
@@ -203,8 +204,8 @@ $css = '
         padding: 0 2mm;
     }
     .pdf-header-logo {
-        width: 16mm;
-        height: 10mm;
+        width: 27.5mm;
+        height: 27.5mm;
         object-fit: contain;
     }
     .header-center {
@@ -222,11 +223,11 @@ $css = '
         margin-top: 0.5mm;
     }
     .header-company {
-        border: 1px solid #999;
+        border: 0;
         padding: 0.8mm 1.5mm;
         font-size: 6pt;
         color: #555;
-        line-height: 1.3;
+        line-height: 1.25;
         text-align: right;
     }
     /* Pie de página */
@@ -260,18 +261,18 @@ $css = '
         word-wrap: break-word;
     }
     .ca-table th, .med-table th {
-        background: #BFBFBF;
+        background: #D9E2EC;
         font-weight: bold;
         text-align: center;
     }
-    .parent-yellow { background: #FFE080; }
-    .parent-blue   { background: #9BC2E6; }
-    .child-yellow  { background: #FFE080; }
+    .parent-yellow { background: #FFF4CC; }
+    .parent-blue   { background: #E6F2FF; }
+    .child-yellow  { background: #FFF4CC; }
     .total-row td  { background: #EEF3F8 !important; font-weight: bold; }
     .subtotal-row td { background: #E8E8E8 !important; font-weight: bold; }
 
-    .col-precio-total { border-right: 2px solid #000 !important; }
-    .col-acu-monto    { border-right: 2px solid #000 !important; }
+    .col-precio-total { border-right: 1px solid #B0B0B0 !important; }
+    .col-acu-monto    { border-right: 1px solid #B0B0B0 !important; }
 
     .text-center { text-align: center; }
     .text-right  { text-align: right; }
@@ -284,7 +285,7 @@ $css = '
         padding: 0.5mm 0.5mm;
     }
     .sub-header .label {
-        background: #BFBFBF;
+        background: #D9E2EC;
         font-weight: bold;
         padding: 0.5mm 0.5mm;
     }
@@ -298,6 +299,8 @@ $css = '
         border-collapse: collapse;
         margin-top: 3mm;
         font-size: 6.5pt;
+        page-break-inside: avoid;
+        border: 1px solid #B0B0B0;
     }
     .footer-block td {
         border: 1px solid #B0B0B0;
@@ -305,7 +308,7 @@ $css = '
         vertical-align: top;
     }
     .footer-block .label {
-        background: #BFBFBF;
+        background: #D9E2EC;
         font-weight: bold;
         text-align: left;
     }
@@ -313,8 +316,25 @@ $css = '
         text-align: right;
     }
     .notas-cell {
-        min-height: 6mm;
+        min-height: 15mm;
+        height: 15mm;
         font-size: 6pt;
+    }
+    .firma-box {
+        height: 35mm;
+        vertical-align: middle;
+        text-align: center;
+        font-weight: bold;
+        font-size: 8pt;
+        border: 1px solid #000;
+    }
+    .firma-label {
+        height: 5mm;
+        text-align: center;
+        font-weight: bold;
+        font-size: 9pt;
+        background: #D9E2EC;
+        border: 1px solid #000;
     }
     .page-break {
         page-break-before: always;
@@ -338,20 +358,17 @@ $logoHtml = $logoData !== '' ? '<img class="pdf-header-logo" src="' . $logoData 
 $html .= '<div class="pdf-header">';
 $html .= '<table>';
 $html .= '<tr>';
-// Columna 1: Logo (20%)
+// Columna A: Logo 2,75cm - Columna B: Título centrado - Columna C: Empresa a derecha de hoja
 $html .= '<td style="width:20%;">' . $logoHtml . '</td>';
-// Columna 2: Título (50%)
 $html .= '<td class="header-center" style="width:50%;">';
 $html .= '<span class="header-title">CERTIFICADO MAESTRO</span>';
 $html .= '<span class="header-sub">CM #' . $nroCM . ' | OCC #' . $nroOCC . '</span>';
 $html .= '</td>';
-// Columna 3: Datos empresa (30%)
-$html .= '<td style="width:30%;">';
-$html .= '<div class="header-company">';
+$html .= '<td class="header-company" style="width:30%;">';
 $html .= 'NH Construcciones SRL<br>';
-$html .= 'Ricardo Gutiérrez 2874 (C1417EBL) - CABA<br>';
+$html .= 'Ricardo Gutiérrez 2874<br>';
+$html .= '(C1417EBL) - CABA<br>';
 $html .= 'Tel./Fax (54 11) 4505-8300';
-$html .= '</div>';
 $html .= '</td>';
 $html .= '</tr>';
 $html .= '</table>';
@@ -457,11 +474,11 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $html .= '</tr>';
         }
 
-        // Hijos
+        // Hijos - usa posicion_aperturado guardado, fallback al primero
         if (!empty($g['filas'])) {
             $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
             foreach ($g['filas'] as $fi => $fila) {
-                $posDes = $ownerPos . '.' . ($fi + 1);
+                $posDes = trim((string)($fila['posicion_aperturado'] ?? '')) !== '' ? (string)$fila['posicion_aperturado'] : $ownerPos . '.' . ($fi + 1);
                 $descDes = (string)$fila['descripcion'];
                 $unidadDes = (string)($fila['unidad_medida'] ?? '');
                 $cantDes = (float)$fila['cantidad'];
@@ -565,38 +582,36 @@ $html .= '</tbody></table>';
 $html .= '<table class="footer-block">';
 
 $html .= '<tr><td class="label" colspan="4">Notas:</td></tr>';
-$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:8mm;">' . cmPdfEsc($cm['observaciones'] ?? '') . '</td></tr>';
+$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:15mm;">' . cmPdfEsc($cm['observaciones'] ?? '') . '</td></tr>';
 
+$pctAnticipoCMPdf = (float)($cm['porcentaje_anticipo'] ?? 0);
+$baseCMMaestroPdf = (float)($cm['monto_total'] ?? 0);
+$montoDesacopioCMPdf = round($baseCMMaestroPdf * $pctAnticipoCMPdf / 100, 2);
 $html .= '<tr>';
-$html .= '<td class="label" style="width:25%;">Total Certificado</td>';
+$html .= '<td class="label" style="width:50%;" colspan="2">Total Certificado</td>';
+$html .= '<td class="num" style="width:25%;">0,00%</td>';
 $html .= '<td class="num" style="width:25%;">' . cmPdfMoney(0, $moneda) . '</td>';
-$html .= '<td class="label" style="width:25%;">Desacopio de anticipo</td>';
+$html .= '</tr>';
+$html .= '<tr>';
+$html .= '<td class="label" style="width:50%;" colspan="2">Desacopio de anticipo</td>';
+$html .= '<td class="num" style="width:25%;">' . cmPdfNum($pctAnticipoCMPdf) . '%</td>';
+$html .= '<td class="num" style="width:25%;">' . cmPdfMoney($montoDesacopioCMPdf, $moneda) . '</td>';
+$html .= '</tr>';
+
+$html .= '<tr>';
+$html .= '<td class="label" style="width:50%;" colspan="2">Fondo de reparo</td>';
+$html .= '<td class="num" style="width:25%;">0,00%</td>';
 $html .= '<td class="num" style="width:25%;">' . cmPdfMoney(0, $moneda) . '</td>';
-$html .= '</tr>';
-
-$html .= '<tr>';
-$html .= '<td class="label" rowspan="2" style="width:25%;">CAC</td>';
-$html .= '<td style="width:25%;">ENE</td>';
-$html .= '<td style="width:25%;">ABR</td>';
-$html .= '<td style="width:25%;">Indice</td>';
-$html .= '</tr>';
-$html .= '<tr>';
-$html .= '<td class="num">0,00</td>';
-$html .= '<td class="num">0,00</td>';
-$html .= '<td class="num">0,00%</td>';
-$html .= '</tr>';
-
-$html .= '<tr>';
-$html .= '<td class="label">Fondo de reparo</td>';
-$html .= '<td class="num">' . cmPdfMoney(0, $moneda) . '</td>';
-$html .= '<td colspan="2"></td>';
 $html .= '</tr>';
 
 $html .= '<tr><td colspan="4" style="padding:0; border:0;">';
-$html .= '<table style="width:100%; border-collapse:collapse;">';
-$html .= '<tr><td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA NH</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA CLIENTE</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA OTRO</td></tr>';
+$html .= '<table style="width:100%; border-collapse:collapse; table-layout:fixed;">';
+$html .= '<tr><td class="firma-box" style="width:33.33%;">FIRMA NH</td>';
+$html .= '<td class="firma-box" style="width:33.33%;">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-box" style="width:33.34%;">FIRMA OTRO</td></tr>';
+$html .= '<tr><td class="firma-label">FIRMA NH</td>';
+$html .= '<td class="firma-label">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-label">FIRMA OTRO</td></tr>';
 $html .= '</table>';
 $html .= '</td></tr>';
 
@@ -616,12 +631,12 @@ $html .= '<td class="header-center" style="width:50%;">';
 $html .= '<span class="header-title">MEDICION</span>';
 $html .= '<span class="header-sub">CM #' . $nroCM . ' | OCC #' . $nroOCC . '</span>';
 $html .= '</td>';
-$html .= '<td style="width:30%;">';
-$html .= '<div class="header-company">';
+$html .= '<td class="header-company" style="width:30%;">';
 $html .= 'NH Construcciones SRL<br>';
-$html .= 'Ricardo Gutiérrez 2874 (C1417EBL) - CABA<br>';
+$html .= 'Ricardo Gutiérrez 2874<br>';
+$html .= '(C1417EBL) - CABA<br>';
 $html .= 'Tel./Fax (54 11) 4505-8300';
-$html .= '</div>';
+$html .= '</td>';
 $html .= '</td>';
 $html .= '</tr>';
 $html .= '</table>';
@@ -705,7 +720,7 @@ foreach ($grupos as $g) {
         $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
         $i = 1;
         foreach ($g['filas'] as $fila) {
-            $posDes = $ownerPos . '.' . $i++;
+            $posDes = trim((string)($fila['posicion_aperturado'] ?? '')) !== '' ? (string)$fila['posicion_aperturado'] : $ownerPos . '.' . $i++;
             $descDes = (string)$fila['descripcion'];
             $unidadDes = (string)($fila['unidad_medida'] ?? '');
             $cantDes = (float)$fila['cantidad'];
@@ -732,14 +747,18 @@ $html .= '</tbody></table>';
 // Notas y Firmas para Medición
 $html .= '<table class="footer-block">';
 $html .= '<tr><td class="label" colspan="4">Notas:</td></tr>';
-$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:8mm;">' . cmPdfEsc($cm['observaciones'] ?? '') . '</td></tr>';
+$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:15mm;">' . cmPdfEsc($cm['observaciones'] ?? '') . '</td></tr>';
 $html .= '<tr><td colspan="4" style="padding:0; border:0;">';
-$html .= '<table style="width:100%; border-collapse:collapse;">';
-$html .= '<tr><td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA NH</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA CLIENTE</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA OTRO</td></tr>';
+$html .= '<table style="width:100%; border-collapse:collapse; table-layout:fixed;">';
+$html .= '<tr><td class="firma-box" style="width:33.33%;">FIRMA NH</td>';
+$html .= '<td class="firma-box" style="width:33.33%;">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-box" style="width:33.34%;">FIRMA OTRO</td></tr>';
+$html .= '<tr><td class="firma-label">FIRMA NH</td>';
+$html .= '<td class="firma-label">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-label">FIRMA OTRO</td></tr>';
 $html .= '</table>';
 $html .= '</td></tr>';
+
 $html .= '</table>';
 
 // --------------------------------------------------------------

@@ -9,6 +9,7 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
@@ -43,7 +44,8 @@ $proyectosNombre = (string)($q->fetchColumn() ?: '-');
 $sql = "SELECT
         od.posicion as posicion_occ,
         cmd.id as cmd_id,
-        cmd.descripcion,
+         cmd.descripcion,
+         cmd.posicion_aperturado,
         cmd.cantidad,
         um.unidad_medida,
         cmd.incidencia_porcentaje,
@@ -90,7 +92,7 @@ foreach($rawGrupos as $rg){
     }
     // ordenar occIds por posicion
     usort($occIds, function($a,$b) use($occMap){ $pa=(int)($occMap[$a]['posicion']??9999); $pb=(int)($occMap[$b]['posicion']??9999); return $pa<=>$pb ?: $a<=>$b; });
-    $qFilas = $pdo->prepare("SELECT cmd.descripcion, um.unidad_medida, cmd.cantidad, cmd.incidencia_porcentaje, cmd.precio_unitario, cmd.subtotal FROM certificados_maestros_detalles cmd LEFT JOIN unidades_medida um ON um.id=cmd.id_unidad_medida WHERE cmd.id_certificado_maestro=? AND cmd.aperturado=? ORDER BY cmd.id");
+    $qFilas = $pdo->prepare("SELECT cmd.descripcion, um.unidad_medida, cmd.cantidad, cmd.incidencia_porcentaje, cmd.precio_unitario, cmd.subtotal, cmd.posicion_aperturado FROM certificados_maestros_detalles cmd LEFT JOIN unidades_medida um ON um.id=cmd.id_unidad_medida WHERE cmd.id_certificado_maestro=? AND cmd.aperturado=? ORDER BY cmd.id");
     $qFilas->execute([$idCm,$ap]);
     $filas = $qFilas->fetchAll(PDO::FETCH_ASSOC);
     $owner = !empty($occIds) ? $occIds[0] : null; // primer occ como owner (pedido usuario)
@@ -134,16 +136,16 @@ function cmRowBorder($sheet, $rowNum, $colStart, $colEnd, $style = Border::BORDE
     }
 }
 
-// Helpers de estilo - gris medio para headers, amarillo claro para datos
+// Helpers de estilo - fondos aclarados ~30%
 $greyHeader = [
-    'fill' => ['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'BFBFBF']],
+    'fill' => ['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'D9E2EC']],
     'font' => ['bold'=>true,'size'=>10,'name'=>'Calibri','color'=>['rgb'=>'000000']],
     'alignment'=>['horizontal'=>Alignment::HORIZONTAL_CENTER,'vertical'=>Alignment::VERTICAL_CENTER,'wrapText'=>true],
     'borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'B0B0B0']]],
 ];
 $blueHeader = $greyHeader; // compatibilidad: todo lo celeste ahora es gris medio
 $celesteData = [
-    'fill' => ['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'9BC2E6']],
+    'fill' => ['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'E6F2FF']],
     'borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'B0B0B0']]],
 ];
 $blueBlock = [
@@ -153,20 +155,20 @@ $blueBlock = [
     'borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'B0B0B0']]],
 ];
 $yellowLight = [
-    'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'FFE080']],
+    'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'FFF4CC']],
     'borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'B0B0B0']]],
 ];
-$yellowPosDesc = $yellowLight; // mismo amarillo para Pos/Descripcion de items y subitems
+$yellowPosDesc = $yellowLight; // mismo amarillo aclarado para Pos/Descripcion
 $thinBorder = ['borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'B0B0B0']]]];
 $mediumBorder = ['borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_MEDIUM,'color'=>['rgb'=>'000000']]]];
 $boxOutline = ['borders'=>['outline'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'000000']]]];
 $mediumOutline = ['borders'=>['outline'=>['borderStyle'=>Border::BORDER_MEDIUM,'color'=>['rgb'=>'000000']]]];
 $celesteStrong = [
-    'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'9BC2E6']],
+    'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'E6F2FF']],
     'borders'=>['allBorders'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'B0B0B0']]],
 ];
 $celesteFill = [
-    'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'9BC2E6']],
+    'fill'=>['fillType'=>Fill::FILL_SOLID,'startColor'=>['rgb'=>'E6F2FF']],
 ];
 $boldCenter = ['font'=>['bold'=>true],'alignment'=>['horizontal'=>Alignment::HORIZONTAL_CENTER,'vertical'=>Alignment::VERTICAL_CENTER,'wrapText'=>true]];
 $wrapTop = ['alignment'=>['vertical'=>Alignment::VERTICAL_TOP,'wrapText'=>true]];
@@ -176,6 +178,7 @@ $fmtNum = '#,##0.00';
 $monedaFmt = trim($cm['moneda'] ?? 'U$S');
 $monedaFmt = str_replace('"','', $monedaFmt);
 $fmtMoney = '"' . $monedaFmt . '" #,##0.00';
+$fmtAccounting = NumberFormat::FORMAT_ACCOUNTING_USD;
 
 $book = new Spreadsheet();
 $book->getProperties()->setCreator('Grupo NH')->setTitle('Certificado Maestro '.$idCm);
@@ -201,9 +204,10 @@ foreach (['A1','N1'] as $idx=>$coord) {
     if ($p && is_file($p)) {
         $d = new Drawing();
         $d->setPath($p);
-        $d->setHeight($idx==0?48:36);
+        $d->setResizeProportional(false);
+        if ($idx==0) { $d->setWidth(104); $d->setHeight(104); } else { $d->setHeight(36); }
         $d->setCoordinates($coord);
-        $d->setOffsetX(4); $d->setOffsetY(4);
+        $d->setOffsetX(2); $d->setOffsetY(2);
         $d->setWorksheet($sheet);
     }
 }
@@ -224,20 +228,22 @@ $sheet->getPageSetup()->setScale(77);
 $sheet->getHeaderFooter()->setOddFooter('&RPágina &P de &N');
 $sheet->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd(8, 9);
 
-// Row heights
-$sheet->getRowDimension(1)->setRowHeight(11.1);
-for ($r=2;$r<=6;$r++) $sheet->getRowDimension($r)->setRowHeight(11.1);
+// Row heights - header uses full height for logo + company text in B1:B6
+for ($r=1;$r<=6;$r++) $sheet->getRowDimension($r)->setRowHeight(13.5);
 $sheet->getRowDimension(7)->setRowHeight(14);
 $sheet->getRowDimension(15)->setRowHeight(28.5);
 $sheet->getRowDimension(16)->setRowHeight(12.75);
 
-// --- Bloque superior ---
-$sheet->setCellValue('C1', 'CERTIFICADO');
+// --- Bloque superior --- A1 imagen, B1:B6 empresa a la derecha de la imagen
+$sheet->setCellValue('C1', 'CERTIFICADO MAESTRO');
 $sheet->getStyle('C1')->getFont()->setBold(true)->setSize(14)->setName('Cambria');
 $sheet->getStyle('C1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 $sheet->mergeCells('C1:M6');
-$sheet->mergeCells('A1:B6');
 $sheet->mergeCells('N1:P6');
+$sheet->mergeCells('B1:B6');
+$sheet->setCellValue('B1', "NH Construcciones SRL\nRicardo Gutiérrez 2874\n(C1417EBL) - CABA\nTel./Fax (54 11) 4505-8300");
+$sheet->getStyle('B1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
+$sheet->getStyle('B1')->getFont()->setSize(7)->setName('Calibri');
 $sheet->getStyle('A1:P6')->applyFromArray($thinBorder);
 $sheet->getStyle('C1:M6')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
 
@@ -295,10 +301,6 @@ $sheet->setCellValue('N16','Cantidad'); $sheet->setCellValue('O16','%'); $sheet-
 $sheet->getStyle('H16:P16')->getFont()->setBold(true)->setSize(8);
 $sheet->getStyle('H16:P16')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 $sheet->getStyle('A15:P16')->applyFromArray($thinBorder);
-// Solo bordes gruesos en los extremos externos de la tabla (G = fin del bloque de datos base, P = fin de tabla)
-$sheet->getStyle('G15:G16')->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-$sheet->getStyle('P15:P16')->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-$sheet->getStyle('A15:P15')->getBorders()->getTop()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
 $sheet->getStyle('A15:P16')->getFont()->setSize(8);
 
 // === Datos dinámicos agrupados (owner = primero, formato 10.1, solo Precio Total) ===
@@ -348,7 +350,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
             $sumDesglose = 0;
             foreach ($g['filas'] as $fi => $fila) {
-                $posDes = $ownerPos . '.' . ($fi+1);
+                $posDes = (string)($fila['posicion_aperturado'] ?? '') ?: ($ownerPos . '.' . ($fi+1));
                 $descDes = (string)$fila['descripcion'];
                 $unidadDes = (string)($fila['unidad_medida'] ?? '');
                 $cantDes = (float)$fila['cantidad'];
@@ -358,7 +360,8 @@ if (empty($grupos) && empty($ordenOccIds)) {
                 if ($totalDes==0) $totalDes = $g['base'] * $incDes/100;
                 if ($puDes==0 && $cantDes>0) $puDes = $totalDes / $cantDes;
                 $sumDesglose += $totalDes;
-                $sheet->setCellValue('A'.$row, $posDes);
+                $sheet->setCellValueExplicit('A'.$row, (string)$posDes, DataType::TYPE_STRING);
+                $sheet->getStyle('A'.$row)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
                 $sheet->setCellValue('B'.$row, $descDes);
                 $sheet->setCellValue('C'.$row, $unidadDes);
                 $sheet->setCellValue('D'.$row, $cantDes);
@@ -382,7 +385,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
                 $sheet->getStyle('G'.$row)->getNumberFormat()->setFormatCode($fmtMoney);
                 foreach(['I','L','O'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtPct);
                 foreach(['H','K','N'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtNum);
-                foreach(['J','M','P'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtMoney);
+                foreach(['J','M','P'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtAccounting);
                 // (Sin bordes gruesos internos entre Anterior/Actual/Acumulado)
                 $sheet->getRowDimension($row)->setRowHeight(13);
                 $row++;
@@ -399,7 +402,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $sheet->getStyle('A'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             $sheet->getStyle('G'.$row)->getNumberFormat()->setFormatCode($fmtMoney);
             foreach(['H','K','N'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtNum);
-            foreach(['J','M','P'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtMoney);
+            foreach(['J','M','P'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtAccounting);
             foreach(['I','L','O'] as $pc) $sheet->getStyle($pc.$row)->getNumberFormat()->setFormatCode($fmtPct);
             $sheet->getRowDimension($row)->setRowHeight(13);
             $row++;
@@ -429,12 +432,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 }
 $endDataRow = $row - 1;
 // Bordes derechos gruesos en los extremos externos de la tabla, para cada fila de datos (G y P), sin tocar J/M
-for($rr=17;$rr<$row;$rr++){
-    $sheet->getStyle('G'.$rr)->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-    $sheet->getStyle('P'.$rr)->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-}
-// Borde inferior grueso al cierre de la tabla de items (antes de la fila de Total Orden de Compra)
-$sheet->getStyle('A'.$endDataRow.':P'.$endDataRow)->getBorders()->getBottom()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
+// Bordes gruesos eliminados (G/P y cierre)
 
 // Fila TOTAL ORDEN DE COMPRA - texto ocupa A:F (sin D)
 $sheet->setCellValue('A'.$row, 'Total Orden de Compra');
@@ -447,91 +445,55 @@ $totalRow = $row;
 $sheet->getStyle('A'.$row.':P'.$row)->applyFromArray($thinBorder);
 $sheet->getStyle('A'.$row.':P'.$row)->getFont()->setBold(true);
 $sheet->getStyle('A'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-foreach (['G','J','M','P'] as $cc) { $sheet->getStyle($cc.$row)->getNumberFormat()->setFormatCode($fmtMoney); $sheet->getStyle($cc.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER); }
+foreach (['G'] as $cc) { $sheet->getStyle($cc.$row)->getNumberFormat()->setFormatCode($fmtMoney); $sheet->getStyle($cc.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER); }
+foreach (['J','M','P'] as $cc) { $sheet->getStyle($cc.$row)->getNumberFormat()->setFormatCode($fmtAccounting); $sheet->getStyle($cc.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER); }
 $sheet->getRowDimension($row)->setRowHeight(15);
 
-// Notas al lado de financieras - A:G x 6 filas
-$rowNotas = $row + 3; // misma altura que Fondo
+// Notas 100% ancho - igual en ambas hojas (recomendada)
+$rowNotas = $row + 3;
 $sheet->setCellValue('A'.$rowNotas, 'Notas:');
-$sheet->mergeCells('A'.$rowNotas.':G'.$rowNotas);
-$sheet->getStyle('A'.$rowNotas.':G'.$rowNotas)->applyFromArray($greyHeader);
-$sheet->getStyle('A'.$rowNotas.':G'.$rowNotas)->applyFromArray($boxOutline);
-$sheet->mergeCells('A'.($rowNotas+1).':G'.($rowNotas+5));
+$sheet->mergeCells('A'.$rowNotas.':P'.$rowNotas);
+$sheet->getStyle('A'.$rowNotas.':P'.$rowNotas)->applyFromArray($greyHeader);
+$sheet->getStyle('A'.$rowNotas.':P'.$rowNotas)->applyFromArray($boxOutline);
+$sheet->mergeCells('A'.($rowNotas+1).':P'.($rowNotas+5));
 $sheet->setCellValue('A'.($rowNotas+1), (string)($cm['observaciones'] ?? ''));
-$sheet->getStyle('A'.($rowNotas+1).':G'.($rowNotas+5))->applyFromArray($thinBorder);
-$sheet->getStyle('A'.($rowNotas+1).':G'.($rowNotas+5))->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+$sheet->getStyle('A'.($rowNotas+1).':P'.($rowNotas+5))->applyFromArray($thinBorder);
+$sheet->getStyle('A'.($rowNotas+1).':P'.($rowNotas+5))->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
 for($rn=$rowNotas;$rn<=$rowNotas+5;$rn++) $sheet->getRowDimension($rn)->setRowHeight(14.25);
 
-// Filas financieras reordenadas: Total arriba, Desacopio, gap 2, Fondo - porcentajes y montos centrados
-$rowFin1 = $row + 3; // Total Certificado
-$sheet->setCellValue('H'.$rowFin1, 'Total Certificado');
-$sheet->mergeCells('H'.$rowFin1.':K'.$rowFin1);
+// Filas financieras debajo de Notas 100% - ancho completo A:M
+$rowFin1 = $rowNotas + 7; // Total Certificado debajo de Notas
+$sheet->setCellValue('A'.$rowFin1, 'Total Certificado');
+$sheet->mergeCells('A'.$rowFin1.':K'.$rowFin1);
 $sheet->setCellValue('L'.$rowFin1, 0);
 $sheet->getStyle('L'.$rowFin1)->getNumberFormat()->setFormatCode($fmtPct);
 $sheet->getStyle('L'.$rowFin1)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 $sheet->setCellValue('M'.$rowFin1, 0);
 $sheet->getStyle('M'.$rowFin1)->getNumberFormat()->setFormatCode($fmtMoney);
 $sheet->getStyle('M'.$rowFin1)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('H'.$rowFin1.':M'.$rowFin1)->applyFromArray($thinBorder);
-$sheet->getStyle('H'.$rowFin1)->getFont()->setBold(true);
+$sheet->getStyle('A'.$rowFin1.':P'.$rowFin1)->applyFromArray($thinBorder);
+$sheet->getStyle('A'.$rowFin1)->getFont()->setBold(true);
 
-$rowFin2 = $rowFin1 + 1; // Desacopio
-$sheet->setCellValue('H'.$rowFin2, 'Desacopio de anticipo');
-$sheet->mergeCells('H'.$rowFin2.':K'.$rowFin2);
-$sheet->setCellValue('L'.$rowFin2, 0);
+$rowFin2 = $rowFin1 + 1; // Desacopio - % y monto del anticipo sobre total CM
+$pctAnticipoCM = (float)($cm['porcentaje_anticipo'] ?? 0) / 100;
+$baseCMMaestro = (float)($cm['monto_total'] ?? 0);
+$montoDesacopioCM = round($baseCMMaestro * $pctAnticipoCM, 2);
+$sheet->setCellValue('A'.$rowFin2, 'Desacopio de anticipo');
+$sheet->mergeCells('A'.$rowFin2.':K'.$rowFin2);
+$sheet->setCellValue('L'.$rowFin2, $pctAnticipoCM);
 $sheet->getStyle('L'.$rowFin2)->getNumberFormat()->setFormatCode($fmtPct);
 $sheet->getStyle('L'.$rowFin2)->applyFromArray($yellowLight);
 $sheet->getStyle('L'.$rowFin2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->setCellValue('M'.$rowFin2, 0);
+$sheet->setCellValue('M'.$rowFin2, $montoDesacopioCM);
 $sheet->getStyle('M'.$rowFin2)->getNumberFormat()->setFormatCode($fmtMoney);
 $sheet->getStyle('M'.$rowFin2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('H'.$rowFin2.':M'.$rowFin2)->applyFromArray($thinBorder);
-$sheet->getStyle('H'.$rowFin2)->getFont()->setBold(true);
+$sheet->getStyle('A'.$rowFin2.':P'.$rowFin2)->applyFromArray($thinBorder);
+$sheet->getStyle('A'.$rowFin2)->getFont()->setBold(true);
 
-// Bloque CAC en gap (2 filas H:M) - L = índice redondeado de K, M = 0
-$rowCAC1 = $rowFin2 + 1;
-$rowCAC2 = $rowFin2 + 2;
-$sheet->setCellValue('H'.$rowCAC1, 'CAC');
-$sheet->mergeCells('H'.$rowCAC1.':H'.$rowCAC2);
-$sheet->getStyle('H'.$rowCAC1.':H'.$rowCAC2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('H'.$rowCAC1.':H'.$rowCAC2)->applyFromArray($thinBorder);
-$sheet->setCellValue('I'.$rowCAC1, 'ENE');
-$sheet->setCellValue('J'.$rowCAC1, 'ABR');
-$sheet->setCellValue('K'.$rowCAC1, 'Indice');
-$sheet->getStyle('I'.$rowCAC1.':K'.$rowCAC1)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('I'.$rowCAC1.':K'.$rowCAC1)->applyFromArray($thinBorder);
-$sheet->setCellValue('L'.$rowCAC1, '=ROUND(K'.$rowCAC2.',3)');
-$sheet->mergeCells('L'.$rowCAC1.':L'.$rowCAC2);
-$sheet->getStyle('L'.$rowCAC1.':L'.$rowCAC2)->getNumberFormat()->setFormatCode('0.0%');
-$sheet->getStyle('L'.$rowCAC1.':L'.$rowCAC2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('L'.$rowCAC1.':L'.$rowCAC2)->applyFromArray($thinBorder);
-$sheet->setCellValue('M'.$rowCAC1, 0);
-$sheet->mergeCells('M'.$rowCAC1.':M'.$rowCAC2);
-$sheet->getStyle('M'.$rowCAC1.':M'.$rowCAC2)->getNumberFormat()->setFormatCode($fmtMoney);
-$sheet->getStyle('M'.$rowCAC1.':M'.$rowCAC2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('M'.$rowCAC1.':M'.$rowCAC2)->applyFromArray($thinBorder);
-$sheet->setCellValue('I'.$rowCAC2, 0);
-$sheet->getStyle('I'.$rowCAC2)->getNumberFormat()->setFormatCode('0.0');
-$sheet->getStyle('I'.$rowCAC2)->applyFromArray($yellowLight);
-$sheet->getStyle('I'.$rowCAC2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('I'.$rowCAC2)->applyFromArray($thinBorder);
-$sheet->setCellValue('J'.$rowCAC2, 0);
-$sheet->getStyle('J'.$rowCAC2)->getNumberFormat()->setFormatCode('0.0');
-$sheet->getStyle('J'.$rowCAC2)->applyFromArray($yellowLight);
-$sheet->getStyle('J'.$rowCAC2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('J'.$rowCAC2)->applyFromArray($thinBorder);
-$sheet->setCellValue('K'.$rowCAC2, '=IFERROR(J'.$rowCAC2.'/I'.$rowCAC2.'-1,0)');
-$sheet->getStyle('K'.$rowCAC2)->getNumberFormat()->setFormatCode('0.00%');
-$sheet->getStyle('K'.$rowCAC2)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('K'.$rowCAC2)->applyFromArray($thinBorder);
-for($r=$rowCAC1;$r<=$rowCAC2;$r++) $sheet->getRowDimension($r)->setRowHeight(14.25);
-// Borde exterior CAC que rodee todos los campos H:M con mismo largo que Notas (6 filas) - 2 filas más arriba
-$sheet->getStyle('H'.($rowCAC1-2).':M'.($rowCAC1+3))->applyFromArray($boxOutline);
-for($r=$rowCAC1-2;$r<=$rowCAC1+3;$r++) $sheet->getRowDimension($r)->setRowHeight(14.25);
-
-$rowFin3 = $rowFin2 + 3; // Fondo tras gap 2 filas
-$sheet->setCellValue('H'.$rowFin3, 'Fondo de reparo');
-$sheet->mergeCells('H'.$rowFin3.':K'.$rowFin3);
+// CAC vacío - subir Fondo de reparo
+$rowFin3 = $rowFin2 + 1; // Fondo inmediato tras Desacopio
+$sheet->setCellValue('A'.$rowFin3, 'Fondo de reparo');
+$sheet->mergeCells('A'.$rowFin3.':K'.$rowFin3);
 $sheet->setCellValue('L'.$rowFin3, 0);
 $sheet->getStyle('L'.$rowFin3)->getNumberFormat()->setFormatCode($fmtPct);
 $sheet->getStyle('L'.$rowFin3)->applyFromArray($yellowLight);
@@ -539,9 +501,17 @@ $sheet->getStyle('L'.$rowFin3)->getAlignment()->setHorizontal(Alignment::HORIZON
 $sheet->setCellValue('M'.$rowFin3, 0);
 $sheet->getStyle('M'.$rowFin3)->getNumberFormat()->setFormatCode($fmtMoney);
 $sheet->getStyle('M'.$rowFin3)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$sheet->getStyle('H'.$rowFin3.':M'.$rowFin3)->applyFromArray($thinBorder);
-$sheet->getStyle('H'.$rowFin3)->getFont()->setBold(true);
-// Firmas - subidas 4 filas (antes +8)
+$sheet->getStyle('A'.$rowFin3.':P'.$rowFin3)->applyFromArray($thinBorder);
+$sheet->getStyle('A'.$rowFin3)->getFont()->setBold(true);
+// Borde derecho continuo desde última celda con fondo Notas (G) hasta Fondo de reparo (M) - incluye hueco
+for($r=$rowNotas; $r<=$rowFin3; $r++) {
+    $sheet->getStyle('M'.$r)->getBorders()->getRight()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('B0B0B0');
+}
+// Borde exterior derecho del bloque completo (P) para hueco entre bloques
+for($r=$rowNotas; $r<=$rowFin3; $r++) {
+    $sheet->getStyle('P'.$r)->getBorders()->getRight()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('B0B0B0');
+    if($r <= $rowNotas+5) $sheet->getStyle('G'.$r)->getBorders()->getRight()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('B0B0B0');
+}
 $rowFirma = $rowFin3 + 4;
 $boxOutline = ['borders'=>['outline'=>['borderStyle'=>Border::BORDER_THIN,'color'=>['rgb'=>'000000']]]];
 $sheet->getStyle('A'.$rowFirma.':D'.($rowFirma+6))->applyFromArray($boxOutline);
@@ -572,7 +542,7 @@ $med = $book->createSheet();
 $med->setTitle('Medicion');
 $med->setShowGridLines(false);
 $med->getSheetView()->setZoomScale(76);
-$wMed = ['A'=>4.125,'B'=>19.125,'C'=>8.375,'D'=>11,'E'=>10.25,'F'=>7.625,'G'=>10.625,'H'=>7.625,'I'=>10.875,'J'=>7.625,'K'=>16.125];
+$wMed = ['A'=>4.125,'B'=>26.625,'C'=>8.375,'D'=>11,'E'=>10.25,'F'=>7.625,'G'=>10.625,'H'=>7.625,'I'=>10.875,'J'=>7.625,'K'=>16.125];
 foreach ($wMed as $c=>$w) $med->getColumnDimension($c)->setWidth($w);
 $med->getPageMargins()->setTop(0.748)->setRight(0.708)->setBottom(0.748)->setLeft(0.708);
 $med->getPageSetup()->setOrientation(PageSetup::ORIENTATION_PORTRAIT);
@@ -581,22 +551,29 @@ $med->getPageSetup()->setFitToPage(true);
 $med->getPageSetup()->setScale(34);
 $med->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd(15, 16);
 
-// Logo en Medicion también
+// Logo en Medicion también - 2,75cm cuadrado + empresa en B1:B6
 foreach (['A1'] as $coord) {
     $p = __DIR__.'/assets/images/logo.jpg';
     if (is_file($p)) {
         $d = new Drawing();
         $d->setPath($p);
-        $d->setHeight(32);
+        $d->setResizeProportional(false);
+        $d->setWidth(104); $d->setHeight(104);
         $d->setCoordinates($coord);
+        $d->setOffsetX(2); $d->setOffsetY(2);
         $d->setWorksheet($med);
     }
 }
+for ($r=1;$r<=6;$r++) $med->getRowDimension($r)->setRowHeight(13.5);
+$med->mergeCells('B1:B6');
+$med->setCellValue('B1', "NH Construcciones SRL\nRicardo Gutiérrez 2874\n(C1417EBL) - CABA\nTel./Fax (54 11) 4505-8300");
+$med->getStyle('B1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT)->setVertical(Alignment::VERTICAL_CENTER)->setWrapText(true);
+$med->getStyle('B1')->getFont()->setSize(7)->setName('Calibri');
 $med->setCellValue('C1','MEDICION');
 $med->mergeCells('C1:I6');
 $med->getStyle('C1')->getFont()->setBold(true)->setSize(14)->setName('Cambria');
 $med->getStyle('C1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-$med->mergeCells('A1:B6'); $med->mergeCells('J1:K6');
+$med->mergeCells('J1:K6');
 $med->getStyle('A1:K6')->applyFromArray($thinBorder);
 
 // Header Medicion (row8-13) espejo Certificado
@@ -640,9 +617,6 @@ $med->setCellValue('I16','Cantidad'); $med->setCellValue('J16','%');
 $med->getStyle('E16:J16')->getFont()->setBold(true)->setSize(10);
 $med->getStyle('E16:J16')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 $med->getStyle('A15:K16')->applyFromArray($thinBorder);
-$med->getStyle('D15:D16')->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-$med->getStyle('K15:K16')->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-$med->getStyle('A15:K15')->getBorders()->getTop()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
 
 // Datos Medicion agrupados juntos (sin repetir títulos Pos/Descripción)
 $mRow = 17;
@@ -681,11 +655,12 @@ if (empty($grupos) && empty($ordenOccIds)) {
         if (!empty($g['filas'])) {
             $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
             foreach ($g['filas'] as $fi => $fila) {
-                $posDes = $ownerPos . '.' . ($fi+1);
+                $posDes = (string)($fila['posicion_aperturado'] ?? '') ?: ($ownerPos . '.' . ($fi+1));
                 $descDes = (string)$fila['descripcion'];
                 $unidadDes = (string)($fila['unidad_medida'] ?? '');
                 $cantDes = (float)$fila['cantidad'];
-                $med->setCellValue('A'.$mRow, $posDes);
+                $med->setCellValueExplicit('A'.$mRow, (string)$posDes, DataType::TYPE_STRING);
+                $med->getStyle('A'.$mRow)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
                 $med->setCellValue('B'.$mRow, $descDes);
                 $med->setCellValue('C'.$mRow, $unidadDes);
                 $med->setCellValue('D'.$mRow, $cantDes);
@@ -731,14 +706,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
 }
 // Bordes derechos gruesos en los extremos de cada sección (igual criterio que Certificado 1: G y P allí, D y K aquí)
 $medEndDataRow = $mRow - 1;
-for($mr=17;$mr<$mRow;$mr++){
-    $med->getStyle('D'.$mr)->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-    $med->getStyle('K'.$mr)->getBorders()->getRight()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-}
-// Borde inferior grueso al cierre de la tabla de Medición
-if ($medEndDataRow >= 17) {
-    $med->getStyle('A'.$medEndDataRow.':K'.$medEndDataRow)->getBorders()->getBottom()->setBorderStyle(Border::BORDER_MEDIUM)->getColor()->setRGB('000000');
-}
 
 // =====================================================
 // Notas y Firmas al final de la hoja Medicion
@@ -755,6 +722,10 @@ $med->mergeCells('A'.$notasContentStart.':K'.$notasContentEnd);
 $med->setCellValue('A'.$notasContentStart, (string)($cm['observaciones'] ?? ''));
 $med->getStyle('A'.$notasContentStart.':K'.$notasContentEnd)->applyFromArray($thinBorder);
 $med->getStyle('A'.$notasContentStart.':K'.$notasContentEnd)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_TOP);
+for ($rn=$rowNotasMed; $rn<=$notasContentEnd; $rn++) $med->getRowDimension($rn)->setRowHeight(14.25);
+// Borde derecho continuo Medición desde Notas hasta Fondo (K)
+for($r=$rowNotasMed; $r<=$rowNotasMed+3; $r++) $med->getStyle('K'.$r)->getBorders()->getRight()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('B0B0B0');
+
 for ($rn=$rowNotasMed; $rn<=$notasContentEnd; $rn++) $med->getRowDimension($rn)->setRowHeight(14.25);
 
 // Firmas: 2 filas de diferencia respecto al cuadro de Notas

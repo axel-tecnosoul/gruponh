@@ -238,6 +238,7 @@ $sql = "SELECT cmd.id AS id_certificado_maestro_detalle,
                cmd.id_tipo_item_certificado,
                tic.tipo,
                cmd.descripcion,
+               cmd.posicion_aperturado,
                cmd.cantidad,
                cmd.id_unidad_medida,
                um.unidad_medida,
@@ -410,7 +411,8 @@ function renderGruposAvance($grupos, $moneda) {
         <table class="table table-bordered mb-0 occ-breakdown-table">
           <thead>
             <tr>
-              <th rowspan="2">Descripcion</th>
+              <th rowspan="2">Posición</th>
+               <th rowspan="2">Descripcion</th>
               <th rowspan="2">Unidad</th>
               <th rowspan="2" class="text-right">Cantidad</th>
               <th rowspan="2" class="text-right">Incidencia</th>
@@ -457,8 +459,9 @@ function renderGruposAvance($grupos, $moneda) {
               $incidencia = $fila['incidencia_porcentaje'];
               ?>
               <tr class="fila-detalle-avance" data-cantidad-total="<?=escaparAvance($cantidad)?>" data-cantidad-anterior="<?=escaparAvance($cantidad_anterior)?>" data-subtotal-cm="<?=escaparAvance($subtotal_cm_fila)?>">
+                <td><?=escaparAvance($fila['posicion_aperturado'] ?? '')?></td>
                 <td>
-                  <?=escaparAvance($fila['descripcion'])?>
+                   <?=escaparAvance($fila['descripcion'])?>
                   <input type="hidden" name="id_certificado_avance_detalle[]" value="<?=escaparAvance($fila['id_certificado_avance_detalle'] ?? '')?>">
                   <input type="hidden" name="id_tipo_item[]" value="<?=escaparAvance($fila['id_tipo_item_certificado'])?>">
                   <input type="hidden" name="id_certificado_maestro_detalle[]" value="<?=escaparAvance($fila['id_certificado_maestro_detalle'])?>">
@@ -491,7 +494,7 @@ function renderGruposAvance($grupos, $moneda) {
           ?></tbody>
           <tfoot class="bg-light">
             <tr class="font-weight-bold">
-              <td colspan="<?php echo $esOp ? 4 : 6; ?>" class="text-right">Totales del grupo</td>
+              <td colspan="<?php echo $esOp ? 5 : 7; ?>" class="text-right">Totales del grupo</td>
               <td class="text-right avance-col-inicio">Anterior</td>
               <td class="text-center avance-porcentaje-col"></td>
               <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-anterior"><?=number_format($total_anterior_grupo, 2, ',', '.')?></span></td><?php } ?>

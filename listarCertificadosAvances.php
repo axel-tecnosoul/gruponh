@@ -70,8 +70,19 @@ if (!$data || !$cmAprobado) {
         border-left: 4px solid #2b8dbf;
         background: #f7fcff;
         border-radius: 4px;
-        padding: 0.5rem;
-        margin-bottom: 1rem;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .occ-group-sin-aperturado {
+        background: #fffbf0;
+        border-left-color: #ffc107;
+      }
+      #contenedor_detalle_avance .occ-breakdown-row > td {
+        padding: 0 !important;
+      }
+      #contenedor_detalle_avance .occ-breakdown-table th,
+      #contenedor_detalle_avance .occ-breakdown-table td {
+        padding: 0.3rem 0.5rem;
       }
       #contenedor_detalle_avance .occ-breakdown-table {
         width: 100%;
@@ -269,7 +280,18 @@ if (!$data || !$cmAprobado) {
                   <div class="card-body">
                     <div class="table-responsive">
                       <div id="contenedor_detalle_avance">
-                        <p class="text-muted">Seleccione un certificado de avance para ver el detalle</p>
+                        <table class="table display table-bordered dataTable" id="tabla_occ_listado" style="width:100%">
+                          <thead>
+                            <tr>
+                              <th>ID</th>
+                              <th>Posición</th>
+                              <th>Descripcion</th>
+                              <th class="text-right">Cantidad</th>
+                              <?php if (!$esOpCA) { ?><th class="text-right">Precio unitario</th><th class="text-right">Descuento</th><th class="text-right">Subtotal</th><?php } ?>
+                            </tr>
+                          </thead>
+                          <tbody></tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
@@ -675,11 +697,13 @@ if (!$data || !$cmAprobado) {
             total_saldo_grupo += subtotal_cm_total - ((cantidad_anterior_total + cantidad_actual_total) * precio_unitario_total);
           }
 
-          html += '<div class="occ-group-aperturado-wrap border rounded px-2 py-2">';
+          let claseGrupo = grupo.aperturado ? '' : ' occ-group-sin-aperturado';
+          html += '<div class="occ-group-aperturado-wrap' + claseGrupo + '">';
           html += '<div class="table-responsive">';
-          html += '<table class="table table-sm table-bordered mb-0 occ-breakdown-table">';
+          html += '<table class="table table-bordered occ-breakdown-table">';
           html += '<thead>';
           html += '<tr>';
+          html += '<th rowspan="2">Posición</th>';
           html += '<th rowspan="2">Descripcion</th>';
           html += '<th rowspan="2">Unidad</th>';
           html += '<th rowspan="2" class="text-right">Cantidad</th>';
@@ -731,6 +755,7 @@ if (!$data || !$cmAprobado) {
             let incidencia = fila.incidencia_porcentaje;
 
             html += '<tr>';
+            html += '<td>' + (fila.posicion_aperturado || '') + '</td>';
             html += '<td>' + (fila.descripcion || '') + '</td>';
             html += '<td>' + (fila.unidad_medida || '') + '</td>';
             html += '<td class="text-right">' + formatearNumeroAvance(cantidad) + '</td>';
@@ -757,7 +782,7 @@ if (!$data || !$cmAprobado) {
           html += '</tbody>';
           html += '<tfoot class="bg-light">';
           html += '<tr class="font-weight-bold">';
-          html += '<td colspan="' + (esOpCAJs ? 4 : 6) + '" class="text-right">Totales del grupo</td>';
+          html += '<td colspan="' + (esOpCAJs ? 5 : 7) + '" class="text-right">Totales del grupo</td>';
           html += '<td class="text-right avance-col-inicio">Anterior</td>';
           html += '<td class="text-center avance-porcentaje-col"></td>';
           if (!esOpCAJs) html += '<td class="text-right">' + moneda + ' ' + formatearNumeroAvance(total_anterior_grupo) + '</td>';
@@ -799,7 +824,11 @@ if (!$data || !$cmAprobado) {
             }
 
             if (!id_certificado_avance || id_certificado_avance == 0) {
-              $('#contenedor_detalle_avance').html('<p class="text-muted">Seleccione un certificado de avance para ver el detalle</p>');
+              let emptyThead = '<tr><th>ID</th><th>Posición</th><th>Descripcion</th><th class="text-right">Cantidad</th>' + (!esOpCAJs ? '<th class="text-right">Precio unitario</th><th class="text-right">Descuento</th><th class="text-right">Subtotal</th>' : '') + '</tr>';
+              let emptyHtml = '<div class="table-responsive"><table class="table display table-bordered dataTable" id="tabla_occ_listado" style="width:100%"><thead>' + emptyThead + '</thead><tbody></tbody></table></div>';
+              $('#contenedor_detalle_avance').html(emptyHtml);
+              if ($.fn.DataTable.isDataTable('#tabla_occ_listado')) { $('#tabla_occ_listado').DataTable().destroy(); }
+              $('#tabla_occ_listado').DataTable({ data: [], paging:false, searching:true, info:false, language:{ search:"Buscar:", zeroRecords:"", emptyTable:""} });
               return;
             }
 
@@ -813,7 +842,7 @@ if (!$data || !$cmAprobado) {
             // Renderizar OCC detalles con sus grupos
             if (occ_detalles.length > 0) {
               html += '<div class="table-responsive">';
-              html += '<table class="table table-sm table-bordered" id="tabla_occ_listado" style="width:100%">';
+              html += '<table class="table display table-bordered dataTable" id="tabla_occ_listado" style="width:100%">';
               html += '<thead>';
               html += '<tr>';
               html += '<th>ID</th>';
@@ -892,6 +921,13 @@ if (!$data || !$cmAprobado) {
             }
 
             $('#contenedor_detalle_avance').html(html);
+            if ($.fn.DataTable.isDataTable('#tabla_occ_listado')) { $('#tabla_occ_listado').DataTable().destroy(); }
+            if ($('#tabla_occ_listado').length) {
+              $('#tabla_occ_listado').DataTable({
+                paging: false, searching: true, info: false,
+                language: { search: "Buscar:", zeroRecords: "No hay resultados", emptyTable: "No hay información" }
+              });
+            }
           },
           error: function(xhr, status, error) {
             console.error('Error en AJAX:', status, error);

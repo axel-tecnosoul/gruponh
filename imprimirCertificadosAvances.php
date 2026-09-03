@@ -88,7 +88,7 @@ $occMap = [];
 foreach ($occRows as $or) { $occMap[(int)$or['id']] = $or; }
 
 // 4. Obtener los CMD con sus avances
-$sqlCmd = "SELECT cmd.id AS cmd_id, cmd.id_occ_detalle, cmd.descripcion, cmd.cantidad,
+$sqlCmd = "SELECT cmd.id AS cmd_id, cmd.id_occ_detalle, cmd.descripcion, cmd.posicion_aperturado, cmd.cantidad,
                   cmd.id_unidad_medida, um.unidad_medida,
                   cmd.precio_unitario, cmd.subtotal,
                   cmd.incidencia_porcentaje, cmd.monto_base_occ,
@@ -196,7 +196,7 @@ $css = '
 <style>
     @page {
         size: A4 landscape;
-        margin: 24mm 8mm 16mm 8mm;
+        margin: 32mm 8mm 16mm 8mm;
     }
     * { box-sizing: border-box; }
     body {
@@ -205,13 +205,13 @@ $css = '
         color: #20252b;
         margin: 0;
     }
-    /* Cabecera fija (logo + título + datos empresa) */
+    /* Cabecera fija (logo 2,75cm + empresa a derecha de hoja, sin solape) */
     .pdf-header {
         position: fixed;
-        top: -18mm;
+        top: -32mm;
         left: 0;
         right: 0;
-        height: 14mm;
+        height: 28mm;
         background: white;
         padding: 1mm 8mm 0;
         border-bottom: 1px solid #17365d;
@@ -228,8 +228,8 @@ $css = '
         padding: 0 2mm;
     }
     .pdf-header-logo {
-        width: 16mm;
-        height: 10mm;
+        width: 27.5mm;
+        height: 27.5mm;
         object-fit: contain;
     }
     .header-center {
@@ -247,11 +247,11 @@ $css = '
         margin-top: 0.5mm;
     }
     .header-company {
-        border: 1px solid #999;
+        border: 0;
         padding: 0.8mm 1.5mm;
         font-size: 6pt;
         color: #555;
-        line-height: 1.3;
+        line-height: 1.25;
         text-align: right;
     }
     /* Pie de página */
@@ -285,18 +285,21 @@ $css = '
         word-wrap: break-word;
     }
     .ca-table th, .med-table th {
-        background: #BFBFBF;
+        background: #D9E2EC;
         font-weight: bold;
         text-align: center;
     }
-    .parent-yellow { background: #FFE080; }
-    .parent-blue   { background: #9BC2E6; }
-    .child-yellow  { background: #FFE080; }
+    .parent-yellow { background: #FFF4CC; }
+    .parent-blue   { background: #E6F2FF; }
+    .child-yellow  { background: #FFF4CC; }
+    .footer-block { page-break-inside: avoid; }
+    .firma-box { height: 35mm; vertical-align: middle; text-align: center; font-weight: bold; font-size: 8pt; border: 1px solid #000; }
+    .firma-label { height: 5mm; text-align: center; font-weight: bold; font-size: 9pt; background: #D9E2EC; border: 1px solid #000; }
     .total-row td  { background: #EEF3F8 !important; font-weight: bold; }
     .subtotal-row td { background: #E8E8E8 !important; font-weight: bold; }
 
-    .col-precio-total { border-right: 2px solid #000 !important; }
-    .col-acu-monto    { border-right: 2px solid #000 !important; }
+    .col-precio-total { border-right: 1px solid #B0B0B0 !important; }
+    .col-acu-monto    { border-right: 1px solid #B0B0B0 !important; }
 
     .text-center { text-align: center; }
     .text-right  { text-align: right; }
@@ -309,7 +312,7 @@ $css = '
         padding: 0.5mm 0.5mm;
     }
     .sub-header .label {
-        background: #BFBFBF;
+        background: #D9E2EC;
         font-weight: bold;
         padding: 0.5mm 0.5mm;
     }
@@ -323,6 +326,7 @@ $css = '
         border-collapse: collapse;
         margin-top: 3mm;
         font-size: 6.5pt;
+        border: 1px solid #B0B0B0;
     }
     .footer-block td {
         border: 1px solid #B0B0B0;
@@ -330,7 +334,7 @@ $css = '
         vertical-align: top;
     }
     .footer-block .label {
-        background: #BFBFBF;
+        background: #D9E2EC;
         font-weight: bold;
         text-align: left;
     }
@@ -338,7 +342,8 @@ $css = '
         text-align: right;
     }
     .notas-cell {
-        min-height: 6mm;
+        min-height: 15mm;
+        height: 15mm;
         font-size: 6pt;
     }
     .page-break {
@@ -356,17 +361,17 @@ $logoHtml = $logoData !== '' ? '<img class="pdf-header-logo" src="' . $logoData 
 $html .= '<div class="pdf-header">';
 $html .= '<table>';
 $html .= '<tr>';
+// Columna A: Logo 2,75cm - Columna B: Título - Columna C: Empresa a derecha de hoja
 $html .= '<td style="width:20%;">' . $logoHtml . '</td>';
 $html .= '<td class="header-center" style="width:50%;">';
 $html .= '<span class="header-title">CERTIFICADO DE AVANCE</span>';
 $html .= '<span class="header-sub">CM #' . $nroCM . ' | CA #' . $nroCA . ' | OCC #' . $nroOCC . '</span>';
 $html .= '</td>';
-$html .= '<td style="width:30%;">';
-$html .= '<div class="header-company">';
+$html .= '<td class="header-company" style="width:30%;">';
 $html .= 'NH Construcciones SRL<br>';
-$html .= 'Ricardo Gutiérrez 2874 (C1417EBL) - CABA<br>';
+$html .= 'Ricardo Gutiérrez 2874<br>';
+$html .= '(C1417EBL) - CABA<br>';
 $html .= 'Tel./Fax (54 11) 4505-8300';
-$html .= '</div>';
 $html .= '</td>';
 $html .= '</tr>';
 $html .= '</table>';
@@ -522,11 +527,11 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $html .= '</tr>';
         }
 
-        // --- Desglose (hijos) ---
+        // --- Desglose (hijos) - usa posicion_aperturado guardado, fallback al primero
         if (!empty($g['filas'])) {
             $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
             foreach ($g['filas'] as $fi => $fila) {
-                $posDes = $ownerPos . '.' . ($fi + 1);
+                $posDes = trim((string)($fila['posicion_aperturado'] ?? '')) !== '' ? (string)$fila['posicion_aperturado'] : $ownerPos . '.' . ($fi + 1);
                 $desc = (string)$fila['descripcion'];
                 $unidad = (string)($fila['unidad_medida'] ?? '');
                 $cant = (float)$fila['cantidad'];
@@ -604,42 +609,58 @@ $html .= '<table class="footer-block">';
 
 // Notas
 $html .= '<tr><td class="label" colspan="4">Notas:</td></tr>';
-$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:8mm;">' . caPdfEsc($ca['observaciones'] ?? '') . '</td></tr>';
+$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:15mm;">' . caPdfEsc($ca['observaciones'] ?? '') . '</td></tr>';
 
-// Total Certificado y Desacopio
+// Total Certificado - % = monto avance / total CM completo (ej 1948.87/254200=0,77%) - Desacopio siempre con % anticipo
+$pctAnticipoPdf = (float)($ca['porcentaje_anticipo'] ?? 0);
+$baseCMPdf = (float)($ca['monto_total_cm'] ?? $ca['monto_total'] ?? 0);
+$montoDesacopioPdf = round($baseCMPdf * $pctAnticipoPdf / 100, 2);
+$pctTotalPdf = $baseCMPdf > 0 ? (float)$ca['monto_total'] / $baseCMPdf * 100 : 0;
 $html .= '<tr>';
-$html .= '<td class="label" style="width:25%;">Total Certificado</td>';
+$html .= '<td class="label" style="width:50%;" colspan="2">Total Certificado</td>';
+$html .= '<td class="num" style="width:25%;">' . caPdfNum($pctTotalPdf) . '%</td>';
 $html .= '<td class="num" style="width:25%;">' . caPdfMoney($ca['monto_total'], $moneda) . '</td>';
-$html .= '<td class="label" style="width:25%;">Desacopio de anticipo</td>';
-$html .= '<td class="num" style="width:25%;">' . caPdfMoney(-1 * (float)$ca['monto_acumulado_desacopios'], $moneda) . '</td>';
-$html .= '</tr>';
-
-// CAC (dos filas)
-$html .= '<tr>';
-$html .= '<td class="label" rowspan="2" style="width:25%;">CAC</td>';
-$html .= '<td style="width:25%;">ENE</td>';
-$html .= '<td style="width:25%;">ABR</td>';
-$html .= '<td style="width:25%;">Indice</td>';
 $html .= '</tr>';
 $html .= '<tr>';
-$html .= '<td class="num">0,00</td>';
-$html .= '<td class="num">0,00</td>';
-$html .= '<td class="num">0,00%</td>';
+$html .= '<td class="label" style="width:50%;" colspan="2">Desacopio de anticipo</td>';
+$html .= '<td class="num" style="width:25%;">' . caPdfNum($pctAnticipoPdf) . '%</td>';
+$html .= '<td class="num" style="width:25%;">' . caPdfMoney($montoDesacopioPdf, $moneda) . '</td>';
 $html .= '</tr>';
 
-// Fondo de reparo
+// Ajustes del CA - 3 columnas Tipo: Observacion | % (ajuste/12000) | Monto
+$pdoAjustePdf = Database::connect();
+$pdoAjustePdf->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$qAjPdf = $pdoAjustePdf->prepare("SELECT tipo_ajuste, observaciones, monto FROM certificados_ajustes WHERE id_certificado_avance=? ORDER BY fecha, id");
+$qAjPdf->execute([$idCA]);
+$ajustesPdf = $qAjPdf->fetchAll(PDO::FETCH_ASSOC);
+$baseAjustePdf = (float)($ca['monto_total'] ?? 0);
+foreach ($ajustesPdf as $ajPdf) {
+    $montoAjPdf = (float)($ajPdf['monto'] ?? 0);
+    $pctAjPdf = $baseAjustePdf > 0 ? $montoAjPdf / $baseAjustePdf * 100 : 0;
+    $labelAjPdf = trim((string)($ajPdf['tipo_ajuste'] ?? '')) . ': ' . trim((string)($ajPdf['observaciones'] ?? ''));
+    if ($labelAjPdf === ': ') $labelAjPdf = trim((string)($ajPdf['tipo_ajuste'] ?? 'Ajuste'));
+    $html .= '<tr>';
+    $html .= '<td class="label" style="width:50%;" colspan="2">' . caPdfEsc($labelAjPdf) . '</td>';
+    $html .= '<td class="num" style="width:25%;">' . caPdfNum($pctAjPdf) . '%</td>';
+    $html .= '<td class="num" style="width:25%;">' . caPdfMoney($montoAjPdf, $moneda) . '</td>';
+    $html .= '</tr>';
+}
+// Fondo de reparo - 100% ancho como Notas
 $html .= '<tr>';
-$html .= '<td class="label">Fondo de reparo</td>';
-$html .= '<td class="num">' . caPdfMoney(0, $moneda) . '</td>';
-$html .= '<td colspan="2"></td>';
+$html .= '<td class="label" style="width:50%;" colspan="2">Fondo de reparo</td>';
+$html .= '<td class="num" style="width:25%;">0,00%</td>';
+$html .= '<td class="num" style="width:25%;">' . caPdfMoney(0, $moneda) . '</td>';
 $html .= '</tr>';
 
-// Firmas
+// Firmas - copia exacta horizontal A4 Excel: 35mm box + 5mm label
 $html .= '<tr><td colspan="4" style="padding:0; border:0;">';
-$html .= '<table style="width:100%; border-collapse:collapse;">';
-$html .= '<tr><td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA NH</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA CLIENTE</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA OTRO</td></tr>';
+$html .= '<table style="width:100%; border-collapse:collapse; table-layout:fixed;">';
+$html .= '<tr><td class="firma-box" style="width:33.33%;">FIRMA NH</td>';
+$html .= '<td class="firma-box" style="width:33.33%;">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-box" style="width:33.34%;">FIRMA OTRO</td></tr>';
+$html .= '<tr><td class="firma-label">FIRMA NH</td>';
+$html .= '<td class="firma-label">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-label">FIRMA OTRO</td></tr>';
 $html .= '</table>';
 $html .= '</td></tr>';
 
@@ -659,12 +680,12 @@ $html .= '<td class="header-center" style="width:50%;">';
 $html .= '<span class="header-title">MEDICION</span>';
 $html .= '<span class="header-sub">CM #' . $nroCM . ' | CA #' . $nroCA . ' | OCC #' . $nroOCC . '</span>';
 $html .= '</td>';
-$html .= '<td style="width:30%;">';
-$html .= '<div class="header-company">';
+$html .= '<td class="header-company" style="width:30%;">';
 $html .= 'NH Construcciones SRL<br>';
-$html .= 'Ricardo Gutiérrez 2874 (C1417EBL) - CABA<br>';
+$html .= 'Ricardo Gutiérrez 2874<br>';
+$html .= '(C1417EBL) - CABA<br>';
 $html .= 'Tel./Fax (54 11) 4505-8300';
-$html .= '</div>';
+$html .= '</td>';
 $html .= '</td>';
 $html .= '</tr>';
 $html .= '</table>';
@@ -772,11 +793,11 @@ foreach ($grupos as $g) {
         $html .= '</tr>';
     }
 
-    // Hijos
+    // Hijos - medicion - usa posicion_aperturado guardado, fallback al primero
     if (!empty($g['filas'])) {
         $ownerPos = $occMap[$g['occ_ids'][0]]['posicion'] ?? '10';
         foreach ($g['filas'] as $fi => $fila) {
-            $posDes = $ownerPos . '.' . ($fi + 1);
+            $posDes = trim((string)($fila['posicion_aperturado'] ?? '')) !== '' ? (string)$fila['posicion_aperturado'] : $ownerPos . '.' . ($fi + 1);
             $desc = (string)$fila['descripcion'];
             $unidad = (string)($fila['unidad_medida'] ?? '');
             $cant = (float)$fila['cantidad'];
@@ -806,14 +827,18 @@ $html .= '</tbody></table>';
 // Notas y Firmas para medición
 $html .= '<table class="footer-block">';
 $html .= '<tr><td class="label" colspan="4">Notas:</td></tr>';
-$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:8mm;">' . caPdfEsc($ca['observaciones'] ?? '') . '</td></tr>';
+$html .= '<tr><td colspan="4" class="notas-cell" style="min-height:15mm;">' . caPdfEsc($ca['observaciones'] ?? '') . '</td></tr>';
 $html .= '<tr><td colspan="4" style="padding:0; border:0;">';
-$html .= '<table style="width:100%; border-collapse:collapse;">';
-$html .= '<tr><td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA NH</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA CLIENTE</td>';
-$html .= '<td style="border:1px solid #000; padding:3mm 0; text-align:center; font-weight:bold; font-size:8pt;">FIRMA OTRO</td></tr>';
+$html .= '<table style="width:100%; border-collapse:collapse; table-layout:fixed;">';
+$html .= '<tr><td class="firma-box" style="width:33.33%;">FIRMA NH</td>';
+$html .= '<td class="firma-box" style="width:33.33%;">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-box" style="width:33.34%;">FIRMA OTRO</td></tr>';
+$html .= '<tr><td class="firma-label">FIRMA NH</td>';
+$html .= '<td class="firma-label">FIRMA CLIENTE</td>';
+$html .= '<td class="firma-label">FIRMA OTRO</td></tr>';
 $html .= '</table>';
 $html .= '</td></tr>';
+
 $html .= '</table>';
 
 // --------------------------------------------------------------

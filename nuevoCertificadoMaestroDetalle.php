@@ -426,7 +426,7 @@ if (!empty($_POST)) {
     $occRows = [];
     if (!empty($ids_occ_detalle)) {
       $placeholders = implode(',', array_fill(0, count($ids_occ_detalle), '?'));
-      $sql = "SELECT id, subtotal FROM occ_detalles WHERE id_occ = ? AND id IN ($placeholders)";
+      $sql = "SELECT id, posicion, subtotal FROM occ_detalles WHERE id_occ = ? AND id IN ($placeholders)";
       $params = array_merge([$id_occ_certificado], $ids_occ_detalle);
       $q = $pdo->prepare($sql);
       $q->execute($params);
@@ -438,11 +438,13 @@ if (!empty($_POST)) {
     }
 
     $occSubtotales = [];
+    $occPosiciones = [];
     $baseTotalOccSeleccionada = 0.0;
     foreach ($occRows as $occRow) {
       $occId = (int) $occRow['id'];
       $occSubtotal = (float) $occRow['subtotal'];
       $occSubtotales[$occId] = $occSubtotal;
+      $occPosiciones[$occId] = (string) ($occRow['posicion'] ?? '');
       $baseTotalOccSeleccionada += $occSubtotal;
     }
 
@@ -497,10 +499,10 @@ if (!empty($_POST)) {
       exit;
     }
 
-    $sqlInsert = "INSERT INTO certificados_maestros_detalles (id_certificado_maestro, id_occ_detalle, id_proyecto, id_tipo_item_certificado, descripcion, cantidad, id_unidad_medida, precio_unitario, subtotal, incidencia_porcentaje, monto_base_occ, aperturado, lote, modo_generacion) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    $sqlInsert = "INSERT INTO certificados_maestros_detalles (id_certificado_maestro, id_occ_detalle, id_proyecto, id_tipo_item_certificado, descripcion, cantidad, id_unidad_medida, precio_unitario, subtotal, incidencia_porcentaje, monto_base_occ, aperturado, lote, modo_generacion, posicion_aperturado) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
     $qInsert = $pdo->prepare($sqlInsert);
 
-    $sqlUpdate = "UPDATE certificados_maestros_detalles SET id_certificado_maestro=?, id_occ_detalle=?, id_proyecto=?, id_tipo_item_certificado=?, descripcion=?, cantidad=?, id_unidad_medida=?, precio_unitario=?, subtotal=?, incidencia_porcentaje=?, monto_base_occ=?, aperturado=?, lote=?, modo_generacion=? WHERE id=?";
+    $sqlUpdate = "UPDATE certificados_maestros_detalles SET id_certificado_maestro=?, id_occ_detalle=?, id_proyecto=?, id_tipo_item_certificado=?, descripcion=?, cantidad=?, id_unidad_medida=?, precio_unitario=?, subtotal=?, incidencia_porcentaje=?, monto_base_occ=?, aperturado=?, lote=?, modo_generacion=?, posicion_aperturado=? WHERE id=?";
     $qUpdate = $pdo->prepare($sqlUpdate);
 
     $sqlInsertRel = "INSERT IGNORE INTO certificados_maestros_lotes_occ_detalle (id_certificado_maestro, aperturado, lote, id_occ_detalle, modo_generacion) VALUES (?,?,?,?,?)";
@@ -509,9 +511,12 @@ if (!empty($_POST)) {
     $rowIdx = 0;
     if ($modo_generacion === 'agrupar') {
       $aperturadoFinal = $id_aperturado_edicion !== '' ? $aperturadoIdentificador : ($aperturadoIdentificador . '-AGR');
-      foreach ($aperturadoRows as $apRow) {
+      $occIdPropietario = !empty($ids_occ_detalle) ? (int) end($ids_occ_detalle) : 0;
+      $posicionBase = (string) ($occPosiciones[$occIdPropietario] ?? '');
+      foreach ($aperturadoRows as $aperturaIndex => $apRow) {
         $subtotalFila = round($baseTotalOccSeleccionada * ($apRow['incidencia'] / 100), 6);
         $precioUnitarioFila = $apRow['cantidad'] > 0 ? round($subtotalFila / $apRow['cantidad'], 6) : 0;
+        $posicionAperturado = $posicionBase !== '' ? $posicionBase . '.' . ($aperturaIndex + 1) : null;
 
         $commonValues = [
           $id_certificado_maestro_post,
@@ -528,6 +533,7 @@ if (!empty($_POST)) {
           $aperturadoFinal,
           $loteGenerado,
           $modo_generacion,
+          $posicionAperturado,
         ];
 
         if ($id_aperturado_edicion !== '' && $rowIdx < count($oldDetalleIds)) {
@@ -559,9 +565,11 @@ if (!empty($_POST)) {
         $aperturadoFinal = $id_aperturado_edicion !== ''
           ? $aperturadoBaseSep . '-SEP-' . $occId
           : $aperturadoIdentificador . '-SEP-' . $occId;
-        foreach ($aperturadoRows as $apRow) {
+        foreach ($aperturadoRows as $aperturaIndex => $apRow) {
           $subtotalFila = round($baseIndividual * ($apRow['incidencia'] / 100), 6);
           $precioUnitarioFila = $apRow['cantidad'] > 0 ? round($subtotalFila / $apRow['cantidad'], 6) : 0;
+          $posicionBase = (string) ($occPosiciones[$occId] ?? '');
+          $posicionAperturado = $posicionBase !== '' ? $posicionBase . '.' . ($aperturaIndex + 1) : null;
 
           $commonValues = [
             $id_certificado_maestro_post,
@@ -578,6 +586,7 @@ if (!empty($_POST)) {
             $aperturadoFinal,
             $loteGenerado,
             $modo_generacion,
+            $posicionAperturado,
           ];
 
           if ($id_aperturado_edicion !== '' && $rowIdx < count($oldDetalleIds)) {
@@ -701,7 +710,7 @@ foreach ($lotes_base as $lote_row) {
   $q->execute([$id_certificado_maestro, $lote_id]);
   $occ_rows_rel = $q->fetchAll(PDO::FETCH_COLUMN, 0);
 
-  $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id";
+  $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje, posicion_aperturado FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_certificado_maestro, $lote_id]);
   $rows_lote = $q->fetchAll(PDO::FETCH_ASSOC);
@@ -724,6 +733,7 @@ foreach ($lotes_base as $lote_row) {
       'id_unidad_medida' => (int) ($r['id_unidad_medida'] ?? 0),
       'cantidad' => (float) ($r['cantidad'] ?? 0),
       'incidencia' => (float) ($r['incidencia_porcentaje'] ?? 0),
+      'posicion_aperturado' => (string) ($r['posicion_aperturado'] ?? ''),
     ];
   }
 
@@ -863,7 +873,7 @@ Database::disconnect();
                                 <thead>
                                   <tr>
                                     <th style="width:40px;"><input type="checkbox" id="check_all_occ_items" title="Seleccionar todos"></th>
-                                    <th>ID</th>
+                                     <th class="d-none">ID</th>
                                     <th>Posición</th>
                                     <th>Descripcion</th>
                                     <th>Cantidad</th>
@@ -882,7 +892,7 @@ Database::disconnect();
                                           foreach ($occ_detalles as $row) { ?>
                                       <tr class="occ-item-row" data-id="<?= $row['id'] ?>" data-subtotal="<?= $row['subtotal'] ?>">
                                         <td class="text-center" data-order="1"><input type="checkbox" class="occ-item-checkbox" data-id="<?= $row['id'] ?>"></td>
-                                        <td><?= $row['id'] ?></td>
+                                         <td class="d-none"><?= $row['id'] ?></td>
                                         <td><?= $row['posicion'] ?></td>
                                         <td><?= htmlspecialchars($row['descripcion']) ?></td>
                                         <td><?= number_format($row['cantidad'], 2, ',', '.') ?></td>
@@ -973,7 +983,8 @@ Database::disconnect();
                                   </colgroup> -->
                                 <thead>
                                   <tr>
-                                    <th style="width:35%;">Descripcion</th>
+                                     <th style="width:9%;">Posición</th>
+                                     <th style="width:31%;">Descripcion</th>
                                     <th style="width:11%;">Unidad</th>
                                     <th style="width:11%;">Cantidad</th>
                                     <th style="width:13%;">Incidencia (%)</th>
@@ -1512,13 +1523,18 @@ Database::disconnect();
           const baseLote = parseFloat(lote.monto_base_occ) || 0;
           const esAgrupado = String(lote.modo_generacion || '') === 'agrupar';
           const filasHtml = rowsLote.length ?
-            rowsLote.map(function(row) {
+            rowsLote.map(function(row, index) {
               const cantidad = parseFloat(row.cantidad) || 0;
               const incidencia = parseFloat(row.incidencia) || 0;
               const totalFila = baseLote * (incidencia / 100);
               const precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
+              const idsLote = Array.isArray(lote.occ_ids) ? lote.occ_ids : [];
+              const idPropietario = idsLote.length ? idsLote[idsLote.length - 1] : '';
+              const posicionBase = getPosicionOcc(idPropietario);
+              const posicion = row.posicion_aperturado || (posicionBase ? posicionBase + '.' + (index + 1) : '');
               return `
                         <tr>
+                          <td>${escapeHtml(posicion)}</td>
                           <td>${escapeHtml(row.descripcion)}</td>
                           <td>${escapeHtml((unidadesMedida.find(function (u) { return String(u.id) === String(row.id_unidad_medida); }) || {}).unidad_medida || '')}</td>
                           <td class="text-right">${formatNumber(cantidad)}</td>
@@ -1527,7 +1543,7 @@ Database::disconnect();
                           <td class="text-right">${simboloMonedaOcc} ${formatNumber(totalFila)}</td>
                         </tr>`;
             }).join('') :
-            '<tr><td colspan="6" class="text-muted">Sin filas de aperturado guardadas para este lote.</td></tr>';
+            '<tr><td colspan="7" class="text-muted">Sin filas de aperturado guardadas para este lote.</td></tr>';
 
           const sumaTotal = rowsLote.reduce(function(sum, row) {
             const incidencia = parseFloat(row.incidencia) || 0;
@@ -1565,10 +1581,11 @@ Database::disconnect();
                     </table>
                   </div>
                   <div class="table-responsive">
-                    <table class="table table-sm table-bordered mb-0 occ-breakdown-table">
-                      <thead>
-                        <tr>
-                          <th>Descripcion</th>
+                       <table class="table table-sm table-bordered mb-0 occ-breakdown-table">
+                       <thead>
+                         <tr>
+                           <th>Posición</th>
+                           <th>Descripcion</th>
                           <th>Unidad</th>
                           <th class="text-right">Cantidad</th>
                           <th class="text-right">Incidencia</th>
@@ -1581,7 +1598,7 @@ Database::disconnect();
                       </tbody>
                       <tfoot class="bg-light">
                         <tr class="font-weight-bold">
-                          <td colspan="5" class="text-right">Total</td>
+                         <td colspan="6" class="text-right">Total</td>
                           <td class="text-right">${simboloMonedaOcc} ${formatNumber(sumaTotal)}</td>
                         </tr>
                       </tfoot>
@@ -1643,11 +1660,20 @@ Database::disconnect();
               descripcion: desc,
               id_unidad_medida: unidad,
               cantidad: cantidad,
-              incidencia: incidencia
+              incidencia: incidencia,
+              posicion_aperturado: ''
             });
           }
         });
         return rows;
+      }
+
+      function getPosicionBaseAperturado() {
+        const idsSeleccionados = getSelectedOccIdsInTableOrder();
+        if (!idsSeleccionados.length) {
+          return '';
+        }
+        return getPosicionOcc(idsSeleccionados[idsSeleccionados.length - 1]);
       }
 
       // NUEVA FUNCIÓN: Construir HTML de vista previa para un ítem OCC en modo "Por cada item"
@@ -1657,7 +1683,8 @@ Database::disconnect();
           return ''; // sin filas no mostramos nada
         }
 
-        const filasHtml = rows.map(function(row) {
+        const posicionBase = isModoSeparar() ? getPosicionOcc(occId) : getPosicionBaseAperturado();
+        const filasHtml = rows.map(function(row, index) {
           const cantidad = parseFloat(row.cantidad) || 0;
           const incidencia = parseFloat(row.incidencia) || 0;
           const totalFila = baseIndividual * (incidencia / 100);
@@ -1666,8 +1693,10 @@ Database::disconnect();
             return String(u.id) === String(row.id_unidad_medida);
           }) || {}).unidad_medida || '';
 
+          const posicion = row.posicion_aperturado || (posicionBase ? posicionBase + '.' + (index + 1) : '');
           return `
               <tr>
+                <td>${escapeHtml(posicion)}</td>
                 <td>${escapeHtml(row.descripcion)}</td>
                 <td>${escapeHtml(unidadTexto)}</td>
                 <td class="text-right">${formatNumber(cantidad)}</td>
@@ -1691,6 +1720,7 @@ Database::disconnect();
                     <table class="table table-sm table-bordered mb-0">
                       <thead>
                         <tr>
+                          <th>Posición</th>
                           <th>Descripcion</th>
                           <th>Unidad</th>
                           <th class="text-right">Cantidad</th>
@@ -1702,7 +1732,7 @@ Database::disconnect();
                       <tbody>${filasHtml}</tbody>
                       <tfoot class="bg-light">
                         <tr class="font-weight-bold">
-                          <td colspan="5" class="text-right">Total</td>
+                          <td colspan="6" class="text-right">Total</td>
                           <td class="text-right">${simboloMonedaOcc} ${formatNumber(sumaTotal)}</td>
                         </tr>
                       </tfoot>
@@ -1832,10 +1862,28 @@ Database::disconnect();
         return options;
       }
 
+      function getPosicionOcc(id) {
+        const row = $('#tabla_occ_detalles tbody tr[data-id="' + id + '"]');
+        return row.length ? String(row.find('td').eq(2).text()).trim() : '';
+      }
+
+      function actualizarPosicionesAperturado() {
+        const idsSeleccionados = getSelectedOccIdsInTableOrder();
+        const posicionBase = idsSeleccionados.length
+          ? getPosicionOcc(idsSeleccionados[idsSeleccionados.length - 1])
+          : '';
+
+        $('#body_aperturado tr').each(function(index) {
+          const posicion = posicionBase ? posicionBase + '.' + (index + 1) : '';
+          $(this).find('.aper-posicion').text(posicion);
+        });
+      }
+
       function buildAperturadoRow() {
         const rowId = aperturadoRowIndex++;
         return `
           <tr data-row-id="${rowId}">
+            <td class="text-center"><span class="aper-posicion"></span></td>
             <td>
               <input type="text" class="form-control form-control-sm aper-desc" name="aperturado_descripcion[]" maxlength="199" required>
             </td>
@@ -1864,6 +1912,7 @@ Database::disconnect();
       function addAperturadoRow(shouldFocus) {
         const nuevaFila = $(buildAperturadoRow());
         $('#body_aperturado').append(nuevaFila);
+        actualizarPosicionesAperturado();
         if (shouldFocus) {
           nuevaFila.find('.aper-desc').trigger('focus');
         }
@@ -2045,6 +2094,7 @@ Database::disconnect();
 
         syncOccRowStyles();
         updateOccSelectionSummary();
+        actualizarPosicionesAperturado();
         if ($('input[name="modo_generacion"]:checked').val() === 'agrupar') {
           occDataTable.rows().invalidate().order([0, 'asc']).draw();
         }
@@ -2066,6 +2116,7 @@ Database::disconnect();
         });
         syncOccRowStyles();
         updateOccSelectionSummary();
+        actualizarPosicionesAperturado();
         if ($('input[name="modo_generacion"]:checked').val() === 'agrupar') {
           occDataTable.rows().invalidate().order([0, 'asc']).draw();
         }
@@ -2101,6 +2152,7 @@ Database::disconnect();
 
       $(document).on('click', '.btn-eliminar-fila-aperturado', function() {
         $(this).closest('tr').remove();
+        actualizarPosicionesAperturado();
         recalcularAperturado();
       });
 
@@ -2109,6 +2161,7 @@ Database::disconnect();
       });
 
       $('input[name="modo_generacion"]').on('change', function() {
+        actualizarPosicionesAperturado();
         updateOccActionsColumnVisibility();
         syncOccRowStyles();
         renderOccBreakdowns();
@@ -2207,6 +2260,7 @@ Database::disconnect();
       preloadSelectedOccItemsFromExistingLots();
       updateOccActionsColumnVisibility();
       updateOccSelectionSummary();
+      actualizarPosicionesAperturado();
       syncOccRowStyles();
       renderOccBreakdowns();
 
