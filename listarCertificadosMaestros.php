@@ -129,7 +129,7 @@ $esOpCM = esOperacionesSinEconomico();?>
                       // Operaciones no ve exportación ni montos
                       if (!$esOpCM) { ?>
                       <a href="#" id="link_exportar_certificado"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>&nbsp;&nbsp;<?php } ?>
-                      <a href="#" id="link_imprimir_certificado"><img src="img/print.png" width="24" height="20" border="0" alt="Imprimir" title="Imprimir CM"></a>&nbsp;&nbsp;
+                      <a href="#" target="_blank" id="link_imprimir_certificado"><img src="img/print.png" width="24" height="20" border="0" alt="Imprimir" title="Imprimir CM"></a>&nbsp;&nbsp;
                       <?php if (!$esOpCM && !empty(tienePermiso(375))) {?>
                         <a href="#" id="link_modificar_ot"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>&nbsp;&nbsp;<?php
                         echo '<a href="#" id="link_aprobar_maestro"><img src="img/aprobar.png" width="24" height="20" border="0" alt="Aprobar CM" title="Aprobar CM"></a>&nbsp;&nbsp;';
