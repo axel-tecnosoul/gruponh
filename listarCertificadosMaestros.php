@@ -63,7 +63,22 @@ $esOpCM = esOperacionesSinEconomico();?>
       #tablaDetalleOCC .occ-breakdown-table th:first-child,
       #tablaDetalleOCC .occ-breakdown-table td:first-child {
         white-space: normal;
-        min-width: 180px;
+        min-width: 48px;
+        max-width: 64px;
+      }
+      #tablaDetalleOCC .occ-breakdown-table th:nth-child(2),
+      #tablaDetalleOCC .occ-breakdown-table td:nth-child(2) {
+        min-width: 220px;
+      }
+      #tablaDetalleOCC .occ-breakdown-table .avance-cantidad-col {
+        width: 68px !important;
+        min-width: 68px !important;
+        max-width: 68px !important;
+      }
+      #tablaDetalleOCC .occ-breakdown-table .avance-porcentaje-col {
+        width: 52px !important;
+        min-width: 52px !important;
+        max-width: 52px !important;
       }
       #tablaOCC th.cliente-col, #tablaOCC td.cliente-col {
         min-width: 460px;
@@ -732,16 +747,16 @@ $esOpCM = esOperacionesSinEconomico();?>
                 sumaTotal += total;
                 const posicion = f.posicion_aperturado || '';
                 if (esOpCM) {
-                  filas += '<tr><td>' + escapeDetalleHtml(posicion) + '</td><td>' + escapeDetalleHtml(f.descripcion) + '</td><td>' + escapeDetalleHtml(f.unidad) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td></tr>';
+                  filas += '<tr><td>' + escapeDetalleHtml(posicion) + '</td><td>' + escapeDetalleHtml(f.descripcion + (f.unidad ? ' (' + f.unidad + ')' : '')) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td></tr>';
                 } else {
-                  filas += '<tr><td>' + escapeDetalleHtml(posicion) + '</td><td>' + escapeDetalleHtml(f.descripcion) + '</td><td>' + escapeDetalleHtml(f.unidad) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(pu) + '</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(total) + '</td></tr>';
+                  filas += '<tr><td>' + escapeDetalleHtml(posicion) + '</td><td>' + escapeDetalleHtml(f.descripcion + (f.unidad ? ' (' + f.unidad + ')' : '')) + '</td><td class="text-right">' + fmtDetalleNum(cant) + '</td><td class="text-right">' + fmtDetalleNum(inc) + '%</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(pu) + '</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(total) + '</td></tr>';
                 }
               });
               if (!(entry.g.filas || []).length) {
                 const colEmpty = esOpCM ? 5 : 7;
                 filas = '<tr><td colspan="'+colEmpty+'" class="text-muted">Sin filas de detalle guardadas.</td></tr>';
               }
-              const theadBreak = esOpCM ? '<thead><tr><th>Posición</th><th>Descripcion</th><th>Unidad</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th></tr></thead>' : '<thead><tr><th>Posición</th><th>Descripcion</th><th>Unidad</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th><th class="text-right">Precio Unitario</th><th class="text-right">Total</th></tr></thead>';
+              const theadBreak = esOpCM ? '<thead><tr><th>Posición</th><th>Descripcion</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th></tr></thead>' : '<thead><tr><th>Posición</th><th>Descripcion</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th><th class="text-right">Precio Unitario</th><th class="text-right">Total</th></tr></thead>';
               const tfootBreak = esOpCM ? '' : '<tfoot class="bg-light"><tr class="font-weight-bold"><td colspan="6" class="text-right">Total</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(sumaTotal) + '</td></tr></tfoot>';
               paneles += '<div class="border rounded px-2 py-2 mb-2 occ-lote-inline-row"><div class="table-responsive"><table class="table table-sm table-bordered mb-0 occ-breakdown-table">' + theadBreak + '<tbody>' + filas + '</tbody>' + tfootBreak + '</table></div></div>';
             });

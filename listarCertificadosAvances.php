@@ -85,7 +85,13 @@ if (!$data || !$cmAprobado) {
         padding: 0.3rem 0.5rem;
       }
       #contenedor_detalle_avance .occ-breakdown-table {
-        width: 100%;
+        width: max-content;
+        min-width: 0;
+        max-width: none;
+        table-layout: auto;
+      }
+      #contenedor_detalle_avance .occ-breakdown-table .text-muted {
+        text-align: center;
       }
       #contenedor_detalle_avance .occ-breakdown-table th,
       #contenedor_detalle_avance .occ-breakdown-table td {
@@ -95,7 +101,8 @@ if (!$data || !$cmAprobado) {
       #contenedor_detalle_avance .occ-breakdown-table th:first-child,
       #contenedor_detalle_avance .occ-breakdown-table td:first-child {
         white-space: normal;
-        min-width: 180px;
+        min-width: 48px;
+        max-width: 64px;
       }
       #contenedor_detalle_avance .avance-periodo {
         border-left: 2px solid #2b8dbf;
@@ -116,17 +123,39 @@ if (!$data || !$cmAprobado) {
         border-left: 2px solid #2b8dbf;
       }
       #contenedor_detalle_avance .avance-cantidad-col {
-        width: 78px !important;
-        min-width: 78px !important;
-        max-width: 78px !important;
+        width: auto !important;
+        min-width: 82px !important;
+      }
+      #contenedor_detalle_avance .avance-anterior-cantidad-col {
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 70px !important;
       }
       #contenedor_detalle_avance .avance-porcentaje-col {
-        width: 62px !important;
+        width: auto !important;
         min-width: 62px !important;
-        max-width: 62px !important;
         padding-right: 2px !important;
         padding-left: 2px !important;
         text-align: center !important;
+      }
+      #contenedor_detalle_avance .occ-breakdown-table th:nth-child(2),
+      #contenedor_detalle_avance .occ-breakdown-table td:nth-child(2) {
+        min-width: 60px;
+        max-width: 420px;
+      }
+      #contenedor_detalle_avance .occ-breakdown-table.economico tbody td:nth-child(6),
+      #contenedor_detalle_avance .occ-breakdown-table.economico thead tr:first-child th:nth-child(6) {
+        width: 1% !important;
+        min-width: 105px !important;
+        max-width: 125px !important;
+        white-space: nowrap;
+      }
+      #contenedor_detalle_avance .occ-breakdown-table.economico tbody td:nth-child(7),
+      #contenedor_detalle_avance .occ-breakdown-table.economico thead tr:nth-child(2) th:first-child {
+        width: 1% !important;
+        min-width: 62px !important;
+        max-width: 62px !important;
+        white-space: nowrap;
       }
       .legacy-section {
         border-left: 4px solid #ffc107;
@@ -290,7 +319,7 @@ if (!$data || !$cmAprobado) {
                               <?php if (!$esOpCA) { ?><th class="text-right">Precio unitario</th><th class="text-right">Descuento</th><th class="text-right">Subtotal</th><?php } ?>
                             </tr>
                           </thead>
-                          <tbody></tbody>
+                          <tbody><tr><td colspan="<?= $esOpCA ? '4' : '7' ?>" class="text-muted text-center">No hay datos</td></tr></tbody>
                         </table>
                       </div>
                     </div>
@@ -441,7 +470,7 @@ if (!$data || !$cmAprobado) {
         // Setup - add a text input to each footer cell
         $('#tablaOCC tfoot th').each( function () {
           var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+          $(this).html( '<input type="text" class="form-control form-control-sm" placeholder="Filtrar '+title+'" aria-label="Filtrar '+title+'" />' );
         });
 
         $('#tablaOCC').DataTable({
@@ -700,12 +729,11 @@ if (!$data || !$cmAprobado) {
           let claseGrupo = grupo.aperturado ? '' : ' occ-group-sin-aperturado';
           html += '<div class="occ-group-aperturado-wrap' + claseGrupo + '">';
           html += '<div class="table-responsive">';
-          html += '<table class="table table-bordered occ-breakdown-table">';
+          html += '<table class="table table-bordered occ-breakdown-table' + (!esOpCAJs ? ' economico' : '') + '">';
           html += '<thead>';
           html += '<tr>';
           html += '<th rowspan="2">Posición</th>';
           html += '<th rowspan="2">Descripcion</th>';
-          html += '<th rowspan="2">Unidad</th>';
           html += '<th rowspan="2" class="text-right">Cantidad</th>';
           html += '<th rowspan="2" class="text-right">Incidencia</th>';
           if (!esOpCAJs) {
@@ -718,7 +746,7 @@ if (!$data || !$cmAprobado) {
           html += '<th colspan="' + (esOpCAJs ? 2 : 3) + '" class="text-center avance-periodo avance-periodo-saldo">Saldo</th>';
           html += '</tr>';
           html += '<tr>';
-          html += '<th class="text-right avance-col-inicio avance-cantidad-col">Cantidad</th>';
+          html += '<th class="text-right avance-col-inicio avance-cantidad-col avance-anterior-cantidad-col">Cantidad</th>';
           html += '<th class="text-center avance-porcentaje-col">%</th>';
           if (!esOpCAJs) html += '<th class="text-right">Monto</th>';
           html += '<th class="text-right avance-col-inicio avance-cantidad-col">Cantidad</th>';
@@ -756,15 +784,14 @@ if (!$data || !$cmAprobado) {
 
             html += '<tr>';
             html += '<td>' + (fila.posicion_aperturado || '') + '</td>';
-            html += '<td>' + (fila.descripcion || '') + '</td>';
-            html += '<td>' + (fila.unidad_medida || '') + '</td>';
+            html += '<td>' + (fila.descripcion || '') + (fila.unidad_medida ? ' (' + fila.unidad_medida + ')' : '') + '</td>';
             html += '<td class="text-right">' + formatearNumeroAvance(cantidad) + '</td>';
             html += '<td class="text-right">' + (incidencia !== null ? formatearNumeroAvance(parseFloat(incidencia)) + '%' : '-') + '</td>';
             if (!esOpCAJs) {
               html += '<td class="text-right">' + moneda + ' ' + formatearNumeroAvance(obtenerNumeroAvance(fila.precio_unitario_cm)) + '</td>';
               html += '<td class="text-right">' + moneda + ' ' + formatearNumeroAvance(subtotal_cm_fila) + '</td>';
             }
-            html += '<td class="text-right avance-col-inicio avance-cantidad-col">' + formatearNumeroAvance(cantidad_anterior) + '</td>';
+            html += '<td class="text-right avance-col-inicio avance-cantidad-col avance-anterior-cantidad-col">' + formatearNumeroAvance(cantidad_anterior) + '</td>';
             html += '<td class="text-center avance-porcentaje-col">' + formatearNumeroAvance(porcentaje_anterior) + '%</td>';
             if (!esOpCAJs) html += '<td class="text-right">' + moneda + ' ' + formatearNumeroAvance(monto_anterior) + '</td>';
             html += '<td class="text-right avance-col-inicio avance-cantidad-col">' + formatearNumeroAvance(cantidad_actual) + '</td>';
@@ -782,7 +809,7 @@ if (!$data || !$cmAprobado) {
           html += '</tbody>';
           html += '<tfoot class="bg-light">';
           html += '<tr class="font-weight-bold">';
-          html += '<td colspan="' + (esOpCAJs ? 5 : 7) + '" class="text-right">Totales del grupo</td>';
+          html += '<td colspan="' + (esOpCAJs ? 4 : 6) + '" class="text-right">Totales del grupo</td>';
           html += '<td class="text-right avance-col-inicio">Anterior</td>';
           html += '<td class="text-center avance-porcentaje-col"></td>';
           if (!esOpCAJs) html += '<td class="text-right">' + moneda + ' ' + formatearNumeroAvance(total_anterior_grupo) + '</td>';
@@ -825,10 +852,10 @@ if (!$data || !$cmAprobado) {
 
             if (!id_certificado_avance || id_certificado_avance == 0) {
               let emptyThead = '<tr><th>ID</th><th>Posición</th><th>Descripcion</th><th class="text-right">Cantidad</th>' + (!esOpCAJs ? '<th class="text-right">Precio unitario</th><th class="text-right">Descuento</th><th class="text-right">Subtotal</th>' : '') + '</tr>';
-              let emptyHtml = '<div class="table-responsive"><table class="table display table-bordered dataTable" id="tabla_occ_listado" style="width:100%"><thead>' + emptyThead + '</thead><tbody></tbody></table></div>';
+              let emptyHtml = '<div class="table-responsive"><table class="table display table-bordered dataTable" id="tabla_occ_listado" style="width:100%"><thead>' + emptyThead + '</thead><tbody><tr><td colspan="' + (esOpCAJs ? 4 : 7) + '" class="text-muted text-center">No hay datos</td></tr></tbody></table></div>';
               $('#contenedor_detalle_avance').html(emptyHtml);
               if ($.fn.DataTable.isDataTable('#tabla_occ_listado')) { $('#tabla_occ_listado').DataTable().destroy(); }
-              $('#tabla_occ_listado').DataTable({ data: [], paging:false, searching:true, info:false, language:{ search:"Buscar:", zeroRecords:"", emptyTable:""} });
+              $('#tabla_occ_listado').DataTable({ paging:false, searching:true, info:false, order: [], language:{ search:"Buscar:", zeroRecords:"No hay resultados", emptyTable:"No hay datos"} });
               return;
             }
 

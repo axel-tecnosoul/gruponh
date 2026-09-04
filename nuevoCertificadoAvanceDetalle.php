@@ -494,7 +494,7 @@ function renderGruposAvance($grupos, $moneda) {
           ?></tbody>
           <tfoot class="bg-light">
             <tr class="font-weight-bold">
-              <td colspan="<?php echo $esOp ? 5 : 7; ?>" class="text-right">Totales del grupo</td>
+              <td colspan="<?php echo $esOp ? 4 : 6; ?>" class="text-right">Totales del grupo</td>
               <td class="text-right avance-col-inicio">Anterior</td>
               <td class="text-center avance-porcentaje-col"></td>
               <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-anterior"><?=number_format($total_anterior_grupo, 2, ',', '.')?></span></td><?php } ?>
@@ -548,6 +548,10 @@ Database::disconnect();
       #tabla_occ_avances tbody tr.occ-grouped-member > td:last-child {
         border-right: 3px solid #2b8dbf;
       }
+      #tabla_occ_avances th,
+      #tabla_occ_avances td {
+        vertical-align: middle;
+      }
       #tabla_occ_avances.table-sm > tbody > tr.occ-breakdown-row > td {
         background-color: #f7fcff;
         padding: 0.25rem !important;
@@ -563,10 +567,22 @@ Database::disconnect();
         vertical-align: middle;
         white-space: nowrap;
       }
+      .occ-breakdown-table {
+        width: max-content;
+        min-width: 100%;
+        table-layout: auto;
+      }
       .occ-breakdown-table th:first-child,
       .occ-breakdown-table td:first-child {
         white-space: normal;
-        min-width: 180px;
+        min-width: 52px;
+        max-width: 80px;
+      }
+      .occ-breakdown-table th:nth-child(2),
+      .occ-breakdown-table td:nth-child(2) {
+        min-width: 60px;
+        max-width: 420px;
+        white-space: normal;
       }
       .occ-breakdown-table input[name='avance[]'] {
         width: 100%;
@@ -603,19 +619,16 @@ Database::disconnect();
         padding: 2px 5px !important;
       }
       .occ-breakdown-table .avance-cantidad-col {
-        width: 78px !important;
-        min-width: 78px !important;
-        max-width: 78px !important;
+        width: auto !important;
+        min-width: 82px !important;
       }
       .occ-breakdown-table .avance-cantidad-actual-col {
-        width: 90px !important;
-        min-width: 90px !important;
-        max-width: 90px !important;
+        width: auto !important;
+        min-width: 92px !important;
       }
       .occ-breakdown-table .avance-porcentaje-col {
-        width: 62px !important;
+        width: auto !important;
         min-width: 62px !important;
-        max-width: 62px !important;
         padding-right: 2px !important;
         padding-left: 2px !important;
         text-align: center !important;
@@ -723,7 +736,7 @@ Database::disconnect();
                             <div class="col-12">
                               <h6 class="mb-3 font-weight-bold">Items OCC y aperturados</h6>
                               <div class="table-responsive">
-                                <table class="table table-sm table-bordered" id="tabla_occ_avances" style="width:100%">
+                                <table class="table table-sm table-bordered display" id="tabla_occ_avances" data-has-breakdown="<?=!empty($grupos_por_occ) ? '1' : '0'?>" style="width:100%">
                                   <thead>
                                     <tr>
                                       <th>ID</th>
@@ -851,6 +864,25 @@ Database::disconnect();
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <script>
+      $(document).ready(function() {
+        var tablaOccAvances = $('#tabla_occ_avances');
+        if (tablaOccAvances.length && tablaOccAvances.data('has-breakdown') != 1) {
+          tablaOccAvances.DataTable({
+            stateSave: false,
+            responsive: false,
+            order: [[1, 'asc']],
+            language: {
+              emptyTable: 'No hay datos',
+              search: 'Buscar:',
+              zeroRecords: 'No hay resultados',
+              lengthMenu: 'Mostrar _MENU_ Registros',
+              info: 'Mostrando _START_ a _END_ de _TOTAL_ Registros',
+              paginate: { first: 'Primero', last: 'Ultimo', next: 'Siguiente', previous: 'Anterior' }
+            }
+          });
+        }
+      });
+
       function obtenerNumeroAvance(valor) {
         valor = String(valor || '').trim().replace(',', '.');
         let numero = parseFloat(valor);

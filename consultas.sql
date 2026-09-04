@@ -509,7 +509,7 @@ ALTER TABLE `certificados_ajustes`
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE `occ_detalles`
-  ADD COLUMN `posicion` INT(11) NULL AFTER `id_occ`;
+  ADD COLUMN `posicion` VARCHAR(50) NULL AFTER `id_occ`;
 
 UPDATE `occ_detalles` d
 INNER JOIN (
@@ -526,7 +526,7 @@ INNER JOIN (
 SET d.posicion = secuencia.nueva_pos;
 
 ALTER TABLE `occ_detalles`
-  MODIFY COLUMN `posicion` INT(11) NOT NULL;
+  MODIFY COLUMN `posicion` VARCHAR(50) NOT NULL;
 
 ALTER TABLE `occ_detalles`
   ADD INDEX `idx_occ_detalles_posicion` (`id_occ`, `posicion`);

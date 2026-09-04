@@ -218,8 +218,8 @@ if (is_file($logoPath)) {
     $d->setWorksheet($sheet);
 }
 
-$wCert = ['A' => 5.125, 'B' => 26.625, 'C' => 7.625, 'D' => 11.125, 'E' => 8.625, 'F' => 15.875, 'G' => 16.375,
-          'H' => 8.625, 'I' => 6.125, 'J' => 14.625, 'K' => 8.625, 'L' => 9, 'M' => 16.375, 'N' => 8.625, 'O' => 6.75, 'P' => 16.375];
+$wCert = ['A' => 3.5, 'B' => 30.25, 'C' => 0, 'D' => 10.5, 'E' => 7.25, 'F' => 15.875, 'G' => 16.375,
+          'H' => 7.5, 'I' => 5, 'J' => 14.625, 'K' => 7.5, 'L' => 5, 'M' => 16.375, 'N' => 7.5, 'O' => 5, 'P' => 16.375];
 foreach ($wCert as $c => $w) $sheet->getColumnDimension($c)->setWidth($w);
 $sheet->getColumnDimension('Q')->setWidth(11);
 
@@ -282,7 +282,7 @@ $sheet->getStyle('K8:P13')->applyFromArray($thinBorder);
 // Header de la tabla (filas 15-16)
 $sheet->setCellValue('A15', 'Pos'); $sheet->mergeCells('A15:A16');
 $sheet->setCellValue('B15', 'Descripción'); $sheet->mergeCells('B15:B16');
-$sheet->setCellValue('C15', 'Unidad'); $sheet->mergeCells('C15:C16');
+$sheet->setCellValue('C15', ''); $sheet->mergeCells('C15:C16');
 $sheet->setCellValue('D15', 'Cantidad'); $sheet->mergeCells('D15:D16');
 $sheet->setCellValue('E15', 'Incidencia (%)'); $sheet->mergeCells('E15:E16');
 $sheet->setCellValue('F15', 'Precio Unitario'); $sheet->mergeCells('F15:F16');
@@ -446,8 +446,8 @@ foreach ($grupos as $g) {
 
             $sheet->setCellValueExplicit('A' . $row, (string)$posDes, DataType::TYPE_STRING);
             $sheet->getStyle('A' . $row)->getNumberFormat()->setFormatCode(NumberFormat::FORMAT_TEXT);
-            $sheet->setCellValue('B' . $row, $desc);
-            $sheet->setCellValue('C' . $row, $unidad);
+                $sheet->setCellValue('B' . $row, $desc . ($unidad !== '' ? ' (' . $unidad . ')' : ''));
+                $sheet->setCellValue('C' . $row, '');
             $sheet->setCellValue('D' . $row, $cant);
             $sheet->setCellValue('E' . $row, $inc / 100);
             $sheet->setCellValue('F' . $row, $pu);
@@ -636,6 +636,8 @@ $sheet->getPageSetup()->setPrintArea('A1:P' . ($rowFirma + 7));
 // ============================================================
 // HOJA 2: Medicion (con la misma lógica de agrupación)
 // ============================================================
+// La hoja de medición queda desactivada temporalmente; conservar el bloque permite reactivarla.
+$incluirMedicion = false;
 $med = $book->createSheet();
 $med->setTitle('Medicion');
 $med->setShowGridLines(false);
@@ -866,6 +868,10 @@ $med->getStyle('D' . $rowFirmaLabelMed)->getAlignment()->setHorizontal(Alignment
 $med->getStyle('I' . $rowFirmaLabelMed)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
 $med->getPageSetup()->setPrintArea('A1:K' . $rowFirmaLabelMed);
+
+if (!$incluirMedicion) {
+    $book->removeSheetByIndex($book->getIndex($med));
+}
 
 // Activar primera hoja y descargar
 $book->setActiveSheetIndex(0);

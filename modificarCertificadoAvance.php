@@ -6,6 +6,7 @@ if (empty($_SESSION['user'])) {
 }
 
 require 'database.php';
+$esOpCA = function_exists('esOperacionesSinEconomico') ? esOperacionesSinEconomico() : false;
 
 $id = null;
 if (!empty($_GET['id'])) {
@@ -61,9 +62,10 @@ if (!empty($_POST)) {
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $id_certificado_maestro=$data["id_certificado_maestro"];
 
-  $sql = "UPDATE certificados_avances_cabecera SET fecha_emision=?, fecha_inicio=?, fecha_fin=?, observaciones=? WHERE id=?";
+  $cotizacionDolar = $esOpCA ? 0 : (!empty($_POST['cotizacion_dolar']) ? (float) $_POST['cotizacion_dolar'] : 0);
+  $sql = "UPDATE certificados_avances_cabecera SET fecha_emision=?, fecha_inicio=?, fecha_fin=?, cotizacion_dolar=?, observaciones=? WHERE id=?";
   $q = $pdo->prepare($sql);
-  $q->execute([$_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"], $_POST["observaciones"],$id]);
+  $q->execute([$_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"], $cotizacionDolar, $_POST["observaciones"], $id]);
 
   if ($modoDebug==1) {
     $q->debugDumpParams();
@@ -93,11 +95,14 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id_certificado_maestro,fecha_emision,fecha_inicio,fecha_fin,monto_total,observaciones FROM certificados_avances_cabecera WHERE id = ?";
+  $sql = "SELECT id_certificado_maestro,fecha_emision,fecha_inicio,fecha_fin,cotizacion_dolar,monto_total,observaciones FROM certificados_avances_cabecera WHERE id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $id_certificado_maestro=$data["id_certificado_maestro"];
+  $qMoneda = $pdo->prepare("SELECT m.moneda FROM certificados_maestros cm INNER JOIN monedas m ON m.id = cm.id_moneda WHERE cm.id = ?");
+  $qMoneda->execute([$id_certificado_maestro]);
+  $esDolar = strtoupper((string) $qMoneda->fetchColumn()) !== 'ARS';
 
   Database::disconnect();
 }?>
@@ -152,6 +157,18 @@ if (!empty($_POST)) {
                             <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
                             <div class="col-sm-9"><input name="fecha_fin" id="fecha_fin" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$data['fecha_fin'];?>"></div>
                           </div>
+                          <?php if (!$esOpCA) { ?>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Cotización Dólar</label>
+                            <div class="col-sm-9">
+                              <div class="input-group">
+                                <input name="cotizacion_dolar" id="cotizacion_dolar" type="number" step="0.01" min="0" class="form-control" value="<?=htmlspecialchars((string) $data['cotizacion_dolar'], ENT_QUOTES, 'UTF-8');?>">
+                                <div class="input-group-append"><span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;"></span></div>
+                              </div>
+                              <small id="infoCotizacion" class="text-muted"></small>
+                            </div>
+                          </div>
+                          <?php } ?>
                           <!-- <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Monto total(*)</label>
                             <div class="col-sm-9"><input name="monto_total" type="number" min="0" step="0.01" class="form-control" required="required" value="<?=$data['monto_total'];?>"></div>
@@ -237,6 +254,24 @@ if (!empty($_POST)) {
 				document.getElementById("fecha_fin").value = "";
 			}
 		});
+
+    var esDolar = <?= !empty($esDolar) ? 'true' : 'false' ?>;
+    if (esDolar) {
+      var badge = $('#estadoDolar');
+      var input = $('#cotizacion_dolar');
+      var info = $('#infoCotizacion');
+      badge.text('Cotización guardada').removeClass('text-danger').addClass('text-success');
+      input.prop('readonly', true);
+      fetch('https://dolarapi.com/v1/dolares/blue', {headers: {'Accept': 'application/json'}})
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(d) {
+          if (!d.venta) throw new Error('Sin venta');
+          badge.text('Dólar Blue');
+          info.text('Cotización actual disponible: $' + parseFloat(d.venta).toFixed(2));
+          input.prop('readonly', false);
+        })
+        .catch(function() { badge.text('Manual').removeClass('text-success').addClass('text-secondary'); input.prop('readonly', false); });
+    }
 		</script>
     <!-- Plugin used-->
 

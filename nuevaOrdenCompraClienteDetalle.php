@@ -12,10 +12,10 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   $subtotal=($_POST['cantidad']*$_POST['precio_unitario'])-$_POST['descuento'];
-  $posicion = filter_var($_POST['posicion'] ?? null, FILTER_VALIDATE_INT);
-  if ($posicion === false || $posicion < 1) {
+  $posicion = trim((string) ($_POST['posicion'] ?? ''));
+  if ($posicion === '' || !preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,49}$/', $posicion)) {
     Database::disconnect();
-    die('La posición debe ser un número entero positivo.');
+    die('La posición debe contener hasta 50 caracteres alfanuméricos.');
   }
 
   //btn2 y btn3 son parar modificar
@@ -80,9 +80,10 @@ if (!empty($_POST)) {
 
 $id_orden_compra_cliente=$_GET['id_orden_compra_cliente'];
 $pdo = Database::connect();
-$q = $pdo->prepare("SELECT COALESCE(MAX(posicion), 0) + 10 FROM occ_detalles WHERE id_occ = ?");
+$q = $pdo->prepare("SELECT posicion FROM occ_detalles WHERE id_occ = ? ORDER BY id DESC LIMIT 1");
 $q->execute([$id_orden_compra_cliente]);
-$siguiente_posicion = (int) $q->fetchColumn();
+$ultima_posicion = (string) ($q->fetchColumn() ?: '');
+$siguiente_posicion = ctype_digit($ultima_posicion) ? (string) ((int) $ultima_posicion + 10) : '10';
 Database::disconnect();
 ?>
 <!DOCTYPE html>
@@ -177,7 +178,7 @@ Database::disconnect();
                           <div class="form-group row">
                            <input type="hidden" name="id_orden_compra_cliente_detalle">
                            <label class="col-sm-3 col-form-label">Posición(*)</label>
-                           <div class="col-sm-9"><input name="posicion" type="number" min="1" step="1" class="form-control" required value="<?=$siguiente_posicion?>"></div>
+                           <div class="col-sm-9"><input name="posicion" type="text" maxlength="50" pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,49}" class="form-control" required value="<?=$siguiente_posicion?>"></div>
                          </div>
                          <div class="form-group row">
                            <label class="col-sm-3 col-form-label">Descripcion(*)</label>

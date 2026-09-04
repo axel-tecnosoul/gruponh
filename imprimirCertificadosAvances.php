@@ -412,8 +412,8 @@ $html .= '</tr>';
 
 // Encabezados de columna
 $html .= '<tr>';
-$html .= '<th rowspan="2" style="width:4%;">Pos</th>';
-$html .= '<th rowspan="2" style="width:22%;">Descripción</th>';
+$html .= '<th rowspan="2" style="width:3%;">Pos</th>';
+$html .= '<th rowspan="2" style="width:27%;">Descripción</th>';
 $html .= '<th rowspan="2" style="width:5%;">Unidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Cantidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Incidencia (%)</th>';
@@ -557,7 +557,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
                 $html .= '<tr>';
                 $html .= '<td class="text-center child-yellow">' . caPdfEsc($posDes) . '</td>';
-                $html .= '<td class="text-left child-yellow">' . caPdfEsc($desc) . '</td>';
+                $html .= '<td class="text-left child-yellow">' . caPdfEsc($desc . ($unidad !== '' ? ' (' . $unidad . ')' : '')) . '</td>';
                 $html .= '<td class="child-yellow">' . caPdfEsc($unidad) . '</td>';
                 $html .= '<td class="num child-yellow">' . caPdfNum($cant) . '</td>';
                 $html .= '<td class="num child-yellow">' . caPdfNum($inc) . '%</td>';
@@ -807,7 +807,7 @@ foreach ($grupos as $g) {
 
             $html .= '<tr>';
             $html .= '<td class="text-center child-yellow">' . caPdfEsc($posDes) . '</td>';
-            $html .= '<td class="text-left child-yellow">' . caPdfEsc($desc) . '</td>';
+            $html .= '<td class="text-left child-yellow">' . caPdfEsc($desc . ($unidad !== '' ? ' (' . $unidad . ')' : '')) . '</td>';
             $html .= '<td class="child-yellow">' . caPdfEsc($unidad) . '</td>';
             $html .= '<td class="num child-yellow">' . caPdfNum($cant) . '</td>';
             $html .= '<td class="num">' . caPdfNum($antCant) . '</td>';
@@ -844,6 +844,11 @@ $html .= '</table>';
 // --------------------------------------------------------------
 // Generación del PDF
 // --------------------------------------------------------------
+// La medición queda desactivada temporalmente; el bloque se conserva para reactivarlo.
+$incluirMedicion = false;
+if (!$incluirMedicion) {
+    $html = substr($html, 0, strpos($html, '<div class="page-break"></div>'));
+}
 $html .= '</body></html>';
 
 $options = new Options();

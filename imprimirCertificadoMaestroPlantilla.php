@@ -409,8 +409,8 @@ $html .= '</tr>';
 
 // Encabezados de columnas
 $html .= '<tr>';
-$html .= '<th rowspan="2" style="width:4%;">Pos</th>';
-$html .= '<th rowspan="2" style="width:22%;">Descripción</th>';
+$html .= '<th rowspan="2" style="width:3%;">Pos</th>';
+$html .= '<th rowspan="2" style="width:27%;">Descripción</th>';
 $html .= '<th rowspan="2" style="width:5%;">Unidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Cantidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Incidencia (%)</th>';
@@ -493,7 +493,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
                 $html .= '<tr>';
                 $html .= '<td class="text-center child-yellow">' . cmPdfEsc($posDes) . '</td>';
-                $html .= '<td class="text-left child-yellow">' . cmPdfEsc($descDes) . '</td>';
+                $html .= '<td class="text-left child-yellow">' . cmPdfEsc($descDes . ($unidadDes !== '' ? ' (' . $unidadDes . ')' : '')) . '</td>';
                 $html .= '<td class="child-yellow">' . cmPdfEsc($unidadDes) . '</td>';
                 $html .= '<td class="num child-yellow">' . cmPdfNum($cantDes) . '</td>';
                 $html .= '<td class="num child-yellow">' . cmPdfNum($incDes) . '%</td>';
@@ -764,6 +764,11 @@ $html .= '</table>';
 // --------------------------------------------------------------
 // Generación del PDF
 // --------------------------------------------------------------
+// La medición queda desactivada temporalmente; el bloque se conserva para reactivarlo.
+$incluirMedicion = false;
+if (!$incluirMedicion) {
+    $html = substr($html, 0, strpos($html, '<div class="page-break"></div>'));
+}
 $html .= '</body></html>';
 
 $options = new Options();

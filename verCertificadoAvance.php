@@ -39,6 +39,22 @@ if (!empty($_POST)) {
     <?php include('head_forms.php');?>
 	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
 	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      #detalle_ca_ver .occ-breakdown-table { width: max-content; min-width: 100%; table-layout: auto; }
+      #detalle_ca_ver .occ-breakdown-table th,
+      #detalle_ca_ver .occ-breakdown-table td { padding: .3rem .5rem; vertical-align: middle; white-space: nowrap; }
+      #detalle_ca_ver .occ-breakdown-table th:first-child,
+      #detalle_ca_ver .occ-breakdown-table td:first-child { min-width: 52px; white-space: normal; }
+      #detalle_ca_ver .occ-breakdown-table th:nth-child(2),
+      #detalle_ca_ver .occ-breakdown-table td:nth-child(2) { min-width: 220px; max-width: 420px; white-space: normal; }
+      #detalle_ca_ver .avance-cantidad-col { min-width: 82px; }
+      #detalle_ca_ver .avance-porcentaje-col { min-width: 62px; text-align: center; }
+      #detalle_ca_ver .avance-periodo { border-left: 2px solid #2b8dbf; }
+      #detalle_ca_ver .avance-periodo-anterior { background-color: #f1f3f5; }
+      #detalle_ca_ver .avance-periodo-actual { background-color: #e9f6fd; }
+      #detalle_ca_ver .avance-periodo-acumulado { background-color: #eef7ee; }
+      #detalle_ca_ver .avance-periodo-saldo { background-color: #fdf3f3; }
+    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -100,10 +116,12 @@ if (!empty($_POST)) {
                             <!-- Zero Configuration  Starts-->
                             <div class="col-sm-12">
                               <div class="dt-ext table-responsive">
-                                <table class="display" id="dataTables-example667">
+                                  <div id="detalle_ca_ver">
+                                  <table class="table table-sm table-bordered display" id="dataTables-example667">
                                   <thead>
                                     <tr>
                                       <th class="d-none">ID</th>
+                                      <th>Posición</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
                                       <th>Unidad</th>
@@ -116,14 +134,13 @@ if (!empty($_POST)) {
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                   
-                                  $sql = " SELECT cad.id AS id_certificado_avance_detalle, cmd.id AS id_certificado_maestro_detalle,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario AS precio_unitario_cm,cmd.subtotal AS subtotal_cm,m.moneda,cad.cantidad_anterior,cad.cantidad_actual,cad.cantidad_acumulado,cad.precio_unitario AS precio_unitario_ca,cad.subtotal AS subtotal_ca,cad.id_comprobante FROM certificados_maestros_detalles cmd INNER JOIN certificados_maestros cm ON cmd.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id LEFT JOIN certificados_avances_detalle cad ON cad.id_certificado_maestro_detalle=cmd.id WHERE cad.id_certificado_avance=$id";// OR cad.id_certificado_avance IS NULL
+                                  $sql = " SELECT cad.id AS id_certificado_avance_detalle, cmd.id AS id_certificado_maestro_detalle, cmd.posicion_aperturado, cmd.id_tipo_item_certificado, tic.tipo, cmd.descripcion, cmd.cantidad, cmd.id_unidad_medida, um.unidad_medida, cmd.precio_unitario AS precio_unitario_cm, cmd.subtotal AS subtotal_cm, m.moneda, COALESCE(cad.cantidad_actual, 0) AS cantidad_actual, COALESCE(cad.subtotal, 0) AS subtotal_ca FROM certificados_maestros_detalles cmd INNER JOIN certificados_maestros cm ON cmd.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id LEFT JOIN certificados_avances_detalle cad ON cad.id_certificado_maestro_detalle=cmd.id AND cad.id_certificado_avance=$id WHERE cmd.id_certificado_maestro=".(int) $data['id_certificado_maestro']." ORDER BY cmd.lote, cmd.aperturado, cmd.id";
                                   //$sql = "SELECT cad.id AS id_certificados_avances_detalle,cmd.id_tipo_item_certificado,tic.tipo,cmd.descripcion,cmd.cantidad,cmd.id_unidad_medida,um.unidad_medida,cmd.precio_unitario,cmd.subtotal,cad.id_comprobante FROM certificados_avances_detalle cad INNER JOIN certificados_maestros_detalles cmd ON cad.id_certificado_maestro_detalle=cmd.id INNER JOIN tipos_item_certificado tic ON cmd.id_tipo_item_certificado=tic.id INNER JOIN unidades_medida um ON cmd.id_unidad_medida=um.id WHERE id_certificado_avance = ";
                                   //echo $sql;
-                                  $aIdComprobantes=[];
                                   foreach ($pdo->query($sql) as $row) {
-                                    $aIdComprobantes[]=$row["id_comprobante"];
                                     echo '<tr>';
                                     echo '<td class="d-none">'.$row["id_certificado_maestro_detalle"].'</td>';
+                                    echo '<td>'.$row["posicion_aperturado"].'</td>';
                                     echo '<td>'.$row["descripcion"].'</td>';
                                     echo '<td style="text-align:right">'.$row["cantidad"].'</td>';
                                     echo '<td data-id="'.$row["id_unidad_medida"].'">'.$row["unidad_medida"].'</td>';
@@ -135,6 +152,7 @@ if (!empty($_POST)) {
                                   <tfoot>
                                     <tr>
                                       <th class="d-none">ID</th>
+                                      <th>Posición</th>
                                       <th>Descripcion</th>
                                       <th>Cantidad</th>
                                       <th>Unidad</th>
@@ -143,7 +161,8 @@ if (!empty($_POST)) {
                                       <th>Subtotal</th><?php } ?>
                                     </tr>
                                   </tfoot>
-                                </table>
+                                  </table>
+                                  </div>
                               </div>
                             </div>
                             <!-- Zero Configuration  Ends-->
@@ -159,7 +178,7 @@ if (!empty($_POST)) {
                             <!-- Zero Configuration  Starts-->
                             <div class="col-sm-12">
                               <div class="dt-ext table-responsive">
-                                <table class="display" id="dataTables-example668">
+                                <table class="table table-sm table-bordered display" id="dataTables-example668">
                                   <thead>
                                     <tr>
                                       <th class="d-none">ID</th>
@@ -179,8 +198,8 @@ if (!empty($_POST)) {
                                   $pdo = Database::connect();
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-                                  if(count($aIdComprobantes)>0){
-                                    $sql = " SELECT distinct fc.id, fc.observaciones, tc.tipo, lc.letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y'), fp.forma_pago, fc.total, m.moneda, ef.estado  FROM facturas_venta_detalle_x_certificados_avance fxc inner join facturas_venta_detalle fvd on fvd.id = fxc.id_factura_venta_detalle inner join facturas_venta fc on fc.id = fvd.id_factura_venta inner join tipos_comprobante tc on tc.id = fc.id_tipo_comprobante inner join letras_comprobante lc on lc.id = fc.id_letra_comprobante inner join cuentas c on c.id = fc.id_cuenta_destino inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda inner join estados_factura ef on ef.id = fc.id_estado WHERE fxc.id_certificado_avance = ".$_GET['id'];
+                                  {
+                                    $sql = " SELECT distinct fc.id, fc.observaciones, tc.tipo, lc.letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y'), fp.forma_pago, fc.total, m.moneda, ef.estado  FROM facturas_venta_detalle_x_certificados_avance fxc inner join facturas_venta_detalle fvd on fvd.id = fxc.id_factura_venta_detalle inner join facturas_venta fc on fc.id = fvd.id_factura_venta inner join tipos_comprobante tc on tc.id = fc.id_tipo_comprobante inner join letras_comprobante lc on lc.id = fc.id_letra_comprobante inner join cuentas c on c.id = fc.id_cuenta_destino inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda inner join estados_factura ef on ef.id = fc.id_estado WHERE fxc.id_certificado_avance = ".(int) $_GET['id'];
                                     foreach ($pdo->query($sql) as $row) {
                                       echo '<tr>';
                                       echo '<td class="d-none">'. $row[0] . '</td>';
@@ -296,6 +315,9 @@ if (!empty($_POST)) {
       $('#dataTables-example667').DataTable({
           stateSave: false,
           responsive: false,
+          order: [[1, 'asc']],
+          pageLength: 25,
+          lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
           language: {
           "decimal": "",
           "emptyTable": "No hay información",
@@ -378,6 +400,76 @@ if (!empty($_POST)) {
       } );
     } );
     
+    </script>
+    <script>
+      function escapeDetalleVer(value) {
+        return $('<div>').text(value == null ? '' : value).html();
+      }
+
+      function numeroDetalleVer(value) {
+        var parsed = parseFloat(String(value == null ? 0 : value).replace(',', '.'));
+        return isNaN(parsed) ? 0 : parsed;
+      }
+
+      function formatoDetalleVer(value) {
+        return numeroDetalleVer(value).toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+      }
+
+      var esOpVerJs = <?= $esOpVer ? 'true' : 'false' ?>;
+
+      function renderDesgloseVer(grupos, moneda) {
+        var html = '';
+        Object.keys(grupos || {}).forEach(function(clave) {
+          var grupo = grupos[clave];
+          html += '<div class="table-responsive"><table class="table table-sm table-bordered occ-breakdown-table">';
+          html += '<thead><tr><th>Posición</th><th>Descripcion</th><th>Cantidad</th><th>Incidencia</th>';
+          if (!esOpVerJs) html += '<th>Precio unitario</th><th>Total CM</th>';
+          ['Anterior', 'Actual', 'Acumulado', 'Saldo'].forEach(function(periodo) { html += '<th colspan="' + (esOpVerJs ? 2 : 3) + '" class="avance-periodo">' + periodo + '</th>'; });
+          html += '</tr><tr><th></th><th></th><th></th><th></th>' + (!esOpVerJs ? '<th></th><th></th>' : '');
+          (esOpVerJs ? ['Cantidad', '%', 'Cantidad', '%', 'Cantidad', '%', 'Cantidad', '%'] : ['Cantidad', '%', 'Monto', 'Cantidad', '%', 'Monto', 'Cantidad', '%', 'Monto', 'Cantidad', '%', 'Monto']).forEach(function(titulo) { html += '<th>' + titulo + '</th>'; });
+          html += '</tr></thead><tbody>';
+          (grupo.filas || []).forEach(function(fila) {
+            var cantidad = numeroDetalleVer(fila.cantidad);
+            var actual = numeroDetalleVer(fila.cantidad_actual);
+            var acumulado = numeroDetalleVer(fila.acumulado);
+            var anterior = Math.max(0, acumulado - actual);
+            var precio = numeroDetalleVer(fila.precio_unitario_cm);
+            var totalCm = numeroDetalleVer(fila.subtotal_cm);
+            var saldo = Math.max(0, cantidad - acumulado);
+            var porcentaje = function(valor) { return cantidad > 0 ? valor / cantidad * 100 : 0; };
+            var monto = function(valor) { return moneda + ' ' + formatoDetalleVer(valor * precio); };
+            html += '<tr><td>' + escapeDetalleVer(fila.posicion_aperturado) + '</td>';
+            html += '<td>' + escapeDetalleVer(fila.descripcion) + (fila.unidad_medida ? ' (' + escapeDetalleVer(fila.unidad_medida) + ')' : '') + '</td>';
+            html += '<td>' + formatoDetalleVer(cantidad) + '</td><td>' + formatoDetalleVer(fila.incidencia_porcentaje) + '%</td>';
+            if (!esOpVerJs) html += '<td>' + moneda + ' ' + formatoDetalleVer(precio) + '</td><td>' + moneda + ' ' + formatoDetalleVer(totalCm) + '</td>';
+            [[anterior, porcentaje(anterior)], [actual, porcentaje(actual)], [acumulado, porcentaje(acumulado)], [saldo, porcentaje(saldo)]].forEach(function(item) {
+              html += '<td>' + formatoDetalleVer(item[0]) + '</td><td>' + formatoDetalleVer(item[1]) + '%</td>';
+              if (!esOpVerJs) html += '<td>' + monto(item[0]) + '</td>';
+            });
+            html += '</tr>';
+          });
+          html += '</tbody></table></div>';
+        });
+        return html;
+      }
+
+      function cargarDetalleAgrupadoVer() {
+        $.post('get_detalle_certificado_avance.php', {id_certificado_avance: <?= (int) $id ?>}, function(data) {
+          var html = '<div class="table-responsive"><table class="table table-sm table-bordered display" id="tablaDetalleVer"><thead><tr><th>ID</th><th>Posición</th><th>Descripcion</th><th>Cantidad</th>' + (!esOpVerJs ? '<th>Precio unitario</th><th>Descuento</th><th>Subtotal</th>' : '') + '</tr></thead><tbody>';
+          var grupos = data.grupos_por_occ || {};
+          (data.occ_detalles || []).forEach(function(occ) {
+            html += '<tr><td>' + escapeDetalleVer(occ.id) + '</td><td>' + escapeDetalleVer(occ.posicion) + '</td><td>' + escapeDetalleVer(occ.descripcion) + '</td><td class="text-right">' + formatoDetalleVer(occ.cantidad) + '</td>';
+            if (!esOpVerJs) html += '<td class="text-right">' + data.moneda + ' ' + formatoDetalleVer(occ.precio_unitario) + '</td><td class="text-right">' + data.moneda + ' ' + formatoDetalleVer(occ.descuento) + '</td><td class="text-right">' + data.moneda + ' ' + formatoDetalleVer(occ.subtotal) + '</td>';
+            html += '</tr>';
+            if (grupos[occ.id]) html += '<tr><td colspan="' + (esOpVerJs ? 4 : 7) + '">' + renderDesgloseVer(grupos[occ.id], data.moneda || 'U$S') + '</td></tr>';
+          });
+          html += '</tbody></table></div>';
+          $('#detalle_ca_ver').html(html);
+          $('#tablaDetalleVer').DataTable({paging: false, searching: true, info: false, order: [[1, 'asc']], language: {search: 'Buscar:', zeroRecords: 'No hay resultados', emptyTable: 'No hay datos'}});
+        }, 'json');
+      }
+
+      $(function() { cargarDetalleAgrupadoVer(); });
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>

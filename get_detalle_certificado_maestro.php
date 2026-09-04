@@ -39,7 +39,7 @@ $items = [];
 foreach ($q as $row) {
   $items[] = [
       'id' => (int) $row['id'],
-      'posicion' => (int) $row['posicion'],
+      'posicion' => (string) $row['posicion'],
       'descripcion' => (string) $row['descripcion'],
     'cantidad' => (float) $row['cantidad'],
     'precio_unitario' => (float) $row['precio_unitario'],
