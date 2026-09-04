@@ -396,7 +396,6 @@ $html .= '</tr>';
 $html .= '<tr>';
 $html .= '<th rowspan="2" style="width:3%;">Pos</th>';
 $html .= '<th rowspan="2" style="width:27%;">Descripción</th>';
-$html .= '<th rowspan="2" style="width:5%;">Unidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Cantidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Incidencia (%)</th>';
 $html .= '<th rowspan="2" style="width:7%;">Precio Unitario</th>';
@@ -428,7 +427,7 @@ $totalAcumAct = 0;
 $totalAcumAcu = 0;
 
 if (empty($grupos) && empty($ordenOccIds)) {
-    $html .= '<tr><td colspan="16" class="text-center">Sin ítems</td></tr>';
+    $html .= '<tr><td colspan="15" class="text-center">Sin ítems</td></tr>';
 } else {
     // Agrupados juntos: iterar por grupo, primero todos los padres del grupo, luego su desglose
     foreach ($grupos as $g) {
@@ -448,7 +447,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $html .= '<tr>';
             $html .= '<td class="text-center parent-yellow">' . cmPdfEsc($pos) . '</td>';
             $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
-            $html .= '<td class="parent-blue"></td>';
             $html .= '<td class="num parent-blue">' . cmPdfNum($cantOcc) . '</td>';
             $html .= '<td class="num parent-blue">0,00%</td>';
             $html .= '<td class="num parent-blue">' . cmPdfMoney($puOcc, $moneda) . '</td>';
@@ -489,7 +487,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
                 $html .= '<tr>';
                 $html .= '<td class="text-center child-yellow">' . cmPdfEsc($posDes) . '</td>';
                 $html .= '<td class="text-left child-yellow">' . cmPdfEsc($descDes . ($unidadDes !== '' ? ' (' . $unidadDes . ')' : '')) . '</td>';
-                $html .= '<td class="child-yellow">' . cmPdfEsc($unidadDes) . '</td>';
                 $html .= '<td class="num child-yellow">' . cmPdfNum($cantDes) . '</td>';
                 $html .= '<td class="num child-yellow">' . cmPdfNum($incDes) . '%</td>';
                 $html .= '<td class="num">' . cmPdfMoney($puDes, $moneda) . '</td>';
@@ -508,7 +505,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
             // Subtotal del lote
             $html .= '<tr class="subtotal-row">';
-            $html .= '<td colspan="6" class="text-right">Total Lote</td>';
+            $html .= '<td colspan="5" class="text-right">Total Lote</td>';
             $html .= '<td class="num col-precio-total">' . cmPdfMoney($g['subtotal'], $moneda) . '</td>';
             $html .= '<td colspan="9"></td>';
             $html .= '</tr>';
@@ -536,7 +533,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
         $html .= '<tr>';
         $html .= '<td class="text-center parent-yellow">' . cmPdfEsc($pos) . '</td>';
         $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
-        $html .= '<td class="parent-blue"></td>';
         $html .= '<td class="num parent-blue">' . cmPdfNum($cantOcc) . '</td>';
         $html .= '<td class="num parent-blue">0,00%</td>';
         $html .= '<td class="num parent-blue">' . cmPdfMoney(0, $moneda) . '</td>';
@@ -556,7 +552,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
 // Fila Total Orden de Compra
 $html .= '<tr class="total-row">';
-$html .= '<td colspan="6" class="text-right">Total Orden de Compra</td>';
+$html .= '<td colspan="5" class="text-right">Total Orden de Compra</td>';
 $html .= '<td class="num col-precio-total">' . cmPdfMoney($totalMontoCM, $moneda) . '</td>';
 $html .= '<td class="num">0,00</td>';
 $html .= '<td class="num"></td>';

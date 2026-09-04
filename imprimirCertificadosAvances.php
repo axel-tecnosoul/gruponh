@@ -414,7 +414,6 @@ $html .= '</tr>';
 $html .= '<tr>';
 $html .= '<th rowspan="2" style="width:3%;">Pos</th>';
 $html .= '<th rowspan="2" style="width:27%;">Descripción</th>';
-$html .= '<th rowspan="2" style="width:5%;">Unidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Cantidad</th>';
 $html .= '<th rowspan="2" style="width:5%;">Incidencia (%)</th>';
 $html .= '<th rowspan="2" style="width:7%;">Precio Unitario</th>';
@@ -449,7 +448,7 @@ $totalActCant = 0;
 $totalAcuCant = 0;
 
 if (empty($grupos) && empty($ordenOccIds)) {
-    $html .= '<tr><td colspan="16" class="text-center">Sin ítems</td></tr>';
+    $html .= '<tr><td colspan="15" class="text-center">Sin ítems</td></tr>';
 } else {
     foreach ($grupos as $g) {
         // --- Padres (occ_ids) ---
@@ -510,7 +509,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
             $html .= '<tr>';
             $html .= '<td class="text-center parent-yellow">' . caPdfEsc($pos) . '</td>';
             $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . caPdfEsc($desc) . '</td>';
-            $html .= '<td class="parent-blue"></td>';
             $html .= '<td class="num parent-blue">' . caPdfNum($cant) . '</td>';
             $html .= '<td class="num parent-blue">0,00%</td>';
             $html .= '<td class="num parent-blue">' . caPdfMoney($pu, $moneda) . '</td>';
@@ -558,7 +556,6 @@ if (empty($grupos) && empty($ordenOccIds)) {
                 $html .= '<tr>';
                 $html .= '<td class="text-center child-yellow">' . caPdfEsc($posDes) . '</td>';
                 $html .= '<td class="text-left child-yellow">' . caPdfEsc($desc . ($unidad !== '' ? ' (' . $unidad . ')' : '')) . '</td>';
-                $html .= '<td class="child-yellow">' . caPdfEsc($unidad) . '</td>';
                 $html .= '<td class="num child-yellow">' . caPdfNum($cant) . '</td>';
                 $html .= '<td class="num child-yellow">' . caPdfNum($inc) . '%</td>';
                 $html .= '<td class="num">' . caPdfMoney($pu, $moneda) . '</td>';
@@ -577,7 +574,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
             // Total del lote
             $html .= '<tr class="subtotal-row">';
-            $html .= '<td colspan="6" class="text-right">Total Lote</td>';
+            $html .= '<td colspan="5" class="text-right">Total Lote</td>';
             $html .= '<td class="num col-precio-total">' . caPdfMoney($g['subtotal_cm'], $moneda) . '</td>';
             $html .= '<td colspan="9"></td>';
             $html .= '</tr>';
@@ -587,7 +584,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
 // Total Orden de Compra (usando totales globales de los hijos)
 $html .= '<tr class="total-row">';
-$html .= '<td colspan="6" class="text-right">Total Orden de Compra</td>';
+$html .= '<td colspan="5" class="text-right">Total Orden de Compra</td>';
 $html .= '<td class="num col-precio-total">' . caPdfMoney($totalMontoCM, $moneda) . '</td>';
 $html .= '<td class="num">' . caPdfNum($totalAntCant) . '</td>';
 $html .= '<td class="num"></td>';
@@ -781,7 +778,6 @@ foreach ($grupos as $g) {
         $html .= '<tr>';
         $html .= '<td class="text-center parent-yellow">' . caPdfEsc($pos) . '</td>';
         $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . caPdfEsc($desc) . '</td>';
-        $html .= '<td class="parent-blue"></td>';
         $html .= '<td class="num parent-blue">' . caPdfNum($cant) . '</td>';
         $html .= '<td class="num parent-blue">' . caPdfNum($antCant) . '</td>';
         $html .= '<td class="num parent-blue">' . caPdfNum($cant > 0 ? ($antCant / $cant * 100) : 0) . '%</td>';
