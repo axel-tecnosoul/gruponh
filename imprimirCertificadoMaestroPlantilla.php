@@ -339,6 +339,17 @@ $css = '
     .page-break {
         page-break-before: always;
     }
+    .column-widths {
+        height: 0;
+        line-height: 0;
+        font-size: 0;
+    }
+
+    .ca-table .column-widths th {
+        height: 0;
+        padding: 0;
+        border: 0;
+    }
 </style>
 ';
 
@@ -383,9 +394,15 @@ $html .= '<div class="pdf-footer"><span>Grupo NH | Certificado Maestro</span><sp
 $html .= '<table class="ca-table">';
 $html .= '<thead>';
 
+$html .= '<tr class="column-widths">';
+foreach ([3, 15, 8, 6, 6, 8, 8, 5, 4, 6, 5, 4, 6, 5, 4, 7] as $width) {
+    $html .= '<th style="width:' . $width . '%;"></th>';
+}
+$html .= '</tr>';
+
 // Fila de datos del proyecto y CA
 $html .= '<tr class="sub-header">';
-$html .= '<td colspan="8" style="border-right: 2px solid #000;">';
+$html .= '<td colspan="7" style="border-right: 2px solid #000;">';
 $html .= '<table style="width:100%; border-collapse:collapse; font-size:6pt;">';
 $html .= '<tr><td class="label" style="width:20%;">Cliente</td><td class="value" style="width:30%;">' . cmPdfEsc($cm['cliente']) . '</td>'
        . '<td class="label" style="width:20%;">Proyecto</td><td class="value" style="width:30%;">' . cmPdfEsc($proyectosNombre) . '</td></tr>';
@@ -395,7 +412,7 @@ $html .= '<tr><td class="label">Fecha</td><td class="value">' . cmFmtFecha($cm['
        . '<td class="label"></td><td class="value"></td></tr>';
 $html .= '</table>';
 $html .= '</td>';
-$html .= '<td colspan="8">';
+$html .= '<td colspan="9">';
 $html .= '<table style="width:100%; border-collapse:collapse; font-size:6pt;">';
 $html .= '<tr><td class="label" style="width:20%;">Número</td><td class="value" style="width:30%;">' . $nroCM . '</td>'
        . '<td class="label" style="width:20%;">Revisión</td><td class="value" style="width:30%;">1</td></tr>';
@@ -409,26 +426,27 @@ $html .= '</tr>';
 
 // Encabezados de columnas
 $html .= '<tr>';
-$html .= '<th rowspan="2" style="width:3%;">Pos</th>';
-$html .= '<th rowspan="2" style="width:27%;">Descripción</th>';
-$html .= '<th rowspan="2" style="width:5%;">Cantidad</th>';
-$html .= '<th rowspan="2" style="width:5%;">Incidencia (%)</th>';
-$html .= '<th rowspan="2" style="width:7%;">Precio Unitario</th>';
-$html .= '<th rowspan="2" style="width:7%;" class="col-precio-total">Precio Total</th>';
-$html .= '<th colspan="3" style="width:12%; background:#F1F3F5;">Anterior</th>';
-$html .= '<th colspan="3" style="width:12%; background:#E9F6FD;">Actual</th>';
-$html .= '<th colspan="3" style="width:13%; background:#EEF7EE;">Acumulado</th>';
+$html .= '<th rowspan="2">Pos</th>';
+$html .= '<th rowspan="2">Descripción</th>';
+$html .= '<th rowspan="2">Unidad</th>';
+$html .= '<th rowspan="2">Cantidad</th>';
+$html .= '<th rowspan="2">Incidencia (%)</th>';
+$html .= '<th rowspan="2">Precio Unitario</th>';
+$html .= '<th rowspan="2" class="col-precio-total">Precio Total</th>';
+$html .= '<th colspan="3" style="background:#F1F3F5;">Anterior</th>';
+$html .= '<th colspan="3" style="background:#E9F6FD;">Actual</th>';
+$html .= '<th colspan="3" style="background:#EEF7EE;">Acumulado</th>';
 $html .= '</tr>';
 $html .= '<tr>';
-$html .= '<th style="width:4%; background:#F1F3F5;">Cant.</th>';
-$html .= '<th style="width:3%; background:#F1F3F5;">%</th>';
-$html .= '<th style="width:5%; background:#F1F3F5;">Monto</th>';
-$html .= '<th style="width:4%; background:#E9F6FD;">Cant.</th>';
-$html .= '<th style="width:3%; background:#E9F6FD;">%</th>';
-$html .= '<th style="width:5%; background:#E9F6FD;">Monto</th>';
-$html .= '<th style="width:4%; background:#EEF7EE;">Cant.</th>';
-$html .= '<th style="width:3%; background:#EEF7EE;">%</th>';
-$html .= '<th style="width:6%; background:#EEF7EE;" class="col-acu-monto">Monto</th>';
+$html .= '<th style="background:#F1F3F5;">Cant.</th>';
+$html .= '<th style="background:#F1F3F5;">%</th>';
+$html .= '<th style="background:#F1F3F5;">Monto</th>';
+$html .= '<th style="background:#E9F6FD;">Cant.</th>';
+$html .= '<th style="background:#E9F6FD;">%</th>';
+$html .= '<th style="background:#E9F6FD;">Monto</th>';
+$html .= '<th style="background:#EEF7EE;">Cant.</th>';
+$html .= '<th style="background:#EEF7EE;">%</th>';
+$html .= '<th style="background:#EEF7EE;" class="col-acu-monto">Monto</th>';
 $html .= '</tr>';
 
 $html .= '</thead>';
@@ -438,7 +456,7 @@ $totalMontoCM = 0;
 $totalCantCM = 0;
 
 if (empty($grupos) && empty($ordenOccIds)) {
-    $html .= '<tr><td colspan="15" class="text-center">Sin ítems</td></tr>';
+    $html .= '<tr><td colspan="16" class="text-center">Sin ítems</td></tr>';
 } else {
     foreach ($grupos as $g) {
         // Padres
@@ -455,7 +473,9 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
             $html .= '<tr>';
             $html .= '<td class="text-center parent-yellow">' . cmPdfEsc($pos) . '</td>';
-            $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
+            $html .= '<td colspan="2" class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
+            // Unidad
+            //$html .= '<td class="num parent-blue"></td>';
             $html .= '<td class="num parent-blue">' . cmPdfNum($cantOcc) . '</td>';
             $html .= '<td class="num parent-blue">0,00%</td>';
             $html .= '<td class="num parent-blue">' . cmPdfMoney($puOcc, $moneda) . '</td>';
@@ -491,7 +511,9 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
                 $html .= '<tr>';
                 $html .= '<td class="text-center child-yellow">' . cmPdfEsc($posDes) . '</td>';
-                $html .= '<td class="text-left child-yellow">' . cmPdfEsc($descDes . ($unidadDes !== '' ? ' (' . $unidadDes . ')' : '')) . '</td>';
+                //$html .= '<td class="text-left child-yellow">' . cmPdfEsc($descDes . ($unidadDes !== '' ? ' (' . $unidadDes . ')' : '')) . '</td>';
+                $html .= '<td class="text-left child-yellow">' . cmPdfEsc($descDes) . '</td>';
+                $html .= '<td class="text-left child-yellow">' . cmPdfEsc(($unidadDes !== '' ? $unidadDes : '')) . '</td>';
                 $html .= '<td class="num child-yellow">' . cmPdfNum($cantDes) . '</td>';
                 $html .= '<td class="num child-yellow">' . cmPdfNum($incDes) . '%</td>';
                 $html .= '<td class="num">' . cmPdfMoney($puDes, $moneda) . '</td>';
@@ -510,7 +532,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
             // Subtotal lote
             $html .= '<tr class="subtotal-row">';
-            $html .= '<td colspan="5" class="text-right">Total Lote</td>';
+            $html .= '<td colspan="6" class="text-right">Total Lote</td>';
             $html .= '<td class="num col-precio-total">' . cmPdfMoney($g['subtotal'], $moneda) . '</td>';
             $html .= '<td colspan="9"></td>';
             $html .= '</tr>';
@@ -537,7 +559,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
         $html .= '<tr>';
         $html .= '<td class="text-center parent-yellow">' . cmPdfEsc($pos) . '</td>';
-        $html .= '<td class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
+        $html .= '<td colspan="2" class="text-left parent-yellow" style="font-weight:bold;">' . cmPdfEsc($descOcc) . '</td>';
         $html .= '<td class="num parent-blue">' . cmPdfNum($cantOcc) . '</td>';
         $html .= '<td class="num parent-blue">0,00%</td>';
         $html .= '<td class="num parent-blue">' . cmPdfMoney(0, $moneda) . '</td>';
@@ -557,7 +579,7 @@ if (empty($grupos) && empty($ordenOccIds)) {
 
 // Total Orden de Compra
 $html .= '<tr class="total-row">';
-$html .= '<td colspan="5" class="text-right">Total Orden de Compra</td>';
+$html .= '<td colspan="6" class="text-right">Total Orden de Compra</td>';
 $html .= '<td class="num col-precio-total">' . cmPdfMoney($totalMontoCM, $moneda) . '</td>';
 $html .= '<td class="num">0,00</td>';
 $html .= '<td class="num"></td>';
