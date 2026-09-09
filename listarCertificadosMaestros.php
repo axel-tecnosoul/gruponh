@@ -499,7 +499,7 @@ $esOpCM = esOperacionesSinEconomico();?>
             $("#link_modificar_ot").attr("href", aprobado ? "#" : "modificarCertificadoMaestro.php?id="+id_cm);
             $("#link_aprobar_maestro").attr("href", aprobado ? "#" : "aprobarCertificadoMaestro.php?id="+id_cm);
             $("#link_nuevo_consumo").attr("href", aprobado ? "listarCertificadosAvances.php?id_certificado_maestro="+id_cm : "#");
-            $("#link_nuevo_anticipo").attr("href", aprobado ? "#" : "nuevoAnticipoCertificadoMaestro.php?id_certificado_maestro="+id_cm);
+            $("#link_nuevo_anticipo").attr("href", aprobado ? "nuevoAnticipoCertificadoMaestro.php?id_certificado_maestro="+id_cm : "#");
             $("#link_ver_occ").attr("href","verCertificadosMaestro.php?id="+id_cm);
           }
         });
@@ -593,9 +593,9 @@ $esOpCM = esOperacionesSinEconomico();?>
             return;
           }
 
-          if (filaSeleccionada.attr("data-aprobado") === "1") {
+          if (filaSeleccionada.attr("data-aprobado") !== "1") {
             e.preventDefault();
-            alert("El Certificado Maestro está aprobado y no puede modificarse.");
+            alert("El Certificado Maestro debe estar aprobado para cargar un anticipo.");
             return;
           }
 

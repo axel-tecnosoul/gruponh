@@ -219,9 +219,10 @@ if (!empty($_POST)) {
     $arrUnidad = $_POST['aperturado_id_unidad_medida'] ?? [];
     $arrCantidad = $_POST['aperturado_cantidad'] ?? [];
     $arrIncidencia = $_POST['aperturado_incidencia'] ?? [];
+    $arrTotal = $_POST['aperturado_total'] ?? [];
 
     $rowCount = count($arrDescripcion);
-    if ($rowCount === 0 || $rowCount !== count($arrUnidad) || $rowCount !== count($arrCantidad) || $rowCount !== count($arrIncidencia)) {
+    if ($rowCount === 0 || $rowCount !== count($arrUnidad) || $rowCount !== count($arrCantidad) || $rowCount !== count($arrIncidencia) || $rowCount !== count($arrTotal)) {
       throw new Exception("La grilla de aperturado no es valida.");
     }
 
@@ -232,6 +233,7 @@ if (!empty($_POST)) {
       $id_unidad_medida = (int) ($arrUnidad[$i] ?? 0);
       $cantidad = (float) ($arrCantidad[$i] ?? 0);
       $incidencia = (float) ($arrIncidencia[$i] ?? 0);
+      $totalInformado = (float) ($arrTotal[$i] ?? 0);
 
       if ($descripcion === '' || $id_unidad_medida <= 0 || $cantidad <= 0 || $incidencia < 0 || $incidencia > 100) {
         throw new Exception("Complete correctamente descripcion, unidad, cantidad e incidencia en todas las filas del aperturado.");
@@ -242,6 +244,7 @@ if (!empty($_POST)) {
         'id_unidad_medida' => $id_unidad_medida,
         'cantidad' => $cantidad,
         'incidencia' => $incidencia,
+        'total' => $totalInformado,
       ];
       $incidenciaTotal += $incidencia;
     }
@@ -452,6 +455,18 @@ if (!empty($_POST)) {
       $baseTotalOccSeleccionada = $monto_base_lote_anterior;
     }
 
+    $incidenciaTotal = 0.0;
+    foreach ($aperturadoRows as &$apRow) {
+      $apRow['incidencia'] = $baseTotalOccSeleccionada > 0
+        ? round(((float) $apRow['total'] / $baseTotalOccSeleccionada) * 100, 6)
+        : 0;
+      $incidenciaTotal += $apRow['incidencia'];
+    }
+    unset($apRow);
+    if (abs($incidenciaTotal - 100) >= 0.001) {
+      throw new Exception("La suma de los totales del aperturado debe coincidir con la base OCC.");
+    }
+
     // Generar o reutilizar lote
     $loteGenerado = $lote_existente;
     if ($loteGenerado === '' && $id_aperturado_edicion !== '') {
@@ -514,7 +529,7 @@ if (!empty($_POST)) {
       $occIdPropietario = !empty($ids_occ_detalle) ? (int) end($ids_occ_detalle) : 0;
       $posicionBase = (string) ($occPosiciones[$occIdPropietario] ?? '');
       foreach ($aperturadoRows as $aperturaIndex => $apRow) {
-        $subtotalFila = round($baseTotalOccSeleccionada * ($apRow['incidencia'] / 100), 6);
+        $subtotalFila = round($apRow['total'], 6);
         $precioUnitarioFila = $apRow['cantidad'] > 0 ? round($subtotalFila / $apRow['cantidad'], 6) : 0;
         $posicionAperturado = $posicionBase !== '' ? $posicionBase . '.' . ($aperturaIndex + 1) : null;
 
@@ -566,7 +581,9 @@ if (!empty($_POST)) {
           ? $aperturadoBaseSep . '-SEP-' . $occId
           : $aperturadoIdentificador . '-SEP-' . $occId;
         foreach ($aperturadoRows as $aperturaIndex => $apRow) {
-          $subtotalFila = round($baseIndividual * ($apRow['incidencia'] / 100), 6);
+          $subtotalFila = $baseTotalOccSeleccionada > 0
+            ? round($apRow['total'] * ($baseIndividual / $baseTotalOccSeleccionada), 6)
+            : 0;
           $precioUnitarioFila = $apRow['cantidad'] > 0 ? round($subtotalFila / $apRow['cantidad'], 6) : 0;
           $posicionBase = (string) ($occPosiciones[$occId] ?? '');
           $posicionAperturado = $posicionBase !== '' ? $posicionBase . '.' . ($aperturaIndex + 1) : null;
@@ -710,7 +727,7 @@ foreach ($lotes_base as $lote_row) {
   $q->execute([$id_certificado_maestro, $lote_id]);
   $occ_rows_rel = $q->fetchAll(PDO::FETCH_COLUMN, 0);
 
-  $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje, posicion_aperturado FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id";
+  $sql = "SELECT id_occ_detalle, descripcion, id_unidad_medida, cantidad, incidencia_porcentaje, subtotal, posicion_aperturado FROM certificados_maestros_detalles WHERE id_certificado_maestro = ? AND aperturado = ? ORDER BY id";
   $q = $pdo->prepare($sql);
   $q->execute([$id_certificado_maestro, $lote_id]);
   $rows_lote = $q->fetchAll(PDO::FETCH_ASSOC);
@@ -733,6 +750,7 @@ foreach ($lotes_base as $lote_row) {
       'id_unidad_medida' => (int) ($r['id_unidad_medida'] ?? 0),
       'cantidad' => (float) ($r['cantidad'] ?? 0),
       'incidencia' => (float) ($r['incidencia_porcentaje'] ?? 0),
+      'total' => (float) ($r['subtotal'] ?? 0),
       'posicion_aperturado' => (string) ($r['posicion_aperturado'] ?? ''),
     ];
   }
@@ -984,12 +1002,12 @@ Database::disconnect();
                                 <thead>
                                   <tr>
                                      <th style="width:9%;">Posición</th>
-                                     <th style="width:31%;">Descripcion</th>
-                                    <th style="width:11%;">Unidad</th>
-                                    <th style="width:11%;">Cantidad</th>
-                                    <th style="width:13%;">Incidencia (%)</th>
-                                    <th class="text-right" style="width:11%;">Precio Unitario</th>
-                                    <th class="text-right" style="width:11%;">Total</th>
+                                     <th style="width:20%;">Descripcion</th>
+                                    <th style="width:10%;">Unidad</th>
+                                    <th style="width:10%;">Cantidad</th>
+                                    <th style="width:12%;">Incidencia (%)</th>
+                                    <th class="text-right" style="width:12%;">Precio Unitario</th>
+                                    <th class="text-right" style="width:19%;">Total</th>
                                     <th style="width:8%;">Accion</th>
                                   </tr>
                                 </thead>
@@ -1007,6 +1025,7 @@ Database::disconnect();
                                     <td colspan="2" class="text-center">
                                       <button type="button" id="btn_agregar_fila_aperturado" class="btn btn-outline-primary btn-sm">Agregar fila</button>
                                     </td>
+                                    <td></td>
                                   </tr>
                                 </tfoot>
                               </table>
@@ -1302,6 +1321,7 @@ Database::disconnect();
           nuevaFila.find('.aper-unidad').val(String(row.id_unidad_medida || ''));
           nuevaFila.find('.aper-cantidad').val(row.cantidad || 0);
           nuevaFila.find('.aper-incidencia').val(row.incidencia || 0);
+          nuevaFila.find('.aper-total').val((row.total || 0).toFixed(2)).data('edited', true);
         });
 
         if (!$('#body_aperturado tr').length) {
@@ -1370,6 +1390,7 @@ Database::disconnect();
           nuevaFila.find('.aper-unidad').val(String(row.id_unidad_medida || ''));
           nuevaFila.find('.aper-cantidad').val(row.cantidad || 0);
           nuevaFila.find('.aper-incidencia').val(row.incidencia || 0);
+          nuevaFila.find('.aper-total').val((row.total || 0).toFixed(2)).data('edited', true);
         });
 
         if (!$('#body_aperturado tr').length) {
@@ -1900,8 +1921,7 @@ Database::disconnect();
               <span class="form-control-plaintext aper-precio-unitario text-right d-block">${simboloMonedaOcc} 0,00</span><input type="hidden" class="aper-precio-unitario-hidden" name="aperturado_precio_unitario[]" value="0">
             </td>
             <td>
-              <span class="form-control-plaintext aper-total text-right d-block">${simboloMonedaOcc} 0,00</span>
-              <input type="hidden" class="aper-total-hidden" name="aperturado_total[]" value="0">
+              <input type="number" class="form-control form-control-sm aper-total" name="aperturado_total[]" step="0.01" min="0" value="0">
             </td>
             <td>
               <button type="button" class="btn btn-sm btn-danger btn-eliminar-fila-aperturado">X</button>
@@ -1935,20 +1955,27 @@ Database::disconnect();
         $('#legacy_precio_unitario').val(first.find('.aper-precio-unitario-hidden').val() || '0');
       }
 
-      function recalcularAperturado() {
+      function recalcularAperturado(skipEl) {
         const base = getBaseCalculoActual();
         let incidenciaTotal = 0;
 
         $('#body_aperturado tr').each(function() {
           const cantidad = parseFloat($(this).find('.aper-cantidad').val()) || 0;
-          const incidencia = parseFloat($(this).find('.aper-incidencia').val()) || 0;
-          const totalFila = base * (incidencia / 100);
+          let incidencia = parseFloat($(this).find('.aper-incidencia').val()) || 0;
+          const $totalInput = $(this).find('.aper-total');
+          let totalFila = parseFloat($totalInput.val()) || 0;
+          if (!$totalInput.data('edited')) {
+            totalFila = base * (incidencia / 100);
+          }
           const precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
 
           incidenciaTotal += incidencia;
 
-          $(this).find('.aper-total').text(simboloMonedaOcc + ' ' + formatNumber(totalFila));
-          $(this).find('.aper-total-hidden').val(totalFila.toFixed(6));
+          // No reescribir el campo que el usuario está editando para permitir tipeo directo.
+          const isSkip = skipEl && $totalInput.is(skipEl);
+          if (!isSkip) {
+            $totalInput.val(totalFila.toFixed(2));
+          }
           $(this).find('.aper-precio-unitario').text(simboloMonedaOcc + ' ' + formatNumber(precioUnitario));
           $(this).find('.aper-precio-unitario-hidden').val(precioUnitario.toFixed(6));
         });
@@ -2156,7 +2183,28 @@ Database::disconnect();
         recalcularAperturado();
       });
 
-      $(document).on('input change', '.aper-desc, .aper-unidad, .aper-cantidad, .aper-incidencia', function() {
+      $(document).on('input change', '.aper-desc, .aper-unidad', function() {
+        syncLegacyFieldsFromFirstRow();
+      });
+      $(document).on('input change', '.aper-cantidad, .aper-incidencia', function() {
+        $(this).closest('tr').find('.aper-total').removeData('edited');
+        recalcularAperturado();
+      });
+      $(document).on('input', '.aper-total', function() {
+        const fila = $(this).closest('tr');
+        const base = getBaseCalculoActual();
+        const total = parseFloat($(this).val()) || 0;
+        $(this).data('edited', true);
+        fila.find('.aper-incidencia').val(base > 0 ? ((total / base) * 100).toFixed(2) : '0');
+        // Recalcula resumen y precios sin reescribir el campo en edición.
+        recalcularAperturado(this);
+      });
+      $(document).on('change blur', '.aper-total', function() {
+        const fila = $(this).closest('tr');
+        const base = getBaseCalculoActual();
+        const total = parseFloat($(this).val()) || 0;
+        $(this).data('edited', true);
+        fila.find('.aper-incidencia').val(base > 0 ? ((total / base) * 100).toFixed(2) : '0');
         recalcularAperturado();
       });
 

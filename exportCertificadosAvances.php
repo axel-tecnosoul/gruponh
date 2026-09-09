@@ -205,7 +205,7 @@ $book->getProperties()->setCreator('Grupo NH')->setTitle('Certificado de Avance 
 $sheet = $book->getActiveSheet();
 $sheet->setTitle('Certificado 1');
 $sheet->setShowGridLines(false);
-$sheet->getSheetView()->setZoomScale(70);
+$sheet->getSheetView()->setZoomScale(100);
 
 $logoPath = __DIR__ . '/assets/images/logo.jpg';
 if (is_file($logoPath)) {
@@ -218,8 +218,8 @@ if (is_file($logoPath)) {
     $d->setWorksheet($sheet);
 }
 
-$wCert = ['A' => 3.5, 'B' => 30.25, 'C' => 0, 'D' => 10.5, 'E' => 7.25, 'F' => 15.875, 'G' => 16.375,
-          'H' => 7.5, 'I' => 5, 'J' => 14.625, 'K' => 7.5, 'L' => 5, 'M' => 16.375, 'N' => 7.5, 'O' => 5, 'P' => 16.375];
+$wCert = ['A' => 3.5, 'B' => 30.25, 'C' => 0, 'D' => 10.5, 'E' => 9, 'F' => 15.875, 'G' => 16.375,
+          'H' => 8.5, 'I' => 7, 'J' => 14.625, 'K' => 8.5, 'L' => 7, 'M' => 16.375, 'N' => 8.5, 'O' => 7, 'P' => 16.375];
 foreach ($wCert as $c => $w) $sheet->getColumnDimension($c)->setWidth($w);
 $sheet->getColumnDimension('Q')->setWidth(11);
 

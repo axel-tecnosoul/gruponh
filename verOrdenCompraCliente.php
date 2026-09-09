@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT occ.id,occ.numero,date_format(occ.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(occ.fecha_recepcion,'%d/%m/%y') AS fecha_recepcion,c.nombre AS cliente,occ.monto,m.moneda,ci.condicion_iva iva,occ.percepcion,occ.otros_importes,fp.forma_pago,CONCAT(p.id,'/',p.nro_revision) AS presupuesto,IF(occ.requiere_polizas=1,'Si','No') AS requiere_polizas,occ.abierta,date_format(occ.fecha_vencimiento,'%d/%m/%y') AS fecha_vencimiento,date_format(occ.fecha_entrega,'%d/%m/%y') AS fecha_entrega,occ.lugar_entrega,occ.observaciones,occ.monto_total_certificados,occ.monto_total_facturados,IF(occ.abierta=1,'Abierta','Cerrada') AS tipo_oc,IF(occ.activa=1,'Si','No') AS activa , occ.id_moneda FROM occ INNER JOIN cuentas c ON occ.id_cuenta_cliente=c.id INNER JOIN monedas m ON occ.id_moneda=m.id INNER JOIN formas_pago fp ON occ.id_forma_pago=fp.id INNER JOIN presupuestos p ON occ.id_presupuesto=p.id inner join condiciones_iva ci on ci.id = occ.id_condicion_iva WHERE occ.id = ? ";
+  $sql = "SELECT occ.id,occ.numero,date_format(occ.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(occ.fecha_recepcion,'%d/%m/%y') AS fecha_recepcion,c.nombre AS cliente,occ.monto,m.moneda,ci.condicion_iva iva,occ.percepcion,occ.otros_importes,fp.forma_pago,CONCAT(p.id,'/',p.nro_revision) AS presupuesto,IF(occ.requiere_polizas=1,'Si','No') AS requiere_polizas,occ.abierta,date_format(occ.fecha_vencimiento,'%d/%m/%y') AS fecha_vencimiento,date_format(occ.fecha_entrega,'%d/%m/%y') AS fecha_entrega,occ.lugar_entrega,occ.observaciones,occ.link_archivo,occ.monto_total_certificados,occ.monto_total_facturados,IF(occ.abierta=1,'Abierta','Cerrada') AS tipo_oc,IF(occ.activa=1,'Si','No') AS activa , occ.id_moneda FROM occ INNER JOIN cuentas c ON occ.id_cuenta_cliente=c.id INNER JOIN monedas m ON occ.id_moneda=m.id INNER JOIN formas_pago fp ON occ.id_forma_pago=fp.id INNER JOIN presupuestos p ON occ.id_presupuesto=p.id inner join condiciones_iva ci on ci.id = occ.id_condicion_iva WHERE occ.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -128,6 +128,10 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Observaciones</label>
                             <div class="col-sm-9"><?=$data['observaciones'];?></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Link de archivo</label>
+                            <div class="col-sm-9"><?php if (!empty($data['link_archivo'])) { ?><a href="<?=htmlspecialchars($data['link_archivo'], ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer"><?=htmlspecialchars($data['link_archivo'], ENT_QUOTES, 'UTF-8')?></a><?php } else { ?>-<?php } ?></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Activo(*)</label>

@@ -33,10 +33,10 @@ if (!empty($_POST)) {
 
   $id=$_GET['id'];
 
-  $sql = "UPDATE occ SET numero=?, fecha_emision=?, fecha_recepcion=?, id_cuenta_cliente=?, id_moneda=?, id_condicion_iva=?, percepcion=?, otros_importes=?, id_forma_pago=?, id_presupuesto=?, requiere_polizas=?, abierta=?, fecha_vencimiento=?, fecha_entrega=?, lugar_entrega=?, observaciones=?, activa=? WHERE id = ?";
+  $sql = "UPDATE occ SET numero=?, fecha_emision=?, fecha_recepcion=?, id_cuenta_cliente=?, id_moneda=?, id_condicion_iva=?, percepcion=?, otros_importes=?, id_forma_pago=?, id_presupuesto=?, requiere_polizas=?, abierta=?, fecha_vencimiento=?, fecha_entrega=?, lugar_entrega=?, observaciones=?, link_archivo=?, activa=? WHERE id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([
-  $_POST["numero"], $_POST["fecha_emision"], $_POST["fecha_recepcion"], $_POST["id_cuenta_cliente"], $_POST["id_moneda"], $_POST["id_condicion_iva"], 0, 0, $_POST["id_forma_pago"], $_POST["id_presupuesto"], $_POST["requiere_polizas"], $_POST["tipo_oc"], $_POST["fecha_vencimiento"], $_POST["fecha_entrega"], $_POST["lugar_entrega"], $_POST["observaciones"], $_POST["activo"], $id]);
+  $_POST["numero"], $_POST["fecha_emision"], $_POST["fecha_recepcion"], $_POST["id_cuenta_cliente"], $_POST["id_moneda"], $_POST["id_condicion_iva"], 0, 0, $_POST["id_forma_pago"], $_POST["id_presupuesto"], $_POST["requiere_polizas"], $_POST["tipo_oc"], $_POST["fecha_vencimiento"], $_POST["fecha_entrega"], $_POST["lugar_entrega"], $_POST["observaciones"], trim($_POST["link_archivo"] ?? '') ?: null, $_POST["activo"], $id]);
 
 	$sql = "delete from occ_tipos_cobertura where id_occ = ? ";
 	$q = $pdo->prepare($sql);
@@ -77,7 +77,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT numero,fecha_emision,fecha_recepcion,id_cuenta_cliente,monto,id_moneda,id_condicion_iva,percepcion,otros_importes,id_forma_pago,id_presupuesto,requiere_polizas,abierta,fecha_vencimiento,fecha_entrega,lugar_entrega,observaciones,activa FROM occ WHERE id = ?";
+  $sql = "SELECT numero,fecha_emision,fecha_recepcion,id_cuenta_cliente,monto,id_moneda,id_condicion_iva,percepcion,otros_importes,id_forma_pago,id_presupuesto,requiere_polizas,abierta,fecha_vencimiento,fecha_entrega,lugar_entrega,observaciones,link_archivo,activa FROM occ WHERE id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -311,6 +311,10 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Observaciones</label>
                             <div class="col-sm-9"><textarea name="observaciones" name="observaciones" class="form-control"><?=$data['observaciones']; ?></textarea></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Link de archivo</label>
+                            <div class="col-sm-9"><input name="link_archivo" type="url" maxlength="1000" class="form-control" value="<?=htmlspecialchars((string)($data['link_archivo'] ?? ''), ENT_QUOTES, 'UTF-8')?>" placeholder="https://"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Activo(*)</label>

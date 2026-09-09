@@ -18,9 +18,12 @@ if (!empty($_POST)) {
 
   if(empty($_POST["otros_importes"])) $_POST["otros_importes"]=0;
 
-	$sql = "INSERT INTO occ (numero, fecha_emision, fecha_recepcion, id_cuenta_cliente, monto, id_moneda, id_condicion_iva, percepcion, otros_importes, id_forma_pago, id_presupuesto, requiere_polizas, abierta, fecha_vencimiento, fecha_entrega, lugar_entrega, observaciones, activa, monto_total_certificados, monto_total_facturados) VALUES (?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,1,0,0)";
+  $fecha_vencimiento = (!empty($_POST["fecha_vencimiento"])) ? $_POST["fecha_vencimiento"] : null;
+  $link_archivo = trim($_POST["link_archivo"] ?? '') ?: null;
+
+  $sql = "INSERT INTO occ (numero, fecha_emision, fecha_recepcion, id_cuenta_cliente, monto, id_moneda, id_condicion_iva, percepcion, otros_importes, id_forma_pago, id_presupuesto, requiere_polizas, abierta, fecha_vencimiento, fecha_entrega, lugar_entrega, observaciones, link_archivo, activa, monto_total_certificados, monto_total_facturados) VALUES (?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,1,0,0)";
 	$q = $pdo->prepare($sql);
-	$q->execute([$_POST["numero"], $_POST["fecha_emision"], $_POST["fecha_recepcion"], $_POST["id_cuenta_cliente"], $_POST["id_moneda"], $_POST["id_condicion_iva"], 0, 0, $_POST["id_forma_pago"], $_POST["id_presupuesto"], $_POST["requiere_polizas"], $_POST["tipo_oc"], $_POST["fecha_vencimiento"], $_POST["fecha_entrega"], $_POST["lugar_entrega"], $_POST["observaciones"]]);
+  $q->execute([$_POST["numero"], $_POST["fecha_emision"], $_POST["fecha_recepcion"], $_POST["id_cuenta_cliente"], $_POST["id_moneda"], $_POST["id_condicion_iva"], 0, 0, $_POST["id_forma_pago"], $_POST["id_presupuesto"], $_POST["requiere_polizas"], $_POST["tipo_oc"], $fecha_vencimiento, $_POST["fecha_entrega"], $_POST["lugar_entrega"], $_POST["observaciones"], $link_archivo]);
 
 	$id_orden_compra_cliente = $pdo->lastInsertId();
 	
@@ -302,6 +305,10 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Observaciones</label>
                             <div class="col-sm-9"><textarea name="observaciones" name="observaciones" class="form-control"></textarea></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Link de archivo</label>
+                            <div class="col-sm-9"><input name="link_archivo" type="url" maxlength="1000" class="form-control" placeholder="https://"></div>
                           </div>
                         </div>
                       </div>

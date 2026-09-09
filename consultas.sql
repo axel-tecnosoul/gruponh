@@ -532,6 +532,12 @@ ALTER TABLE `occ_detalles`
   ADD INDEX `idx_occ_detalles_posicion` (`id_occ`, `posicion`);
 
 -- ---------------------------------------------------------------------------
+-- CORRECCIÓN 20: Link opcional de archivo asociado a una OCC.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `occ`
+  ADD COLUMN `link_archivo` VARCHAR(1000) NULL AFTER `observaciones`;
+
+-- ---------------------------------------------------------------------------
 -- CORRECCIÓN 19: Perfil Operaciones — acceso CM/CA sin información económica
 -- Opción A: nuevo permiso/acción para vista medición-only
 -- ---------------------------------------------------------------------------

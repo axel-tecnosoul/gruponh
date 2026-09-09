@@ -196,7 +196,7 @@ $css = '
     .pdf-header table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
         height: 100%;
     }
     .pdf-header td {

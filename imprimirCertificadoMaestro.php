@@ -250,7 +250,7 @@ $css = '
         width: 100%;
         border-collapse: collapse;
         margin-top: 0;
-        table-layout: fixed;
+        table-layout: auto;
         font-size: 6.5pt;
     }
     .ca-table th, .ca-table td,

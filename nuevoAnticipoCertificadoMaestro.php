@@ -27,8 +27,8 @@ if (empty($estadoCertificado)) {
   die("Redirecting to listarCertificadosMaestros.php");
 }
 
-if ((int) ($estadoCertificado['aprobado_cliente'] ?? 0) === 1) {
-  die("El Certificado Maestro está aprobado y no puede modificarse.");
+if ((int) ($estadoCertificado['aprobado_cliente'] ?? 0) !== 1) {
+  die("El Certificado Maestro debe estar aprobado para cargar un anticipo.");
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
