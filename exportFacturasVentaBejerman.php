@@ -43,10 +43,13 @@ try {
 
   // Todos los items de todas las facturas
   $qDet = $pdo->prepare("SELECT fv.id as factura_id, d.cantidad, d.precio,
-                              COALESCE(d.descripcion, cc.descripcion, '') as descripcion_det
+                              COALESCE(d.descripcion, cc.descripcion, '') as descripcion_det,
+                              CONCAT(s.nro_sitio, '-', s.nro_subsitio, '-', p.nro) as proyecto_det
                        FROM facturas_venta fv
                        INNER JOIN facturas_venta_detalle d ON d.id_factura_venta = fv.id
                        LEFT JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable
+                       LEFT JOIN proyectos p ON p.id = fv.id_proyecto
+                       LEFT JOIN sitios s ON s.id = p.id_sitio
                        WHERE 1 $extraFilter $idFilter
                        ORDER BY fv.id, d.id");
   $qDet->execute($params);
@@ -99,7 +102,7 @@ try {
     $items = $itemsPorFactura[$idFactura] ?? [];
     foreach ($items as $det) {
       $totalItems++;
-      $descDet = str_pad(mb_substr($det['descripcion_det'] ?? '', 0, 35), 35);
+      $descDet = str_pad(mb_substr(($det['proyecto_det'] ? $det['proyecto_det'] . ' ' : '') . ($det['descripcion_det'] ?? ''), 0, 35), 35);
       $cantidad = str_pad(number_format($det['cantidad'] ?? 0, 2, '.', ''), 12, ' ', STR_PAD_LEFT);
       $precio = str_pad(number_format($det['precio'] ?? 0, 2, '.', ''), 18, ' ', STR_PAD_LEFT);
       $itemSubtotal = ($det['cantidad'] ?? 0) * ($det['precio'] ?? 0);

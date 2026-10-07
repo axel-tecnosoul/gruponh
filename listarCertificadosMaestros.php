@@ -213,7 +213,7 @@ $esOpCM = esOperacionesSinEconomico();?>
                           if (!empty($filters)) {
 							  
                             $pdo = Database::connect();
-                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ, c.nombre AS cliente, date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,CASE WHEN cm.fecha_fin = '0000-00-00' THEN '-' ELSE date_format(cm.fecha_fin,'%d/%m/%y') END AS fecha_fin, cm.porcentaje_anticipo, m.moneda,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,cm.aprobado_cliente,(SELECT ca2.monto_anticipo FROM certificados_anticipos ca2 WHERE ca2.id_certificado_maestro=cm.id ORDER BY ca2.id DESC LIMIT 1) AS monto_anticipo_registrado,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN cuentas c ON c.id=occ.id_cuenta_cliente INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
+                            $sql = "SELECT cm.id AS id_cm, occ.numero AS numero_occ, c.nombre AS cliente, date_format(cm.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cm.fecha_inicio,'%d/%m/%y') AS fecha_inicio,CASE WHEN cm.fecha_fin = '0000-00-00' THEN '-' ELSE date_format(cm.fecha_fin,'%d/%m/%y') END AS fecha_fin, date_format(cm.fecha_emision,'%Y%m%d') AS fecha_emision_order,date_format(cm.fecha_inicio,'%Y%m%d') AS fecha_inicio_order,CASE WHEN cm.fecha_fin = '0000-00-00' THEN '' ELSE date_format(cm.fecha_fin,'%Y%m%d') END AS fecha_fin_order, cm.porcentaje_anticipo, m.moneda,cm.monto_total,cm.monto_acumulado_avances,cm.monto_acumulado_anticipos,cm.monto_acumulado_desacopios,cm.monto_acumulado_descuentos,cm.monto_acumulado_ajustes,cm.observaciones,cm.aprobado_cliente,(SELECT ca2.monto_anticipo FROM certificados_anticipos ca2 WHERE ca2.id_certificado_maestro=cm.id ORDER BY ca2.id DESC LIMIT 1) AS monto_anticipo_registrado,(SELECT COUNT(ca.id) FROM certificados_avances_cabecera ca WHERE ca.id_certificado_maestro=cm.id) AS cant_ca FROM certificados_maestros cm INNER JOIN occ ON cm.id_occ=occ.id INNER JOIN cuentas c ON c.id=occ.id_cuenta_cliente INNER JOIN monedas m ON cm.id_moneda=m.id WHERE 1";
                             if (!empty($occ)) {
                               $sql .= " AND occ.numero = '".$occ."' ";
                             }
@@ -247,10 +247,10 @@ $esOpCM = esOperacionesSinEconomico();?>
                                 <td><?=$row["id_cm"]?></td>
                                 <td><?=$row["numero_occ"]?></td>
                                 <td class="cliente-col" title="<?=htmlspecialchars($row["cliente"], ENT_QUOTES, 'UTF-8')?>"><?=htmlspecialchars($row["cliente"], ENT_QUOTES, 'UTF-8')?></td>
-                                <td><?=$row["fecha_emision"]?></td>
+                                <td data-order="<?=$row["fecha_emision_order"]?>"><?=$row["fecha_emision"]?></td>
                                 <td><?=$row["porcentaje_anticipo"]?>%</td>
-                                <td><?=$row["fecha_inicio"]?></td>
-                                <td><?=$row["fecha_fin"]?></td>
+                                <td data-order="<?=$row["fecha_inicio_order"]?>"><?=$row["fecha_inicio"]?></td>
+                                <td data-order="<?=$row["fecha_fin_order"]?>"><?=$row["fecha_fin"]?></td>
                                 <td><?=$row["moneda"]." ".number_format($row["monto_total"],2)?></td>
                                 <td><span class="badge <?=$row["aprobado_cliente"] ? 'badge-success' : 'badge-warning'?>"><?=$row["aprobado_cliente"] ? 'Aprobado' : 'Pendiente'?></span></td>
                                 <td><?=$row["moneda"]." ".number_format($montoTotalAvances,2)?></td>
@@ -408,7 +408,6 @@ $esOpCM = esOperacionesSinEconomico();?>
 
         $('#tablaOCC').DataTable({
           stateSave: false,
-		      searching: false,
           responsive: false,
           autoWidth: false,
           scrollX: false,
@@ -757,7 +756,7 @@ $esOpCM = esOperacionesSinEconomico();?>
                 filas = '<tr><td colspan="'+colEmpty+'" class="text-muted">Sin filas de detalle guardadas.</td></tr>';
               }
               const theadBreak = esOpCM ? '<thead><tr><th>Posición</th><th>Descripcion</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th></tr></thead>' : '<thead><tr><th>Posición</th><th>Descripcion</th><th class="text-right">Cantidad</th><th class="text-right">Incidencia</th><th class="text-right">Precio Unitario</th><th class="text-right">Total</th></tr></thead>';
-              const tfootBreak = esOpCM ? '' : '<tfoot class="bg-light"><tr class="font-weight-bold"><td colspan="6" class="text-right">Total</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(sumaTotal) + '</td></tr></tfoot>';
+              const tfootBreak = esOpCM ? '' : '<tfoot class="bg-light"><tr class="font-weight-bold"><td colspan="5" class="text-right">Total</td><td class="text-right">' + escapeDetalleHtml(moneda) + ' ' + fmtDetalleNum(sumaTotal) + '</td></tr></tfoot>';
               paneles += '<div class="border rounded px-2 py-2 mb-2 occ-lote-inline-row"><div class="table-responsive"><table class="table table-sm table-bordered mb-0 occ-breakdown-table">' + theadBreak + '<tbody>' + filas + '</tbody>' + tfootBreak + '</table></div></div>';
             });
              const colBreak = esOpCM ? 4 : 7;

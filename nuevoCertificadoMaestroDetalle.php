@@ -1918,7 +1918,7 @@ Database::disconnect();
               <input type="number" class="form-control form-control-sm aper-incidencia" name="aperturado_incidencia[]" step="0.01" min="0" max="100" required>
             </td>
             <td>
-              <span class="form-control-plaintext aper-precio-unitario text-right d-block">${simboloMonedaOcc} 0,00</span><input type="hidden" class="aper-precio-unitario-hidden" name="aperturado_precio_unitario[]" value="0">
+              <input type="number" class="form-control form-control-sm aper-precio-unitario-input" name="aperturado_precio_unitario[]" step="0.01" min="0" value="0">
             </td>
             <td>
               <input type="number" class="form-control form-control-sm aper-total" name="aperturado_total[]" step="0.01" min="0" value="0">
@@ -1952,7 +1952,7 @@ Database::disconnect();
         $('#legacy_descripcion').val(first.find('.aper-desc').val() || '');
         $('#legacy_cantidad').val(first.find('.aper-cantidad').val() || '0');
         $('#legacy_id_unidad_medida').val(first.find('.aper-unidad').val() || '');
-        $('#legacy_precio_unitario').val(first.find('.aper-precio-unitario-hidden').val() || '0');
+        $('#legacy_precio_unitario').val(first.find('.aper-precio-unitario-input').val() || '0');
       }
 
       function recalcularAperturado(skipEl) {
@@ -1961,23 +1961,35 @@ Database::disconnect();
 
         $('#body_aperturado tr').each(function() {
           const cantidad = parseFloat($(this).find('.aper-cantidad').val()) || 0;
-          let incidencia = parseFloat($(this).find('.aper-incidencia').val()) || 0;
+          const $incidenciaInput = $(this).find('.aper-incidencia');
+          const $puInput = $(this).find('.aper-precio-unitario-input');
           const $totalInput = $(this).find('.aper-total');
+          let incidencia = parseFloat($incidenciaInput.val()) || 0;
+          let precioUnitario = parseFloat($puInput.val()) || 0;
           let totalFila = parseFloat($totalInput.val()) || 0;
-          if (!$totalInput.data('edited')) {
-            totalFila = base * (incidencia / 100);
+          if ($puInput.data('edited')) {
+            // Precio unitario manda: total = cantidad x PU, incidencia derivada de la base.
+            totalFila = cantidad * precioUnitario;
+            incidencia = base > 0 ? (totalFila / base) * 100 : 0;
+          } else {
+            if (!$totalInput.data('edited')) {
+              totalFila = base * (incidencia / 100);
+            }
+            precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
           }
-          const precioUnitario = cantidad > 0 ? (totalFila / cantidad) : 0;
 
           incidenciaTotal += incidencia;
 
           // No reescribir el campo que el usuario está editando para permitir tipeo directo.
-          const isSkip = skipEl && $totalInput.is(skipEl);
-          if (!isSkip) {
+          if (!(skipEl && $totalInput.is(skipEl))) {
             $totalInput.val(totalFila.toFixed(2));
           }
-          $(this).find('.aper-precio-unitario').text(simboloMonedaOcc + ' ' + formatNumber(precioUnitario));
-          $(this).find('.aper-precio-unitario-hidden').val(precioUnitario.toFixed(6));
+          if (!(skipEl && $puInput.is(skipEl))) {
+            $puInput.val(precioUnitario.toFixed(2));
+          }
+          if ($puInput.data('edited') && !(skipEl && $incidenciaInput.is(skipEl))) {
+            $incidenciaInput.val(incidencia.toFixed(2));
+          }
         });
 
         $('#incidencia_total_aperturado').text(formatNumber(incidenciaTotal) + '%');
@@ -2187,7 +2199,9 @@ Database::disconnect();
         syncLegacyFieldsFromFirstRow();
       });
       $(document).on('input change', '.aper-cantidad, .aper-incidencia', function() {
-        $(this).closest('tr').find('.aper-total').removeData('edited');
+        const filaCant = $(this).closest('tr');
+        filaCant.find('.aper-total').removeData('edited');
+        filaCant.find('.aper-precio-unitario-input').removeData('edited');
         recalcularAperturado();
       });
       $(document).on('input', '.aper-total', function() {
@@ -2195,6 +2209,7 @@ Database::disconnect();
         const base = getBaseCalculoActual();
         const total = parseFloat($(this).val()) || 0;
         $(this).data('edited', true);
+        fila.find('.aper-precio-unitario-input').removeData('edited');
         fila.find('.aper-incidencia').val(base > 0 ? ((total / base) * 100).toFixed(2) : '0');
         // Recalcula resumen y precios sin reescribir el campo en edición.
         recalcularAperturado(this);
@@ -2204,7 +2219,21 @@ Database::disconnect();
         const base = getBaseCalculoActual();
         const total = parseFloat($(this).val()) || 0;
         $(this).data('edited', true);
+        fila.find('.aper-precio-unitario-input').removeData('edited');
         fila.find('.aper-incidencia').val(base > 0 ? ((total / base) * 100).toFixed(2) : '0');
+        recalcularAperturado();
+      });
+      $(document).on('input', '.aper-precio-unitario-input', function() {
+        const filaPu = $(this).closest('tr');
+        $(this).data('edited', true);
+        filaPu.find('.aper-total').removeData('edited');
+        // Recalcula total e incidencia sin reescribir el campo en edición.
+        recalcularAperturado(this);
+      });
+      $(document).on('change blur', '.aper-precio-unitario-input', function() {
+        const filaPu = $(this).closest('tr');
+        $(this).data('edited', true);
+        filaPu.find('.aper-total').removeData('edited');
         recalcularAperturado();
       });
 

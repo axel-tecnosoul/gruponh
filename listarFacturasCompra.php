@@ -427,7 +427,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
     
       $('#dataTables-example666').DataTable({
         stateSave: false,
-        searching: false,
+        //searching: false,//debemos quitar esta linea para que funcione el buscador
         responsive: false,
         dom: 'Bfrtp<"bottom"l>',
         buttons: [

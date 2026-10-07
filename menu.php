@@ -33,6 +33,8 @@ function abrirMenu($op) {
 		($current_page == "imprimirCertificadoAvance.php") ||
 		($current_page == "exportCertificadosAvances.php") ||
 		($current_page == "listarRegimenes.php") ||
+		($current_page == "listarEmpresas.php") ||
+		($current_page == "modificarEmpresa.php") ||
 		($current_page == "listarConceptosContables.php") ||
 		($current_page == "listarPolizas.php") ||
 		($current_page == "listarSucesos.php")) {
@@ -113,7 +115,7 @@ function abrirMenu($op) {
 				</ul>
 			</li><?php }?>
 			
-			<?php if(tienePermiso(259)||tienePermiso(391)||tienePermiso(263)||tienePermiso(335)||tienePermiso(367)||tienePermiso(369)||tienePermiso(373)||tienePermiso(379)||tienePermiso(386)){ ?><li <?php abrirMenu(3);?>><a class="sidebar-header" href="#"><i data-feather="cloud-lightning"></i><span>Administración</span><i class="fa fa-angle-right pull-right"></i></a>
+			<?php if(tienePermiso(259)||tienePermiso(391)||tienePermiso(263)||tienePermiso(335)||tienePermiso(367)||tienePermiso(369)||tienePermiso(373)||tienePermiso(379)||tienePermiso(386)||tienePermiso(393)){ ?><li <?php abrirMenu(3);?>><a class="sidebar-header" href="#"><i data-feather="cloud-lightning"></i><span>Administración</span><i class="fa fa-angle-right pull-right"></i></a>
 				<ul class="sidebar-submenu">
 				<?php if(tienePermiso(259)){?><li><a href="listarCuentas.php"><i class="fa fa-circle"></i>Cuentas</a></li><?php }?>
 				<?php if(tienePermiso(391)){?><li><a href="reporteCentrosCosto.php"><i class="fa fa-circle"></i>Centros de Costo</a></li><?php }?>
@@ -125,6 +127,7 @@ function abrirMenu($op) {
 				<?php if(tienePermiso(373)){?><li><a href="listarCertificadosMaestros.php"><i class="fa fa-circle"></i>Certificados</a></li><?php }?>
 				<?php if(tienePermiso(379)){?><li><a href="listarPolizas.php"><i class="fa fa-circle"></i>Polizas</a></li><?php }?>
 				<?php if(tienePermiso(386)){?><li><a href="listarRegimenes.php"><i class="fa fa-circle"></i>Regimenes</a></li><?php }?>
+				<?php if(tienePermiso(393)){?><li><a href="listarEmpresas.php"><i class="fa fa-circle"></i>Empresas</a></li><?php }?>
 				<?php if(tienePermiso(259)||tienePermiso(391)||tienePermiso(263)||tienePermiso(335)||tienePermiso(367)||tienePermiso(369)||tienePermiso(373)||tienePermiso(379)||tienePermiso(386)){?><li><a href="listarConceptosContables.php"><i class="fa fa-circle"></i>Conceptos Contables</a></li><?php }?>
 				</ul>
 			</li><?php }?>

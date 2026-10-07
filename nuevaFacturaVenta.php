@@ -5,15 +5,29 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+require_once __DIR__ . '/FacturacionARCA.php';
+
+$csrfToken = $_SESSION['csrf_factura_arca'] ?? '';
+if ($csrfToken === '') {
+  $csrfToken = bin2hex(random_bytes(32));
+  $_SESSION['csrf_factura_arca'] = $csrfToken;
+}
 
 $editMode = false;
 $editId = null;
+$claveOperacion = $_POST['clave_operacion'] ?? bin2hex(random_bytes(16));
 if (!empty($_GET['id'])) {
   $editId = (int)$_GET['id'];
   $editMode = true;
 }
 
 if (!empty($_POST)) {
+  if (!empty($_POST['btn_definitivo'])
+      && !hash_equals($csrfToken, (string)($_POST['csrf_token'] ?? ''))) {
+    http_response_code(403);
+    exit('La sesión de emisión expiró. Vuelva a abrir la factura e intente nuevamente.');
+  }
+
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   $pdo->beginTransaction();
@@ -22,6 +36,15 @@ if (!empty($_POST)) {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
     $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
+    $qMoneda = $pdo->prepare('SELECT moneda FROM monedas WHERE id = ?');
+    $qMoneda->execute([(int)($_POST['id_moneda'] ?? 0)]);
+    $monedaFactura = $qMoneda->fetchColumn();
+    if ($monedaFactura === false) {
+      throw new RuntimeException('Seleccione una moneda válida para la factura.');
+    }
+    if (!esMonedaDolar($monedaFactura)) {
+      $_POST['cotizacion'] = 1;
+    }
 
     if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
       $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
@@ -111,36 +134,88 @@ if (!empty($_POST)) {
     $noGravado = 0;
     $iva = 0;
     $totalFv = 0;
+    $basesPorAlicuota = [];
     $detalles = !empty($_POST['detalles_json']) ? json_decode($_POST['detalles_json'], true) : [];
 
     if (is_array($detalles)) {
       $qDet = $pdo->prepare("INSERT INTO facturas_venta_detalle
-                                     (id_factura_venta, id_concepto_contable, descripcion, cantidad, precio, subtotal)
-                                     VALUES (?,?,?,?,?,?)");
+                                     (id_factura_venta, id_concepto_contable, descripcion, cantidad, precio, subtotal, porcentaje_descuento)
+                                     VALUES (?,?,?,?,?,?,?)");
       $qImp = $pdo->prepare("INSERT INTO facturas_venta_detalle_x_certificados_avance
                                      (id_factura_venta_detalle, id_certificado_avance) VALUES (?,?)");
+      $qTasa = $pdo->prepare("SELECT COALESCE(ti.tasa, 21)
+                                FROM conceptos_contables cc
+                                LEFT JOIN tipos_iva ti ON ti.id = cc.id_alicuota_iva
+                                WHERE cc.id = ?");
 
       foreach ($detalles as $det) {
-        $cant     = floatval($det['cantidad']);
-        $precio   = floatval($det['precio']);
-        $subtotal = $cant * $precio;
+        $porcDescuento = isset($det['porc_descuento']) ? (float)$det['porc_descuento'] : 0;
+        if ($porcDescuento < 0 || $porcDescuento > 100) {
+          throw new RuntimeException("El descuento del detalle debe estar entre 0 y 100%.");
+        }
+        $impIds = (!empty($det['imputaciones']) && is_array($det['imputaciones']))
+          ? array_values(array_unique(array_map('intval', $det['imputaciones'])))
+          : [];
 
-        $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal]);
-        $idDetalle = $pdo->lastInsertId();
-
-        if (!empty($det['imputaciones']) && is_array($det['imputaciones'])) {
-          foreach ($det['imputaciones'] as $idImp) {
-            $qImp->execute([$idDetalle, intval($idImp)]);
+        if (!empty($impIds)) {
+          // Ítem con CA imputados: montos tipeados (imputaciones_data); fallback al total del CA.
+          $qMonto = $pdo->prepare("SELECT id, monto_total FROM certificados_avances_cabecera WHERE id = ?");
+          $typed = [];
+          if (!empty($det['imputaciones_data']) && is_array($det['imputaciones_data'])) {
+            foreach ($det['imputaciones_data'] as $t) {
+              if (isset($t['id_cd'])) { $typed[(int)$t['id_cd']] = $t; }
+            }
           }
+          $subtotal = 0;
+          $cant = 0;
+          $validos = [];
+          foreach ($impIds as $idImp) {
+            if ($idImp <= 0) { continue; }
+            $qMonto->execute([$idImp]);
+            $m = $qMonto->fetch(PDO::FETCH_ASSOC);
+            if (!$m) { continue; }
+            $tc = isset($typed[$idImp]['cantidad']) ? floatval($typed[$idImp]['cantidad']) : 1;
+            $tp = isset($typed[$idImp]['precio']) ? floatval($typed[$idImp]['precio']) : (float)$m['monto_total'];
+            if ($tc < 0) { $tc = 0; }
+            if ($tp < 0) { $tp = 0; }
+            $subtotal += round($tc * $tp, 2);
+            $cant += $tc;
+            $validos[] = (int)$m['id'];
+          }
+          $subtotal = round($subtotal * (1 - $porcDescuento / 100), 2);
+          $precio = 0;
+
+          $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal, $porcDescuento]);
+          $idDetalle = $pdo->lastInsertId();
+
+          foreach ($validos as $idImp) {
+            $qImp->execute([$idDetalle, $idImp]);
+          }
+        } else {
+          // Ítem manual sin imputaciones.
+          $cant     = floatval($det['cantidad']);
+          $precio   = floatval($det['precio']);
+          $subtotal = round($cant * $precio * (1 - $porcDescuento / 100), 2);
+
+          $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal, $porcDescuento]);
+          $idDetalle = $pdo->lastInsertId();
         }
 
-        $totalFv   += $subtotal;
-        $parNoGrav  = $precio * $cant;
-        $noGravado += $parNoGrav;
-        $iva       += $parNoGrav * 0.21;
-        $gravado   += $parNoGrav + ($parNoGrav * 0.21);
+        $qTasa->execute([intval($det['id_concepto'])]);
+        $tasaIva = (float)$qTasa->fetchColumn();
+        $noGravado += $subtotal;
+        $claveTasa = number_format($tasaIva, 4, '.', '');
+        $basesPorAlicuota[$claveTasa] = ($basesPorAlicuota[$claveTasa] ?? 0) + (int)round($subtotal * 100);
       }
     }
+
+    foreach ($basesPorAlicuota as $tasa => $baseCentavos) {
+      $iva += round($baseCentavos * (float)$tasa / 100) / 100;
+    }
+    $noGravado = round($noGravado, 2);
+    $iva = round($iva, 2);
+    $gravado = $noGravado + $iva;
+    $totalFv = $gravado;
 
     // Retenciones
     $totalOtros = 0;
@@ -164,6 +239,12 @@ if (!empty($_POST)) {
         }
         $qRet->execute([$idFactura, $regData['regimen'] ?? null, $regData['codigo'] ?? null, $regData['articulo'] ?? null, $monto, $porcentaje, $base]);
         $totalOtros += $monto;
+
+        // Actualiza el % en el régimen para que la próxima factura ya traiga el último valor
+        if ($idRegimen > 0 && $porcentaje > 0) {
+          $qUpdPorc = $pdo->prepare("UPDATE regimenes_facturacion SET porcentaje = ? WHERE id = ?");
+          $qUpdPorc->execute([$porcentaje, $idRegimen]);
+        }
       }
     }
 
@@ -195,6 +276,17 @@ if (!empty($_POST)) {
       }
     }
 
+    $arcaInput = [
+      'concepto_arca' => $_POST['concepto_arca'] ?? null,
+      'fecha_servicio_desde' => $_POST['fecha_servicio_desde'] ?? '',
+      'fecha_servicio_hasta' => $_POST['fecha_servicio_hasta'] ?? '',
+      'fecha_vencimiento_pago' => $_POST['fecha_vencimiento_pago'] ?? '',
+    ];
+    $emitirEnARCA = $idEstado === 3 && FacturacionARCA::habilitada();
+    if ($emitirEnARCA) {
+      FacturacionARCA::validarFactura($pdo, (int)$idFactura, $arcaInput);
+    }
+
     $logMsg = $isEditing ? "Modificación de Factura de Venta ID #$idFactura" : "Nueva Factura de Venta ID #$idFactura";
     $ql = $pdo->prepare("INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link)
                                VALUES (now(), ?, ?, 'Facturas de Venta', '')");
@@ -202,7 +294,26 @@ if (!empty($_POST)) {
 
     $pdo->commit();
     Database::disconnect();
-    header("Location: listarFacturasVenta.php");
+
+    if ($emitirEnARCA) {
+      try {
+        $arcaPdo = Database::connect();
+        $resultadoARCA = FacturacionARCA::emitir($arcaPdo, (int)$idFactura, $claveOperacion, $arcaInput);
+        $_SESSION['factura_arca_mensaje'] = [
+          'tipo' => $resultadoARCA['estado'] === 'autorizado' ? 'success' : 'warning',
+          'texto' => $resultadoARCA['mensaje'],
+        ];
+      } catch (Throwable $e) {
+        $_SESSION['factura_arca_mensaje'] = ['tipo' => 'danger', 'texto' => $e->getMessage()];
+      } finally {
+        Database::disconnect();
+      }
+      header("Location: verFacturaVenta.php?id=" . (int)$idFactura);
+    } elseif ($idEstado === 3) {
+      header("Location: imprimirFacturaVentaARCA.php?id=" . (int)$idFactura);
+    } else {
+      header("Location: listarFacturasVenta.php");
+    }
     exit;
   } catch (Exception $e) {
     $pdo->rollBack();
@@ -223,6 +334,7 @@ $retencionesExistentes = [];
 $certIds = [];
 $regimenesSeleccionados = [];
 $monedaLabel = '';
+$idMoneda = 0;
 
 if ($editMode && $editId) {
   $pdo = Database::connect();
@@ -253,6 +365,7 @@ if ($editMode && $editId) {
       $q = $pdo->prepare("SELECT moneda FROM monedas WHERE id = ?");
       $q->execute([$facturaData['id_moneda']]);
       $monedaLabel = $q->fetchColumn() ?: '';
+      $idMoneda = (int)$facturaData['id_moneda'];
     }
     if ($idClienteVal) {
       $q = $pdo->prepare("SELECT nombre FROM cuentas WHERE id = ?");
@@ -292,15 +405,17 @@ if ($editMode && $editId) {
       $imputacionesData = [];
       $imputacionesText = [];
       foreach ($certIdsDet as $cid) {
-        $qC = $pdo->prepare("SELECT ca.id, ca.monto_total
+        $qC = $pdo->prepare("SELECT ca.id, ca.nro_certificado, ca.nro_revision, ca.monto_total
                                FROM certificados_avances_cabecera ca
                                INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
                                WHERE ca.id = ?");
         $qC->execute([$cid]);
         $c = $qC->fetch(PDO::FETCH_ASSOC);
         if ($c) {
-          $imputacionesData[] = ['id_cd' => $c['id'], 'concepto_text' => 'Cert. #' . $c['id']];
-          $imputacionesText[] = 'Cert. #' . $c['id'];
+          $concepto = fmtCertificadoAvance($c['nro_certificado'], $c['nro_revision']);
+          $monto = (float)$c['monto_total'];
+          $imputacionesData[] = ['id_cd' => $c['id'], 'concepto_text' => $concepto, 'cantidad' => 1, 'precio' => $monto, 'restante' => 1, 'oc_precio' => $monto];
+          $imputacionesText[] = $concepto . ' (1 x $' . number_format($monto, 2) . ')';
         }
       }
 
@@ -312,7 +427,7 @@ if ($editMode && $editId) {
         'cantidad' => (float)$row['cantidad'],
         'precio' => (float)$row['precio'],
         'subtotal' => (float)$row['subtotal'],
-        'porc_descuento' => 0,
+        'porc_descuento' => (float)($row['porcentaje_descuento'] ?? 0),
         'imputaciones' => $certIdsDet,
         'imputaciones_data' => $imputacionesData,
         'imputaciones_text' => $imputacionesText
@@ -387,8 +502,30 @@ if ($editMode && $editId) {
   if (!empty($_GET['certificados'])) {
     $certIds = array_filter(array_map('intval', (array)$_GET['certificados']));
   }
+
+  // Precarga la moneda del primer certificado vinculado (el select sigue siendo editable)
+  if (!empty($certIds)) {
+    $pdo = Database::connect();
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $qMon = $pdo->prepare("SELECT cm.id_moneda, m.moneda
+                             FROM certificados_avances_cabecera ca
+                             INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
+                             LEFT JOIN monedas m ON m.id = cm.id_moneda
+                             WHERE ca.id = ?
+                             ORDER BY ca.id
+                             LIMIT 1");
+    $qMon->execute([reset($certIds)]);
+    if ($filaMon = $qMon->fetch(PDO::FETCH_ASSOC)) {
+      $idMoneda = (int)($filaMon['id_moneda'] ?? 0);
+      $monedaLabel = $filaMon['moneda'] ?: '';
+    }
+    Database::disconnect();
+  }
 }
 
+$claveOperacion = preg_match('/^[a-f0-9]{32}$/D', (string)$claveOperacion)
+  ? $claveOperacion
+  : bin2hex(random_bytes(16));
 $errorMsg = $errorMsg ?? '';
 $vista = 'venta';
 include 'nuevaFactura.php';

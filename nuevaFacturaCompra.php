@@ -50,6 +50,15 @@ if (!empty($_POST)) {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
     $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
+    $qMoneda = $pdo->prepare('SELECT moneda FROM monedas WHERE id = ?');
+    $qMoneda->execute([(int)($_POST['id_moneda'] ?? 0)]);
+    $monedaFactura = $qMoneda->fetchColumn();
+    if ($monedaFactura === false) {
+      throw new RuntimeException('Seleccione una moneda válida para la factura.');
+    }
+    if (!esMonedaDolar($monedaFactura)) {
+      $_POST['cotizacion'] = 1;
+    }
 
     // Concatenar punto_venta + nro_comprobante en numero
     if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
@@ -324,6 +333,12 @@ if (!empty($_POST)) {
         }
         $qRet->execute([$idFactura, $regData['regimen'] ?? null, $regData['codigo'] ?? null, $regData['articulo'] ?? null, $monto, $porcentaje, $base]);
         $totalOtros += $monto;
+
+        // Actualiza el % en el régimen para que la próxima factura ya traiga el último valor
+        if ($idRegimen > 0 && $porcentaje > 0) {
+          $qUpdPorc = $pdo->prepare("UPDATE regimenes_facturacion SET porcentaje = ? WHERE id = ?");
+          $qUpdPorc->execute([$porcentaje, $idRegimen]);
+        }
       }
     }
 
@@ -575,7 +590,7 @@ if ($ocPreseleccionada && !empty($ocIds)) {
     $q = $pdo->prepare("SELECT moneda FROM monedas WHERE id = ?");
     $q->execute([$idMoneda]);
     $monedaLabel = $q->fetchColumn() ?: '';
-    $monedaEsDolar = (stripos($monedaLabel, 'dolar') !== false || stripos($monedaLabel, 'dólar') !== false || stripos($monedaLabel, 'usd') !== false || stripos($monedaLabel, 'u$d') !== false || stripos($monedaLabel, 'u$s') !== false);
+    $monedaEsDolar = esMonedaDolar($monedaLabel);
   }
   if (!empty($ocTotal) && $monedaLabel) {
     $ocTotalFormatted = $monedaLabel . ' ' . number_format($ocTotal, 2, ',', '.');

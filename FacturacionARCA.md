@@ -1,0 +1,54 @@
+# Emisión de facturas de venta por ARCA
+
+La emisión se ejecuta al elegir **Emitir y guardar definitivo** en una factura de venta. Los borradores siguen siendo locales. El número correlativo lo consulta ARCA y se guarda localmente antes de enviar la solicitud.
+
+La comunicación ARCA está deshabilitada por defecto. Para guardar facturas definitivas sin validación ni envío remoto, no configure `FACTURACION_ARCA_HABILITADA` (o asígnele `0`). Para habilitar la validación y emisión, establezca `FACTURACION_ARCA_HABILITADA=1` en la configuración de entorno de PHP/Apache. Los endpoints de emisión y conciliación también verifican esta variable.
+
+## Instalación
+
+1. Respaldar la base de datos y ejecutar una sola vez [`facturacion_arca.sql`](./facturacion_arca.sql). La migración agrega los datos fiscales, el historial de emisión y las tablas de IVA, tributos y comprobantes asociados.
+2. Ejecutar `composer install` para instalar el generador local de QR.
+3. Habilitar `soap` y `openssl` en el PHP usado por Apache. La extensión SOAP también debe estar disponible en cualquier proceso de emisión en consola.
+4. Cargar los datos fiscales de las empresas en `empresas` y las condiciones de IVA en `cuentas`. Los campos fiscales de `empresas` se agregan con las consultas de configuración existentes en [`consultas.sql`](./consultas.sql).
+5. Configurar certificados de homologación fuera del repositorio. El certificado y la clave privada de cada empresa deben estar en el mismo directorio, y ese directorio debe permitir la copia de los WSDL del SDK.
+6. Ejecutar la corrección 24 de [`consultas.sql`](./consultas.sql) para agregar puntos de venta, catálogo de comprobantes, asociaciones por punto de venta y padrones provinciales.
+
+En `env.php` —archivo local ignorado por Git— se pueden declarar variables como:
+
+```php
+putenv('ARCA_HOMOLOGACION=1');
+putenv('ARCA_CERT_EMPRESA_2_HOMOLOGACION=C:\\seguridad\\arca\\empresa-2.crt');
+putenv('ARCA_KEY_EMPRESA_2_HOMOLOGACION=C:\\seguridad\\arca\\empresa-2.key');
+```
+
+Repetir las variables `ARCA_CERT_EMPRESA_<id>_HOMOLOGACION` y `ARCA_KEY_EMPRESA_<id>_HOMOLOGACION` para cada emisor. Si `ARCA_HOMOLOGACION` no está definida, se usa homologación. Para producción se requieren certificados y autorización de producción y se configura `ARCA_HOMOLOGACION=0`; no cambiarlo para probar.
+
+## Flujo y formato
+
+- Se usa el SDK y el PDF de referencia de `Facturador` incluidos en la carpeta de documentación.
+- Se congelan los datos del emisor, receptor y los renglones al iniciar la emisión. La reimpresión lee únicamente esa copia y los datos de autorización ARCA.
+- En cada renglón impreso se muestra primero el proyecto con formato `sitio_subsitio_proyecto` y el N.C.M. fijo `73.08.20`. El N.C.M. se conserva en la copia y en el PDF; no se envía como campo WSFE, porque el servicio de comprobantes usado no define ese dato en la solicitud.
+- Para las facturas en dólares, el PDF incluye después del resumen impositivo la conversión a pesos de neto e impuestos usando la cotización guardada en la factura.
+- El período del servicio y el vencimiento de pago se solicitan en el formulario para conceptos de servicios o mixtos. La fecha de emisión de la factura es la misma que se envía a ARCA.
+- Los importes de los renglones se consideran netos. Las alícuotas de los conceptos contables se agrupan antes de redondear; se soportan 2,5%, 5%, 10,5%, 21% y 27%. En facturas A/B se bloquea una tasa 0% hasta que exista un mapeo que la distinga de importes exentos o no gravados.
+- Se soportan facturas A, B y C en pesos (PES) y dólares (DOL). En moneda local no se solicita cotización y se guarda/informa 1; para dólares sí se requiere la cotización. Para C no se discrimina IVA. La letra debe concordar con la condición fiscal del emisor y, para A, el receptor debe ser Responsable Inscripto.
+- El PDF sigue la estructura visual de las facturas de referencia, incorpora CAE, QR ARCA y una marca de agua en homologación. Solo se ofrece para comprobantes autorizados.
+- Un corte de conexión después del envío deja el intento incierto. La acción de conciliación consulta el número reservado y solo recupera un CAE si los datos del comprobante coinciden; no reenvía una operación incierta.
+
+## Alcance fiscal actual
+
+Este flujo no emite tipos de exportación, crédito electrónico ni notas de crédito/débito. Las retenciones sufridas al cobrar se conservan localmente, pero no se envían como tributos ni reducen el total fiscal del comprobante. Un régimen asociado a una retención se trata igual solo cuando coinciden su descripción, código y artículo; otros regímenes siguen bloqueados hasta configurar su clasificación y código ARCA. Las percepciones que integren el comprobante aún requieren un mapeo fiscal explícito. Tampoco se distinguen todavía importes exentos o no gravados de una alícuota gravada al 0%.
+
+Los catálogos y certificados deben validarse con ARCA para cada CUIT y punto de venta. Homologación es el valor seguro por defecto; habilitar producción requiere completar previamente esas verificaciones.
+
+## Configuración por empresa
+
+Desde **Empresas**, seleccione una empresa y abra **Configurar ARCA**. El catálogo inicial de tipos comunes y de factura de crédito MiPyME se carga localmente para poder configurarlo sin conectarse a ARCA. También se pueden importar los puntos de venta y actualizar el catálogo general mediante los métodos `GetSalesPoints()` y `GetVoucherTypes()` del SDK. La consulta remota requiere `FACTURACION_ARCA_HABILITADA=1`, SOAP y el certificado de la empresa configurado; los puntos importados se agregan solo cuando el usuario los elige y guarda.
+
+El método del SDK para tipos no recibe un punto de venta: devuelve el catálogo general del servicio, no los tipos habilitados para cada punto. Por eso la ficha permite asociar manualmente tipos a cada punto. El formulario de factura sugiere los puntos guardados y la validación previa a emitir comprueba la asociación local de punto y tipo. La consulta del último número autorizado y la emisión/conciliación siguen requiriendo comunicación con ARCA.
+
+La ficha también permite marcar a la empresa como agente de retención y guardar una URL por cada provincia aplicable. Al desmarcar el indicador se eliminan las asociaciones provinciales.
+
+## PDF y copias
+
+La copia local y el comprobante fiscal autorizado se imprimen como **Original**, **Duplicado** y **Triplicado**, siguiendo la estructura de los modelos de `Facturador`. El encabezado identifica el código ARCA a partir del tipo y la letra: factura A/B/C/E, notas de débito/crédito y factura de crédito electrónica MiPyME. El detalle A discrimina IVA por renglón; B/C/E usa las columnas de bonificación y subtotal del modelo sin exponer una alícuota en cada renglón. La copia local mantiene en las tres hojas la leyenda de documento interno sin validez fiscal.

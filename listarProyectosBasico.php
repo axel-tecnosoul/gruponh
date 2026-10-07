@@ -380,8 +380,8 @@ include 'database.php';
 		?>
         responsive: false,
 		serverSide: true,
-		searching: false,
-		
+        //searching: false,//debemos quitar esta linea para que funcione el buscador
+
         processing: true,
 		"createdRow": function(row, data, dataIndex) {
             // Limitar el texto de la columna 0 (Name)

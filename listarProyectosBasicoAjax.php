@@ -42,6 +42,43 @@ if (!empty($_GET['nro'])) $where .= ' and (p.nro = '.$_GET['nro'].' or s.nro_sit
 if (!empty($_GET['nombre'])) $where .= " and p.nombre like '%".$_GET['nombre']."%' ";
 if (!empty($_GET['cliente'])) $where .= " and c.nombre like '%".$_GET['cliente']."%' ";
 
+// Buscadores del pie de la tabla: búsqueda global y por columna (serverSide).
+// El índice es el de la columna visible del listado básico.
+$columnasBusqueda = [
+	"concat(s.nro_sitio,' / ',s.nro_subsitio)",  // 0 Sitio/Sub
+	"p.`id`",                                   // 1 Proy (oculta)
+	"p.nro",                                    // 2 Proy
+	"p.nombre",                                 // 3 Nombre
+	"p.`descripcion`",                          // 4 Descripción
+	"c.nombre",                                 // 5 Cliente
+	"ep.`estado`",                              // 6 Estado
+	"c2.nombre",                                // 7 Responsable
+	"date_format(p.`fecha_pedido`,'%d/%m/%y')", // 8 F Adjudicado
+	"date_format(p.`fecha_entrega`,'%d/%m/%y')",// 9 F Entrega
+	"ln.`linea_negocio`",                       // 10 Línea de Negocio
+	"p.`tags`",                                 // 11 Claves
+];
+
+if (isset($_GET['search']) && is_array($_GET['search'])) {
+	if (!empty($_GET['search']['value'])) {
+		$likes = array();
+		foreach ($columnasBusqueda as $campo) {
+			if ($campo === null) continue;
+			$likes[] = $campo." like '%".$pdo->quote($_GET['search']['value'])."%'";
+		}
+		if (!empty($likes)) {
+			$where .= ' and ('.implode(' or ', $likes).') ';
+		}
+	}
+	if (isset($_GET['search']['columns']) && is_array($_GET['search']['columns'])) {
+		foreach ($_GET['search']['columns'] as $indice => $columna) {
+			$valor = $columna['search']['value'] ?? '';
+			if ($valor === '' || !isset($columnasBusqueda[$indice]) || $columnasBusqueda[$indice] === null) continue;
+			$where .= " and ".$columnasBusqueda[$indice]." like '%".$pdo->quote($valor)."%' ";
+		}
+	}
+}
+
 $adicionales = false;
 
 

@@ -525,8 +525,8 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 	$('#dataTables-example666').DataTable({
         stateSave: false,
         responsive: false,
-		searching: false,
-		
+		//searching: false,//debemos quitar esta linea para que funcione el buscador
+
 		dom: 'Bfrtp<"bottom"l>',
         buttons: [
             'excel'

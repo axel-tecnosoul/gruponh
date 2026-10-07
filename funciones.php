@@ -1090,3 +1090,51 @@ function obtenerStockYReservado(PDO $pdo, int $idMaterial): array
     'disponible'       => $stockDisponible
   ];
 }
+
+// Formato canónico de un certificado de avance: "Cert. 1/1" (nro_certificado / nro_revision)
+function fmtCertificadoAvance($nroCertificado, $nroRevision): string {
+	return 'Cert. ' . intval($nroCertificado) . '/' . intval($nroRevision);
+}
+
+/**
+ * ¿La moneda indicada es una moneda dólar?
+ *
+ * Se normalizan espacios, puntos y guiones antes de comparar, y se aceptan
+ * ambas variantes con y sin tilde ('dolar' / 'dólar') porque la tilde depende de
+ * cómo se haya cargado cada valor en la tabla.
+ *
+ * Ojo: un '$' suelto NO se considera dólar. En la tabla `monedas` el valor '$'
+ * es la moneda local, y tomarlo como dólar haría que toda factura en pesos pida
+ * cotización.
+ */
+function esMonedaDolar($moneda): bool {
+	$m = trim((string)$moneda);
+	if ($m === '') {
+		return false;
+	}
+
+	$original = $m;
+	$m = preg_replace('/[\s._\-]+/u', '', $m);
+	if ($m === '') {
+		$m = $original;
+	}
+	if (function_exists('mb_strtolower')) {
+		$m = mb_strtolower($m, 'UTF-8');
+		$original = mb_strtolower($original, 'UTF-8');
+	} else {
+		$m = strtolower($m);
+		$original = strtolower($original);
+	}
+
+	// Se prueba contra la cadena original y contra la normalizada: quitar separadores
+	// puede partir una marca (ej. 'U.S.$' -> 'US$'), así que hacen falta ambas.
+	foreach ([$original, $m] as $candidato) {
+		foreach (['dolar', 'dólar', 'usd', 'u$d', 'u$s'] as $marca) {
+			if (strpos($candidato, $marca) !== false) {
+				return true;
+			}
+		}
+	}
+
+	return false;
+}

@@ -592,15 +592,21 @@ $id_estado = $filters['id_estado'] ?? [];
             var html = '<div class="list-group">';
             $.each(certificados, function(i, cert) {
               var certId = 'cert_' + cert.id;
-              var badgeClass = cert.aprobado == 1 ? 'badge-success' : 'badge-secondary';
-              var badgeText = cert.aprobado == 1 ? 'Aprobado' : 'Pendiente';
+              var aprobado = cert.aprobado_cliente == 1;
+              var badgeClass = aprobado ? 'badge-success' : 'badge-secondary';
+              var badgeText = aprobado ? 'Aprobado' : 'Pendiente';
+              var moneda = cert.moneda ? cert.moneda : '';
+              var idMoneda = (cert.id_moneda !== null && cert.id_moneda !== undefined) ? cert.id_moneda : '';
+              var bloqueado = aprobado ? '' : ' disabled';
+              var claseBloqueo = aprobado ? '' : ' chk-pendiente';
+              var estiloFila = aprobado ? ' style="cursor:pointer;"' : ' style="opacity:.55;" title="Pendiente de aprobación"';
               html += '<div class="list-group-item p-0 border-0 mb-1">';
-              html += '<div class="d-flex align-items-center p-2 bg-light rounded" style="cursor:pointer;" data-toggle="collapse" data-target="#collapse_' + cert.id + '">';
-              html += '<input type="checkbox" class="chk-certificado mr-2" id="' + certId + '" value="' + cert.id + '" onclick="event.stopPropagation()">';
-              html += '<label for="' + certId + '" class="mb-0 mr-2 font-weight-bold text-dark" style="cursor:pointer;" onclick="event.stopPropagation()">Cert. #' + cert.id + '</label>';
+              html += '<div class="d-flex align-items-center p-2 bg-light rounded"' + estiloFila + ' data-toggle="collapse" data-target="#collapse_' + cert.id + '">';
+              html += '<input type="checkbox" class="chk-certificado mr-2' + claseBloqueo + '" id="' + certId + '" value="' + cert.id + '" data-id-moneda="' + idMoneda + '"' + bloqueado + ' onclick="event.stopPropagation()">';
+              html += '<label for="' + certId + '" class="mb-0 mr-2 font-weight-bold text-dark" style="cursor:pointer;" onclick="event.stopPropagation()">' + htmlEsc(cert.cert_label) + '</label>';
               html += '<span class="badge ' + badgeClass + ' mr-2">' + badgeText + '</span>';
-              html += '<small class="text-dark mr-auto">Rev. ' + htmlEsc(cert.revision) + ' | ' + htmlEsc(cert.fecha_emision) + '</small>';
-              html += '<small class="text-dark ml-2">$ ' + parseFloat(cert.monto_total).toLocaleString('es-AR', {
+              html += '<small class="text-dark mr-auto">' + htmlEsc(cert.fecha_emision) + '</small>';
+              html += '<small class="text-dark ml-2">' + htmlEsc(moneda) + ' ' + parseFloat(cert.monto_total).toLocaleString('es-AR', {
                 minimumFractionDigits: 2
               }) + '</small>';
               html += '<i class="feather icon-chevron-down ml-2"></i>';
@@ -652,6 +658,22 @@ $id_estado = $filters['id_estado'] ?? [];
       $(document).on('click', '[data-target^="#collapse_"]', function() {
         $(this).find('.icon-chevron-down, .icon-chevron-up')
           .toggleClass('icon-chevron-down icon-chevron-up');
+      });
+
+      // Misma moneda: al tildar un CA se bloquean los de otra moneda; al destildar todo se liberan.
+      // Los pendientes (chk-pendiente) quedan siempre bloqueados.
+      $(document).on('change', '.chk-certificado', function() {
+        var checked = $('.chk-certificado:checked');
+        if (checked.length === 0) {
+          $('.chk-certificado:not(.chk-pendiente)').prop('disabled', false);
+          return;
+        }
+        var monedaSel = checked.first().data('id-moneda');
+        $('.chk-certificado').each(function() {
+          if (!$(this).is(':checked') && !$(this).hasClass('chk-pendiente')) {
+            $(this).prop('disabled', $(this).data('id-moneda') != monedaSel);
+          }
+        });
       });
 
       $('#btnContinuarConCertificados').on('click', function() {

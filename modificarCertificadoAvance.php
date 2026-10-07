@@ -102,7 +102,8 @@ if (!empty($_POST)) {
   $id_certificado_maestro=$data["id_certificado_maestro"];
   $qMoneda = $pdo->prepare("SELECT m.moneda FROM certificados_maestros cm INNER JOIN monedas m ON m.id = cm.id_moneda WHERE cm.id = ?");
   $qMoneda->execute([$id_certificado_maestro]);
-  $esDolar = strtoupper((string) $qMoneda->fetchColumn()) !== 'ARS';
+  $monedaCertificado = (string) $qMoneda->fetchColumn();
+  $esDolar = esMonedaDolar($monedaCertificado);
 
   Database::disconnect();
 }?>
@@ -157,15 +158,19 @@ if (!empty($_POST)) {
                             <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
                             <div class="col-sm-9"><input name="fecha_fin" id="fecha_fin" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$data['fecha_fin'];?>"></div>
                           </div>
-                          <?php if (!$esOpCA) { ?>
+                          <?php if (!$esOpCA && $esDolar) { ?>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Cotización Dólar</label>
                             <div class="col-sm-9">
+                              <!-- La moneda ya viene del Certificado Maestro, así que el selector
+                                   se muestra siempre y no depende de que el JS lo revele -->
+                              <select id="tipo_dolar" class="form-control mb-2"></select>
                               <div class="input-group">
                                 <input name="cotizacion_dolar" id="cotizacion_dolar" type="number" step="0.01" min="0" class="form-control" value="<?=htmlspecialchars((string) $data['cotizacion_dolar'], ENT_QUOTES, 'UTF-8');?>">
                                 <div class="input-group-append"><span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;"></span></div>
                               </div>
                               <small id="infoCotizacion" class="text-muted"></small>
+                              <small class="text-muted d-block">Moneda del certificado maestro: <strong><?= htmlspecialchars($monedaCertificado) ?></strong></small>
                             </div>
                           </div>
                           <?php } ?>
@@ -217,6 +222,7 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
    <script src="assets/js/script.js"></script>
+<script src="assets/js/cotizacion-dolar.js"></script>
     <!-- Plugin used-->
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
@@ -255,23 +261,21 @@ if (!empty($_POST)) {
 			}
 		});
 
-    var esDolar = <?= !empty($esDolar) ? 'true' : 'false' ?>;
-    if (esDolar) {
-      var badge = $('#estadoDolar');
-      var input = $('#cotizacion_dolar');
-      var info = $('#infoCotizacion');
-      badge.text('Cotización guardada').removeClass('text-danger').addClass('text-success');
-      input.prop('readonly', true);
-      fetch('https://dolarapi.com/v1/dolares/blue', {headers: {'Accept': 'application/json'}})
-        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-        .then(function(d) {
-          if (!d.venta) throw new Error('Sin venta');
-          badge.text('Dólar Blue');
-          info.text('Cotización actual disponible: $' + parseFloat(d.venta).toFixed(2));
-          input.prop('readonly', false);
-        })
-        .catch(function() { badge.text('Manual').removeClass('text-success').addClass('text-secondary'); input.prop('readonly', false); });
-    }
+    <?php if ($esDolar): ?>
+    // Referencia de mercado: el valor guardado no se toca, solo se informa el del día anterior.
+    // El selector de tipo ya está visible: acá solo se trae la referencia.
+    var cotDolar = CotizacionDolar.montar({
+      input: '#cotizacion_dolar',
+      badge: '#estadoDolar',
+      info: '#infoCotizacion',
+      selectTipo: '#tipo_dolar',
+      tipoInicial: 'blue',
+      noSobrescribir: true
+    });
+
+    $('#estadoDolar').text('Cotización guardada').removeClass('text-danger').addClass('text-success');
+    cotDolar.cargar();
+    <?php endif; ?>
 		</script>
     <!-- Plugin used-->
 

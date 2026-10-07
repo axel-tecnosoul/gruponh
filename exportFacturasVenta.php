@@ -17,7 +17,6 @@ include 'database.php';
 					<thead>
 		                <tr>
 							  <th>ID</th>
-							  <th>Descripción</th>
 							  <th>Tipo Comprobante</th>
 							  <th>Letra</th>
 							  <th>Proyecto</th>
@@ -43,7 +42,7 @@ include 'database.php';
 		              <?php     
 						$pdo = Database::connect();
 								 
-						$sql = " SELECT fv.`id`, fv.`descripcion`, tp.tipo , lc.`letra`, p.nombre, fv.`numero`, cu.razon_social, e.empresa, fv.`fecha_emitida`, fv.`fecha_enviada`, fp.forma_pago, fv.`subtotal_gravado`, fv.`subtotal_no_gravado`, fv.`otros`, fv.`iva`, fv.`total`, m.moneda, fv.`cotizacion`, fv.`observaciones`, u.usuario, ef.estado FROM `facturas_venta` fv inner join tipos_comprobante tp on tp.id = fv.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fv.`id_letra_comprobante` inner join proyectos p on p.id = fv.`id_proyecto` inner join cuentas cu on cu.id = fv.`id_cuenta_destino` inner join empresas e on e.id = fv.`id_empresa` inner join formas_pago fp on fp.id = fv.`id_condicion_pago` inner join monedas m on m.id = fv.`id_moneda` inner join usuarios u on u.id = fv.`id_usuario` inner join estados_factura ef on ef.id = fv.`id_estado` WHERE 1 ";
+						$sql = " SELECT fv.`id`, tp.tipo , lc.`letra`, p.nombre, fv.`numero`, cu.razon_social, e.empresa, fv.`fecha_emitida`, fv.`fecha_enviada`, fp.forma_pago, fv.`subtotal_gravado`, fv.`subtotal_no_gravado`, fv.`otros`, fv.`iva`, fv.`total`, m.moneda, fv.`cotizacion`, fv.`observaciones`, u.usuario, ef.estado FROM `facturas_venta` fv inner join tipos_comprobante tp on tp.id = fv.`id_tipo_comprobante` inner join letras_comprobante lc on lc.id = fv.`id_letra_comprobante` inner join proyectos p on p.id = fv.`id_proyecto` inner join cuentas cu on cu.id = fv.`id_cuenta_destino` inner join empresas e on e.id = fv.`id_empresa` inner join formas_pago fp on fp.id = fv.`id_condicion_pago` inner join monedas m on m.id = fv.`id_moneda` inner join usuarios u on u.id = fv.`id_usuario` inner join estados_factura ef on ef.id = fv.`id_estado` WHERE 1 ";
 						$ids = isset($_GET['ids']) ? array_map('intval', array_filter(explode(',', $_GET['ids']))) : [];
 						$params = [];
 						if (!empty($ids)) {
@@ -60,7 +59,7 @@ include 'database.php';
                                 echo '<td>'. $row[2] . '</td>';
                                 echo '<td>'. $row[3] . '</td>';
                                 echo '<td>'. $row[4] . '</td>';
-                                echo '<td>'. $row[5] . '</td>';
+								echo '<td>'. $row[5] . '</td>';
 								echo '<td>'. $row[6] . '</td>';
 								echo '<td>'. $row[7] . '</td>';
 								echo '<td>'. $row[8] . '</td>';
@@ -75,7 +74,6 @@ include 'database.php';
 								echo '<td>'. $row[17] . '</td>';
 								echo '<td>'. $row[18] . '</td>';
 								echo '<td>'. $row[19] . '</td>';
-								echo '<td>'. $row[20] . '</td>';
 							echo '</tr>';
 					   }
 					   Database::disconnect();

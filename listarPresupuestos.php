@@ -311,7 +311,7 @@ include 'database.php';
         } );
         $('#dataTables-example666').DataTable({
           stateSave: false,
-		  searching: false,
+          //searching: false,//debemos quitar esta linea para que funcione el buscador
 		  dom: 'Bfrtp<"bottom"l>',
           responsive: false,
 		  "order": [[0, 'desc']], 

@@ -587,3 +587,142 @@ SELECT @next_ap, 378, @idPermOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM accion
 SET @next_pp := (SELECT COALESCE(MAX(id),0)+1 FROM permisos_perfil);
 INSERT INTO permisos_perfil (id, id_permiso, id_perfil)
 SELECT @next_pp, @idPermOp, @idOp FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM permisos_perfil WHERE id_permiso=@idPermOp AND id_perfil=@idOp);
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 21: Empresas configurables (CUIT, dirección, email, IVA, IIBB, inicio).
+-- Ejecutar una sola vez; si alguna columna ya existe, omitir esa sentencia.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `empresas` ADD COLUMN `cuit` VARCHAR(99) NULL;
+ALTER TABLE `empresas` ADD COLUMN `direccion` VARCHAR(199) NULL;
+ALTER TABLE `empresas` ADD COLUMN `email` VARCHAR(99) NULL;
+ALTER TABLE `empresas` ADD COLUMN `id_condicion_iva` INT(11) NULL;
+ALTER TABLE `empresas` ADD COLUMN `iibb` VARCHAR(99) NULL;
+ALTER TABLE `empresas` ADD COLUMN `fecha_inicio_actividades` DATE NULL;
+
+-- FK a condiciones_iva (omitir si ya existe: error 1826).
+ALTER TABLE `empresas`
+  ADD CONSTRAINT `empresas_ibfk_1` FOREIGN KEY (`id_condicion_iva`) REFERENCES `condiciones_iva` (`id`);
+
+-- Acción Menu_Empresas (id por MAX+1, no hardcodea 393 de desarrollo).
+SET @next_accion := (SELECT COALESCE(MAX(id),0)+1 FROM acciones);
+INSERT INTO acciones (id, accion)
+SELECT @next_accion, 'Menu_Empresas' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM acciones WHERE accion='Menu_Empresas');
+SET @idAccEmpresas := (SELECT id FROM acciones WHERE accion='Menu_Empresas' LIMIT 1);
+
+-- Vincular al permiso 102 ('Total', mismo que Menu Regimenes).
+SET @next_ap := (SELECT COALESCE(MAX(id),0)+1 FROM acciones_permisos);
+INSERT INTO acciones_permisos (id, id_accion, id_permiso)
+SELECT @next_ap, @idAccEmpresas, 102 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM acciones_permisos WHERE id_accion=@idAccEmpresas AND id_permiso=102);
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 22: La primera revisión de Certificados de Avance es la 0.
+-- Solo nuevas altas (el código inserta 0); sin migración de historial.
+-- Este DEFAULT es para ambientes nuevos; en desarrollo ya está aplicado el dato.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `certificados_avances_cabecera` ALTER COLUMN `nro_revision` SET DEFAULT 0;
+
+INSERT INTO parametros (id, parametro, valor) VALUES (12, 'Monto mínimo Factura de crédito electrónica MiPyme', '5549862');
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 23: Descuento por renglón en facturas de venta.
+-- La migración ARCA y el guardado de facturas usan esta columna.
+-- Es idempotente para poder ejecutar el bloque en bases que ya la tienen.
+-- ---------------------------------------------------------------------------
+SET @discount_column_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'facturas_venta_detalle'
+    AND COLUMN_NAME = 'porcentaje_descuento'
+);
+SET @discount_column_sql := IF(
+  @discount_column_exists = 0,
+  'ALTER TABLE `facturas_venta_detalle` ADD COLUMN `porcentaje_descuento` DECIMAL(9,4) NOT NULL DEFAULT 0',
+  'SELECT 1'
+);
+PREPARE discount_column_statement FROM @discount_column_sql;
+EXECUTE discount_column_statement;
+DEALLOCATE PREPARE discount_column_statement;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 24: Configuración local de ARCA por empresa.
+-- Permite mantener puntos de venta, tipos asociados y padrones provinciales.
+-- ---------------------------------------------------------------------------
+SET @retention_column_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'empresas'
+    AND COLUMN_NAME = 'es_agente_retencion'
+);
+SET @retention_column_sql := IF(
+  @retention_column_exists = 0,
+  'ALTER TABLE `empresas` ADD COLUMN `es_agente_retencion` TINYINT(1) NOT NULL DEFAULT 0',
+  'SELECT 1'
+);
+PREPARE retention_column_statement FROM @retention_column_sql;
+EXECUTE retention_column_statement;
+DEALLOCATE PREPARE retention_column_statement;
+
+CREATE TABLE IF NOT EXISTS `arca_puntos_venta` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_empresa` INT NOT NULL,
+  `numero` INT NOT NULL,
+  `emision_tipo` VARCHAR(50) NOT NULL DEFAULT '',
+  `bloqueado` TINYINT(1) NOT NULL DEFAULT 0,
+  `fecha_baja` VARCHAR(10) NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_arca_punto_venta_empresa_numero` (`id_empresa`, `numero`),
+  CONSTRAINT `fk_arca_punto_venta_empresa`
+    FOREIGN KEY (`id_empresa`) REFERENCES `empresas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `arca_tipos_comprobante` (
+  `codigo` INT NOT NULL,
+  `descripcion` VARCHAR(255) NOT NULL,
+  `fecha_desde` VARCHAR(10) NOT NULL DEFAULT '',
+  `fecha_hasta` VARCHAR(10) NOT NULL DEFAULT '',
+  PRIMARY KEY (`codigo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `arca_tipos_comprobante` (`codigo`, `descripcion`) VALUES
+  (1, 'Factura A'), (2, 'Nota de Débito A'), (3, 'Nota de Crédito A'),
+  (4, 'Recibo A'), (5, 'Nota de Venta al Contado A'),
+  (6, 'Factura B'), (7, 'Nota de Débito B'), (8, 'Nota de Crédito B'),
+  (9, 'Recibo B'), (10, 'Nota de Venta al Contado B'),
+  (11, 'Factura C'), (12, 'Nota de Débito C'), (13, 'Nota de Crédito C'),
+  (15, 'Recibo C'), (19, 'Factura E'), (20, 'Nota de Débito E'),
+  (21, 'Nota de Crédito E'),
+  (201, 'Factura de Crédito Electrónica MiPyME A'),
+  (202, 'Nota de Débito Electrónica MiPyME A'),
+  (203, 'Nota de Crédito Electrónica MiPyME A'),
+  (206, 'Factura de Crédito Electrónica MiPyME B'),
+  (207, 'Nota de Débito Electrónica MiPyME B'),
+  (208, 'Nota de Crédito Electrónica MiPyME B'),
+  (211, 'Factura de Crédito Electrónica MiPyME C'),
+  (212, 'Nota de Débito Electrónica MiPyME C'),
+  (213, 'Nota de Crédito Electrónica MiPyME C')
+ON DUPLICATE KEY UPDATE `codigo` = VALUES(`codigo`);
+
+CREATE TABLE IF NOT EXISTS `arca_punto_venta_tipos` (
+  `id_punto_venta` INT NOT NULL,
+  `codigo_tipo_comprobante` INT NOT NULL,
+  PRIMARY KEY (`id_punto_venta`, `codigo_tipo_comprobante`),
+  CONSTRAINT `fk_arca_punto_venta_tipos_punto`
+    FOREIGN KEY (`id_punto_venta`) REFERENCES `arca_puntos_venta` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_arca_punto_venta_tipos_tipo`
+    FOREIGN KEY (`codigo_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `empresas_padrones_retencion` (
+  `id_empresa` INT NOT NULL,
+  `id_provincia` INT NOT NULL,
+  `url_padron` VARCHAR(2048) NOT NULL,
+  PRIMARY KEY (`id_empresa`, `id_provincia`),
+  CONSTRAINT `fk_empresas_padrones_retencion_empresa`
+    FOREIGN KEY (`id_empresa`) REFERENCES `empresas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_empresas_padrones_retencion_provincia`
+    FOREIGN KEY (`id_provincia`) REFERENCES `provincias` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

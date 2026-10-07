@@ -287,8 +287,7 @@ include 'database.php';
 
         $('#tablaOCC').DataTable({
           stateSave: false,
-		  searching: false,
-		  
+          //searching: false,//debemos quitar esta linea para que funcione el buscador
           responsive: false,
 		  dom: 'Bfrtp<"bottom"l>',
         buttons: [
@@ -360,11 +359,6 @@ include 'database.php';
 
         get_detalle_orden_compra_clientes(0)
 
-        $('#tablaDetalleOCC tfoot th').each( function () {
-          var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        });
-
         $("#link_modificar_ot").on("click",function(){
           let l=document.location.href;
           if(this.href==l || this.href==l+"#"){
@@ -416,7 +410,10 @@ include 'database.php';
             //console.log(data);
             data = JSON.parse(data);
             //console.log(data);
-            $('#tablaDetalleOCC').DataTable().destroy();
+            // En la primera carga la tabla todavía no está inicializada: destroy() tiraría una alerta
+            if ($.fn.dataTable.isDataTable('#tablaDetalleOCC')) {
+              $('#tablaDetalleOCC').DataTable().destroy();
+            }
             $('#tablaDetalleOCC').DataTable({
               stateSave: false,
               responsive: false,
@@ -453,23 +450,28 @@ include 'database.php';
                 $('td:eq(7)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
               },*/
               initComplete: function(){
+                // La tabla se destruye y se recrea en cada clic de fila, así que los
+                // buscadores del pie se generan acá para que no se pierdan
+                $('#tablaDetalleOCC tfoot th').each( function () {
+                  var title = $(this).text();
+                  $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+                });
+
+                var tDetalle = $('#tablaDetalleOCC').DataTable();
+                tDetalle.columns().every( function () {
+                  var that = this;
+                  $( 'input', this.footer() ).on( 'keyup change', function () {
+                    if ( that.search() !== this.value ) {
+                      that.search( this.value ).draw();
+                    }
+                  });
+                });
+
                 $('[title]').tooltip();
               }
             });
-        
-            // DataTable
-            var table = $('#tablaDetalleOCC').DataTable();
-            // Apply the search
-            table.columns().every( function () {
-              var that = this;
-              $( 'input', this.footer() ).on( 'keyup change', function () {
-                if ( that.search() !== this.value ) {
-                  that.search( this.value ).draw();
-                }
-              });
-            });
-        
-            //$('#tablaDetalleOCC').find("tbody tr td").not(":last-child").on( 'click', function () {
+
+                    //$('#tablaDetalleOCC').find("tbody tr td").not(":last-child").on( 'click', function () {
             /*$(document).on("click","#tablaDetalleOCC tbody tr td", function(){
               var t=$(this).parent();
               //t.parent().find("tr").removeClass("selected");

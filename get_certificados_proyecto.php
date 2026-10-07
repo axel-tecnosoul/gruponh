@@ -22,10 +22,12 @@ try {
     // y los avances son certificados_avances_cabecera (id_certificado_maestro)
     $sql = "SELECT DISTINCT
                 ca.id,
-                cm.revision,
+                ca.nro_certificado,
+                ca.nro_revision,
+                CONCAT('Cert. ', ca.nro_certificado, '/', ca.nro_revision) AS cert_label,
+                cm.id_moneda,
+                m.moneda,
                 DATE_FORMAT(ca.fecha_emision, '%d/%m/%Y') AS fecha_emision,
-                DATE_FORMAT(ca.fecha_inicio,  '%d/%m/%Y') AS fecha_inicio,
-                DATE_FORMAT(ca.fecha_fin,     '%d/%m/%Y') AS fecha_fin,
                 ca.monto_total,
                 ca.monto_acumulado_avances,
                 ca.observaciones,
@@ -33,6 +35,8 @@ try {
             FROM certificados_avances_cabecera ca
             INNER JOIN certificados_maestros cm
                 ON cm.id = ca.id_certificado_maestro
+            LEFT JOIN monedas m
+                ON m.id = cm.id_moneda
             INNER JOIN certificados_maestros_detalles cmd
                 ON cmd.id_certificado_maestro = cm.id
             WHERE cmd.id_proyecto = ?

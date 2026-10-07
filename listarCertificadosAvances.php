@@ -212,6 +212,7 @@ if (!$data || !$cmAprobado) {
 
                       <a href="#" id="link_ver_occ" title="Ver Certificado de Avance" style="color: midnightblue;" class="fa fa-lg"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver"></a>&nbsp;
                       <?php if (!$esOpCA) { ?><a href="#" id="link_nuevo_ajuste" title="Nuevo Ajuste" style="color: midnightblue;" class="fa fa-lg"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nuevo Ajuste"></a>&nbsp;<?php } ?>
+                      <?php if (!$esOpCA && !empty(tienePermiso(337))) { ?><a href="#" id="link_facturar" title="Facturar"><img src="img/dolar.png" width="24" height="25" border="0" alt="Facturar"></a>&nbsp;<?php } ?>
                     </h5>
                   </div>
                    <div class="card-body">
@@ -261,9 +262,9 @@ if (!$data || !$cmAprobado) {
                         <tbody><?php
                           
                           $pdo = Database::connect();
-                          $sql = "SELECT cac.id,cac.nro_certificado,cac.nro_revision,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.cotizacion_dolar,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones,cac.aprobado_cliente,NOT EXISTS (SELECT 1 FROM certificados_avances_cabecera x WHERE x.id_certificado_maestro = cac.id_certificado_maestro AND x.nro_certificado = cac.nro_certificado AND x.nro_revision > cac.nro_revision) AS es_ultima FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".(int)$_GET["id_certificado_maestro"]." ORDER BY cac.nro_certificado, cac.nro_revision";
+                          $sql = "SELECT cac.id,cac.nro_certificado,cac.nro_revision,date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,date_format(cac.fecha_inicio,'%d/%m/%y') AS fecha_inicio,date_format(cac.fecha_fin,'%d/%m/%y') AS fecha_fin,m.moneda,cac.monto_total,cac.cotizacion_dolar,cac.monto_acumulado_avances,cac.monto_acumulado_anticipos,cac.monto_acumulado_desacopios,cac.monto_acumulado_descuentos,cac.monto_acumulado_ajustes,cac.observaciones,cac.aprobado_cliente,(SELECT MIN(cmd.id_proyecto) FROM certificados_maestros_detalles cmd WHERE cmd.id_certificado_maestro = cac.id_certificado_maestro) AS id_proyecto_factura,NOT EXISTS (SELECT 1 FROM certificados_avances_cabecera x WHERE x.id_certificado_maestro = cac.id_certificado_maestro AND x.nro_certificado = cac.nro_certificado AND x.nro_revision > cac.nro_revision) AS es_ultima FROM certificados_avances_cabecera cac INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro=cm.id INNER JOIN monedas m ON cm.id_moneda=m.id WHERE cac.id_certificado_maestro = ".(int)$_GET["id_certificado_maestro"]." ORDER BY cac.nro_certificado, cac.nro_revision";
                           foreach ($pdo->query($sql) as $row) {
-                            echo '<tr data-id="'.$row["id"].'" data-aprobado="'.($row["aprobado_cliente"] == 1 ? '1' : '0').'" data-es-ultima="'.($row["es_ultima"] ? '1' : '0').'">';
+                            echo '<tr data-id="'.$row["id"].'" data-aprobado="'.($row["aprobado_cliente"] == 1 ? '1' : '0').'" data-es-ultima="'.($row["es_ultima"] ? '1' : '0').'" data-id-proyecto="'.($row["id_proyecto_factura"] ?? '').'">';
                             echo '<td class="d-none">'.$row["id"].'</td>';
 							echo '<td>'.$row["nro_certificado"].'</td>';
                             echo '<td>'.($row["nro_revision"] ?? '-').'</td>';
@@ -470,7 +471,7 @@ if (!$data || !$cmAprobado) {
         // Setup - add a text input to each footer cell
         $('#tablaOCC tfoot th').each( function () {
           var title = $(this).text();
-          $(this).html( '<input type="text" class="form-control form-control-sm" placeholder="Filtrar '+title+'" aria-label="Filtrar '+title+'" />' );
+          $(this).html( '<input type="text" class="form-control form-control-sm" placeholder="'+title+'" aria-label="'+title+'" />' );
         });
 
         $('#tablaOCC').DataTable({
@@ -529,11 +530,6 @@ if (!$data || !$cmAprobado) {
           let aprobado = t.attr("data-aprobado");
           let esUltima = t.attr("data-es-ultima");
 
-          if (aprobado == "1") {
-            $("#link_nuevo_comprobante").data("aprobado","1");  
-          } else {
-            $("#link_nuevo_comprobante").data("aprobado","0");  
-          }
            if(t.hasClass('selected')){
              deselectRow(t);
              get_detalle_certificado_avance(0)
@@ -543,9 +539,10 @@ if (!$data || !$cmAprobado) {
             $("#link_imprimir_certificado").attr("href","#");
              $("#link_modificar_ot").attr("href","#");
 		        $("#link_aprobar_avance").attr("href","#");
-            $("#link_ver_occ").attr("href","#");
-            $("#link_nuevo_ajuste").attr("href","#");
-          }else{
+             $("#link_ver_occ").attr("href","#");
+             $("#link_nuevo_ajuste").attr("href","#");
+             $("#link_facturar").attr("href","#");
+           }else{
             table.rows().nodes().each( function (rowNode, index) {
               $(rowNode).removeClass("selected");
             });
@@ -559,6 +556,8 @@ if (!$data || !$cmAprobado) {
             $("#link_aprobar_avance").attr("href", esUltima === "1" ? "aprobarCertificadoAvance.php?id="+id_occ : "#");
             $("#link_ver_occ").attr("href","verCertificadoAvance.php?id="+id_occ);
             $("#link_nuevo_ajuste").attr("href", esUltima === "1" ? "nuevoAjusteCertificadoAvance.php?id_certificado_avance="+id_occ : "#");
+            let idProyecto = t.attr("data-id-proyecto");
+            $("#link_facturar").attr("href", (aprobado === "1" && esUltima === "1" && idProyecto) ? "nuevaFacturaVenta.php?id_proyecto="+idProyecto+"&certificados[]="+id_occ : "#");
           }
         });
 
@@ -655,28 +654,21 @@ if (!$data || !$cmAprobado) {
           }
         })
 
-        $("#link_nuevo_comprobante").on("click",function(){
-          let aprobado = $("#link_nuevo_comprobante").data("aprobado");  
-          console.log(aprobado);
-          if (aprobado == "1") {
-            
-            let aId=[];
-            $("#tablaDetalleOCC tbody tr").each(function(){
-              var t=$(this);
-              if(t.hasClass('selected')){
-                let id_certificado_avance_detalle=t.find("td:first-child").html();
-                aId.push(id_certificado_avance_detalle)
-              }
-            })
-            if(aId.length==0){
-              alert("Por favor seleccione uno o mas items del certificado de avance para generar un comprobante")
-            }else{
-              window.open("nuevaFacturaVenta.php?id="+aId.join(","))
-            }
-          } else {
-            alert("El Certificado de Avance aún no ha sido aprobado por el cliente")
+        $("#link_facturar").on("click",function(e){
+          let fila_selected=$(document).find("#tablaOCC tbody tr.selected");
+          if(fila_selected.length==0){
+            e.preventDefault();
+            alert("Por favor seleccione un certificado de avance para facturar")
+          }else if(fila_selected.attr("data-aprobado") !== "1"){
+            e.preventDefault();
+            alert("Solo un certificado aprobado por el cliente puede facturarse")
+          }else if(fila_selected.attr("data-es-ultima") !== "1"){
+            e.preventDefault();
+            alert("Solo la ultima revision del certificado puede facturarse")
+          }else if(!fila_selected.attr("data-id-proyecto")){
+            e.preventDefault();
+            alert("El certificado no tiene proyecto asociado para facturar")
           }
-
         })
       
       });

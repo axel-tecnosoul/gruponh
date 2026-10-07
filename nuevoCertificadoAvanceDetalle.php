@@ -478,7 +478,7 @@ function renderGruposAvance($grupos, $moneda) {
                 <td class="avance-col-inicio avance-cantidad-col avance-cantidad-actual-col">
                   <input type="number" step="0.01" class="form-control form-control-sm" name="avance[]" placeholder="Avance" min="0" max="<?=escaparAvance($maximo_avance)?>" value="<?=$fila['cantidad_actual'] !== null ? escaparAvance($fila['cantidad_actual']) : ''?>">
                 </td>
-                <td class="text-center avance-porcentaje-col porcentaje-actual"><?=number_format($porcentaje_actual, 2, ',', '.')?>%</td>
+                <td class="text-center avance-porcentaje-col"><input type="number" step="0.01" class="form-control form-control-sm porcentaje-actual-input" min="0" max="100" value="<?=number_format($porcentaje_actual, 2, '.', '')?>"></td>
                 <?php if (!$esOp) { ?><td class="text-right">
                   <?=escaparAvance($moneda)?> <span class="subtotal_formatted"><?=number_format($monto_actual, 2, ',', '.')?></span>
                   <input type="hidden" name="subtotal[]" value="<?=escaparAvance($fila['subtotal_ca'] ?? '')?>">
@@ -494,7 +494,7 @@ function renderGruposAvance($grupos, $moneda) {
           ?></tbody>
           <tfoot class="bg-light">
             <tr class="font-weight-bold">
-              <td colspan="<?php echo $esOp ? 4 : 6; ?>" class="text-right">Totales del grupo</td>
+              <td colspan="<?php echo $esOp ? 5 : 7; ?>" class="text-right">Totales del grupo</td>
               <td class="text-right avance-col-inicio">Anterior</td>
               <td class="text-center avance-porcentaje-col"></td>
               <?php if (!$esOp) { ?><td class="text-right"><?=escaparAvance($moneda)?> <span class="total-grupo-anterior"><?=number_format($total_anterior_grupo, 2, ',', '.')?></span></td><?php } ?>
@@ -920,7 +920,7 @@ Database::disconnect();
         celdaSaldo.text(monedaGrupo + ' ' + formatearNumeroAvance(totalSaldo)).attr('data-total-saldo', totalSaldo.toFixed(2));
       }
 
-      function actualizarSubtotalAvance(fila) {
+      function actualizarSubtotalAvance(fila, skipEl) {
         let avance = obtenerNumeroAvance(fila.find("input[name='avance[]']").val());
         let precioUnitario = obtenerNumeroAvance(fila.find("input[name='precio_unitario[]']").val());
         let cantidadTotal = obtenerNumeroAvance(fila.attr('data-cantidad-total'));
@@ -936,7 +936,11 @@ Database::disconnect();
         let montoSaldo = subtotalCm - montoAcumulado;
 
         fila.find("input[name='subtotal[]']").val(subtotal.toFixed(2));
-        fila.find('.porcentaje-actual').text(formatearNumeroAvance(porcentajeActual) + '%');
+        let porcInput = fila.find('.porcentaje-actual-input');
+        // No reescribir el % que el usuario está editando para permitir tipeo directo.
+        if (!skipEl || !porcInput.is(skipEl)) {
+          porcInput.val(porcentajeActual.toFixed(2));
+        }
         fila.find('.subtotal_formatted').text(formatearNumeroAvance(subtotal));
         fila.find('.cantidad-acumulada').text(formatearNumeroAvance(cantidadAcumulada));
         fila.find('.porcentaje-acumulado').text(formatearNumeroAvance(porcentajeAcumulado) + '%');
@@ -959,6 +963,24 @@ Database::disconnect();
 
         $(document).on('input change keyup', "input[name='avance[]']", function() {
           actualizarSubtotalAvance($(this).closest('.fila-detalle-avance'));
+        });
+
+        $(document).on('input change keyup', '.porcentaje-actual-input', function() {
+          let fila = $(this).closest('.fila-detalle-avance');
+          let cantidadTotal = obtenerNumeroAvance(fila.attr('data-cantidad-total'));
+          let maxRaw = fila.find("input[name='avance[]']").attr('max');
+          let maximo = (maxRaw === undefined || maxRaw === '') ? Infinity : obtenerNumeroAvance(maxRaw);
+          let porc = obtenerNumeroAvance($(this).val());
+          if (porc < 0) { porc = 0; }
+          if (porc > 100) { porc = 100; }
+          let avance = cantidadTotal > 0 ? (cantidadTotal * porc) / 100 : 0;
+          if (avance > maximo) {
+            avance = maximo;
+            porc = cantidadTotal > 0 ? (avance / cantidadTotal) * 100 : 0;
+            $(this).val(porc.toFixed(2));
+          }
+          fila.find("input[name='avance[]']").val(avance.toFixed(2));
+          actualizarSubtotalAvance(fila, this);
         });
 
         $('form').on('submit', function(e) {

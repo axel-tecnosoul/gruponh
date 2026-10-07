@@ -7,6 +7,8 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
+$errorDuplicado = '';
+
 $id = null;
 if (!empty($_GET['id'])) {
   $id = $_REQUEST['id'];
@@ -14,66 +16,101 @@ if (!empty($_GET['id'])) {
 
 if (null==$id) {
   header("Location: listarOrdenesCompraClientes.php");
+  die();
 }
+
+// Tipos de cobertura seleccionados. Con POST se conserva lo elegido por el usuario,
+// sin POST se leen los guardados en la BD.
+$tiposCobertura = array();
 
 if (!empty($_POST)) {
 
-  // insert data
+  // update data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $modoDebug=0;
-
-  if ($modoDebug==1) {
-    $pdo->beginTransaction();
-    var_dump($_POST);
-    var_dump($_GET);
-    var_dump($_FILES);
-  }
-
   $id=$_GET['id'];
 
-  $sql = "UPDATE occ SET numero=?, fecha_emision=?, fecha_recepcion=?, id_cuenta_cliente=?, id_moneda=?, id_condicion_iva=?, percepcion=?, otros_importes=?, id_forma_pago=?, id_presupuesto=?, requiere_polizas=?, abierta=?, fecha_vencimiento=?, fecha_entrega=?, lugar_entrega=?, observaciones=?, link_archivo=?, activa=? WHERE id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([
-  $_POST["numero"], $_POST["fecha_emision"], $_POST["fecha_recepcion"], $_POST["id_cuenta_cliente"], $_POST["id_moneda"], $_POST["id_condicion_iva"], 0, 0, $_POST["id_forma_pago"], $_POST["id_presupuesto"], $_POST["requiere_polizas"], $_POST["tipo_oc"], $_POST["fecha_vencimiento"], $_POST["fecha_entrega"], $_POST["lugar_entrega"], $_POST["observaciones"], trim($_POST["link_archivo"] ?? '') ?: null, $_POST["activo"], $id]);
+  $tiposCobertura = (isset($_POST['id_tipo_cobertura']) && is_array($_POST['id_tipo_cobertura']))
+      ? array_map('intval', $_POST['id_tipo_cobertura'])
+      : array();
 
-	$sql = "delete from occ_tipos_cobertura where id_occ = ? ";
-	$q = $pdo->prepare($sql);
-	$q->execute([$id]);
-
-	foreach ($_POST['id_tipo_cobertura'] as $item) {
-		if ($item != 0) {
-			$sql = "INSERT INTO `occ_tipos_cobertura`(`id_tipo_cobertura`,`id_occ`) VALUES (?,?)";
-			$q = $pdo->prepare($sql);
-			$q->execute([$item,$id]);
-		}
-	}
-
-  if ($modoDebug==1) {
-    $q->debugDumpParams();
-    echo "<br><br>Afe: ".$q->rowCount();
-    echo "<br><br>";
-  }
-
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de Orden de Compra Clientes','Ordenes de Compra Clientes','verOrdenCompraCliente.php?id=$id')";
-  $q = $pdo->prepare($sql);
-  $q->execute(array($_SESSION['user']['id']));
-
-  if(isset($_POST['btn1'])){
-    $redirect="listarOrdenesCompraClientes.php";
-  }elseif(isset($_POST['btn2'])){
-    $redirect="nuevaOrdenCompraClienteDetalle.php?id_orden_compra_cliente=".$id;
-  }
-
-  if ($modoDebug==1) {
-    $pdo->rollBack();
-    die();
+  // Validación: el número no debe estar ya registrado para el cliente (excluye la propia orden)
+  $qCheck = $pdo->prepare("SELECT COUNT(*) FROM occ WHERE TRIM(numero) = TRIM(?) AND id_cuenta_cliente = ? AND id <> ?");
+  $qCheck->execute([$_POST["numero"] ?? '', $_POST["id_cuenta_cliente"] ?? 0, $id]);
+  if ((int)$qCheck->fetchColumn() > 0) {
+    $errorDuplicado = "El número '".$_POST["numero"]."' ya está registrado para el cliente seleccionado.";
   } else {
-    Database::disconnect();
-    header("Location: ".$redirect);
-  }
 
+    try {
+      $pdo->beginTransaction();
+
+      $sql = "UPDATE occ SET numero=?, fecha_emision=?, fecha_recepcion=?, id_cuenta_cliente=?, id_moneda=?, id_condicion_iva=?, percepcion=?, otros_importes=?, id_forma_pago=?, id_presupuesto=?, requiere_polizas=?, abierta=?, fecha_vencimiento=?, fecha_entrega=?, lugar_entrega=?, observaciones=?, link_archivo=?, activa=? WHERE id = ?";
+      $q = $pdo->prepare($sql);
+      $q->execute([
+      $_POST["numero"] ?? '', $_POST["fecha_emision"] ?? null, $_POST["fecha_recepcion"] ?? null, $_POST["id_cuenta_cliente"] ?? 0, $_POST["id_moneda"] ?? 0, $_POST["id_condicion_iva"] ?? 0, 0, 0, $_POST["id_forma_pago"] ?? 0, $_POST["id_presupuesto"] ?? 0, $_POST["requiere_polizas"] ?? 0, $_POST["tipo_oc"] ?? 0, $_POST["fecha_vencimiento"] ?? null, $_POST["fecha_entrega"] ?? null, $_POST["lugar_entrega"] ?? '', $_POST["observaciones"] ?? '', trim($_POST["link_archivo"] ?? '') ?: null, $_POST["activo"] ?? 0, $id]);
+
+      $sql = "delete from occ_tipos_cobertura where id_occ = ? ";
+      $q = $pdo->prepare($sql);
+      $q->execute([$id]);
+
+      foreach ($tiposCobertura as $item) {
+        if ($item != 0) {
+          $sql = "INSERT INTO `occ_tipos_cobertura`(`id_tipo_cobertura`,`id_occ`) VALUES (?,?)";
+          $q = $pdo->prepare($sql);
+          $q->execute([$item,$id]);
+        }
+      }
+
+      $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de Orden de Compra Clientes','Ordenes de Compra Clientes','verOrdenCompraCliente.php?id=$id')";
+      $q = $pdo->prepare($sql);
+      $q->execute(array($_SESSION['user']['id']));
+
+      $pdo->commit();
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+      }
+      $errorDuplicado = "No se pudo guardar la modificación: ".$e->getMessage();
+    }
+
+    if (empty($errorDuplicado)) {
+      // El botón presionado viaja en btn_press porque los botones se deshabilitan al enviar
+      $btn = $_POST['btn_press'] ?? ($_POST['btn2'] ?? ($_POST['btn1'] ?? ''));
+      if ($btn === '2') {
+        $redirect = "nuevaOrdenCompraClienteDetalle.php?id_orden_compra_cliente=".$id;
+      } else {
+        $redirect = "listarOrdenesCompraClientes.php";
+      }
+
+      Database::disconnect();
+      header("Location: ".$redirect);
+      die();
+    }
+
+  } // fin validación número duplicado por cliente
+
+  // Ante cualquier error se conservan los datos ingresados para mostrar el formulario sin perderlos
+  $data = [
+    "numero" => $_POST["numero"] ?? '',
+    "fecha_emision" => $_POST["fecha_emision"] ?? '',
+    "fecha_recepcion" => $_POST["fecha_recepcion"] ?? '',
+    "id_cuenta_cliente" => $_POST["id_cuenta_cliente"] ?? 0,
+    "id_moneda" => $_POST["id_moneda"] ?? 0,
+    "id_condicion_iva" => $_POST["id_condicion_iva"] ?? 0,
+    "id_forma_pago" => $_POST["id_forma_pago"] ?? 0,
+    "id_presupuesto" => $_POST["id_presupuesto"] ?? 0,
+    "requiere_polizas" => $_POST["requiere_polizas"] ?? 0,
+    "abierta" => $_POST["tipo_oc"] ?? 0,
+    "fecha_vencimiento" => $_POST["fecha_vencimiento"] ?? '',
+    "fecha_entrega" => $_POST["fecha_entrega"] ?? '',
+    "lugar_entrega" => $_POST["lugar_entrega"] ?? '',
+    "observaciones" => $_POST["observaciones"] ?? '',
+    "link_archivo" => trim($_POST["link_archivo"] ?? ''),
+    "activa" => $_POST["activo"] ?? 0,
+  ];
+
+  Database::disconnect();
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -82,15 +119,26 @@ if (!empty($_POST)) {
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
-  $checked_requiere_polizas_si=($data["requiere_polizas"]==1) ? "checked" : "";
-  $checked_requiere_polizas_no=($data["requiere_polizas"]==0) ? "checked" : "";
-  $checked_tipo_oc_abierta=($data["abierta"]==1) ? "checked" : "";
-  $checked_tipo_oc_cerrada=($data["abierta"]==0) ? "checked" : "";
-  $checked_activo_si=($data["activa"]==1) ? "checked" : "";
-  $checked_activo_no=($data["activa"]==0) ? "checked" : "";
+  $sql = "SELECT id_tipo_cobertura FROM occ_tipos_cobertura WHERE id_occ = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$id]);
+  $tiposCobertura = array_map('intval', array_column($q->fetchAll(PDO::FETCH_ASSOC), 'id_tipo_cobertura'));
 
   Database::disconnect();
-}?>
+}
+
+if (empty($data)) {
+  header("Location: listarOrdenesCompraClientes.php");
+  die();
+}
+
+$checked_requiere_polizas_si=($data["requiere_polizas"]==1) ? "checked" : "";
+$checked_requiere_polizas_no=($data["requiere_polizas"]==0) ? "checked" : "";
+$checked_tipo_oc_abierta=($data["abierta"]==1) ? "checked" : "";
+$checked_tipo_oc_cerrada=($data["abierta"]==0) ? "checked" : "";
+$checked_activo_si=($data["activa"]==1) ? "checked" : "";
+$checked_activo_no=($data["activa"]==0) ? "checked" : "";
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -127,7 +175,10 @@ if (!empty($_POST)) {
                     <h5><?=$ubicacion?></h5>
                   </div>
 					<form class="form theme-form" role="form" method="post" id="form1" action="modificarOrdenCompraCliente.php?id=<?=$id?>" enctype="multipart/form-data">
-                    <div class="card-body">
+                    <div class="card-body"><?php
+                      if (!empty($errorDuplicado)) { ?>
+                        <div class="alert alert-danger" role="alert"><?php echo htmlspecialchars($errorDuplicado, ENT_QUOTES, 'UTF-8'); ?></div><?php
+                      } ?>
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
@@ -263,8 +314,8 @@ if (!empty($_POST)) {
 						   <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Tipos de Cobertura(*)</label>
                             <div class="col-sm-9">
-                              <select name="id_tipo_cobertura[]" id="id_tipo_cobertura[]" multiple="multiple" class="js-example-basic-single col-sm-12" required="required">
-                                <option value="0">No Requiere</option><?php
+                              <select name="id_tipo_cobertura[]" id="sel_tipos_cobertura" multiple="multiple" class="js-example-basic-single col-sm-12" required="required">
+                                <option value="0"<?php echo in_array(0, $tiposCobertura, true) ? " selected" : ""; ?>>No Requiere</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                 $sqlZon = "SELECT id, tipo FROM tipos_cobertura_polizas  ";
@@ -272,13 +323,7 @@ if (!empty($_POST)) {
                                 $q->execute();
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                                   echo "<option value='".$fila['id']."'";
-									$sql2 = " SELECT id from occ_tipos_cobertura where id_occ = ? and id_tipo_cobertura = ? ";
-									$q2 = $pdo->prepare($sql2);
-									$q2->execute([$id, $fila['id']]);
-									$data22 = $q2->fetch(PDO::FETCH_ASSOC);
-									if (!empty($data22)) {
-										echo " selected ";
-									}
+                                  echo in_array((int)$fila['id'], $tiposCobertura, true) ? " selected " : "";
                                   echo ">".$fila['tipo']."</option>";
                                 }
                                 Database::disconnect();?>
@@ -332,8 +377,9 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-                        <button type="submit" value="1" name="btn1" class="btn btn-success addPosicion">Modificar e ir a Ordenes</button>
-                        <button type="submit" value="2" name="btn2" class="btn btn-primary addPosicion">Modificar y ver Detalle</button>
+                        <button type="submit" value="1" name="btn1" id="btnIrOrdenes" class="btn btn-success addPosicion">Modificar e ir a Ordenes</button>
+                        <button type="submit" value="2" name="btn2" id="btnVerDetalle" class="btn btn-primary addPosicion">Modificar y ver Detalle</button>
+                        <input type="hidden" name="btn_press" id="btn_press" value="">
                         <a href='listarOrdenesCompraClientes.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -394,24 +440,56 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
     <!-- Plugin used-->
-	<script>
-		$("#form1").submit(function () {
+    <script>
+		// El botón presionado se guarda en un hidden porque al deshabilitarlo no se enviaría su name
+		$("#form1 button[type=submit]").on("click", function () {
+			$("#btn_press").val($(this).val());
+		});
+
+		$("#form1").on("submit", function (e) {
 			var startDate1 = document.getElementById("fecha_emision").value;
 			var endDate1 = document.getElementById("fecha_recepcion").value;
 			var startDate2 = document.getElementById("fecha_vencimiento").value;
 			var endDate2 = document.getElementById("fecha_entrega").value;
+			var ok = true;
 
 			if ((Date.parse(startDate1) > Date.parse(endDate1))) {
 				alert("La fecha de recepcion debe ser mayor a la fecha de emision");
 				document.getElementById("fecha_recepcion").value = "";
-				event.preventDefault(); // Evita que se envíe el formulario
+				ok = false;
 			}
 			if ((Date.parse(startDate2) > Date.parse(endDate2))) {
 				alert("La fecha de entrega debe ser mayor a la fecha de vencimiento");
 				document.getElementById("fecha_entrega").value = "";
-				event.preventDefault(); // Evita que se envíe el formulario
+				ok = false;
 			}
+
+			if (!ok) {
+				e.preventDefault();
+				return;
+			}
+
+			e.preventDefault();
+			var $botones = $(this).find("button[type=submit]");
+			var presionado = $("#btn_press").val();
+			$botones.prop("disabled", true);
+			$botones.filter("#btnIrOrdenes,#btnVerDetalle").each(function () {
+				if ($(this).val() === presionado) {
+					$(this).text("Procesando...");
+				} else {
+					$(this).text("");
+				}
+			});
+			this.submit();
 		});
+
+		// Reaplica la selección de tipos de cobertura sobre el select2 ya inicializado
+		setTimeout(function () {
+			var $cob = $("#sel_tipos_cobertura");
+			if ($cob.length) {
+				$cob.val(<?php echo json_encode(array_values($tiposCobertura)); ?>).trigger("change");
+			}
+		}, 600);
 		</script>
   </body>
 </html>

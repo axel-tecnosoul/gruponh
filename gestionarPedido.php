@@ -761,11 +761,7 @@ if (isset($id_compra)) {
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute();
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  $esDolar = (stripos($fila['moneda'], 'dolar') !== false ||
-                                    stripos($fila['moneda'], 'dólar') !== false ||
-                                    stripos($fila['moneda'], 'usd')   !== false ||
-                                    stripos($fila['moneda'], 'u$d')   !== false ||
-                                    stripos($fila['moneda'], 'u$s')   !== false) ? 'true' : 'false';
+                                  $esDolar = esMonedaDolar($fila['moneda']) ? 'true' : 'false';
                                   echo "<option value='{$fila['id']}' data-esusd='$esDolar'>{$fila['moneda']}</option>";
                                 }
                                 Database::disconnect(); ?>
@@ -778,6 +774,7 @@ if (isset($id_compra)) {
                               <span id="tc_required_star" style="color:red; display:none;">(*)</span>
                             </label>
                             <div class="col-sm-8">
+                              <select id="tipo_dolar" class="form-control mb-2" style="display:none;"></select>
                               <input name="tipo_cambio_dia" id="tipo_cambio_dia"
                                 type="number" step="0.01" class="form-control">
                               <small id="estadoDolar" class="text-secondary"></small>
@@ -1045,6 +1042,7 @@ if (isset($id_compra)) {
   <script src="assets/js/tooltip-init.js"></script>
   <!-- Theme js-->
   <script src="assets/js/script.js"></script>
+  <script src="assets/js/cotizacion-dolar.js"></script>
   <!-- Plugin used-->
   <script src="assets/js/select2/select2.full.min.js"></script>
   <script src="assets/js/select2/select2-custom.js"></script>
@@ -1241,69 +1239,41 @@ if (isset($id_compra)) {
         }
       });
 
+      // Cotización del dólar: selector de tipo + valor del día anterior (ver assets/js/cotizacion-dolar.js)
+      var cotDolar = CotizacionDolar.montar({
+        input: '#tipo_cambio_dia',
+        badge: '#estadoDolar',
+        info: '#infoCotizacion',
+        selectTipo: '#tipo_dolar',
+        tipoInicial: 'oficial'
+      });
+
       $('#id_moneda').on('change', function() {
         var opcion = $(this).find('option:selected');
         var esDolar = (opcion.data('esusd') === true || opcion.data('esusd') === 'true');
         var input = $('#tipo_cambio_dia');
-        var badge = $('#estadoDolar');
-        var info = $('#infoCotizacion');
 
         if (esDolar) {
           input.prop('required', true);
           $('#tc_required_star').show();
-          badge.text('Cargando...').removeClass('text-danger text-success').addClass('text-secondary');
-          input.prop('readonly', true);
-
-          fetch('https://dolarapi.com/v1/dolares/oficial', {
-              headers: {
-                'Accept': 'application/json'
-              }
-            })
-            .then(function(r) {
-              if (!r.ok) throw new Error('HTTP ' + r.status);
-              return r.json();
-            })
-            .then(function(d) {
-              if (!d.venta) throw new Error('Sin venta');
-              input.val(parseFloat(d.venta).toFixed(2));
-              badge.html('Dólar Oficial')
-                .removeClass('text-secondary text-danger')
-                .addClass('text-success');
-              var fecha = d.fechaActualizacion ?
-                ' — Act: ' + new Date(d.fechaActualizacion).toLocaleString('es-AR') :
-                '';
-              info.html(
-                'Compra: <strong>$' + parseFloat(d.compra).toLocaleString('es-AR', {
-                  minimumFractionDigits: 2
-                }) + '</strong>' +
-                ' | Venta: <strong>$' + parseFloat(d.venta).toLocaleString('es-AR', {
-                  minimumFractionDigits: 2
-                }) + '</strong>' +
-                fecha
-              );
-              input.prop('readonly', false);
-            })
-            .catch(function() {
-              badge.text('Error al obtener')
-                .removeClass('text-secondary text-success')
-                .addClass('text-danger');
-              info.html('<span class="text-danger">No se pudo obtener la cotización. Ingrésela manualmente.</span>');
-              input.val('').prop('readonly', false);
-            });
+          cotDolar.mostrar(true);
+          cotDolar.cargar();
 
         } else if (opcion.val() === '') {
+          cotDolar.mostrar(false);
           input.val('').prop('readonly', false).prop('required', false);
           $('#tc_required_star').hide();
-          badge.text('').removeClass('text-danger text-success text-secondary');
-          info.html('');
+          $('#estadoDolar').text('').removeClass('text-danger text-success text-secondary');
+          $('#infoCotizacion').html('');
 
         } else {
+          cotDolar.mostrar(false);
           input.val(1).prop('readonly', false).prop('required', false);
           $('#tc_required_star').hide();
-          badge.text('Ingreso manual')
+          $('#estadoDolar').text('Ingreso manual')
             .removeClass('text-danger text-success')
             .addClass('text-secondary');
-          info.html('<span class="text-muted">Ingrese la cotización manualmente.</span>');
+          $('#infoCotizacion').html('<span class="text-muted">Ingrese la cotización manualmente.</span>');
         }
       }).trigger('change');
 

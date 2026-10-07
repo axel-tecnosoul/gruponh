@@ -5,6 +5,7 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+require_once __DIR__ . '/FacturacionARCA.php';
 
 $id = !empty($_GET['id']) ? (int)$_GET['id'] : null;
 if (!$id) {
@@ -39,6 +40,11 @@ if (!$data) {
 
 $estadoTexto = ($data['id_estado'] == 3) ? 'Definitivo' : 'Temporal';
 
+$proyectoPrefijo = '';
+if (!empty($data['proyecto']) && strpos($data['proyecto'], ':') !== false) {
+  $proyectoPrefijo = substr($data['proyecto'], 0, strpos($data['proyecto'], ':'));
+}
+
 $qDet = $pdo->prepare("SELECT d.*, cc.descripcion AS concepto_text
     FROM facturas_venta_detalle d
     INNER JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable
@@ -48,7 +54,7 @@ $detalles = $qDet->fetchAll(PDO::FETCH_ASSOC);
 
 $detallesConImputaciones = [];
 foreach ($detalles as $det) {
-  $qImp = $pdo->prepare("SELECT ca.id, ca.monto_total, ca.fecha_emision,
+  $qImp = $pdo->prepare("SELECT ca.id, ca.nro_certificado, ca.nro_revision, ca.monto_total, ca.fecha_emision,
           ca.aprobado_cliente, cm.revision
       FROM facturas_venta_detalle_x_certificados_avance fvdxca
       INNER JOIN certificados_avances_cabecera ca ON ca.id = fvdxca.id_certificado_avance
@@ -72,10 +78,25 @@ $qReg = $pdo->prepare("SELECT o.*, COALESCE(o.regimen_text, rf.regimen) AS regim
 $qReg->execute([$id]);
 $regimenes = $qReg->fetchAll(PDO::FETCH_ASSOC);
 
+$comprobanteARCA = null;
+if (FacturacionARCA::habilitada()) {
+  $qArca = $pdo->prepare(
+    "SELECT * FROM comprobantes_arca
+     WHERE id_factura_venta = ? ORDER BY id DESC LIMIT 1"
+  );
+  $qArca->execute([$id]);
+  $comprobanteARCA = $qArca->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
 Database::disconnect();
 
 function fmtV($val) {
   return number_format((float)$val, 2, ',', '.');
+}
+$mensajeARCA = $_SESSION['factura_arca_mensaje'] ?? null;
+unset($_SESSION['factura_arca_mensaje']);
+if (empty($_SESSION['csrf_factura_arca'])) {
+  $_SESSION['csrf_factura_arca'] = bin2hex(random_bytes(32));
 }
 ?>
 <!DOCTYPE html>
@@ -102,6 +123,39 @@ function fmtV($val) {
                   </h5>
                 </div>
                 <div class="card-body">
+
+                  <?php if ($mensajeARCA): ?>
+                    <div class="alert alert-<?= htmlspecialchars($mensajeARCA['tipo'] ?? 'info') ?>">
+                      <?= htmlspecialchars($mensajeARCA['texto'] ?? '') ?>
+                    </div>
+                  <?php endif; ?>
+
+                  <h6 class="mb-3 font-weight-bold">Estado ARCA</h6>
+                  <?php if ($comprobanteARCA): ?>
+                    <div class="form-group row mt-1">
+                      <label class="col-sm-2 font-weight-bold">Estado fiscal</label>
+                      <div class="col-sm-4"><?= htmlspecialchars(ucfirst($comprobanteARCA['estado'])) ?>
+                        (<?= !empty($comprobanteARCA['homologacion']) ? 'Homologación' : 'Producción' ?>)
+                      </div>
+                      <label class="col-sm-2 font-weight-bold">CAE</label>
+                      <div class="col-sm-4"><?= htmlspecialchars($comprobanteARCA['cae'] ?: 'Sin CAE') ?></div>
+                    </div>
+                    <?php if (!empty($comprobanteARCA['fecha_vencimiento_cae'])): ?>
+                      <div class="form-group row mt-1">
+                        <label class="col-sm-2 font-weight-bold">Vencimiento CAE</label>
+                        <div class="col-sm-4"><?= date('d/m/Y', strtotime($comprobanteARCA['fecha_vencimiento_cae'])) ?></div>
+                      </div>
+                    <?php endif; ?>
+                    <?php if (!empty($comprobanteARCA['ultimo_error'])): ?>
+                      <div class="alert alert-warning"><?= nl2br(htmlspecialchars($comprobanteARCA['ultimo_error'])) ?></div>
+                    <?php endif; ?>
+                  <?php else: ?>
+                    <?php if (FacturacionARCA::habilitada()): ?>
+                      <p class="text-muted">Todavía no hay un intento de emisión ARCA asociado a esta factura.</p>
+                    <?php else: ?>
+                      <p class="text-muted">La factura está guardada localmente. La comunicación con ARCA está deshabilitada.</p>
+                    <?php endif; ?>
+                  <?php endif; ?>
 
                   <h6 class="mb-3 font-weight-bold">Datos de la Factura</h6>
                   <div class="form-group row mt-1">
@@ -196,7 +250,7 @@ function fmtV($val) {
                                 $impsHtml .= '</tr></thead><tbody>';
                                 foreach ($det['imputaciones'] as $imp) {
                                   $impsHtml .= '<tr>';
-                                  $impsHtml .= '<td style="padding:2px 4px;">Cert. #' . htmlspecialchars($imp['id']) . ' (Rev ' . htmlspecialchars($imp['revision']) . ')</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;">' . htmlspecialchars(fmtCertificadoAvance($imp['nro_certificado'], $imp['nro_revision'])) . '</td>';
                                   $impsHtml .= '<td style="padding:2px 4px;text-align:right;">1</td>';
                                   $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
                                   $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
@@ -208,7 +262,7 @@ function fmtV($val) {
                             <tr>
                               <td><?= $i + 1 ?></td>
                               <td><?= htmlspecialchars($det['concepto_text']) ?></td>
-                              <td><?= htmlspecialchars($det['descripcion'] ?? '') ?></td>
+                              <td><?= $proyectoPrefijo ? htmlspecialchars($proyectoPrefijo) . ' ' : '' ?><?= htmlspecialchars($det['descripcion'] ?? '') ?></td>
                               <td><?= $impsHtml ?></td>
                               <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($subtotalDet) ?></td>
                             </tr>
@@ -277,6 +331,24 @@ function fmtV($val) {
                 </div>
                 <div class="card-footer">
                   <div class="col-sm-12 text-center">
+                    <?php if ($comprobanteARCA && $comprobanteARCA['estado'] === 'autorizado'): ?>
+                      <a href="imprimirFacturaVentaARCA.php?id=<?= $id ?>" target="_blank" class="btn btn-success">Descargar factura PDF</a>
+                    <?php elseif ($comprobanteARCA && in_array($comprobanteARCA['estado'], ['incierto', 'enviando'], true)): ?>
+                      <form method="post" action="conciliarFacturaVentaARCA.php" class="d-inline">
+                        <input type="hidden" name="id_factura" value="<?= $id ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_factura_arca']) ?>">
+                        <button type="submit" class="btn btn-warning">Consultar y conciliar con ARCA</button>
+                      </form>
+                    <?php elseif ($comprobanteARCA && $comprobanteARCA['estado'] === 'pendiente' && (int)$data['id_estado'] === 3): ?>
+                      <form method="post" action="emitirFacturaVentaARCA.php" class="d-inline">
+                        <input type="hidden" name="id_factura" value="<?= $id ?>">
+                        <input type="hidden" name="clave_operacion" value="<?= htmlspecialchars($comprobanteARCA['clave_operacion']) ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_factura_arca']) ?>">
+                        <button type="submit" class="btn btn-primary">Continuar emisión ARCA</button>
+                      </form>
+                    <?php elseif ((int)$data['id_estado'] === 3): ?>
+                      <a href="imprimirFacturaVentaARCA.php?id=<?= $id ?>" target="_blank" class="btn btn-success">Descargar copia PDF</a>
+                    <?php endif; ?>
                     <?php if ($data['id_estado'] != 3 && $data['pagada'] != 1 && $data['exportada'] != 1): ?>
                       <a href="nuevaFacturaVenta.php?id=<?= $id ?>" class="btn btn-primary">Modificar</a>
                     <?php endif; ?>

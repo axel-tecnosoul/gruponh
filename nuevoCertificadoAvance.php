@@ -31,14 +31,7 @@ if (empty($monedaMaster) || (int) ($monedaMaster['aprobado_cliente'] ?? 0) !== 1
   die("El Certificado Maestro debe estar aprobado antes de crear un Certificado de Avance.");
 }
 
-$esDolar = false;
-if (!empty($monedaMaster) && (stripos($monedaMaster["moneda"], 'dolar') !== false ||
-    stripos($monedaMaster["moneda"], 'dólar') !== false ||
-    stripos($monedaMaster["moneda"], 'usd')   !== false ||
-    stripos($monedaMaster["moneda"], 'u$d')   !== false ||
-    stripos($monedaMaster["moneda"], 'u$s')   !== false)) {
-  $esDolar = true;
-}
+$esDolar = esMonedaDolar($monedaMaster['moneda'] ?? '');
 Database::disconnect();
 
 if (!empty($_POST)) {
@@ -55,7 +48,7 @@ if (!empty($_POST)) {
     $nroCertificado = 1;
   }
 
-  $sql = "INSERT INTO certificados_avances_cabecera (id_certificado_maestro, nro_certificado, nro_revision, fecha_emision, fecha_inicio, fecha_fin, cotizacion_dolar, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,1,?,?,?,?,0,0,0,0,0,0,?)";
+  $sql = "INSERT INTO certificados_avances_cabecera (id_certificado_maestro, nro_certificado, nro_revision, fecha_emision, fecha_inicio, fecha_fin, cotizacion_dolar, monto_total, monto_acumulado_avances, monto_acumulado_anticipos, monto_acumulado_desacopios, monto_acumulado_descuentos, monto_acumulado_ajustes, observaciones) VALUES (?,?,0,?,?,?,?,0,0,0,0,0,0,?)";
   $q = $pdo->prepare($sql);
    $q->execute([$idCertificadoMaestro, $nroCertificado, $_POST["fecha_emision"], $_POST["fecha_inicio"], $_POST["fecha_fin"], !empty($_POST["cotizacion_dolar"]) ? $_POST["cotizacion_dolar"] : 0, $_POST["observaciones"]]);
 
@@ -118,9 +111,13 @@ if (!empty($_POST)) {
                             <label class="col-sm-3 col-form-label">Fecha Fin(*)</label>
                             <div class="col-sm-9"><input name="fecha_fin" id="fecha_fin" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=$fechaFinSugerida?>"></div>
                           </div>
+                          <?php if ($esDolar): ?>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Cotización Dólar</label>
                             <div class="col-sm-9">
+                              <!-- La moneda ya viene del Certificado Maestro, así que el selector
+                                   se muestra siempre y no depende de que el JS lo revele -->
+                              <select id="tipo_dolar" class="form-control mb-2"></select>
                               <div class="input-group">
                                 <input name="cotizacion_dolar" id="cotizacion_dolar" type="number" step="0.01" min="0" class="form-control" placeholder="">
                                 <div class="input-group-append">
@@ -128,8 +125,10 @@ if (!empty($_POST)) {
                                 </div>
                               </div>
                               <small id="infoCotizacion" class="text-muted"></small>
+                              <small class="text-muted d-block">Moneda del certificado maestro: <strong><?= htmlspecialchars((string)($monedaMaster['moneda'] ?? '')) ?></strong></small>
                             </div>
                           </div>
+                          <?php endif; ?>
                           <!-- <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Monto total(*)</label>
                             <div class="col-sm-9"><input name="monto_total" type="number" step="0.01" min="0" class="form-control" required="required" value=""></div>
@@ -180,6 +179,7 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
+<script src="assets/js/cotizacion-dolar.js"></script>
     <!-- Plugin used-->
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
@@ -267,41 +267,18 @@ if (!empty($_POST)) {
 			}
 		});
 
-		var esDolar = <?= $esDolar ? 'true' : 'false' ?>;
-		if (esDolar) {
-			var badge = $('#estadoDolar');
-			var input = $('#cotizacion_dolar');
-			var info = $('#infoCotizacion');
-			badge.text('Cargando...').removeClass('text-danger text-success').addClass('text-secondary');
-			input.prop('readonly', true);
-			fetch('https://dolarapi.com/v1/dolares/blue', {
-					headers: {
-						'Accept': 'application/json'
-					}
-				})
-				.then(function(r) {
-					if (!r.ok) throw new Error('HTTP ' + r.status);
-					return r.json();
-				})
-				.then(function(d) {
-					if (!d.venta) throw new Error('Sin venta');
-					input.val(parseFloat(d.venta).toFixed(2));
-					badge.html('Dólar Blue').removeClass('text-secondary text-danger').addClass('text-success');
-					var fecha = d.fechaActualizacion ? ' — Act: ' + new Date(d.fechaActualizacion).toLocaleString('es-AR') : '';
-					info.html('Compra: <strong>$' + parseFloat(d.compra).toLocaleString('es-AR', {
-							minimumFractionDigits: 2
-						}) + '</strong>' +
-						' | Venta: <strong>$' + parseFloat(d.venta).toLocaleString('es-AR', {
-							minimumFractionDigits: 2
-						}) + '</strong>' + fecha);
-					input.prop('readonly', false);
-				})
-				.catch(function() {
-					badge.text('Error al obtener').removeClass('text-secondary text-success').addClass('text-danger');
-					info.html('<span class="text-danger">No se pudo obtener la cotización. Ingrésela manualmente.</span>');
-					input.val('').prop('readonly', false);
-				});
-		}
+		<?php if ($esDolar): ?>
+		// Cotización del dólar: valor del día anterior del tipo elegido (ver assets/js/cotizacion-dolar.js).
+		// El selector de tipo ya está visible: acá solo se trae el valor.
+		var cotDolar = CotizacionDolar.montar({
+			input: '#cotizacion_dolar',
+			badge: '#estadoDolar',
+			info: '#infoCotizacion',
+			selectTipo: '#tipo_dolar',
+			tipoInicial: 'blue'
+		});
+		cotDolar.cargar();
+		<?php endif; ?>
 		</script>
       <!-- Plugin used-->
 	
