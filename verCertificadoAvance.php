@@ -118,7 +118,7 @@ if (!empty($_POST)) {
                               <div class="dt-ext table-responsive">
                                   <div id="detalle_ca_ver">
                                   <table class="table table-sm table-bordered display" id="dataTables-example667">
-                                  <thead>
+                                  <thead class="thead-light">
                                     <tr>
                                       <th class="d-none">ID</th>
                                       <th>Posición</th>
@@ -179,7 +179,7 @@ if (!empty($_POST)) {
                             <div class="col-sm-12">
                               <div class="dt-ext table-responsive">
                                 <table class="table table-sm table-bordered display" id="dataTables-example668">
-                                  <thead>
+                                  <thead class="thead-light">
                                     <tr>
                                       <th class="d-none">ID</th>
                                       <th>Observación</th>
@@ -422,7 +422,7 @@ if (!empty($_POST)) {
         Object.keys(grupos || {}).forEach(function(clave) {
           var grupo = grupos[clave];
           html += '<div class="table-responsive"><table class="table table-sm table-bordered occ-breakdown-table">';
-          html += '<thead><tr><th>Posición</th><th>Descripcion</th><th>Cantidad</th><th>Incidencia</th>';
+          html += '<thead class="thead-light"><tr><th>Posición</th><th>Descripcion</th><th>Cantidad</th><th>Incidencia</th>';
           if (!esOpVerJs) html += '<th>Precio unitario</th><th>Total CM</th>';
           ['Anterior', 'Actual', 'Acumulado', 'Saldo'].forEach(function(periodo) { html += '<th colspan="' + (esOpVerJs ? 2 : 3) + '" class="avance-periodo">' + periodo + '</th>'; });
           html += '</tr><tr><th></th><th></th><th></th><th></th>' + (!esOpVerJs ? '<th></th><th></th>' : '');
@@ -455,7 +455,7 @@ if (!empty($_POST)) {
 
       function cargarDetalleAgrupadoVer() {
         $.post('get_detalle_certificado_avance.php', {id_certificado_avance: <?= (int) $id ?>}, function(data) {
-          var html = '<div class="table-responsive"><table class="table table-sm table-bordered display" id="tablaDetalleVer"><thead><tr><th>ID</th><th>Posición</th><th>Descripcion</th><th>Cantidad</th>' + (!esOpVerJs ? '<th>Precio unitario</th><th>Descuento</th><th>Subtotal</th>' : '') + '</tr></thead><tbody>';
+          var html = '<div class="table-responsive"><table class="table table-sm table-bordered display" id="tablaDetalleVer"><thead class="thead-light"><tr><th>ID</th><th>Posición</th><th>Descripcion</th><th>Cantidad</th>' + (!esOpVerJs ? '<th>Precio unitario</th><th>Descuento</th><th>Subtotal</th>' : '') + '</tr></thead><tbody>';
           var grupos = data.grupos_por_occ || {};
           (data.occ_detalles || []).forEach(function(occ) {
             html += '<tr><td>' + escapeDetalleVer(occ.id) + '</td><td>' + escapeDetalleVer(occ.posicion) + '</td><td>' + escapeDetalleVer(occ.descripcion) + '</td><td class="text-right">' + formatoDetalleVer(occ.cantidad) + '</td>';
