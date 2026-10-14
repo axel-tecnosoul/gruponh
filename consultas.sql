@@ -726,3 +726,277 @@ CREATE TABLE IF NOT EXISTS `empresas_padrones_retencion` (
   CONSTRAINT `fk_empresas_padrones_retencion_provincia`
     FOREIGN KEY (`id_provincia`) REFERENCES `provincias` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 25: Padrón completo de tipos de comprobante (Excel AFIP 001-104).
+-- Amplía sin reemplazar: conserva filas legacy de `tipos_comprobante` (id 1-6)
+-- y el catálogo parcial de `arca_tipos_comprobante`. 077/078/079 se omiten
+-- por estar vacíos en el Excel. Los tipos MiPyME (201-213) se conservan.
+-- Empresas (configurarEmpresaARCA) lee `arca_tipos_comprobante`;
+-- facturas de compra/venta leen `tipos_comprobante`.
+-- ---------------------------------------------------------------------------
+
+-- 25.1) Ampliar arca_tipos_comprobante (Empresas/ARCA) con el padrón completo.
+INSERT INTO `arca_tipos_comprobante` (`codigo`, `descripcion`) VALUES
+  (1, 'FACTURAS A'),
+  (2, 'NOTAS DE DEBITO A'),
+  (3, 'NOTAS DE CREDITO A'),
+  (4, 'RECIBOS A'),
+  (5, 'NOTAS DE VENTA AL CONTADO A'),
+  (6, 'FACTURAS B'),
+  (7, 'NOTAS DE DEBITO B'),
+  (8, 'NOTAS DE CREDITO B'),
+  (9, 'RECIBOS B'),
+  (10, 'NOTAS DE VENTA AL CONTADO B'),
+  (11, 'FACTURAS C'),
+  (12, 'NOTAS DE DEBITO C'),
+  (13, 'NOTAS DE CREDITO C'),
+  (14, 'DOCUMENTO ADUANERO'),
+  (15, 'RECIBOS C'),
+  (16, 'NOTAS DE VENTA AL CONTADO C'),
+  (19, 'FACTURAS DE EXPORTACION'),
+  (20, 'NOTAS DE DEBITO POR OPERACIONES CON EL EXTERIOR'),
+  (21, 'NOTAS DE CREDITO POR OPERACIONES CON EL EXTERIOR'),
+  (22, 'FACTURAS - PERMISO EXPORTACION SIMPLIFICADO - DTO. 855/97'),
+  (30, 'COMPROBANTES DE COMPRA DE BIENES USADOS'),
+  (31, 'MANDATO - CONSIGNACION'),
+  (32, 'COMPROBANTES PARA RECICLAR MATERIALES'),
+  (34, 'COMPROBANTES A DEL APARTADO A INCISO F R G N 1415'),
+  (35, 'COMPROBANTES B DEL ANEXO I, APARTADO A, INC. F), RG N 1415'),
+  (36, 'COMPROBANTES C DEL ANEXO I, APARTADO A, INC. F), R.G. N 1415'),
+  (37, 'NOTAS DE DEBITO O DOCUMENTO EQUIVALENTE QUE CUMPLAN CON LA R.G. N 1415'),
+  (38, 'NOTAS DE CREDITO O DOCUMENTO EQUIVALENTE QUE CUMPLAN CON LA R.G. N 1415'),
+  (39, 'OTROS COMPROBANTES A QUE CUMPLEN CON LA R G 1415'),
+  (40, 'OTROS COMPROBANTES B QUE CUMPLAN CON LA R.G. N 1415'),
+  (41, 'OTROS COMPROBANTES C QUE CUMPLAN CON LA R.G. N 1415'),
+  (50, 'RECIBO FACTURA A REGIMEN DE FACTURA DE CREDITO'),
+  (51, 'FACTURAS M'),
+  (52, 'NOTAS DE DEBITO M'),
+  (53, 'NOTAS DE CREDITO M'),
+  (54, 'RECIBOS M'),
+  (55, 'NOTAS DE VENTA AL CONTADO M'),
+  (56, 'COMPROBANTES M DEL ANEXO I APARTADO A INC F R G N 1415'),
+  (57, 'OTROS COMPROBANTES M QUE CUMPLAN CON LA R G N 1415'),
+  (58, 'CUENTAS DE VENTA Y LIQUIDO PRODUCTO M'),
+  (59, 'LIQUIDACIONES M'),
+  (60, 'CUENTAS DE VENTA Y LIQUIDO PRODUCTO A'),
+  (61, 'CUENTAS DE VENTA Y LIQUIDO PRODUCTO B'),
+  (63, 'LIQUIDACIONES A'),
+  (64, 'LIQUIDACIONES B'),
+  (65, 'NOTAS DE CREDITO DE COMPROBANTES CON COD. 34, 39, 58, 59, 60, 63, 96, 97'),
+  (66, 'DESPACHO DE IMPORTACION'),
+  (67, 'IMPORTACION DE SERVICIOS'),
+  (68, 'LIQUIDACION C'),
+  (70, 'RECIBOS FACTURA DE CREDITO'),
+  (71, 'CREDITO FISCAL POR CONTRIBUCIONES PATRONALES'),
+  (73, 'FORMULARIO 1116 RT'),
+  (74, 'CARTA DE PORTE PARA EL TRANSPORTE AUTOMOTOR PARA GRANOS'),
+  (75, 'CARTA DE PORTE PARA EL TRANSPORTE FERROVIARIO PARA GRANOS'),
+  (80, 'COMPROBANTE DIARIO DE CIERRE (ZETA)'),
+  (81, 'TIQUE FACTURA A CONTROLADORES FISCALES'),
+  (82, 'TIQUE - FACTURA B'),
+  (83, 'TIQUE'),
+  (84, 'COMPROBANTE FACTURA DE SERVICIOS PUBLICOS INTERESES FINANCIEROS'),
+  (85, 'NOTA DE CREDITO SERVICIOS PUBLICOS NOTA DE CREDITO CONTROLADORES FISCALES'),
+  (86, 'NOTA DE DEBITO SERVICIOS PUBLICOS'),
+  (87, 'OTROS COMPROBANTES - SERVICIOS DEL EXTERIOR'),
+  (88, 'OTROS COMPROBANTES - DOCUMENTOS EXCEPTUADOS / REMITO ELECTRONICO'),
+  (89, 'OTROS COMPROBANTES - DOCUMENTOS EXCEPTUADOS - NOTAS DE DEBITO / RESUMEN DE DATOS'),
+  (90, 'OTROS COMPROBANTES - DOCUMENTOS EXCEPTUADOS - NOTAS DE CREDITO'),
+  (91, 'REMITOS R'),
+  (92, 'AJUSTES CONTABLES QUE INCREMENTAN EL DEBITO FISCAL'),
+  (93, 'AJUSTES CONTABLES QUE DISMINUYEN EL DEBITO FISCAL'),
+  (94, 'AJUSTES CONTABLES QUE INCREMENTAN EL CREDITO FISCAL'),
+  (95, 'AJUSTES CONTABLES QUE DISMINUYEN EL CREDITO FISCAL'),
+  (96, 'FORMULARIO 1116 B'),
+  (97, 'FORMULARIO 1116 C'),
+  (99, 'OTROS COMP QUE NO CUMPLEN CON LA R G 3419 Y SUS MODIF'),
+  (101, 'AJUSTE ANUAL PROVENIENTE DE LA D J DEL IVA POSITIVO'),
+  (102, 'AJUSTE ANUAL PROVENIENTE DE LA D J DEL IVA NEGATIVO'),
+  (103, 'NOTA DE ASIGNACION'),
+  (104, 'NOTA DE CREDITO DE ASIGNACION'),
+  (201, 'Factura de Crédito Electrónica MiPyME A'),
+  (202, 'Nota de Débito Electrónica MiPyME A'),
+  (203, 'Nota de Crédito Electrónica MiPyME A'),
+  (206, 'Factura de Crédito Electrónica MiPyME B'),
+  (207, 'Nota de Débito Electrónica MiPyME B'),
+  (208, 'Nota de Crédito Electrónica MiPyME B'),
+  (211, 'Factura de Crédito Electrónica MiPyME C'),
+  (212, 'Nota de Débito Electrónica MiPyME C'),
+  (213, 'Nota de Crédito Electrónica MiPyME C')
+ON DUPLICATE KEY UPDATE `descripcion` = VALUES(`descripcion`);
+
+-- 25.2) Ampliar tipos_comprobante (facturas compra/venta) sin borrar id 1-6.
+-- Se agregan columnas de forma idempotente (mismo patrón que CORRECCIÓN 23/24).
+SET @tc_codigo_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'tipos_comprobante'
+    AND COLUMN_NAME = 'codigo_afip'
+);
+SET @tc_codigo_sql := IF(
+  @tc_codigo_exists = 0,
+  'ALTER TABLE `tipos_comprobante` ADD COLUMN `codigo_afip` INT NULL',
+  'SELECT 1'
+);
+PREPARE tc_codigo_statement FROM @tc_codigo_sql;
+EXECUTE tc_codigo_statement;
+DEALLOCATE PREPARE tc_codigo_statement;
+
+SET @tc_activo_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'tipos_comprobante'
+    AND COLUMN_NAME = 'activo'
+);
+SET @tc_activo_sql := IF(
+  @tc_activo_exists = 0,
+  'ALTER TABLE `tipos_comprobante` ADD COLUMN `activo` TINYINT(1) NOT NULL DEFAULT 1',
+  'SELECT 1'
+);
+PREPARE tc_activo_statement FROM @tc_activo_sql;
+EXECUTE tc_activo_statement;
+DEALLOCATE PREPARE tc_activo_statement;
+
+SET @tc_codigo_uq_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'tipos_comprobante'
+    AND INDEX_NAME = 'uq_tipos_comprobante_codigo'
+);
+SET @tc_codigo_uq_sql := IF(
+  @tc_codigo_uq_exists = 0,
+  'ALTER TABLE `tipos_comprobante` ADD UNIQUE KEY `uq_tipos_comprobante_codigo` (`codigo_afip`)',
+  'SELECT 1'
+);
+PREPARE tc_codigo_uq_statement FROM @tc_codigo_uq_sql;
+EXECUTE tc_codigo_uq_statement;
+DEALLOCATE PREPARE tc_codigo_uq_statement;
+
+-- 25.3) Insertar el padrón con id >= 1000 (1000+código) para no chocar
+-- con los legacy 1-6 referenciados por facturas_compra/facturas_venta.
+INSERT IGNORE INTO `tipos_comprobante` (`id`, `tipo`, `codigo_afip`, `activo`) VALUES
+  (1001, 'FACTURAS A', 1, 1),
+  (1002, 'NOTAS DE DEBITO A', 2, 1),
+  (1003, 'NOTAS DE CREDITO A', 3, 1),
+  (1004, 'RECIBOS A', 4, 1),
+  (1005, 'NOTAS DE VENTA AL CONTADO A', 5, 1),
+  (1006, 'FACTURAS B', 6, 1),
+  (1007, 'NOTAS DE DEBITO B', 7, 1),
+  (1008, 'NOTAS DE CREDITO B', 8, 1),
+  (1009, 'RECIBOS B', 9, 1),
+  (1010, 'NOTAS DE VENTA AL CONTADO B', 10, 1),
+  (1011, 'FACTURAS C', 11, 1),
+  (1012, 'NOTAS DE DEBITO C', 12, 1),
+  (1013, 'NOTAS DE CREDITO C', 13, 1),
+  (1014, 'DOCUMENTO ADUANERO', 14, 1),
+  (1015, 'RECIBOS C', 15, 1),
+  (1016, 'NOTAS DE VENTA AL CONTADO C', 16, 1),
+  (1019, 'FACTURAS DE EXPORTACION', 19, 1),
+  (1020, 'NOTAS DE DEBITO POR OPERACIONES CON EL EXTERIOR', 20, 1),
+  (1021, 'NOTAS DE CREDITO POR OPERACIONES CON EL EXTERIOR', 21, 1),
+  (1022, 'FACTURAS - PERMISO EXPORTACION SIMPLIFICADO - DTO. 855/97', 22, 1),
+  (1030, 'COMPROBANTES DE COMPRA DE BIENES USADOS', 30, 1),
+  (1031, 'MANDATO - CONSIGNACION', 31, 1),
+  (1032, 'COMPROBANTES PARA RECICLAR MATERIALES', 32, 1),
+  (1034, 'COMPROBANTES A DEL APARTADO A INCISO F R G N 1415', 34, 1),
+  (1035, 'COMPROBANTES B DEL ANEXO I, APARTADO A, INC. F), RG N 1415', 35, 1),
+  (1036, 'COMPROBANTES C DEL ANEXO I, APARTADO A, INC. F), R.G. N 1415', 36, 1),
+  (1037, 'NOTAS DE DEBITO O DOCUMENTO EQUIVALENTE QUE CUMPLAN CON LA R.G. N 1415', 37, 1),
+  (1038, 'NOTAS DE CREDITO O DOCUMENTO EQUIVALENTE QUE CUMPLAN CON LA R.G. N 1415', 38, 1),
+  (1039, 'OTROS COMPROBANTES A QUE CUMPLEN CON LA R G 1415', 39, 1),
+  (1040, 'OTROS COMPROBANTES B QUE CUMPLAN CON LA R.G. N 1415', 40, 1),
+  (1041, 'OTROS COMPROBANTES C QUE CUMPLAN CON LA R.G. N 1415', 41, 1),
+  (1050, 'RECIBO FACTURA A REGIMEN DE FACTURA DE CREDITO', 50, 1),
+  (1051, 'FACTURAS M', 51, 1),
+  (1052, 'NOTAS DE DEBITO M', 52, 1),
+  (1053, 'NOTAS DE CREDITO M', 53, 1),
+  (1054, 'RECIBOS M', 54, 1),
+  (1055, 'NOTAS DE VENTA AL CONTADO M', 55, 1),
+  (1056, 'COMPROBANTES M DEL ANEXO I APARTADO A INC F R G N 1415', 56, 1),
+  (1057, 'OTROS COMPROBANTES M QUE CUMPLAN CON LA R G N 1415', 57, 1),
+  (1058, 'CUENTAS DE VENTA Y LIQUIDO PRODUCTO M', 58, 1),
+  (1059, 'LIQUIDACIONES M', 59, 1),
+  (1060, 'CUENTAS DE VENTA Y LIQUIDO PRODUCTO A', 60, 1),
+  (1061, 'CUENTAS DE VENTA Y LIQUIDO PRODUCTO B', 61, 1),
+  (1063, 'LIQUIDACIONES A', 63, 1),
+  (1064, 'LIQUIDACIONES B', 64, 1),
+  (1065, 'NOTAS DE CREDITO DE COMPROBANTES CON COD. 34, 39, 58, 59, 60, 63, 96, 97', 65, 1),
+  (1066, 'DESPACHO DE IMPORTACION', 66, 1),
+  (1067, 'IMPORTACION DE SERVICIOS', 67, 1),
+  (1068, 'LIQUIDACION C', 68, 1),
+  (1070, 'RECIBOS FACTURA DE CREDITO', 70, 1),
+  (1071, 'CREDITO FISCAL POR CONTRIBUCIONES PATRONALES', 71, 1),
+  (1073, 'FORMULARIO 1116 RT', 73, 1),
+  (1074, 'CARTA DE PORTE PARA EL TRANSPORTE AUTOMOTOR PARA GRANOS', 74, 1),
+  (1075, 'CARTA DE PORTE PARA EL TRANSPORTE FERROVIARIO PARA GRANOS', 75, 1),
+  (1080, 'COMPROBANTE DIARIO DE CIERRE (ZETA)', 80, 1),
+  (1081, 'TIQUE FACTURA A CONTROLADORES FISCALES', 81, 1),
+  (1082, 'TIQUE - FACTURA B', 82, 1),
+  (1083, 'TIQUE', 83, 1),
+  (1084, 'COMPROBANTE FACTURA DE SERVICIOS PUBLICOS INTERESES FINANCIEROS', 84, 1),
+  (1085, 'NOTA DE CREDITO SERVICIOS PUBLICOS NOTA DE CREDITO CONTROLADORES FISCALES', 85, 1),
+  (1086, 'NOTA DE DEBITO SERVICIOS PUBLICOS', 86, 1),
+  (1087, 'OTROS COMPROBANTES - SERVICIOS DEL EXTERIOR', 87, 1),
+  (1088, 'OTROS COMPROBANTES - DOCUMENTOS EXCEPTUADOS / REMITO ELECTRONICO', 88, 1),
+  (1089, 'OTROS COMPROBANTES - DOCUMENTOS EXCEPTUADOS - NOTAS DE DEBITO / RESUMEN DE DATOS', 89, 1),
+  (1090, 'OTROS COMPROBANTES - DOCUMENTOS EXCEPTUADOS - NOTAS DE CREDITO', 90, 1),
+  (1091, 'REMITOS R', 91, 1),
+  (1092, 'AJUSTES CONTABLES QUE INCREMENTAN EL DEBITO FISCAL', 92, 1),
+  (1093, 'AJUSTES CONTABLES QUE DISMINUYEN EL DEBITO FISCAL', 93, 1),
+  (1094, 'AJUSTES CONTABLES QUE INCREMENTAN EL CREDITO FISCAL', 94, 1),
+  (1095, 'AJUSTES CONTABLES QUE DISMINUYEN EL CREDITO FISCAL', 95, 1),
+  (1096, 'FORMULARIO 1116 B', 96, 1),
+  (1097, 'FORMULARIO 1116 C', 97, 1),
+  (1099, 'OTROS COMP QUE NO CUMPLEN CON LA R G 3419 Y SUS MODIF', 99, 1),
+  (1101, 'AJUSTE ANUAL PROVENIENTE DE LA D J DEL IVA POSITIVO', 101, 1),
+  (1102, 'AJUSTE ANUAL PROVENIENTE DE LA D J DEL IVA NEGATIVO', 102, 1),
+  (1103, 'NOTA DE ASIGNACION', 103, 1),
+  (1104, 'NOTA DE CREDITO DE ASIGNACION', 104, 1);
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 26: Persistir montos por imputación en factura de venta.
+-- facturas_venta_detalle_x_certificados_avance solo guardaba ids, por eso al
+-- editar el lápiz mostraba 1 x monto_total y perdía lo tipeado.
+-- ---------------------------------------------------------------------------
+SET @fvxca_cant_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'facturas_venta_detalle_x_certificados_avance'
+    AND COLUMN_NAME = 'cantidad'
+);
+SET @fvxca_cant_sql := IF(
+  @fvxca_cant_exists = 0,
+  'ALTER TABLE `facturas_venta_detalle_x_certificados_avance` ADD COLUMN `cantidad` DOUBLE NOT NULL DEFAULT 1 AFTER `id_certificado_avance`',
+  'SELECT 1'
+);
+PREPARE fvxca_cant_statement FROM @fvxca_cant_sql;
+EXECUTE fvxca_cant_statement;
+DEALLOCATE PREPARE fvxca_cant_statement;
+
+SET @fvxca_prec_exists := (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'facturas_venta_detalle_x_certificados_avance'
+    AND COLUMN_NAME = 'precio'
+);
+SET @fvxca_prec_sql := IF(
+  @fvxca_prec_exists = 0,
+  'ALTER TABLE `facturas_venta_detalle_x_certificados_avance` ADD COLUMN `precio` DOUBLE NOT NULL DEFAULT 0 AFTER `cantidad`',
+  'SELECT 1'
+);
+PREPARE fvxca_prec_statement FROM @fvxca_prec_sql;
+EXECUTE fvxca_prec_statement;
+DEALLOCATE PREPARE fvxca_prec_statement;
+
+-- Backfill histórico: precio = monto_total del CA, cantidad = 1.
+UPDATE `facturas_venta_detalle_x_certificados_avance` fvxca
+INNER JOIN `certificados_avances_cabecera` ca ON ca.`id` = fvxca.`id_certificado_avance`
+SET fvxca.`precio` = ca.`monto_total`,
+    fvxca.`cantidad` = 1
+WHERE fvxca.`precio` IS NULL OR fvxca.`precio` = 0;

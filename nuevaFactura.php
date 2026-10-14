@@ -243,6 +243,42 @@ $fv = function($key, $default = '') use ($facturaData) {
                         </div>
                         <?php endif; ?>
 
+                        <?php
+                        // Punto de venta actual (alta: vacío; edición: prefijo de numero PPPP-NNNNNNNN).
+                        $pvActual = '';
+                        $ncActual = '';
+                        $numeroCompletoPv = $fv('numero');
+                        if (!empty($numeroCompletoPv) && str_contains($numeroCompletoPv, '-')) {
+                          $partesPv = explode('-', $numeroCompletoPv, 2);
+                          $pvActual = ltrim($partesPv[0], '0');
+                          $ncActual = ltrim($partesPv[1], '0');
+                        }
+                        ?>
+                        <div class="form-group row">
+                          <label class="col-sm-4 col-form-label">Punto de venta(*)</label>
+                          <div class="col-sm-8">
+                            <?php if ($vista === 'venta'): ?>
+                            <select name="punto_venta" id="punto_venta" class="js-example-basic-single col-sm-12" required>
+                              <option value="">Seleccione la empresa primero...</option>
+                            </select>
+                            <?php else: ?>
+                            <div class="input-group">
+                              <input name="punto_venta" type="text" maxlength="5"
+                                class="form-control" required
+                                style="width:80px;flex:none;" value="<?= htmlspecialchars($pvActual) ?>"
+                                id="punto_venta" oninput="this.value=this.value.replace(/\D/g,'')">
+                              <div class="input-group-append">
+                                <span class="input-group-text">-</span>
+                              </div>
+                              <input name="nro_comprobante" type="text" maxlength="8"
+                                class="form-control" required
+                                value="<?= htmlspecialchars($ncActual) ?>"
+                                id="nro_comprobante" oninput="this.value=this.value.replace(/\D/g,'')">
+                            </div>
+                            <?php endif; ?>
+                          </div>
+                        </div>
+
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Tipo Comprobante(*)</label>
                           <div class="col-sm-8">
@@ -250,67 +286,17 @@ $fv = function($key, $default = '') use ($facturaData) {
                               <option value="">Seleccione...</option>
                               <?php
                               $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, tipo FROM tipos_comprobante WHERE 1");
+                              $q = $pdo->prepare("SELECT id, tipo, codigo_afip FROM tipos_comprobante WHERE activo = 1 AND codigo_afip IS NOT NULL ORDER BY codigo_afip");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='{$f['id']}'>" . htmlspecialchars($f['tipo']) . "</option>";
+                                $codigoAfip = (int)$f['codigo_afip'];
+                                $letraOpt = letraComprobanteDesdeTipo($f['tipo'], $codigoAfip);
+                                echo "<option value='{$f['id']}' data-codigo='$codigoAfip' data-letra='$letraOpt'>" . str_pad($codigoAfip, 3, '0', STR_PAD_LEFT) . ' - ' . htmlspecialchars($f['tipo']) . "</option>";
                               }
                               Database::disconnect();
                               ?>
                             </select>
-                          </div>
-                        </div>
-
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Letra(*)</label>
-                          <div class="col-sm-8">
-                            <select name="id_letra_comprobante" id="id_letra_comprobante" class="js-example-basic-single col-sm-12" required>
-                              <option value="">Seleccione...</option>
-                              <?php
-                              $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, letra FROM letras_comprobante WHERE 1");
-                              $q->execute();
-                              while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='{$f['id']}'>" . htmlspecialchars($f['letra']) . "</option>";
-                              }
-                              Database::disconnect();
-                              ?>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Número(*)</label>
-                          <div class="col-sm-8">
-                            <div class="input-group">
-                              <?php
-                              $numeroCompleto = $fv('numero');
-                              $pv = '';
-                              $nc = '';
-                              if (!empty($numeroCompleto) && str_contains($numeroCompleto, '-')) {
-                                list($pv, $nc) = explode('-', $numeroCompleto, 2);
-                              }
-                              ?>
-                              <input name="punto_venta" type="text" maxlength="5"
-                                class="form-control" placeholder="0001" required
-                                style="width:80px;flex:none;" value="<?= htmlspecialchars($pv) ?>"
-                                id="punto_venta" list="puntos_venta_sugeridos"
-                                oninput="this.value=this.value.replace(/\D/g,'')">
-                              <?php if ($vista === 'venta'): ?>
-                                <datalist id="puntos_venta_sugeridos"></datalist>
-                              <?php endif; ?>
-                              <div class="input-group-append">
-                                <span class="input-group-text">-</span>
-                              </div>
-                              <input name="nro_comprobante" type="text" maxlength="8"
-                                class="form-control" placeholder="00000001" required
-                                value="<?= htmlspecialchars($nc) ?>"
-                                oninput="this.value=this.value.replace(/\D/g,'')">
-                            </div>
-                            <?php if ($vista === 'venta'): ?>
-                              <small class="form-text text-muted">Al guardar definitivo, ARCA asigna el correlativo y reemplaza el número provisorio.</small>
-                              <small class="form-text text-muted" id="estadoPuntosVentaEmpresa"></small>
-                            <?php endif; ?>
+                            <input type="hidden" name="id_letra_comprobante" id="id_letra_comprobante" value="">
                           </div>
                         </div>
 
@@ -352,9 +338,10 @@ $fv = function($key, $default = '') use ($facturaData) {
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Moneda(*)</label>
                           <div class="col-sm-8">
-                            <?php if ($vista === 'compra' && $ocPreseleccionada): ?>
+                            <?php $monedaBloqueada = ($vista === 'compra' && $ocPreseleccionada) || ($vista === 'venta' && !empty($certIds) && !empty($idMoneda)); ?>
+                            <?php if ($monedaBloqueada): ?>
                               <p class="form-control-plaintext"><?= htmlspecialchars($monedaLabel) ?></p>
-                              <input type="hidden" name="id_moneda" value="<?= (int)$idMoneda ?>">
+                              <input type="hidden" name="id_moneda" id="id_moneda" value="<?= (int)$idMoneda ?>">
                             <?php else: ?>
                             <select name="id_moneda" id="id_moneda"
                               class="js-example-basic-single col-sm-12" required>
@@ -971,20 +958,116 @@ $fv = function($key, $default = '') use ($facturaData) {
     }
 
     // Vuelca a #det_imputaciones las opciones de una lista de ids (o de objetos con id_cd),
-    // tomándolas de data-all-options. No duplica si ya están cargadas.
-    function agregarOpcionesImputaciones(ids) {
+    // tomándolas de data-all-options con fallback a imputaciones_data guardada. No duplica.
+    // Las de distinta moneda que la factura quedan deshabilitadas (visibles, no elegibles),
+    // salvo forzarHabilitadas (edición de un ítem que ya es parte de la factura).
+    function agregarOpcionesImputaciones(ids, forzarHabilitadas) {
       var select = $('#det_imputaciones');
       if (!ids || ids.length === 0) return;
       var opts = JSON.parse(select.attr('data-all-options') || '[]');
       ids.forEach(function (idv) {
         var idCd = (typeof idv === 'object' && idv !== null) ? (idv.id_cd || idv) : idv;
         if (idCd == null || idCd === '') return;
+        var $exist = select.find('option[value="' + idCd + '"]');
         var found = opts.find(function (o) { return o.value == idCd; });
-        if (found && select.find('option[value="' + found.value + '"]').length === 0) {
-          select.append(new Option(found.text, found.value, false, false));
+        if ($exist.length > 0) {
+          if (forzarHabilitadas) {
+            $exist.prop('disabled', false);
+          } else if (found) {
+            $exist.prop('disabled', !imputacionHabilitadaPorMoneda(found.id_moneda));
+          }
+          return;
+        }
+        var texto, valor, deshab;
+        if (found) {
+          texto = found.text;
+          valor = found.value;
+          deshab = !forzarHabilitadas && !imputacionHabilitadaPorMoneda(found.id_moneda);
+        } else {
+          // Fallback: la opción aún no llegó por ajax (edit rápido) — usar el dato guardado.
+          // Ya es parte de la factura, se agrega habilitada.
+          var fb = null;
+          (detalles || []).forEach(function (d) {
+            (d.imputaciones_data || []).forEach(function (imp) {
+              if (imp.id_cd == idCd) { fb = imp; }
+            });
+          });
+          if (!fb) return;
+          texto = fb.concepto_text || ('CA #' + idCd);
+          valor = idCd;
+          deshab = false;
+          opts.push({ value: idCd, text: texto, concepto_text: fb.concepto_text || texto, restante: fb.restante != null ? fb.restante : 1, oc_precio: fb.oc_precio != null ? fb.oc_precio : (fb.precio || 0), id_moneda: '', moneda: '' });
+          select.attr('data-all-options', JSON.stringify(opts));
+        }
+        var optEl = new Option(texto, valor, false, false);
+        optEl.disabled = !!deshab;
+        select.append(optEl);
+      });
+      try { select.trigger('change.select2'); } catch (e) {}
+    }
+
+    // Moneda de la factura (hidden bloqueado o select editable). '' si aún no elegida.
+    function monedaFacturaActual() {
+      var v = $('#id_moneda').val();
+      return (v === undefined || v === null) ? '' : String(v);
+    }
+
+    // ¿El CA puede imputarse en esta factura? Compara por id_moneda.
+    function imputacionHabilitadaPorMoneda(idMonedaCA) {
+      var monedaFv = monedaFacturaActual();
+      if (!monedaFv) return true;
+      if (idMonedaCA === undefined || idMonedaCA === null || idMonedaCA === '') return true;
+      return String(idMonedaCA) === monedaFv;
+    }
+
+    // Re-aplica disabled por moneda a las opciones actuales; saca de la selección
+    // las que queden deshabilitadas (conservando lo tipeado en las restantes).
+    function refrescarDisabledImputaciones() {
+      var select = $('#det_imputaciones');
+      if (!select.length) return;
+      var opts = JSON.parse(select.attr('data-all-options') || '[]');
+      var optMap = {};
+      opts.forEach(function (o) { optMap[o.value] = o; });
+      var seleccion = select.val() || [];
+      var nuevaSel = [];
+      seleccion.forEach(function (val) {
+        var o = optMap[val];
+        if (o ? imputacionHabilitadaPorMoneda(o.id_moneda) : true) {
+          nuevaSel.push(val);
         }
       });
-      select.trigger('change');
+      select.find('option').each(function () {
+        var val = $(this).attr('value');
+        var o = optMap[val];
+        $(this).prop('disabled', o ? !imputacionHabilitadaPorMoneda(o.id_moneda) : false);
+      });
+      try { select.trigger('change.select2'); } catch (e) {}
+      if (nuevaSel.length !== seleccion.length) {
+        var guardados = [];
+        $('#imp-sub-lines .imp-sub-row').each(function () {
+          guardados.push({
+            id_cd: parseInt($(this).data('cd-id')),
+            concepto_text: $(this).find('.imp-sub-label').text().trim(),
+            cantidad: parseFloat($(this).find('.imp-sub-cant').val()) || 0,
+            precio: parseFloat($(this).find('.imp-sub-prec').val()) || 0
+          });
+        });
+        select.val(nuevaSel);
+        var items2 = [];
+        nuevaSel.forEach(function (id) {
+          var o = optMap[id];
+          if (o) {
+            items2.push({
+              id_cd: o.value,
+              concepto_text: o.concepto_text || o.text,
+              nro_oc: o.nro_oc || '',
+              restante: (o.restante != null) ? o.restante : 0,
+              oc_precio: o.oc_precio || 0
+            });
+          }
+        });
+        buildSubLines(items2, guardados);
+      }
     }
 
     // Extrae los ids de imputación de un detalle, tolerate que vengan como ids sueltos
@@ -1089,7 +1172,7 @@ $fv = function($key, $default = '') use ($facturaData) {
       var ivaTotal = 0;
       <?php if ($vista === 'venta'): ?>
       var basesPorAlicuota = {};
-      var esFacturaC = $('#id_letra_comprobante option:selected').text().trim().toUpperCase() === 'C';
+      var esFacturaC = ($('#id_tipo_comprobante option:selected').data('letra') || '').toString().toUpperCase() === 'C';
       detalles.forEach(function(item) {
         var tasa = parseFloat($('#det_concepto option[value="' + item.id_concepto + '"]').data('tasa'));
         if (!Number.isFinite(tasa)) tasa = 21;
@@ -1109,16 +1192,48 @@ $fv = function($key, $default = '') use ($facturaData) {
         basesPorAlicuota[clave] = (basesPorAlicuota[clave] || 0) + Math.round(sub * 100);
       });
       Object.keys(basesPorAlicuota).forEach(function(tasa) {
-        ivaTotal += Math.round(basesPorAlicuota[tasa] * parseFloat(tasa) / 100) / 100;
+        var t = parseFloat(tasa);
+        if (t > 0) {
+          ivaTotal += Math.round(basesPorAlicuota[tasa] * t / (100 + t)) / 100;
+        }
       });
       ivaTotal = Math.round(ivaTotal * 100) / 100;
+      var brutoTotal = subTotal;
+      var netoTotal = Math.round((brutoTotal - ivaTotal) * 100) / 100;
       $('#granIva').text(monedaSimbolo + ' ' + ivaTotal.toFixed(2));
+      $('#granSubtotal').text(monedaSimbolo + ' ' + netoTotal.toFixed(2));
+      $('#granRetenciones').text(monedaSimbolo + ' ' + retTotal.toFixed(2));
+      $('#granTotal').text(monedaSimbolo + ' ' + (brutoTotal + retTotal).toFixed(2));
       <?php else: ?>
       subTotal = parseFloat($('#totalDetalle').text().replace(/[^0-9.-]/g, '')) || 0;
-      <?php endif; ?>
       $('#granSubtotal').text(monedaSimbolo + ' ' + subTotal.toFixed(2));
       $('#granRetenciones').text(monedaSimbolo + ' ' + retTotal.toFixed(2));
       $('#granTotal').text(monedaSimbolo + ' ' + (subTotal + ivaTotal + retTotal).toFixed(2));
+      <?php endif; ?>
+    }
+
+    // Letra derivada del tipo de comprobante (el alta ya no pide letra).
+    var mapaLetras = <?= json_encode((function() {
+      try {
+        $pdoM = Database::connect();
+        $mapa = [];
+        foreach ($pdoM->query("SELECT letra, id FROM letras_comprobante") as $filaM) {
+          $mapa[$filaM['letra']] = (int)$filaM['id'];
+        }
+        Database::disconnect();
+        return $mapa;
+      } catch (Exception $e) {
+        return ['A' => 1, 'B' => 2, 'C' => 3, 'E' => 4, 'X' => 5];
+      }
+    })()) ?>;
+    function actualizarLetraDesdeTipo() {
+      var letra = ($('#id_tipo_comprobante option:selected').data('letra') || '').toString().toUpperCase();
+      if (mapaLetras[letra] !== undefined) {
+        $('#id_letra_comprobante').val(mapaLetras[letra]);
+      } else {
+        $('#id_letra_comprobante').val('');
+      }
+      actualizarGranTotal();
     }
 
     function calcularRetencion() {
@@ -1157,29 +1272,29 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#det_imputaciones option[value="' + id + '"]').remove();
       });
 
-      // Add back current item's options to select2
-      agregarOpcionesImputaciones(idsToAdd);
+      // Add back current item's options to select2 (ya son parte de la factura: habilitadas)
+      agregarOpcionesImputaciones(idsToAdd, true);
 
       $('#det_concepto').val(item.id_concepto).trigger('change');
       $('#det_descripcion').val(item.descripcion || '');
       $('#det_descuento').val(item.porc_descuento || 0);
 
-      // Select imputaciones in select2
-      $('#det_imputaciones').val(selIds).trigger('change');
+      // Select imputaciones in select2 y reconstruir sub-líneas con montos guardados
+      $('#det_imputaciones').val(idsToAdd).trigger('change');
 
-      if ($('#imp-sub-lines .imp-sub-row').length > 0) {
-        if (item.imputaciones_data) {
-          item.imputaciones_data.forEach(function(imp) {
-            var row = $('#imp-sub-lines .imp-sub-row[data-cd-id="' + imp.id_cd + '"]');
-            if (row.length) {
-              row.find('.imp-sub-cant').val(imp.cantidad);
-              row.find('.imp-sub-prec').val(imp.precio);
-            }
-          });
-          actualizarSubTotalesImputacion();
-        }
-      } else if (item.imputaciones_data && item.imputaciones_data.length > 0) {
-        buildSubLines(item.imputaciones_data, item.imputaciones_data);
+      if (item.imputaciones_data && item.imputaciones_data.length > 0) {
+        // Reconstruir directo desde lo guardado para no perder cantidad/precio
+        // aunque data-all-options aún no tenga el CA (ajax en curso).
+        var itemsGuardados = item.imputaciones_data.map(function (imp) {
+          return {
+            id_cd: imp.id_cd,
+            concepto_text: imp.concepto_text,
+            nro_oc: imp.nro_oc || '',
+            restante: (imp.restante != null) ? imp.restante : 1,
+            oc_precio: (imp.oc_precio != null) ? imp.oc_precio : (imp.precio || 0)
+          };
+        });
+        buildSubLines(itemsGuardados, item.imputaciones_data);
       }
 
       $('#btnAgregarDetalle').text('Modificar Ítem');
@@ -1195,7 +1310,7 @@ $fv = function($key, $default = '') use ($facturaData) {
       }
       $('#concepto_arca').on('change', actualizarCamposServicioARCA);
       actualizarCamposServicioARCA();
-      $('#id_letra_comprobante').on('change', actualizarGranTotal);
+      $('#id_tipo_comprobante').on('change', function() { actualizarLetraDesdeTipo(); });
       $('#formFactura').on('submit', function(e) {
         var submitter = e.originalEvent ? e.originalEvent.submitter : null;
         if (!submitter || submitter.name !== 'btn_definitivo' || $('#concepto_arca').val() === '1') {
@@ -1213,39 +1328,56 @@ $fv = function($key, $default = '') use ($facturaData) {
       });
 
       var certVinculados = <?= json_encode(array_values(array_map('intval', (array)($certIds ?? [])))) ?>;
-      $('#id_cuenta_destino').on('change', function() {
-        var idCliente = $(this).val();
+      function cargarImputacionesVenta() {
+        var idCliente = $('#id_cuenta_destino').val();
         var select = $('#det_imputaciones');
+        if (!select.length) return;
         select.empty();
         if (!idCliente) return;
-        $.getJSON('ajax_imputaciones.php?id_cliente=' + idCliente + (certVinculados.length ? '&incluir=' + certVinculados.join(',') : ''), function(data) {
-          var allOpts = [];
-          $.each(data, function(i, row) {
-            var concepto = row.cert_label;
-            var texto = (i + 1) + ' - ' + concepto + ' - CM: ' + row.numero_cm +
-              ' Emitido: ' + row.fecha_emision + ' ' +
-              (row.moneda || '') + parseFloat(row.monto_total).toFixed(2);
-            select.append('<option value="' + row.id + '">' + texto + '</option>');
-            allOpts.push({ value: row.id, text: concepto, concepto_text: concepto, restante: 1, oc_precio: parseFloat(row.monto_total) || 0 });
+        $.getJSON('ajax_imputaciones.php?id_cliente=' + encodeURIComponent(idCliente) + (certVinculados.length ? '&incluir=' + certVinculados.join(',') : ''))
+          .done(function(data) {
+            var allOpts = [];
+            var monedaFv = monedaFacturaActual();
+            $.each(data || [], function(i, row) {
+              var concepto = row.cert_label;
+              var texto = (i + 1) + ' - ' + concepto + ' - CM: ' + row.numero_cm +
+                ' Emitido: ' + row.fecha_emision + ' ' +
+                (row.moneda || '') + parseFloat(row.monto_total).toFixed(2);
+              var idMonedaCA = (row.id_moneda === undefined || row.id_moneda === null) ? '' : row.id_moneda;
+              var otraMoneda = monedaFv && idMonedaCA !== '' && String(idMonedaCA) !== monedaFv;
+              if (otraMoneda) { texto += ' (otra moneda)'; }
+              var optEl = new Option(texto, row.id, false, false);
+              optEl.disabled = !!otraMoneda;
+              select.append(optEl);
+              allOpts.push({ value: row.id, text: concepto, concepto_text: concepto, restante: 1, oc_precio: parseFloat(row.monto_total) || 0, id_moneda: idMonedaCA, moneda: row.moneda || '' });
+            });
+            select.attr('data-all-options', JSON.stringify(allOpts));
+            try { select.trigger('change.select2'); } catch (e) {}
+          })
+          .fail(function() {
+            if (window.console && console.error) { console.error('No se pudieron cargar las imputaciones (ajax_imputaciones).'); }
           });
-          select.attr('data-all-options', JSON.stringify(allOpts));
-        });
-      });
+      }
+      $('#id_cuenta_destino').on('change', cargarImputacionesVenta);
       <?php endif; ?>
 
       // Cotización del dólar: selector de tipo + valor del día anterior (ver assets/js/cotizacion-dolar.js)
-      var cotDolar = CotizacionDolar.montar({
-        input: '#cotizacion',
-        badge: '#estadoDolar',
-        info: '#infoCotizacion',
-        selectTipo: '#tipo_dolar',
-        tipoInicial: 'oficial'
-      });
+      var cotDolar;
+      try {
+        cotDolar = CotizacionDolar.montar({
+          input: '#cotizacion',
+          badge: '#estadoDolar',
+          info: '#infoCotizacion',
+          selectTipo: '#tipo_dolar',
+          tipoInicial: 'oficial'
+        });
+      } catch (e) {
+        if (window.console && console.error) { console.error('CotizacionDolar no disponible, sigo sin cotización automática.'); }
+        cotDolar = { cargar: function () {}, mostrar: function () {} };
+      }
 
-      $('#id_moneda').on('change', function() {
-        var opcion = $(this).find('option:selected');
-        monedaSimbolo = opcion.text() || '$';
-        var esDolar = (opcion.data('esusd') === true || opcion.data('esusd') === 'true');
+      function aplicarMoneda(texto, esDolar) {
+        monedaSimbolo = texto || '$';
         var input = $('#cotizacion');
         var badge = $('#estadoDolar');
         var info = $('#infoCotizacion');
@@ -1256,7 +1388,7 @@ $fv = function($key, $default = '') use ($facturaData) {
           input.prop('required', true).prop('readonly', false);
           $('#labelCotizacion').text('Cotización(*)');
           cotDolar.cargar();
-        } else if (opcion.val() === '') {
+        } else if (texto === '') {
           $('#cotizacionRow').hide();
           cotDolar.mostrar(false);
           input.val('').prop('required', false).prop('readonly', false);
@@ -1271,7 +1403,18 @@ $fv = function($key, $default = '') use ($facturaData) {
           badge.text('No aplica (moneda local)').removeClass('text-danger text-success').addClass('text-secondary');
           info.html('<span class="text-muted">Se informa cotización 1.</span>');
         }
+      }
+
+      $('#id_moneda').on('change', function() {
+        var opcion = $(this).find('option:selected');
+        if (!opcion.length) return;
+        aplicarMoneda(opcion.text(), (opcion.data('esusd') === true || opcion.data('esusd') === 'true'));
+        refrescarDisabledImputaciones();
       });
+      <?php if ($vista === 'venta' && !empty($certIds) && !empty($idMoneda)): ?>
+      // Moneda bloqueada por certificado: aplicar efecto sin select.
+      aplicarMoneda(<?= json_encode($monedaLabel) ?>, <?= esMonedaDolar($monedaLabel) ? 'true' : 'false' ?>);
+      <?php endif; ?>
 
       <?php if (!empty($editMode) && !empty($detallesExistentes)): ?>
       detalles = <?= json_encode($detallesExistentes) ?>;
@@ -1287,7 +1430,9 @@ $fv = function($key, $default = '') use ($facturaData) {
       // Pre-fill select fields
       <?php if (!empty($facturaData)): ?>
       $('#id_tipo_comprobante').val('<?= $fv('id_tipo_comprobante') ?>').trigger('change');
-      $('#id_letra_comprobante').val('<?= $fv('id_letra_comprobante') ?>').trigger('change');
+      <?php if ($vista === 'venta'): ?>
+      var puntoInicial = '<?= htmlspecialchars($pvActual) ?>';
+      <?php endif; ?>
       $('#id_moneda').val('<?= $fv('id_moneda') ?>').trigger('change');
       $('#id_empresa').val('<?= $fv('id_empresa') ?>').trigger('change');
       <?php if ($vista === 'compra'): ?>
@@ -1472,9 +1617,8 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#det_imputaciones').val(null).trigger('change');
         $('#imp-sub-lines').empty();
         if (canceledItem) {
-          idsImputacionDeDetalle(canceledItem).forEach(function(id) {
-            $('#det_imputaciones option[value="' + id + '"]').remove();
-          });
+          // Liberar de nuevo las imputaciones del ítem que se estaba editando.
+          agregarOpcionesImputaciones(idsImputacionDeDetalle(canceledItem));
         }
       });
 
@@ -1589,22 +1733,59 @@ $fv = function($key, $default = '') use ($facturaData) {
       });
 
       var clienteInicial = $('#id_cuenta_destino').val();
-      if (clienteInicial) {
+      if (clienteInicial && typeof cargarImputacionesVenta === 'function') {
+        cargarImputacionesVenta();
+      } else if (clienteInicial) {
         $('#id_cuenta_destino').trigger('change');
+      }
+
+      var puntosPorNumero = {};
+
+      // Habilita solo los tipos de comprobante asociados al punto de venta elegido.
+      function filtrarTiposPorPunto() {
+        var puntoVal = $('#punto_venta').val();
+        var tipos = puntoVal && puntosPorNumero[puntoVal] ? puntosPorNumero[puntoVal].tipos : null;
+        var tiposStr = Array.isArray(tipos) ? tipos.map(function (t) { return String(t); }) : [];
+        var habilitados = 0;
+        $('#id_tipo_comprobante option').each(function() {
+          var codigo = $(this).data('codigo');
+          if (codigo === undefined || codigo === '' || codigo === null) return;
+          var habilitado = tiposStr.indexOf(String(codigo).trim()) !== -1;
+          $(this).prop('disabled', !habilitado);
+          if (habilitado) { habilitados++; }
+        });
+        if (puntoVal && tiposStr.length && habilitados === 0 && window.console && console.warn) {
+          console.warn('El punto ' + puntoVal + ' trae tipos pero ninguno matchea con data-codigo del select.', tiposStr);
+        }
+        var $tc = $('#id_tipo_comprobante');
+        var sel = $tc.find('option:selected');
+        if (sel.length && sel.prop('disabled')) {
+          $tc.val('');
+        }
+        // Refrescar Select2: el trigger namespaced no siempre repinta los disabled,
+        // se fuerza con change completo y re-inicialización del widget.
+        $tc.trigger('change');
+        try {
+          if ($tc.hasClass('select2-hidden-accessible')) {
+            $tc.select2('destroy');
+          }
+          $tc.select2();
+        } catch (e) {
+          if (window.console && console.error) { console.error(e); }
+        }
       }
 
       function cargarPuntosVentaEmpresa() {
         var idEmpresa = $('#id_empresa').val();
-        var lista = document.getElementById('puntos_venta_sugeridos');
-        var estado = document.getElementById('estadoPuntosVentaEmpresa');
-        if (!lista || !estado) return;
-        lista.replaceChildren();
-        estado.classList.remove('text-danger');
+        var select = document.getElementById('punto_venta');
+        if (!select) return;
+        puntosPorNumero = {};
+        select.replaceChildren(new Option('Seleccione la empresa primero...', ''));
+        $('#id_tipo_comprobante').val('').trigger('change');
         if (!idEmpresa) {
-          estado.textContent = '';
+          filtrarTiposPorPunto();
           return;
         }
-        estado.textContent = 'Cargando puntos de venta guardados...';
         fetch('obtenerPuntosVentaEmpresa.php?id_empresa=' + encodeURIComponent(idEmpresa))
           .then(function(response) {
             return response.json().then(function(data) {
@@ -1613,24 +1794,27 @@ $fv = function($key, $default = '') use ($facturaData) {
             });
           })
           .then(function(data) {
+            select.replaceChildren(new Option('Seleccione...', ''));
             data.puntos_venta.forEach(function(point) {
-              var option = document.createElement('option');
-              option.value = String(point.numero).padStart(4, '0');
-              option.label = point.emision_tipo
-                ? point.emision_tipo + ' — tipos ARCA: ' + (point.tipos.length ? point.tipos.join(', ') : 'sin asociar')
-                : 'Tipos ARCA: ' + (point.tipos.length ? point.tipos.join(', ') : 'sin asociar');
-              lista.appendChild(option);
+              puntosPorNumero[String(point.numero)] = point;
+              var etiqueta = String(point.numero).padStart(4, '0')
+                + (point.emision_tipo ? ' — ' + point.emision_tipo : '')
+                + ' (tipos: ' + (point.tipos.length ? point.tipos.join(', ') : 'sin asociar') + ')';
+              select.appendChild(new Option(etiqueta, String(point.numero)));
             });
-            estado.textContent = data.puntos_venta.length
-              ? 'Puntos locales configurados; seleccione una sugerencia o ingrese otro número.'
-              : 'No hay puntos de venta guardados para esta empresa; puede ingresar el número manualmente.';
+            if (typeof puntoInicial !== 'undefined' && puntoInicial && puntosPorNumero[puntoInicial]) {
+              select.value = puntoInicial;
+              try { $(select).trigger('change'); } catch (e) {}
+            }
+            filtrarTiposPorPunto();
           })
           .catch(function(error) {
-            estado.textContent = error.message;
-            estado.classList.add('text-danger');
+            if (window.console && console.error) { console.error(error); }
+            filtrarTiposPorPunto();
           });
       }
       $('#id_empresa').on('change', cargarPuntosVentaEmpresa);
+      $('#punto_venta').on('change', filtrarTiposPorPunto);
       cargarPuntosVentaEmpresa();
 
       // Moneda precargada desde el certificado: dispara los efectos de símbolo, tipo de dólar y cotización
@@ -1673,6 +1857,20 @@ $fv = function($key, $default = '') use ($facturaData) {
       $('#imp-sub-lines').on('input', '.imp-sub-cant, .imp-sub-prec', function() {
         actualizarSubTotalesImputacion();
       });
+
+      <?php if ($vista === 'compra'): ?>
+      $('#id_tipo_comprobante').on('change', function() { actualizarLetraDesdeTipo(); });
+      actualizarLetraDesdeTipo();
+      // Relleno de ceros al salir de punto/número (como al inicio).
+      $('#punto_venta').on('blur', function() {
+        var v = $(this).val().replace(/\D/g, '');
+        if (v !== '') { $(this).val(v.padStart(4, '0')); }
+      });
+      $('#nro_comprobante').on('blur', function() {
+        var v = $(this).val().replace(/\D/g, '');
+        if (v !== '') { $(this).val(v.padStart(8, '0')); }
+      });
+      <?php endif; ?>
 
     });
   </script>

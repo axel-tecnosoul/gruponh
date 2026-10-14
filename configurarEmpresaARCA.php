@@ -21,7 +21,7 @@ if (!$companyId || $companyId < 1) {
     header('Location: listarEmpresas.php');
     exit;
 }
-$companyQuery = $pdo->prepare('SELECT id, empresa, cuit, es_agente_retencion FROM empresas WHERE id = ?');
+$companyQuery = $pdo->prepare('SELECT id, empresa, cuit, direccion, email, id_condicion_iva, iibb, fecha_inicio_actividades, es_agente_retencion FROM empresas WHERE id = ?');
 $companyQuery->execute([$companyId]);
 $company = $companyQuery->fetch(PDO::FETCH_ASSOC);
 if (!$company) {
@@ -132,11 +132,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // Datos de la empresa (vista unificada con Modificar Empresa).
+            $cuitActual = trim((string)($company['cuit'] ?? ''));
+            $cuitEditable = ($cuitActual === '' || preg_match('/^0+$/', str_replace('-', '', $cuitActual)));
+            $empCuit = $cuitEditable ? trim((string)($_POST['cuit'] ?? '')) : $cuitActual;
+            $empDireccion = trim((string)($_POST['direccion'] ?? ''));
+            $empEmail = trim((string)($_POST['email'] ?? ''));
+            $empIibb = trim((string)($_POST['iibb'] ?? ''));
+            $empFechaInicio = trim((string)($_POST['fecha_inicio_actividades'] ?? ''));
+            $empCondicionIva = filter_var($_POST['id_condicion_iva'] ?? null, FILTER_VALIDATE_INT);
+            if ($errorMessage === '') {
+                if ($cuitEditable && $empCuit === '') {
+                    $errorMessage = 'Complete el CUIT de la empresa.';
+                } elseif ($empDireccion === '' || $empEmail === '' || $empIibb === '' || $empFechaInicio === '') {
+                    $errorMessage = 'Complete dirección, email, ingresos brutos y fecha de inicio de actividades.';
+                } elseif (filter_var($empEmail, FILTER_VALIDATE_EMAIL) === false) {
+                    $errorMessage = 'El email de la empresa no es válido.';
+                } elseif ($empCondicionIva === false || $empCondicionIva < 1) {
+                    $errorMessage = 'Seleccione la condición frente al IVA.';
+                } else {
+                    $qCond = $pdo->prepare('SELECT COUNT(*) FROM condiciones_iva WHERE id = ?');
+                    $qCond->execute([$empCondicionIva]);
+                    if ((int)$qCond->fetchColumn() === 0) {
+                        $errorMessage = 'La condición frente al IVA no es válida.';
+                    } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $empFechaInicio)) {
+                        $errorMessage = 'La fecha de inicio de actividades no es válida.';
+                    }
+                }
+            }
+
             if ($errorMessage === '') {
                 try {
                     $pdo->beginTransaction();
-                    $update = $pdo->prepare('UPDATE empresas SET es_agente_retencion = ? WHERE id = ?');
-                    $update->execute([$agent, $companyId]);
+                    $update = $pdo->prepare('UPDATE empresas SET es_agente_retencion = ?, cuit = ?, direccion = ?, email = ?, id_condicion_iva = ?, iibb = ?, fecha_inicio_actividades = ? WHERE id = ?');
+                    $update->execute([$agent, $empCuit, $empDireccion, $empEmail, $empCondicionIva, $empIibb, $empFechaInicio, $companyId]);
                     $pdo->prepare('DELETE FROM arca_puntos_venta WHERE id_empresa = ?')->execute([$companyId]);
                     $insertPoint = $pdo->prepare(
                         'INSERT INTO arca_puntos_venta (id_empresa, numero, emision_tipo, bloqueado, fecha_baja)
@@ -164,7 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $log = $pdo->prepare(
                         "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link)
-                         VALUES (NOW(), ?, 'Configuración ARCA de empresa', 'Empresas', '')"
+                         VALUES (NOW(), ?, 'Modificación de empresa y configuración ARCA', 'Empresas', '')"
                     );
                     $log->execute([(int)$_SESSION['user']['id']]);
                     $pdo->commit();
@@ -182,11 +211,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if (isset($_GET['guardado'])) {
-    $successMessage = 'La configuración de la empresa se guardó correctamente.';
+    $successMessage = 'La empresa se guardó correctamente.';
 }
 
 $companyQuery->execute([$companyId]);
 $company = $companyQuery->fetch(PDO::FETCH_ASSOC);
+// Datos para la sección empresa: en caso de error se repueblan con lo posteado.
+$isPostback = ($_SERVER['REQUEST_METHOD'] === 'POST' && $errorMessage !== '');
+$cuitActualView = trim((string)($company['cuit'] ?? ''));
+$cuitEditableView = ($cuitActualView === '' || preg_match('/^0+$/', str_replace('-', '', $cuitActualView)));
+$formEmpresa = [
+    'cuit' => ($isPostback && $cuitEditableView) ? trim((string)($_POST['cuit'] ?? '')) : $cuitActualView,
+    'direccion' => $isPostback ? trim((string)($_POST['direccion'] ?? '')) : (string)($company['direccion'] ?? ''),
+    'email' => $isPostback ? trim((string)($_POST['email'] ?? '')) : (string)($company['email'] ?? ''),
+    'id_condicion_iva' => $isPostback ? (int)($_POST['id_condicion_iva'] ?? 0) : (int)($company['id_condicion_iva'] ?? 0),
+    'iibb' => $isPostback ? trim((string)($_POST['iibb'] ?? '')) : (string)($company['iibb'] ?? ''),
+    'fecha_inicio_actividades' => $isPostback ? trim((string)($_POST['fecha_inicio_actividades'] ?? '')) : (string)($company['fecha_inicio_actividades'] ?? ''),
+];
+$condicionesIva = $pdo->query('SELECT id, condicion_iva FROM condiciones_iva ORDER BY condicion_iva')->fetchAll(PDO::FETCH_ASSOC);
 $types = $pdo->query('SELECT codigo, descripcion FROM arca_tipos_comprobante ORDER BY codigo')->fetchAll(PDO::FETCH_ASSOC);
 $pointQuery = $pdo->prepare(
     'SELECT id, numero, emision_tipo FROM arca_puntos_venta
@@ -219,10 +261,14 @@ $escape = static function ($value): string {
 <html lang="es">
 <head>
   <?php include('head_forms.php'); ?>
+  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+  <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
   <style>
-    .arca-point-types { min-width: 280px; min-height: 110px; }
+    .arca-point-types + .select2-container { min-width: 280px; width: 100% !important; }
     .arca-import-list { margin-top: 12px; }
     .arca-import-list li { margin-bottom: 6px; }
+    .provincia-check-label { display: flex; align-items: center; gap: .5rem; margin: 0; cursor: pointer; font-weight: 400; }
+    .provincia-check-label input { width: 1.1rem; height: 1.1rem; flex: none; cursor: pointer; }
     .retention-flag {
       display: inline-flex;
       align-items: center;
@@ -253,7 +299,7 @@ $escape = static function ($value): string {
     <div class="page-body-wrapper">
       <?php include('menu.php'); ?>
       <div class="page-body">
-        <?php $ubicacion = 'Configuración ARCA - ' . $company['empresa']; include_once('head_page.php'); ?>
+        <?php $ubicacion = 'Empresa - ' . $company['empresa']; include_once('head_page.php'); ?>
         <div class="container-fluid">
           <?php if ($errorMessage !== ''): ?>
             <div class="alert alert-danger" role="alert"><?= $escape($errorMessage) ?></div>
@@ -267,6 +313,52 @@ $escape = static function ($value): string {
             <form method="post" action="configurarEmpresaARCA.php?id=<?= (int)$companyId ?>" id="configuracionEmpresaArca">
               <input type="hidden" name="csrf_token" value="<?= $escape($_SESSION['csrf_empresa_arca']) ?>">
               <div class="card-body">
+                <h5 class="mb-3">Datos de la empresa</h5>
+                <div class="row">
+                  <div class="col-md-6">
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Empresa</label>
+                      <div class="col-sm-8"><input type="text" maxlength="99" class="form-control" readonly value="<?= $escape($company['empresa']) ?>"></div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">CUIT(*)</label>
+                      <div class="col-sm-8"><input name="cuit" type="text" maxlength="99" class="form-control" <?= $cuitEditableView ? 'required="required"' : 'readonly' ?> value="<?= $escape($formEmpresa['cuit']) ?>">
+                      <?php if (!$cuitEditableView) { ?><small class="form-text text-muted">El CUIT solo se puede cargar una vez.</small><?php } ?>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Condición frente al IVA(*)</label>
+                      <div class="col-sm-8">
+                        <select name="id_condicion_iva" id="id_condicion_iva" class="form-control" required="required">
+                          <option value="">Seleccione...</option>
+                          <?php foreach ($condicionesIva as $condicion): ?>
+                          <option value="<?= (int)$condicion['id'] ?>" <?= ((int)$condicion['id'] === (int)$formEmpresa['id_condicion_iva']) ? 'selected' : '' ?>><?= $escape($condicion['condicion_iva']) ?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Dirección(*)</label>
+                      <div class="col-sm-8"><input name="direccion" type="text" maxlength="199" class="form-control" required="required" value="<?= $escape($formEmpresa['direccion']) ?>"></div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Email(*)</label>
+                      <div class="col-sm-8"><input name="email" type="email" maxlength="99" class="form-control" required="required" value="<?= $escape($formEmpresa['email']) ?>"></div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Ingresos Brutos(*)</label>
+                      <div class="col-sm-8"><input name="iibb" type="text" maxlength="99" class="form-control" required="required" value="<?= $escape($formEmpresa['iibb']) ?>"></div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Fecha inicio de actividades(*)</label>
+                      <div class="col-sm-8"><input name="fecha_inicio_actividades" type="date" class="form-control" required="required" value="<?= $escape($formEmpresa['fecha_inicio_actividades']) ?>"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr>
                 <h5 class="mb-3">Puntos de venta y tipos de comprobante</h5>
                 <p class="text-muted">
                   Los catálogos importados se pueden guardar localmente. El SDK consulta los tipos de comprobante de forma general,
@@ -284,18 +376,20 @@ $escape = static function ($value): string {
                   <ul id="puntosVentaImportados" class="arca-import-list list-unstyled"></ul>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="agregarPuntoVentaManual">Agregar punto manual</button>
-                <div class="table-responsive">
-                  <table class="table table-bordered table-sm">
+                <div class="dt-ext table-responsive">
+                  <table class="display table table-bordered table-sm dynamic-grid-table" id="tablaPuntosVenta">
                     <thead>
-                      <tr><th>Punto de venta</th><th>Tipo de emisión</th><th>Tipos de comprobante ARCA</th><th></th></tr>
+                      <tr><th>Punto de venta</th><th>Tipos de comprobante ARCA</th><th></th></tr>
                     </thead>
                     <tbody id="puntosVentaConfigurados">
                     <?php foreach ($pointRows as $index => $point): ?>
                       <tr class="arca-point-row">
-                        <td><input class="form-control" type="number" min="1" max="99998" name="puntos[<?= $index ?>][numero]" required value="<?= (int)$point['numero'] ?>"></td>
-                        <td><input class="form-control" type="text" maxlength="50" name="puntos[<?= $index ?>][emision_tipo]" value="<?= $escape($point['emision_tipo']) ?>"></td>
                         <td>
-                          <select class="form-control arca-point-types" multiple required name="puntos[<?= $index ?>][tipos][]">
+                          <input class="form-control" type="number" min="1" max="99998" name="puntos[<?= $index ?>][numero]" required value="<?= (int)$point['numero'] ?>">
+                          <input type="hidden" name="puntos[<?= $index ?>][emision_tipo]" value="<?= $escape($point['emision_tipo']) ?>">
+                        </td>
+                        <td>
+                          <select class="form-control arca-point-types" multiple name="puntos[<?= $index ?>][tipos][]">
                             <?php foreach ($types as $type): ?>
                               <option value="<?= (int)$type['codigo'] ?>" <?= in_array((int)$type['codigo'], $point['tipos'], true) ? 'selected' : '' ?>>
                                 <?= (int)$type['codigo'] ?> — <?= $escape($type['descripcion']) ?>
@@ -303,7 +397,7 @@ $escape = static function ($value): string {
                             <?php endforeach; ?>
                           </select>
                         </td>
-                        <td><button type="button" class="btn btn-sm btn-outline-danger quitarPuntoVenta">Quitar</button></td>
+                        <td><button type="button" class="btn btn-link p-0 quitarPuntoVenta" title="Quitar punto de venta"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Quitar" title="Quitar"></button></td>
                       </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -321,19 +415,22 @@ $escape = static function ($value): string {
                 </div>
                 <div id="padronesRetencion">
                   <p class="text-muted">Seleccione las provincias donde actúa como agente e indique el enlace de cada padrón.</p>
-                  <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
-                      <thead><tr><th>Provincia</th><th>Agente de retención</th><th>URL del padrón</th></tr></thead>
+                  <div class="dt-ext table-responsive">
+                    <table class="display table table-bordered table-sm" id="tablaPadrones">
+                      <thead><tr><th>Provincia</th><th>URL del padrón</th></tr></thead>
                       <tbody>
                       <?php foreach ($provinceRows as $province): $provinceId = (int)$province['id']; ?>
                         <tr>
-                          <td><?= $escape($province['provincia']) ?></td>
-                          <td class="text-center">
-                            <input type="checkbox" class="provincia-retencion-check" data-province="<?= $provinceId ?>"
-                              <?= array_key_exists($provinceId, $savedProvinces) ? 'checked' : '' ?>>
+                          <td>
+                            <label class="provincia-check-label" for="provincia-check-<?= $provinceId ?>">
+                              <input type="checkbox" id="provincia-check-<?= $provinceId ?>" class="provincia-retencion-check" data-province="<?= $provinceId ?>"
+                                <?= array_key_exists($provinceId, $savedProvinces) ? 'checked' : '' ?>>
+                              <span><?= $escape($province['provincia']) ?></span>
+                            </label>
                           </td>
                           <td>
                             <input class="form-control url-padron" type="url" maxlength="2048"
+                              id="provincia-url-<?= $provinceId ?>"
                               name="provincias[<?= $provinceId ?>][url]"
                               value="<?= $escape($savedProvinces[$provinceId] ?? '') ?>"
                               <?= array_key_exists($provinceId, $savedProvinces) ? 'required' : 'disabled' ?>>
@@ -346,7 +443,7 @@ $escape = static function ($value): string {
                 </div>
               </div>
               <div class="card-footer text-right">
-                <button class="btn btn-primary" type="submit">Guardar configuración</button>
+                <button class="btn btn-primary" type="submit">Guardar</button>
                 <a class="btn btn-light" href="listarEmpresas.php">Volver al listado</a>
               </div>
             </form>
@@ -359,6 +456,29 @@ $escape = static function ($value): string {
   <script src="assets/js/jquery-3.2.1.min.js"></script>
   <script src="assets/js/bootstrap/popper.min.js"></script>
   <script src="assets/js/bootstrap/bootstrap.js"></script>
+  <script src="assets/js/select2/select2.full.min.js"></script>
+  <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
+  <script src="assets/js/datatable/datatable-extension/custom.js"></script>
+  <script src="assets/js/icons/feather-icon/feather.min.js"></script>
+  <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
   <script src="assets/js/sidebar-menu.js"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/script.js"></script>
@@ -367,6 +487,43 @@ $escape = static function ($value): string {
       const body = document.getElementById('puntosVentaConfigurados');
       const typeCatalog = <?= json_encode($types, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
       let nextPointIndex = <?= count($pointRows) ?>;
+
+      const txtEspanol = {
+        "decimal": "",
+        "emptyTable": "No hay información",
+        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
+        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
+        "infoFiltered": "(Filtrado de _MAX_ total registros)",
+        "infoPostFix": "",
+        "thousands": ",",
+        "lengthMenu": "Mostrar _MENU_ Registros",
+        "loadingRecords": "Cargando...",
+        "processing": "Procesando...",
+        "search": "Buscar:",
+        "zeroRecords": "No hay resultados",
+        "paginate": {"first": "Primero", "last": "Ultimo", "next": "Siguiente", "previous": "Anterior"}
+      };
+      // Sin paginado: las filas fuera del DOM no se enviarían en el submit.
+      const tablaPuntos = $('#tablaPuntosVenta').DataTable({
+        paging: false, searching: false, info: false, ordering: false, language: txtEspanol,
+        columnDefs: [
+          {width: '120px', targets: 0},
+          {width: '60px', targets: 2}
+        ]
+      });
+      const tablaPadrones = $('#tablaPadrones').DataTable({
+        paging: false, info: false, order: [[0, 'asc']], language: txtEspanol
+      });
+
+      function initializeTypeSelect(select) {
+        $(select).select2({
+          width: '100%',
+          placeholder: 'Seleccione uno o varios tipos',
+          closeOnSelect: false
+        });
+      }
+
+      document.querySelectorAll('.arca-point-types').forEach(initializeTypeSelect);
 
       function appendPoint(point, selectedTypes) {
         const row = document.createElement('tr');
@@ -382,20 +539,16 @@ $escape = static function ($value): string {
         number.value = point.numero || '';
         numberCell.appendChild(number);
 
-        const modeCell = row.insertCell();
         const mode = document.createElement('input');
-        mode.className = 'form-control';
-        mode.type = 'text';
-        mode.maxLength = 50;
+        mode.type = 'hidden';
         mode.name = 'puntos[' + nextPointIndex + '][emision_tipo]';
         mode.value = point.emision_tipo || '';
-        modeCell.appendChild(mode);
+        numberCell.appendChild(mode);
 
         const typesCell = row.insertCell();
         const types = document.createElement('select');
         types.className = 'form-control arca-point-types';
         types.multiple = true;
-        types.required = true;
         types.name = 'puntos[' + nextPointIndex + '][tipos][]';
         typeCatalog.forEach(function (type) {
           const option = new Option(type.codigo + ' — ' + type.descripcion, type.codigo);
@@ -407,19 +560,41 @@ $escape = static function ($value): string {
         const actionCell = row.insertCell();
         const remove = document.createElement('button');
         remove.type = 'button';
-        remove.className = 'btn btn-sm btn-outline-danger quitarPuntoVenta';
-        remove.textContent = 'Quitar';
+        remove.className = 'btn btn-link p-0 quitarPuntoVenta';
+        remove.title = 'Quitar punto de venta';
+        const icon = document.createElement('img');
+        icon.src = 'img/icon_baja.png';
+        icon.width = 24;
+        icon.height = 25;
+        icon.border = '0';
+        icon.alt = 'Quitar';
+        icon.title = 'Quitar';
+        remove.appendChild(icon);
         actionCell.appendChild(remove);
-        body.appendChild(row);
+        tablaPuntos.row.add(row).draw(false);
+        initializeTypeSelect(types);
         nextPointIndex += 1;
       }
+
+      document.getElementById('configuracionEmpresaArca').addEventListener('submit', function (event) {
+        // Restaurar todas las filas al DOM antes de enviar (el buscador las oculta).
+        tablaPadrones.search('').draw();
+        const missingTypes = Array.from(body.querySelectorAll('.arca-point-types'))
+          .find(function (select) { return select.selectedOptions.length === 0; });
+        if (missingTypes) {
+          event.preventDefault();
+          alert('Seleccione uno o varios tipos de comprobante para cada punto de venta.');
+          $(missingTypes).select2('open');
+        }
+      });
 
       document.getElementById('agregarPuntoVentaManual').addEventListener('click', function () {
         appendPoint({}, []);
       });
       body.addEventListener('click', function (event) {
-        if (event.target.classList.contains('quitarPuntoVenta')) {
-          event.target.closest('tr').remove();
+        const boton = event.target.closest ? event.target.closest('.quitarPuntoVenta') : null;
+        if (boton && body.contains(boton)) {
+          tablaPuntos.row(boton.closest('tr')).remove().draw(false);
         }
       });
 
@@ -465,7 +640,7 @@ $escape = static function ($value): string {
           });
           activePoints.forEach(function (point) {
             const item = document.createElement('li');
-            item.appendChild(document.createTextNode('Punto ' + point.numero + (point.emision_tipo ? ' — ' + point.emision_tipo : ' ')));
+            item.appendChild(document.createTextNode('Punto ' + point.numero));
             const add = document.createElement('button');
             add.type = 'button';
             add.className = 'btn btn-sm btn-outline-primary ml-2';
@@ -505,7 +680,13 @@ $escape = static function ($value): string {
       }
       agentCheckbox.addEventListener('change', toggleProvinces);
       provincesPanel.addEventListener('change', function (event) {
-        if (event.target.classList.contains('provincia-retencion-check')) toggleProvinces();
+        if (event.target.classList.contains('provincia-retencion-check')) {
+          toggleProvinces();
+          if (event.target.checked) {
+            const url = provincesPanel.querySelector('input[name="provincias[' + event.target.dataset.province + '][url]"]');
+            if (url) { url.focus(); }
+          }
+        }
       });
       toggleProvinces();
     }());

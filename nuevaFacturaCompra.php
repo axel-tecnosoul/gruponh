@@ -60,11 +60,29 @@ if (!empty($_POST)) {
       $_POST['cotizacion'] = 1;
     }
 
-    // Concatenar punto_venta + nro_comprobante en numero
-    if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
-      $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
-        . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
+    $isEditing = !empty($_POST['id_factura']);
+
+    // Punto de venta libre (comprobante del proveedor): solo se valida el rango.
+    $puntoVenta = filter_var($_POST['punto_venta'] ?? null, FILTER_VALIDATE_INT);
+    if ($puntoVenta === false || $puntoVenta < 1 || $puntoVenta > 99998) {
+      throw new RuntimeException('Ingrese un punto de venta válido.');
     }
+
+    // Tipo de comprobante del padrón AFIP (sin legacy) + letra derivada del tipo.
+    $idTipoComprobante = (int)($_POST['id_tipo_comprobante'] ?? 0);
+    $qTipo = $pdo->prepare("SELECT id FROM tipos_comprobante WHERE id = ? AND activo = 1 AND codigo_afip IS NOT NULL");
+    $qTipo->execute([$idTipoComprobante]);
+    if ($qTipo->fetchColumn() === false) {
+      throw new RuntimeException('Seleccione un tipo de comprobante válido.');
+    }
+    $idLetraComprobante = derivarIdLetraComprobante($pdo, $idTipoComprobante);
+
+    // Número del comprobante del proveedor (punto + número).
+    $nroComprobante = preg_replace('/\D/', '', (string)($_POST['nro_comprobante'] ?? ''));
+    if ($nroComprobante === '' || strlen($nroComprobante) > 8) {
+      throw new RuntimeException('Ingrese el número del comprobante.');
+    }
+    $_POST['numero'] = str_pad($puntoVenta, 4, '0', STR_PAD_LEFT) . '-' . str_pad($nroComprobante, 8, '0', STR_PAD_LEFT);
 
     $ocPostIds = [];
     if (!empty($_POST['id_orden_compra'])) {
@@ -73,7 +91,6 @@ if (!empty($_POST)) {
         : [intval($_POST['id_orden_compra'])];
     }
 
-    $isEditing = !empty($_POST['id_factura']);
     require_once('funciones.php');
 
     if (empty($_POST['id_condicion_pago'])) {
@@ -96,7 +113,7 @@ if (!empty($_POST)) {
 
       // UPDATE header
       $q = $pdo->prepare("UPDATE facturas_compra SET id_tipo_comprobante=?, id_letra_comprobante=?, numero=?, id_cuenta_origen=?, id_empresa=?, fecha_emitida=?, fecha_recibida=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
-      $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$idEstado,$idFactura]);
+      $q->execute([$idTipoComprobante,$idLetraComprobante,$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$idEstado,$idFactura]);
 
       // OC diff logic
       $qActuales = $pdo->prepare("SELECT id, id_compra, estado_anterior FROM facturas_compra_x_compras WHERE id_factura_compra = ?");
@@ -153,7 +170,7 @@ if (!empty($_POST)) {
     } else {
       // CREATE mode
       $q = $pdo->prepare("INSERT INTO facturas_compra(id_tipo_comprobante, id_letra_comprobante, numero, id_cuenta_origen, id_empresa, fecha_emitida, fecha_recibida, id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-      $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_SESSION['user']['id'],$idEstado]);
+      $q->execute([$idTipoComprobante,$idLetraComprobante,$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_SESSION['user']['id'],$idEstado]);
       $idFactura = $pdo->lastInsertId();
 
       // Asociar cada OC a la factura

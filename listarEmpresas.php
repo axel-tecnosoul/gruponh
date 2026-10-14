@@ -56,8 +56,7 @@ try {
                   <div class="card-header">
                     <h5><?php echo $ubicacion; ?>
                       &nbsp;&nbsp;
-                      <a href="#" id="link_modificar_empresa"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>
-                      <a href="#" class="btn btn-sm btn-outline-primary ml-2" id="link_configurar_arca">Configurar ARCA</a>
+                      <a href="#" class="btn btn-sm btn-outline-primary ml-2" id="link_empresa">Editar</a>
                     </h5>
                   </div>
                   <div class="card-body">
@@ -189,17 +188,11 @@ try {
         });
 	  });
 
-    $("#link_modificar_empresa").on("click",function(){
-      let l=document.location.href;
-      if(this.href==l || this.href==l+"#"){
-        alert("Por favor seleccione una empresa para modificarla")
-      }
-    })
-    $("#link_configurar_arca").on("click",function(event){
+    $("#link_empresa").on("click",function(event){
       let l=document.location.href;
       if(this.href==l || this.href==l+"#"){
         event.preventDefault();
-        alert("Por favor seleccione una empresa para configurar ARCA")
+        alert("Por favor seleccione una empresa para editarla")
       }
     })
 
@@ -209,15 +202,13 @@ try {
       let id_empresa=t.find("td:first-child").html();
       if(t.hasClass('selected')){
         deselectRow(t);
-        $("#link_modificar_empresa").attr("href","#");
-      $("#link_configurar_arca").attr("href","#");
+        $("#link_empresa").attr("href","#");
       }else{
       table.rows().nodes().each( function (rowNode, index) {
         $(rowNode).removeClass("selected");
       });
       selectRow(t);
-      $("#link_modificar_empresa").attr("href","modificarEmpresa.php?id="+id_empresa);
-      $("#link_configurar_arca").attr("href","configurarEmpresaARCA.php?id="+id_empresa);
+      $("#link_empresa").attr("href","configurarEmpresaARCA.php?id="+id_empresa);
       }
     });
 

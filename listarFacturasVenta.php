@@ -525,6 +525,17 @@ $id_estado = $filters['id_estado'] ?? [];
         ]
       });
 
+      // Apply the search
+      table.columns().every(function() {
+        var that = this;
+
+        $('input', this.footer()).on('keyup change', function() {
+          if (that.search() !== this.value) {
+            that.search(this.value).draw();
+          }
+        });
+      });
+
       // ── DataTable detalles (667) ─────────────────────────────────────
       $('#dataTables-example667 tfoot th').each(function() {
         var t = $(this).text();
@@ -539,6 +550,17 @@ $id_estado = $filters['id_estado'] ?? [];
           className: 'd-none'
         }],
         language: dtLang()
+      });
+
+      // Apply the search
+      table3.columns().every(function() {
+        var that = this;
+
+        $('input', this.footer()).on('keyup change', function() {
+          if (that.search() !== this.value) {
+            that.search(this.value).draw();
+          }
+        });
       });
 
       $('#btn_nueva_factura').on('click', function(e) {
@@ -891,7 +913,7 @@ $id_estado = $filters['id_estado'] ?? [];
         success: function(raw) {
           var data = JSON.parse(raw);
           table2.DataTable().destroy();
-          table2.DataTable({
+          var table4 = table2.DataTable({
             stateSave: false,
             responsive: false,
             columnDefs: [{
@@ -900,6 +922,17 @@ $id_estado = $filters['id_estado'] ?? [];
             }],
             data: data,
             language: dtLang()
+          });
+
+          // Apply the search
+          table4.columns().every(function() {
+            var that = this;
+
+            $('input', this.footer()).off('keyup change').on('keyup change', function() {
+              if (that.search() !== this.value) {
+                that.search(this.value).draw();
+              }
+            });
           });
         }
       });

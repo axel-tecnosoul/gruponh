@@ -22,6 +22,7 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $sql = "SELECT cac.id, cm.id AS numero_cm, cac.nro_certificado, cac.nro_revision,
                CONCAT('Cert. ', cac.nro_certificado, '/', cac.nro_revision) AS cert_label,
                date_format(cac.fecha_emision,'%d/%m/%y') AS fecha_emision,
+               cm.id_moneda AS id_moneda,
                m.moneda, cac.monto_total
         FROM certificados_avances_cabecera cac
         INNER JOIN certificados_maestros cm ON cac.id_certificado_maestro = cm.id

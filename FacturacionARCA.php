@@ -4,7 +4,7 @@ require_once __DIR__ . '/database.php';
 
 final class FacturacionARCA
 {
-    private const SDK_DIR = __DIR__ . '/documentaciónParaFacturación/modelo_facturacion_arca/modelo_facturacion_arca/afip';
+    private const SDK_DIR = __DIR__ . '/vendor/afip';
     private const ALIQUOT_CODES = [
         [0.0, 3],
         [2.5, 9],
@@ -177,7 +177,7 @@ final class FacturacionARCA
                 $model['concepto'],
                 $model['receptor']['tipo_documento'],
                 $model['receptor']['numero_documento'],
-                $model['receptor']['condicion_iva'],
+                $model['receptor']['condicion_iva_arca'],
                 $model['fecha_servicio_desde'],
                 $model['fecha_servicio_hasta'],
                 $model['fecha_vencimiento_pago'],
@@ -259,6 +259,182 @@ final class FacturacionARCA
         }
     }
 
+    public static function reintentarHomologacion(PDO $pdo, int $idFactura): array
+    {
+        if (!self::habilitada() || self::homologacion() !== 1) {
+            throw new RuntimeException('El reintento explícito solo está disponible con ARCA habilitada en homologación.');
+        }
+        $record = self::loadByInvoice($pdo, $idFactura);
+        if (!$record || (int)$record['homologacion'] !== 1) {
+            throw new RuntimeException('No se encontró un intento de homologación para esta factura.');
+        }
+        $correctableReceiverCondition = $record['estado'] === 'rechazado'
+            && strpos((string)$record['ultimo_error'], '(10242)') !== false;
+        if ((!in_array($record['estado'], ['incierto', 'enviando'], true) && !$correctableReceiverCondition)
+            || empty($record['numero_comprobante'])) {
+            throw new RuntimeException('Solo se puede reintentar un envío incierto o un rechazo 10242 corregible en homologación.');
+        }
+
+        $lock = self::lock($pdo, $record);
+        try {
+            $record = self::loadById($pdo, (int)$record['id']);
+            $correctableReceiverCondition = $record['estado'] === 'rechazado'
+                && strpos((string)$record['ultimo_error'], '(10242)') !== false;
+            if ((!in_array($record['estado'], ['incierto', 'enviando'], true) && !$correctableReceiverCondition)
+                || empty($record['numero_comprobante'])) {
+                throw new RuntimeException('El intento cambió de estado. Consulte nuevamente la factura antes de continuar.');
+            }
+
+            $number = (int)$record['numero_comprobante'];
+            $request = json_decode((string)$record['solicitud_arca'], true);
+            if ($correctableReceiverCondition) {
+                $receiverSnapshot = json_decode((string)$record['datos_receptor'], true);
+                $correctReceiverCondition = (int)($receiverSnapshot['condicion_iva_arca'] ?? 0);
+                if (!is_array($request) || $correctReceiverCondition < 1) {
+                    throw new RuntimeException('No se puede reconstruir la condición IVA del receptor desde el snapshot original.');
+                }
+                $originalRequest = $request;
+                $request['CondicionIVAReceptorId'] = $correctReceiverCondition;
+                $previousResponses = json_decode((string)$record['respuesta_arca'], true);
+                if (!is_array($previousResponses)) {
+                    $previousResponses = [];
+                }
+                $previousResponses['rechazo_10242'] = [
+                    'error' => (string)$record['ultimo_error'],
+                    'solicitud' => $originalRequest,
+                ];
+                $pdo->beginTransaction();
+                try {
+                    $q = $pdo->prepare(
+                        "UPDATE comprobantes_arca
+                         SET solicitud_arca = ?, respuesta_arca = ?, estado = 'incierto',
+                             ultimo_error = 'Reintento homologación: condición IVA ARCA recuperada del snapshot del receptor.'
+                         WHERE id = ? AND estado = 'rechazado' AND numero_comprobante = ?"
+                    );
+                    $q->execute([
+                        self::encode($request),
+                        self::encode($previousResponses),
+                        (int)$record['id'],
+                        $number,
+                    ]);
+                    if ($q->rowCount() !== 1) {
+                        throw new RuntimeException('El intento cambió de estado antes de preparar el reintento corregido.');
+                    }
+                    $pdo->commit();
+                } catch (Throwable $e) {
+                    if ($pdo->inTransaction()) {
+                        $pdo->rollBack();
+                    }
+                    throw $e;
+                }
+                $record = self::loadById($pdo, (int)$record['id']);
+            }
+
+            if (!is_array($request)
+                || (int)($request['PtoVta'] ?? 0) !== (int)$record['punto_venta']
+                || (int)($request['CbteTipo'] ?? 0) !== (int)$record['tipo_comprobante']
+                || (int)($request['CbteDesde'] ?? 0) !== $number
+                || (int)($request['CbteHasta'] ?? 0) !== $number) {
+                throw new RuntimeException('La solicitud guardada no coincide con el número reservado. No se reenviará.');
+            }
+
+            $billing = self::billing($record);
+            try {
+                $voucher = $billing->GetVoucherInfo(
+                    $number,
+                    (int)$record['punto_venta'],
+                    (int)$record['tipo_comprobante']
+                );
+                if ($voucher) {
+                    return self::conciliarBloqueado($pdo, $record);
+                }
+            } catch (Throwable $e) {
+                self::saveError(
+                    $pdo,
+                    (int)$record['id'],
+                    'No se pudo verificar el número en ARCA antes del reintento. Sigue incierto. Detalle técnico: '
+                        . mb_substr(trim($e->getMessage()) ?: get_class($e), 0, 1000)
+                );
+                return [
+                    'estado' => 'incierto',
+                    'mensaje' => 'No se pudo verificar la numeración en ARCA. No se reintentó el envío.',
+                    'id' => (int)$record['id'],
+                ];
+            }
+
+            try {
+                $lastVoucher = (int)$billing->GetLastVoucher(
+                    (int)$record['punto_venta'],
+                    (int)$record['tipo_comprobante']
+                );
+            } catch (Throwable $e) {
+                self::saveError(
+                    $pdo,
+                    (int)$record['id'],
+                    'No se pudo consultar el último número autorizado antes del reintento. Sigue incierto. Detalle técnico: '
+                        . mb_substr(trim($e->getMessage()) ?: get_class($e), 0, 1000)
+                );
+                return [
+                    'estado' => 'incierto',
+                    'mensaje' => 'No se pudo consultar la numeración actual en ARCA. No se reintentó el envío.',
+                    'id' => (int)$record['id'],
+                ];
+            }
+            if ($lastVoucher < 0 || $lastVoucher >= 99999999 || $lastVoucher + 1 !== $number) {
+                $message = 'El último número autorizado en ARCA es ' . $lastVoucher
+                    . ' y el comprobante reservado es ' . $number
+                    . '. No se reintentó para evitar un conflicto de numeración; requiere conciliación.';
+                self::saveError($pdo, (int)$record['id'], $message);
+                return [
+                    'estado' => 'incierto',
+                    'mensaje' => $message,
+                    'id' => (int)$record['id'],
+                ];
+            }
+
+            $q = $pdo->prepare(
+                "UPDATE comprobantes_arca
+                 SET estado = 'enviando', ultimo_error = NULL, fecha_ultimo_envio = NOW()
+                 WHERE id = ? AND estado = 'incierto' AND numero_comprobante = ?"
+            );
+            $q->execute([(int)$record['id'], $number]);
+            if ($q->rowCount() !== 1) {
+                throw new RuntimeException('El intento cambió de estado antes del reenvío. No se envió a ARCA.');
+            }
+
+            try {
+                $response = $billing->CreateVoucher($request, true);
+            } catch (Throwable $e) {
+                $diagnostic = trim($e->getMessage()) ?: get_class($e);
+                $rejected = self::isExplicitArcaRejection($e);
+                self::setState(
+                    $pdo,
+                    (int)$record['id'],
+                    $rejected ? 'rechazado' : 'incierto',
+                    ($rejected
+                        ? 'ARCA rechazó el comprobante.'
+                        : 'El resultado del reintento no se pudo confirmar. Consulte ARCA antes de continuar.')
+                        . ' Detalle técnico: ' . mb_substr($diagnostic, 0, 1000)
+                );
+                return [
+                    'estado' => $rejected ? 'rechazado' : 'incierto',
+                    'mensaje' => $rejected
+                        ? 'ARCA rechazó el comprobante: ' . $diagnostic
+                        : 'El reintento quedó incierto. Se conservó el mismo número reservado; consulte ARCA.',
+                    'id' => (int)$record['id'],
+                ];
+            }
+
+            return self::handleVoucherResponse(
+                $pdo,
+                self::loadById($pdo, (int)$record['id']),
+                $response
+            );
+        } finally {
+            self::unlock($pdo, $lock);
+        }
+    }
+
     private static function conciliarBloqueado(PDO $pdo, array $record, ?int $idUsuario = null): array
     {
         $billing = self::billing($record);
@@ -335,7 +511,21 @@ final class FacturacionARCA
             return self::conciliarBloqueado($pdo, $record);
         }
         if ($record['estado'] === 'rechazado') {
-            return ['estado' => 'rechazado', 'mensaje' => 'ARCA rechazó el comprobante. No se reenviará con los mismos datos.', 'id' => (int)$record['id']];
+            $localNumberConflict = $record['numero_comprobante'] === null
+                && strpos((string)$record['ultimo_error'], 'Conflicto de numeración local para el comprobante propuesto ') === 0;
+            if (!$localNumberConflict) {
+                return ['estado' => 'rechazado', 'mensaje' => 'ARCA rechazó el comprobante. No se reenviará con los mismos datos.', 'id' => (int)$record['id']];
+            }
+            $q = $pdo->prepare(
+                "UPDATE comprobantes_arca
+                 SET estado = 'pendiente', ultimo_error = NULL
+                 WHERE id = ? AND estado = 'rechazado' AND numero_comprobante IS NULL"
+            );
+            $q->execute([(int)$record['id']]);
+            if ($q->rowCount() !== 1) {
+                throw new RuntimeException('No se pudo reabrir el intento que nunca se envió a ARCA.');
+            }
+            $record = self::loadById($pdo, (int)$record['id']);
         }
 
         try {
@@ -405,20 +595,30 @@ final class FacturacionARCA
             if ($diagnostic === '') {
                 $diagnostic = get_class($e);
             }
+            $rejected = self::isExplicitArcaRejection($e);
             self::setState(
                 $pdo,
                 (int)$record['id'],
-                'incierto',
-                'El resultado del envío no se pudo confirmar. Consulte ARCA antes de reintentar. Detalle técnico: '
-                    . mb_substr($diagnostic, 0, 1000)
+                $rejected ? 'rechazado' : 'incierto',
+                ($rejected
+                    ? 'ARCA rechazó el comprobante.'
+                    : 'El resultado del envío no se pudo confirmar. Consulte ARCA antes de reintentar.')
+                    . ' Detalle técnico: ' . mb_substr($diagnostic, 0, 1000)
             );
             return [
-                'estado' => 'incierto',
-                'mensaje' => 'No se pudo confirmar la respuesta del envío. El número quedó reservado; consulte ARCA antes de reintentar.',
+                'estado' => $rejected ? 'rechazado' : 'incierto',
+                'mensaje' => $rejected
+                    ? 'ARCA rechazó el comprobante: ' . $diagnostic
+                    : 'No se pudo confirmar la respuesta del envío. El número quedó reservado; consulte ARCA antes de reintentar.',
                 'id' => (int)$record['id'],
             ];
         }
 
+        return self::handleVoucherResponse($pdo, $record, $response);
+    }
+
+    private static function handleVoucherResponse(PDO $pdo, array $record, $response): array
+    {
         $detail = self::field(self::field($response, 'FeDetResp', null), 'FECAEDetResponse', null);
         $cae = (string)self::field($detail, 'CAE', '');
         $observations = self::field($detail, 'Observaciones', null);
@@ -591,7 +791,7 @@ final class FacturacionARCA
 
         $ivaByCode = [];
         $items = [];
-        $netCents = 0;
+        $grossCents = 0;
         foreach ($rows as $row) {
             $quantity = (float)$row['cantidad'];
             $discount = (float)($row['porcentaje_descuento'] ?? 0);
@@ -604,31 +804,43 @@ final class FacturacionARCA
                 throw new RuntimeException('No se puede emitir un renglón al 0% sin distinguir si es gravado, exento o no gravado. Configure su clasificación fiscal antes de emitir.');
             }
             $code = self::aliquotCode($rate);
-            $netCents += $subtotalCents;
+            $grossCents += $subtotalCents;
             if (!isset($ivaByCode[$code])) {
                 $ivaByCode[$code] = ['base' => 0, 'importe' => 0, 'tasa' => $rate];
             }
             $ivaByCode[$code]['base'] += $subtotalCents;
+
+            $factor = ($rate > 0) ? (1 + $rate / 100) : 1;
+            $netPrice = ((float)$row['precio'] > 0) ? round((float)$row['precio'] / $factor, 2) : 0;
+            $netBase = round((float)$row['subtotal'] / $factor, 2);
+
             $projectCode = (string)($invoice['proyecto_codigo'] ?? '');
             $items[] = [
                 'codigo' => (string)$row['concepto_codigo'],
-                'ncm' => '73.08.20',
+                'ncm' => '73.08.20.00',
                 'proyecto' => $projectCode,
                 'concepto' => (string)$row['concepto_text'],
                 'descripcion' => (string)($row['descripcion'] ?: $row['concepto_text']),
                 'cantidad' => $quantity,
-                'precio_unitario' => (float)$row['precio'],
+                'precio_unitario' => $netPrice,
                 'descuento_porcentaje' => $discount,
-                'base_imponible' => self::money($subtotalCents),
+                'base_imponible' => $netBase,
                 'codigo_iva_arca' => $code,
                 'alicuota_iva' => $rate,
             ];
         }
 
         $ivaCents = 0;
+        $netCents = 0;
         foreach ($ivaByCode as $code => &$amounts) {
-            $amounts['importe'] = (int)round($amounts['base'] * $amounts['tasa'] / 100);
-            $ivaCents += $amounts['importe'];
+            $t = (float)$amounts['tasa'];
+            $grossBaseCents = (int)$amounts['base'];
+            $ivaPartCents = ($t > 0) ? (int)round($grossBaseCents * $t / (100 + $t)) : 0;
+            $netBaseCents = $grossBaseCents - $ivaPartCents;
+            $amounts['base'] = $netBaseCents;
+            $amounts['importe'] = $ivaPartCents;
+            $ivaCents += $ivaPartCents;
+            $netCents += $netBaseCents;
         }
         unset($amounts);
 
@@ -677,7 +889,9 @@ final class FacturacionARCA
             'iva_por_codigo' => $ivaByCode,
             'detalle' => [
                 'version' => 1,
-                'ncm' => '73.08.20',
+                'letra' => $letter,
+                'tipo_comprobante_nombre' => (string)$invoice['tipo_comprobante'],
+                'ncm' => '73.08.20.00',
                 'proyecto' => (string)($invoice['proyecto_codigo'] ?? ''),
                 'observaciones' => (string)($invoice['observaciones'] ?? ''),
                 'moneda_texto' => (string)$invoice['moneda'],
@@ -862,6 +1076,10 @@ final class FacturacionARCA
             throw new RuntimeException('ARCA devolvió un CAE con formato inválido; el comprobante requiere conciliación.');
         }
         $expiry = self::validDate($expires, 'vencimiento del CAE');
+        $previousResponse = json_decode((string)($record['respuesta_arca'] ?? ''), true);
+        if (is_array($previousResponse)) {
+            $summary = array_merge($previousResponse, $summary);
+        }
         $pdo->beginTransaction();
         try {
             $q = $pdo->prepare(
@@ -906,6 +1124,12 @@ final class FacturacionARCA
     {
         $q = $pdo->prepare('UPDATE comprobantes_arca SET ultimo_error = ? WHERE id = ?');
         $q->execute([mb_substr($message, 0, 4000), $id]);
+    }
+
+    private static function isExplicitArcaRejection(Throwable $exception): bool
+    {
+        return $exception->getCode() > 0
+            && preg_match('/^\(\d+\)\s+/D', trim($exception->getMessage())) === 1;
     }
 
     private static function coincide($voucher, array $request): bool

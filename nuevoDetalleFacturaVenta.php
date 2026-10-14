@@ -27,23 +27,47 @@
 		$iva = 0;
 		$total = 0;
 		
-		$sql = " SELECT `cantidad`, `precio`, `subtotal` FROM `facturas_venta_detalle` WHERE `id_factura_venta` = ".$_GET['id'];    
+		$sql = "SELECT d.cantidad, d.precio, d.subtotal, COALESCE(ti.tasa, 21) AS tasa 
+				FROM facturas_venta_detalle d 
+				INNER JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable 
+				LEFT JOIN tipos_iva ti ON ti.id = cc.id_alicuota_iva 
+				WHERE d.id_factura_venta = " . (int)$_GET['id'];
+		$brutoTotal = 0;
+		$ivaTotal = 0;
 		foreach ($pdo->query($sql) as $row) {
-			$total += $row[2];
-			$noGravadoParcial = $row[1]*$row[0];
-			$noGravado += $noGravadoParcial;
-			$iva += $noGravado *0.21;
-			$gravado += $noGravado + $iva;
+			$sub = (float)$row['subtotal'];
+			$tasa = (float)$row['tasa'];
+			$brutoTotal += $sub;
+			if ($tasa > 0) {
+				$ivaTotal += round($sub * $tasa / (100 + $tasa), 2);
+			}
 		}
+		$noGravado = round($brutoTotal - $ivaTotal, 2);
+		$gravado = $brutoTotal;
+		$total = $brutoTotal;
+		$iva = $ivaTotal;
 		
-		$sql = "update `facturas_venta` set  `subtotal_gravado` = ?, `subtotal_no_gravado` = ?, `otros` = ?, `iva` = ?, `total` = ? where id = ?";
+		$sql = "update `facturas_venta` set `subtotal_gravado` = ?, `subtotal_no_gravado` = ?, `otros` = ?, `iva` = ?, `total` = ? where id = ?";
 		$q = $pdo->prepare($sql);		   
 		$q->execute([$gravado, $noGravado, $otros, $iva, $total, $_GET['id']]);
 		
 		foreach ($_POST['imputaciones'] as $item) {
-            $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`) VALUES (?,?)";
-            $q = $pdo->prepare($sql);
-            $q->execute([$idDetalle,$item]);
+            try {
+              $colLeg = $pdo->query("SHOW COLUMNS FROM facturas_venta_detalle_x_certificados_avance LIKE 'cantidad'")->fetch();
+              if ($colLeg) {
+                $nImp = max(1, count($_POST['imputaciones']));
+                $q = $pdo->prepare("INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`, `cantidad`, `precio`) VALUES (?,?,?,?)");
+                $q->execute([$idDetalle, $item, 1, round($subtotal / $nImp, 2)]);
+              } else {
+                $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`) VALUES (?,?)";
+                $q = $pdo->prepare($sql);
+                $q->execute([$idDetalle,$item]);
+              }
+            } catch (Exception $e) {
+              $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`) VALUES (?,?)";
+              $q = $pdo->prepare($sql);
+              $q->execute([$idDetalle,$item]);
+            }
         }
         
 		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Ítem Detalle de Factura de Venta','Facturas de Venta','')";

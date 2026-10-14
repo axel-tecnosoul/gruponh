@@ -40,12 +40,26 @@
 		
 		$sql = "delete from facturas_venta_detalle_x_certificados_avance where id_factura_venta_detalle = ? ";
         $q = $pdo->prepare($sql);
-        $q->execute([$id]);
+        $q->execute([$_GET['id']]);
 		
 		foreach ($_POST['imputaciones'] as $item) {
-            $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`) VALUES (?,?)";
-            $q = $pdo->prepare($sql);
-            $q->execute([$_GET['id'],$item]);
+            try {
+              $colLeg = $pdo->query("SHOW COLUMNS FROM facturas_venta_detalle_x_certificados_avance LIKE 'cantidad'")->fetch();
+              if ($colLeg) {
+                $nImp = max(1, count($_POST['imputaciones']));
+                $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`, `cantidad`, `precio`) VALUES (?,?,?,?)";
+                $q = $pdo->prepare($sql);
+                $q->execute([$_GET['id'],$item, 1, round($subtotal / $nImp, 2)]);
+              } else {
+                $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`) VALUES (?,?)";
+                $q = $pdo->prepare($sql);
+                $q->execute([$_GET['id'],$item]);
+              }
+            } catch (Exception $e) {
+              $sql = "INSERT INTO `facturas_venta_detalle_x_certificados_avance`(`id_factura_venta_detalle`, `id_certificado_avance`) VALUES (?,?)";
+              $q = $pdo->prepare($sql);
+              $q->execute([$_GET['id'],$item]);
+            }
         }
         
 		

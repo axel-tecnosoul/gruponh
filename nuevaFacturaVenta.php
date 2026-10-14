@@ -44,14 +44,61 @@ if (!empty($_POST)) {
     }
     if (!esMonedaDolar($monedaFactura)) {
       $_POST['cotizacion'] = 1;
-    }
-
-    if (isset($_POST['punto_venta']) || isset($_POST['nro_comprobante'])) {
-      $_POST['numero'] = str_pad($_POST['punto_venta'] ?? '', 4, '0', STR_PAD_LEFT)
-        . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
+    } else {
+      $cotizVal = floatval($_POST['cotizacion'] ?? 0);
+      if ($cotizVal <= 0) {
+        throw new RuntimeException('Ingrese una cotización mayor que cero para facturas en dólares.');
+      }
+      $_POST['cotizacion'] = $cotizVal;
     }
 
     $isEditing = !empty($_POST['id_factura']);
+
+    // Punto de venta: en el alta llega solo el punto (el número lo asigna ARCA).
+    $puntoVenta = filter_var($_POST['punto_venta'] ?? null, FILTER_VALIDATE_INT);
+    if ($puntoVenta === false || $puntoVenta < 1 || $puntoVenta > 99998) {
+      throw new RuntimeException('Seleccione un punto de venta válido.');
+    }
+
+    // Tipo de comprobante del padrón AFIP (sin legacy) + letra derivada del tipo.
+    $idTipoComprobante = (int)($_POST['id_tipo_comprobante'] ?? 0);
+    $qTipo = $pdo->prepare("SELECT id, codigo_afip FROM tipos_comprobante WHERE id = ? AND activo = 1 AND codigo_afip IS NOT NULL");
+    $qTipo->execute([$idTipoComprobante]);
+    $tipoRow = $qTipo->fetch(PDO::FETCH_ASSOC);
+    if (!$tipoRow) {
+      throw new RuntimeException('Seleccione un tipo de comprobante válido.');
+    }
+    $idLetraComprobante = derivarIdLetraComprobante($pdo, $idTipoComprobante);
+
+    // El tipo debe estar habilitado para el punto de venta de la empresa.
+    $idEmpresaVal = !empty($_POST['id_empresa']) ? (int)$_POST['id_empresa'] : 0;
+    if ($idEmpresaVal > 0) {
+      $qHab = $pdo->prepare(
+        'SELECT COUNT(*) FROM arca_puntos_venta p
+         INNER JOIN arca_punto_venta_tipos t ON t.id_punto_venta = p.id
+         WHERE p.id_empresa = ? AND p.numero = ? AND p.bloqueado = 0
+           AND p.fecha_baja IS NULL AND t.codigo_tipo_comprobante = ?'
+      );
+      $qHab->execute([$idEmpresaVal, $puntoVenta, (int)$tipoRow['codigo_afip']]);
+      if ((int)$qHab->fetchColumn() === 0) {
+        throw new RuntimeException('El tipo de comprobante no está habilitado para el punto de venta elegido.');
+      }
+    }
+
+    // Número: provisorio en el alta; en edición se conserva salvo que siga provisorio.
+    if ($isEditing) {
+      $qNum = $pdo->prepare("SELECT numero FROM facturas_venta WHERE id = ?");
+      $qNum->execute([(int)$_POST['id_factura']]);
+      $numeroExistente = (string)$qNum->fetchColumn();
+      $partesNum = explode('-', $numeroExistente);
+      if (count($partesNum) === 2 && preg_match('/^0+$/D', $partesNum[1])) {
+        $_POST['numero'] = str_pad($puntoVenta, 4, '0', STR_PAD_LEFT) . '-00000000';
+      } else {
+        $_POST['numero'] = $numeroExistente;
+      }
+    } else {
+      $_POST['numero'] = str_pad($puntoVenta, 4, '0', STR_PAD_LEFT) . '-00000000';
+    }
 
     if (empty($_POST['id_condicion_pago'])) {
       $qFallback = $pdo->query("SELECT id FROM formas_pago LIMIT 1");
@@ -77,8 +124,8 @@ if (!empty($_POST)) {
 
       $q = $pdo->prepare("UPDATE facturas_venta SET id_tipo_comprobante=?, id_letra_comprobante=?, id_proyecto=?, numero=?, id_cuenta_destino=?, id_empresa=?, fecha_emitida=?, fecha_enviada=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
       $q->execute([
-        intval($_POST['id_tipo_comprobante']),
-        intval($_POST['id_letra_comprobante']),
+        $idTipoComprobante,
+        $idLetraComprobante,
         $idProyecto,
         $_POST['numero'],
         $idCuentaDest,
@@ -111,8 +158,8 @@ if (!empty($_POST)) {
                      id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado)
                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
       $q->execute([
-        intval($_POST['id_tipo_comprobante']),
-        intval($_POST['id_letra_comprobante']),
+        $idTipoComprobante,
+        $idLetraComprobante,
         $idProyecto,
         $_POST['numero'],
         $idCuentaDest,
@@ -141,8 +188,20 @@ if (!empty($_POST)) {
       $qDet = $pdo->prepare("INSERT INTO facturas_venta_detalle
                                      (id_factura_venta, id_concepto_contable, descripcion, cantidad, precio, subtotal, porcentaje_descuento)
                                      VALUES (?,?,?,?,?,?,?)");
-      $qImp = $pdo->prepare("INSERT INTO facturas_venta_detalle_x_certificados_avance
+      $hasMontoCols = false;
+      try {
+        $colCheck = $pdo->query("SHOW COLUMNS FROM facturas_venta_detalle_x_certificados_avance LIKE 'cantidad'")->fetch();
+        $hasMontoCols = (bool)$colCheck;
+      } catch (Exception $e) {
+        $hasMontoCols = false;
+      }
+      if ($hasMontoCols) {
+        $qImp = $pdo->prepare("INSERT INTO facturas_venta_detalle_x_certificados_avance
+                                     (id_factura_venta_detalle, id_certificado_avance, cantidad, precio) VALUES (?,?,?,?)");
+      } else {
+        $qImp = $pdo->prepare("INSERT INTO facturas_venta_detalle_x_certificados_avance
                                      (id_factura_venta_detalle, id_certificado_avance) VALUES (?,?)");
+      }
       $qTasa = $pdo->prepare("SELECT COALESCE(ti.tasa, 21)
                                 FROM conceptos_contables cc
                                 LEFT JOIN tipos_iva ti ON ti.id = cc.id_alicuota_iva
@@ -180,7 +239,7 @@ if (!empty($_POST)) {
             if ($tp < 0) { $tp = 0; }
             $subtotal += round($tc * $tp, 2);
             $cant += $tc;
-            $validos[] = (int)$m['id'];
+            $validos[] = ['id' => (int)$m['id'], 'cantidad' => $tc, 'precio' => $tp];
           }
           $subtotal = round($subtotal * (1 - $porcDescuento / 100), 2);
           $precio = 0;
@@ -188,8 +247,12 @@ if (!empty($_POST)) {
           $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal, $porcDescuento]);
           $idDetalle = $pdo->lastInsertId();
 
-          foreach ($validos as $idImp) {
-            $qImp->execute([$idDetalle, $idImp]);
+          foreach ($validos as $vImp) {
+            if ($hasMontoCols) {
+              $qImp->execute([$idDetalle, $vImp['id'], $vImp['cantidad'], $vImp['precio']]);
+            } else {
+              $qImp->execute([$idDetalle, $vImp['id']]);
+            }
           }
         } else {
           // Ítem manual sin imputaciones.
@@ -210,12 +273,16 @@ if (!empty($_POST)) {
     }
 
     foreach ($basesPorAlicuota as $tasa => $baseCentavos) {
-      $iva += round($baseCentavos * (float)$tasa / 100) / 100;
+      $t = (float)$tasa;
+      if ($t > 0) {
+        $iva += round($baseCentavos * $t / (100 + $t)) / 100;
+      }
     }
-    $noGravado = round($noGravado, 2);
+    $brutoTotal = round($noGravado, 2);
     $iva = round($iva, 2);
-    $gravado = $noGravado + $iva;
-    $totalFv = $gravado;
+    $noGravado = round($brutoTotal - $iva, 2);
+    $gravado = $brutoTotal;
+    $totalFv = $brutoTotal;
 
     // Retenciones
     $totalOtros = 0;
@@ -397,10 +464,26 @@ if ($editMode && $editId) {
                              INNER JOIN conceptos_contables cc ON cc.id = d.id_concepto_contable
                              WHERE d.id_factura_venta = ?");
     $qDet->execute([$editId]);
+    $hasMontoColsEdit = false;
+    try {
+      $colCheckEdit = $pdo->query("SHOW COLUMNS FROM facturas_venta_detalle_x_certificados_avance LIKE 'cantidad'")->fetch();
+      $hasMontoColsEdit = (bool)$colCheckEdit;
+    } catch (Exception $e) {
+      $hasMontoColsEdit = false;
+    }
     while ($row = $qDet->fetch(PDO::FETCH_ASSOC)) {
-      $qImp = $pdo->prepare("SELECT id_certificado_avance FROM facturas_venta_detalle_x_certificados_avance WHERE id_factura_venta_detalle = ?");
+      if ($hasMontoColsEdit) {
+        $qImp = $pdo->prepare("SELECT id_certificado_avance, cantidad, precio FROM facturas_venta_detalle_x_certificados_avance WHERE id_factura_venta_detalle = ?");
+      } else {
+        $qImp = $pdo->prepare("SELECT id_certificado_avance FROM facturas_venta_detalle_x_certificados_avance WHERE id_factura_venta_detalle = ?");
+      }
       $qImp->execute([$row['id']]);
-      $certIdsDet = $qImp->fetchAll(PDO::FETCH_COLUMN);
+      $impRows = $qImp->fetchAll(PDO::FETCH_ASSOC);
+      $certIdsDet = array_map(function ($r) { return (int)$r['id_certificado_avance']; }, $impRows);
+      $montoGuardado = [];
+      foreach ($impRows as $rImp) {
+        $montoGuardado[(int)$rImp['id_certificado_avance']] = $rImp;
+      }
 
       $imputacionesData = [];
       $imputacionesText = [];
@@ -414,8 +497,11 @@ if ($editMode && $editId) {
         if ($c) {
           $concepto = fmtCertificadoAvance($c['nro_certificado'], $c['nro_revision']);
           $monto = (float)$c['monto_total'];
-          $imputacionesData[] = ['id_cd' => $c['id'], 'concepto_text' => $concepto, 'cantidad' => 1, 'precio' => $monto, 'restante' => 1, 'oc_precio' => $monto];
-          $imputacionesText[] = $concepto . ' (1 x $' . number_format($monto, 2) . ')';
+          $cantG = isset($montoGuardado[$cid]['cantidad']) ? (float)$montoGuardado[$cid]['cantidad'] : 1;
+          $precG = isset($montoGuardado[$cid]['precio']) && (float)$montoGuardado[$cid]['precio'] > 0 ? (float)$montoGuardado[$cid]['precio'] : $monto;
+          if ($cantG <= 0) { $cantG = 1; }
+          $imputacionesData[] = ['id_cd' => $c['id'], 'concepto_text' => $concepto, 'cantidad' => $cantG, 'precio' => $precG, 'restante' => 1, 'oc_precio' => $monto];
+          $imputacionesText[] = $concepto . ' (' . $cantG . ' x $' . number_format($precG, 2) . ')';
         }
       }
 

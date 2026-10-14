@@ -53,13 +53,29 @@ $qDet->execute([$id]);
 $detalles = $qDet->fetchAll(PDO::FETCH_ASSOC);
 
 $detallesConImputaciones = [];
+$hasMontoColsVer = false;
+try {
+  $colVer = $pdo->query("SHOW COLUMNS FROM facturas_venta_detalle_x_certificados_avance LIKE 'cantidad'")->fetch();
+  $hasMontoColsVer = (bool)$colVer;
+} catch (Exception $e) {
+  $hasMontoColsVer = false;
+}
 foreach ($detalles as $det) {
-  $qImp = $pdo->prepare("SELECT ca.id, ca.nro_certificado, ca.nro_revision, ca.monto_total, ca.fecha_emision,
-          ca.aprobado_cliente, cm.revision
-      FROM facturas_venta_detalle_x_certificados_avance fvdxca
-      INNER JOIN certificados_avances_cabecera ca ON ca.id = fvdxca.id_certificado_avance
-      INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
-      WHERE fvdxca.id_factura_venta_detalle = ?");
+  if ($hasMontoColsVer) {
+    $qImp = $pdo->prepare("SELECT ca.id, ca.nro_certificado, ca.nro_revision, ca.monto_total, ca.fecha_emision,
+            ca.aprobado_cliente, cm.revision, fvdxca.cantidad AS cant_imp, fvdxca.precio AS precio_imp
+        FROM facturas_venta_detalle_x_certificados_avance fvdxca
+        INNER JOIN certificados_avances_cabecera ca ON ca.id = fvdxca.id_certificado_avance
+        INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
+        WHERE fvdxca.id_factura_venta_detalle = ?");
+  } else {
+    $qImp = $pdo->prepare("SELECT ca.id, ca.nro_certificado, ca.nro_revision, ca.monto_total, ca.fecha_emision,
+            ca.aprobado_cliente, cm.revision
+        FROM facturas_venta_detalle_x_certificados_avance fvdxca
+        INNER JOIN certificados_avances_cabecera ca ON ca.id = fvdxca.id_certificado_avance
+        INNER JOIN certificados_maestros cm ON cm.id = ca.id_certificado_maestro
+        WHERE fvdxca.id_factura_venta_detalle = ?");
+  }
   $qImp->execute([$det['id']]);
   $det['imputaciones'] = $qImp->fetchAll(PDO::FETCH_ASSOC);
   $detallesConImputaciones[] = $det;
@@ -249,11 +265,15 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                                 $impsHtml .= '<th style="text-align:right;padding:0 2px;">Subtotal</th>';
                                 $impsHtml .= '</tr></thead><tbody>';
                                 foreach ($det['imputaciones'] as $imp) {
+                                  $cantImp = isset($imp['cant_imp']) ? (float)$imp['cant_imp'] : 1;
+                                  $precImp = isset($imp['precio_imp']) && (float)$imp['precio_imp'] > 0 ? (float)$imp['precio_imp'] : (float)$imp['monto_total'];
+                                  if ($cantImp <= 0) { $cantImp = 1; }
+                                  $subImp = round($cantImp * $precImp, 2);
                                   $impsHtml .= '<tr>';
                                   $impsHtml .= '<td style="padding:2px 4px;">' . htmlspecialchars(fmtCertificadoAvance($imp['nro_certificado'], $imp['nro_revision'])) . '</td>';
-                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">1</td>';
-                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
-                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($imp['monto_total']) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . fmtV($cantImp) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($precImp) . '</td>';
+                                  $impsHtml .= '<td style="padding:2px 4px;text-align:right;">' . htmlspecialchars($data['moneda_text']) . ' ' . fmtV($subImp) . '</td>';
                                   $impsHtml .= '</tr>';
                                 }
                                 $impsHtml .= '</tbody></table>';
@@ -338,6 +358,34 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                         <input type="hidden" name="id_factura" value="<?= $id ?>">
                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_factura_arca']) ?>">
                         <button type="submit" class="btn btn-warning">Consultar y conciliar con ARCA</button>
+                      </form>
+                      <?php if (!empty($comprobanteARCA['homologacion']) && FacturacionARCA::habilitada()): ?>
+                        <form method="post" action="reintentarFacturaVentaARCA.php" class="d-inline"
+                          onsubmit="return confirm('Se consultará el último número autorizado y solo se reintentará con el mismo número reservado si sigue siendo el próximo. Si la numeración avanzó, no se enviará. ¿Continuar?');">
+                          <input type="hidden" name="id_factura" value="<?= $id ?>">
+                          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_factura_arca']) ?>">
+                          <button type="submit" class="btn btn-danger">Reintentar envío de homologación</button>
+                        </form>
+                      <?php endif; ?>
+                    <?php elseif ($comprobanteARCA && $comprobanteARCA['estado'] === 'rechazado'
+                        && empty($comprobanteARCA['numero_comprobante'])
+                        && strpos((string)$comprobanteARCA['ultimo_error'], 'Conflicto de numeración local para el comprobante propuesto ') === 0): ?>
+                      <form method="post" action="emitirFacturaVentaARCA.php" class="d-inline"
+                        onsubmit="return confirm('Este intento nunca se envió a ARCA. Se volverá a consultar la numeración actual y se intentará reservar el próximo número disponible. ¿Continuar?');">
+                        <input type="hidden" name="id_factura" value="<?= $id ?>">
+                        <input type="hidden" name="clave_operacion" value="<?= htmlspecialchars($comprobanteARCA['clave_operacion']) ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_factura_arca']) ?>">
+                        <button type="submit" class="btn btn-primary">Reintentar reserva local</button>
+                      </form>
+                    <?php elseif ($comprobanteARCA && $comprobanteARCA['estado'] === 'rechazado'
+                        && !empty($comprobanteARCA['homologacion'])
+                        && strpos((string)$comprobanteARCA['ultimo_error'], '(10242)') !== false
+                        && FacturacionARCA::habilitada()): ?>
+                      <form method="post" action="reintentarFacturaVentaARCA.php" class="d-inline"
+                        onsubmit="return confirm('Se corregirá CondicionIVAReceptorId usando el snapshot guardado. Se consultará la numeración y solo se usará CreateVoucher si el número reservado sigue siendo el próximo. ¿Continuar?');">
+                        <input type="hidden" name="id_factura" value="<?= $id ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_factura_arca']) ?>">
+                        <button type="submit" class="btn btn-danger">Reintentar con condición IVA corregida</button>
                       </form>
                     <?php elseif ($comprobanteARCA && $comprobanteARCA['estado'] === 'pendiente' && (int)$data['id_estado'] === 3): ?>
                       <form method="post" action="emitirFacturaVentaARCA.php" class="d-inline">

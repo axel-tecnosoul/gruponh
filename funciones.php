@@ -1138,3 +1138,52 @@ function esMonedaDolar($moneda): bool {
 
 	return false;
 }
+
+/**
+ * Letra fiscal (A/B/C/E/X) derivada de la denominación del tipo de comprobante.
+ *
+ * Se usa porque el alta de facturas ya no pide letra: el tipo elegido
+ * (padrón AFIP con codigo_afip) la determina. Reglas:
+ *  - denominación terminada en " A"/" B"/" C" => esa letra;
+ *  - códigos 19-22 o mención a exportación/exterior => E;
+ *  - resto (M, tiques, remitos, ajustes, etc.) => X (mismo criterio
+ *    histórico: ya hay facturas con letra X en la base).
+ */
+function letraComprobanteDesdeTipo($denominacion, $codigoAfip = null): string {
+	$denominacion = trim((string)$denominacion);
+	if (preg_match('/\s([ABC])$/u', $denominacion, $m)) {
+		return $m[1];
+	}
+	$codigo = (int)$codigoAfip;
+	if (in_array($codigo, [19, 20, 21, 22], true)
+		|| stripos($denominacion, 'EXPORT') !== false
+		|| stripos($denominacion, 'EXTERIOR') !== false) {
+		return 'E';
+	}
+	return 'X';
+}
+
+/**
+ * Id de `letras_comprobante` correspondiente al tipo de comprobante indicado.
+ * Si la letra no existe en la tabla, usa X y como último recurso lanza error.
+ */
+function derivarIdLetraComprobante(PDO $pdo, int $idTipoComprobante): int {
+	$q = $pdo->prepare("SELECT codigo_afip, tipo FROM tipos_comprobante WHERE id = ? AND activo = 1");
+	$q->execute([$idTipoComprobante]);
+	$fila = $q->fetch(PDO::FETCH_ASSOC);
+	if (!$fila) {
+		throw new RuntimeException('Seleccione un tipo de comprobante válido.');
+	}
+	$letra = letraComprobanteDesdeTipo($fila['tipo'] ?? '', $fila['codigo_afip'] ?? null);
+	$qLetra = $pdo->prepare("SELECT id FROM letras_comprobante WHERE letra = ?");
+	$qLetra->execute([$letra]);
+	$idLetra = $qLetra->fetchColumn();
+	if ($idLetra === false && $letra !== 'X') {
+		$qLetra->execute(['X']);
+		$idLetra = $qLetra->fetchColumn();
+	}
+	if ($idLetra === false) {
+		throw new RuntimeException('No se pudo determinar la letra del comprobante.');
+	}
+	return (int)$idLetra;
+}

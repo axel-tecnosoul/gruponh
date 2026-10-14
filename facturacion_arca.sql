@@ -27,6 +27,8 @@ CREATE TABLE comprobantes_arca (
     tipo_comprobante SMALLINT UNSIGNED NOT NULL,
     numero_comprobante BIGINT UNSIGNED NULL,
     estado ENUM('pendiente', 'enviando', 'autorizado', 'rechazado', 'incierto') NOT NULL DEFAULT 'pendiente',
+    numero_comprobante_activo BIGINT UNSIGNED
+        GENERATED ALWAYS AS (CASE WHEN estado = 'rechazado' THEN NULL ELSE numero_comprobante END) STORED,
     fecha_comprobante DATE NOT NULL,
     concepto SMALLINT UNSIGNED NOT NULL,
     receptor_tipo_documento SMALLINT UNSIGNED NOT NULL,
@@ -59,8 +61,8 @@ CREATE TABLE comprobantes_arca (
     creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     actualizado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_comprobante_fiscal
-        (homologacion, emisor_cuit, punto_venta, tipo_comprobante, numero_comprobante),
+    UNIQUE KEY uq_comprobante_fiscal_activo
+        (homologacion, emisor_cuit, punto_venta, tipo_comprobante, numero_comprobante_activo),
     UNIQUE KEY uq_operacion (homologacion, emisor_cuit, clave_operacion),
     UNIQUE KEY uq_factura_arca (id_factura_venta),
     KEY ix_estado (estado),
