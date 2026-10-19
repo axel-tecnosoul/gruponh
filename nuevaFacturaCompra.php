@@ -210,7 +210,7 @@ if (!empty($_POST)) {
 
     if (is_array($detalles) && count($detalles) > 0) {
       $detallesProcesados = true;
-      $qDet = $pdo->prepare("INSERT INTO facturas_compra_detalle (id_factura_compra, id_concepto_contable, descripcion, porc_descuento, cantidad, precio, subtotal) VALUES (?,?,?,?,?,?,?)");
+      $qDet = $pdo->prepare("INSERT INTO facturas_compra_detalle (id_factura_compra, id_concepto_contable, descripcion, porcentaje_descuento, cantidad, precio, subtotal) VALUES (?,?,?,?,?,?,?)");
       $qImp = $pdo->prepare("INSERT INTO facturas_compra_detalle_x_compras_detalle (id_factura_compra_detalle, id_compra_detalle, cantidad, precio) VALUES (?,?,?,?)");
 
       // Validate: collect all compra_detalle IDs from all details to check duplicates
@@ -229,7 +229,7 @@ if (!empty($_POST)) {
       }
 
       foreach ($detalles as $det) {
-        $porcDesc = !empty($det['porc_descuento']) ? floatval($det['porc_descuento']) : 0;
+        $porcDesc = !empty($det['porcentaje_descuento']) ? floatval($det['porcentaje_descuento']) : 0;
         $descripcion = !empty($det['descripcion']) ? $det['descripcion'] : '';
 
         $imps = !empty($det['imputaciones_data']) ? $det['imputaciones_data'] : [];
@@ -481,7 +481,7 @@ if (!empty($_POST)) {
           'descripcion' => $row['descripcion'] ?? '',
           'cantidad' => (float)$row['cantidad'],
           'precio' => (float)$row['precio'],
-          'porc_descuento' => (float)($row['porc_descuento'] ?? 0),
+          'porcentaje_descuento' => (float)($row['porcentaje_descuento'] ?? 0),
           'imputaciones' => $imputacionesIds,
           'imputaciones_data' => $imputacionesData,
           'subtotal' => (float)$row['subtotal']

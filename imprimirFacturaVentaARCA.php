@@ -93,7 +93,7 @@ if (!$localOnly) {
     }
     $q = $pdo->prepare(
         'SELECT d.id, d.cantidad, d.precio, d.subtotal, d.descripcion,
-                COALESCE(NULLIF(d.porcentaje_descuento, 0), d.porc_descuento, 0) AS descuento_porcentaje,
+                COALESCE(NULLIF(d.porcentaje_descuento, 0), d.porcentaje_descuento, 0) AS descuento_porcentaje,
                 cc.codigo AS concepto_codigo, cc.descripcion AS concepto_text,
                 COALESCE(ti.tasa, 21) AS tasa_iva
          FROM facturas_venta_detalle d

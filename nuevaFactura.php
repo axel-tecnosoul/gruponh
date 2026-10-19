@@ -850,7 +850,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             totalCant += parseFloat(imp.cantidad || 0);
             totalSubImp += parseFloat(imp.cantidad || 0) * parseFloat(imp.precio || 0);
           });
-          var porcDesc = parseFloat(item.porc_descuento || 0);
+          var porcDesc = parseFloat(item.porcentaje_descuento || 0);
           var sub = totalSubImp * (1 - porcDesc / 100);
           total += sub;
 
@@ -1186,7 +1186,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         } else {
           sub = (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0);
         }
-        sub *= 1 - (parseFloat(item.porc_descuento) || 0) / 100;
+        sub *= 1 - (parseFloat(item.porcentaje_descuento) || 0) / 100;
         subTotal += sub;
         var clave = tasa.toFixed(4);
         basesPorAlicuota[clave] = (basesPorAlicuota[clave] || 0) + Math.round(sub * 100);
@@ -1277,7 +1277,7 @@ $fv = function($key, $default = '') use ($facturaData) {
 
       $('#det_concepto').val(item.id_concepto).trigger('change');
       $('#det_descripcion').val(item.descripcion || '');
-      $('#det_descuento').val(item.porc_descuento || 0);
+      $('#det_descuento').val(item.porcentaje_descuento || 0);
 
       // Select imputaciones in select2 y reconstruir sub-líneas con montos guardados
       $('#det_imputaciones').val(idsToAdd).trigger('change');
@@ -1578,7 +1578,7 @@ $fv = function($key, $default = '') use ($facturaData) {
 
         var item = {
           id_concepto: idConcepto, concepto_text: conceptoText,
-          descripcion: descripcion, porc_descuento: porcDescuento,
+          descripcion: descripcion, porcentaje_descuento: porcDescuento,
           cantidad: impsData.reduce(function(s, x) { return s + x.cantidad; }, 0), precio: 0,
           imputaciones: allImpIds, imputaciones_data: impsData, imputaciones_text: imputacionesText
         };

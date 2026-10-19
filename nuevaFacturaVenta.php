@@ -208,7 +208,7 @@ if (!empty($_POST)) {
                                 WHERE cc.id = ?");
 
       foreach ($detalles as $det) {
-        $porcDescuento = isset($det['porc_descuento']) ? (float)$det['porc_descuento'] : 0;
+        $porcDescuento = isset($det['porcentaje_descuento']) ? (float)$det['porcentaje_descuento'] : 0;
         if ($porcDescuento < 0 || $porcDescuento > 100) {
           throw new RuntimeException("El descuento del detalle debe estar entre 0 y 100%.");
         }
@@ -513,7 +513,7 @@ if ($editMode && $editId) {
         'cantidad' => (float)$row['cantidad'],
         'precio' => (float)$row['precio'],
         'subtotal' => (float)$row['subtotal'],
-        'porc_descuento' => (float)($row['porcentaje_descuento'] ?? 0),
+        'porcentaje_descuento' => (float)($row['porcentaje_descuento'] ?? 0),
         'imputaciones' => $certIdsDet,
         'imputaciones_data' => $imputacionesData,
         'imputaciones_text' => $imputacionesText

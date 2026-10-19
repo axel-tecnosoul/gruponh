@@ -183,7 +183,7 @@ function fmt($val) {
                             <?php
                               $subtotalDet = (float)$det['subtotal'];
                               $sumaSubtotal += $subtotalDet;
-                              $porcDesc = (float)($det['porc_descuento'] ?? 0);
+                              $porcDesc = (float)($det['porcentaje_descuento'] ?? 0);
                               $impsHtml = '';
                               if (!empty($det['imputaciones'])) {
                                 $impsHtml = '<table class="table table-sm table-borderless mb-0" style="font-size:12px;background:#fff;">';
