@@ -1000,3 +1000,5 @@ INNER JOIN `certificados_avances_cabecera` ca ON ca.`id` = fvxca.`id_certificado
 SET fvxca.`precio` = ca.`monto_total`,
     fvxca.`cantidad` = 1
 WHERE fvxca.`precio` IS NULL OR fvxca.`precio` = 0;
+
+ALTER TABLE `facturas_compra_detalle` CHANGE `porc_descuento` `porcentaje_descuento` DOUBLE NOT NULL DEFAULT '0';
