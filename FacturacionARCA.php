@@ -138,7 +138,7 @@ final class FacturacionARCA
             if (!hash_equals((string)$existing['clave_operacion'], $claveOperacion)) {
                 throw new RuntimeException('Esta factura ya tiene un intento ARCA. Consulte su estado antes de continuar.');
             }
-            return self::procesar($pdo, $existing);
+            return self::conAvisoDesarrollo(self::procesar($pdo, $existing));
         }
 
         $model = self::prepare($pdo, $invoice, $input);
@@ -216,7 +216,7 @@ final class FacturacionARCA
             if ($e instanceof PDOException && (int)($e->errorInfo[1] ?? 0) === 1062) {
                 $existing = self::loadByInvoice($pdo, $idFactura);
                 if ($existing && hash_equals((string)$existing['clave_operacion'], $claveOperacion)) {
-                    return self::procesar($pdo, $existing);
+                    return self::conAvisoDesarrollo(self::procesar($pdo, $existing));
                 }
                 throw new RuntimeException(
                     $existing
@@ -229,7 +229,7 @@ final class FacturacionARCA
             throw $e;
         }
 
-        return self::procesar($pdo, self::loadById($pdo, $idComprobante));
+        return self::conAvisoDesarrollo(self::procesar($pdo, self::loadById($pdo, $idComprobante)));
     }
 
     public static function conciliar(PDO $pdo, int $idFactura, ?int $idUsuario = null): array
@@ -676,6 +676,9 @@ final class FacturacionARCA
         if (!self::validCuit($cuitEmisor)) {
             throw new RuntimeException('Complete un CUIT válido en la ficha de la empresa emisora antes de emitir.');
         }
+        // Modo desarrollador: informa el comprobante con el CUIT de testing del
+        // certificado homologación, sin importar qué empresa lo emita.
+        $cuitArca = self::cuitDesarrolloForzado() ?? $cuitEmisor;
         if (trim((string)$invoice['emisor_razon_social']) === ''
             || trim((string)$invoice['emisor_direccion']) === ''
             || trim((string)($invoice['emisor_iibb'] ?? '')) === ''
@@ -852,7 +855,7 @@ final class FacturacionARCA
         return [
             'emisor' => [
                 'razon_social' => (string)$invoice['emisor_razon_social'],
-                'cuit' => $cuitEmisor,
+                'cuit' => $cuitArca,
                 'domicilio' => (string)$invoice['emisor_direccion'],
                 'email' => (string)($invoice['emisor_email'] ?? ''),
                 'telefono' => '',
@@ -1349,5 +1352,34 @@ final class FacturacionARCA
     private static function homologacion(): int
     {
         return getenv('ARCA_HOMOLOGACION') === '0' ? 0 : 1;
+    }
+
+    /**
+     * Modo desarrollador: CUIT que obligatoriamente se informa a ARCA.
+     * El certificado de homologación pertenece a un CUIT de testing; si el comprobante
+     * se emitiese con el CUIT real de la empresa, WSFE rechaza con error
+     * "(600) ValidacionDeToken: No aparecio CUIT en lista de relaciones".
+     * Devuelve null fuera de APP_ENV=development o si la variable no es un CUIT válido.
+     */
+    private static function cuitDesarrolloForzado(): ?string
+    {
+        if (getenv('APP_ENV') !== 'development') {
+            return null;
+        }
+        $cuit = self::digits((string)getenv('ARCA_CUIT_HOMOLOGACION'));
+        return $cuit !== '' && self::validCuit($cuit) ? $cuit : null;
+    }
+
+    /**
+     * Añade al mensaje de resultado el aviso de que, por modo desarrollador,
+     * el comprobante se informa a ARCA con el CUIT de testing (no el de la empresa).
+     */
+    private static function conAvisoDesarrollo(array $resultado): array
+    {
+        $cuit = self::cuitDesarrolloForzado();
+        if ($cuit !== null) {
+            $resultado['mensaje'] .= ' (Modo desarrollador: emisor informado con CUIT ' . $cuit . ')';
+        }
+        return $resultado;
     }
 }
