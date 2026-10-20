@@ -56,7 +56,9 @@ try {
                   <div class="card-header">
                     <h5><?php echo $ubicacion; ?>
                       &nbsp;&nbsp;
-                      <a href="#" class="btn btn-sm btn-outline-primary ml-2" id="link_empresa">Editar</a>
+                      <a href="#" id="link_empresa">
+                        <img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Editar" title="Editar">
+                      </a>
                     </h5>
                   </div>
                   <div class="card-body">
