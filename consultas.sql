@@ -946,3 +946,17 @@ DROP TABLE IF EXISTS `tipos_comprobante`;
 -- no de error de columna duplicada.
 -- ---------------------------------------------------------------------------
 ALTER TABLE `computos` ADD `fecha_hora_alta` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `id_cuenta_valido`, ADD `fecha_hora_ultima_modificacion` DATETIME on update CURRENT_TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER `fecha_hora_alta`;
+
+UPDATE empresas SET cuit = '30680640919', direccion = 'Gutierrez Ricardo 2874 Piso: 1 y 2 - Ciudad de Buenos Aires', email = '', iibb = '901-165299-7', fecha_inicio_actividades = '1994-09-01' WHERE empresas.id = 1;
+UPDATE empresas SET cuit = '30711153957', direccion = 'Av. Nicolas Milazzo 3251 - Ranelagh, Buenas Aires', id_condicion_iva = '1', iibb = '901-535262-3', fecha_inicio_actividades = '2009-11-01' WHERE empresas.id = 2;
+
+UPDATE condiciones_iva SET condicion_iva = 'IVA Responsable Inscripto' WHERE condiciones_iva.id = 1;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCION 29 (Facturación ARCA): facturas_venta/facturas_compra.id_tipo_comprobante
+-- ---------------------------------------------------------------------------
+UPDATE facturas_venta SET id_tipo_comprobante = id_tipo_comprobante - 1000 WHERE id_tipo_comprobante >= 1001;
+UPDATE facturas_compra SET id_tipo_comprobante = id_tipo_comprobante - 1000 WHERE id_tipo_comprobante >= 1001;
+
+ALTER TABLE `facturas_venta` ADD CONSTRAINT `facturas_venta_ibfk_8` FOREIGN KEY (`id_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`);
+ALTER TABLE `facturas_compra` ADD CONSTRAINT `facturas_compra_ibfk_8` FOREIGN KEY (`id_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`);

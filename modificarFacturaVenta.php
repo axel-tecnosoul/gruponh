@@ -21,10 +21,16 @@
         // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
+        require_once('funciones.php');
+
+        // Invariante: se guarda el codigo ARCA directo (FK a arca_tipos_comprobante.codigo).
+        // Si algo postea el formato intermedio 1000+codigo, se normaliza.
+        $idTipoPost = (int)$_POST['id_tipo_comprobante'];
+        if ($idTipoPost >= 1001) { $idTipoPost -= 1000; }
+
         $sql = "UPDATE `facturas_venta` set `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `id_proyecto` = ?, `numero` = ?, `id_cuenta_destino` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_enviada` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ? where id = ?";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['id_proyecto'],$_POST['numero'],$_POST['id_cuenta_destino'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_enviada'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_GET['id']]);
+        $q->execute([$idTipoPost,$_POST['id_letra_comprobante'],$_POST['id_proyecto'],$_POST['numero'],$_POST['id_cuenta_destino'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_enviada'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_GET['id']]);
 		
 		$sql = "delete from facturas_venta_otros where id_factura_venta = ? ";
 		$q = $pdo->prepare($sql);

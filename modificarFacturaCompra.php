@@ -38,9 +38,16 @@
                     . '-' . str_pad($_POST['nro_comprobante'] ?? '', 8, '0', STR_PAD_LEFT);
             }
 
+            require_once('funciones.php');
+
+            // Invariante: se guarda el codigo ARCA directo (FK a arca_tipos_comprobante.codigo).
+            // Si algo postea el formato intermedio 1000+codigo, se normaliza.
+            $idTipoPost = (int)$_POST['id_tipo_comprobante'];
+            if ($idTipoPost >= 1001) { $idTipoPost -= 1000; }
+
             $sql = "UPDATE `facturas_compra` set `id_tipo_comprobante` = ?, `id_letra_comprobante` = ?, `numero` = ?, `id_cuenta_origen` = ?, `id_empresa` = ?, `fecha_emitida` = ?, `fecha_recibida` = ?, `id_condicion_pago` = ?, `id_moneda` = ?, `cotizacion` = ?, `observaciones` = ?, `id_estado` = ? where id = ?";
             $q = $pdo->prepare($sql);
-            $q->execute([$_POST['id_tipo_comprobante'],$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$id]);
+            $q->execute([$idTipoPost,$_POST['id_letra_comprobante'],$_POST['numero'],$_POST['id_cuenta_origen'],$_POST['id_empresa'],$_POST['fecha_emitida'],$_POST['fecha_recibida'],$_POST['id_condicion_pago'],$_POST['id_moneda'],$_POST['cotizacion'],$_POST['observaciones'],$_POST['id_estado'],$id]);
 
             // Gestionar OC vinculadas
             $nuevasOCs = !empty($_POST['id_orden_compra']) ? (is_array($_POST['id_orden_compra']) ? array_map('intval', $_POST['id_orden_compra']) : [intval($_POST['id_orden_compra'])]) : [];

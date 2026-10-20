@@ -972,10 +972,10 @@ final class FacturacionARCA
         $issuer = json_decode((string)$record['datos_emisor'], true);
         $companyId = (int)$record['id_empresa'];
         $mode = (int)$record['homologacion'] === 1 ? 'HOMOLOGACION' : 'PRODUCCION';
-        $cert = getenv('ARCA_CERT_EMPRESA_' . $companyId . '_' . $mode);
-        $key = getenv('ARCA_KEY_EMPRESA_' . $companyId . '_' . $mode);
+        $cert = getenv('ARCA_CERT_' . $mode);
+        $key = getenv('ARCA_KEY_' . $mode);
         if (!$cert || !$key || !is_readable($cert) || !is_readable($key)) {
-            throw new RuntimeException('Faltan el certificado o la clave privada ARCA de la empresa emisora en la configuración del servidor.');
+            throw new RuntimeException('Faltan el certificado o la clave privada ARCA en la configuración del servidor (vars ARCA_CERT_' . $mode . ' / ARCA_KEY_' . $mode . ').');
         }
         if (realpath(dirname($cert)) !== realpath(dirname($key))) {
             throw new RuntimeException('El certificado y la clave privada ARCA deben estar en el mismo directorio de recursos.');
@@ -1016,7 +1016,7 @@ final class FacturacionARCA
     private static function loadInvoice(PDO $pdo, int $id): ?array
     {
         $q = $pdo->prepare(
-            "SELECT fv.*, tc.descripcion AS tipo_comprobante, lc.letra, m.moneda,
+            "SELECT fv.*, tc.descripcion AS tipo_comprobante, m.moneda,
                     CASE WHEN p.id IS NULL THEN '' ELSE CONCAT(
                         COALESCE(s.nro_sitio, ''), '_',
                         COALESCE(s.nro_subsitio, ''), '_',

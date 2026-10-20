@@ -63,6 +63,9 @@ if (!empty($_POST)) {
     // Tipo de comprobante: codigo del padrón ARCA (con mapeo dual para
     // históricos que guardaban el id de la vieja tabla tipos_comprobante).
     $idTipoComprobante = (int)($_POST['id_tipo_comprobante'] ?? 0);
+    // Invariante: se guarda el codigo ARCA directo (FK a arca_tipos_comprobante.codigo).
+    // Si algo postea el formato intermedio 1000+codigo, se normaliza.
+    if ($idTipoComprobante >= 1001) { $idTipoComprobante -= 1000; }
     $qTipo = $pdo->prepare("SELECT codigo, descripcion FROM arca_tipos_comprobante WHERE codigo = ?");
     $qTipo->execute([codigoArcaDesdeTipo($idTipoComprobante)]);
     $tipoRow = $qTipo->fetch(PDO::FETCH_ASSOC);
