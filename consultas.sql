@@ -1004,5 +1004,6 @@ WHERE fvxca.`precio` IS NULL OR fvxca.`precio` = 0;
 ALTER TABLE `facturas_compra_detalle` CHANGE `porc_descuento` `porcentaje_descuento` DOUBLE NOT NULL DEFAULT '0';
 
 ALTER TABLE `facturas_venta_otros`
+| ADD COLUMN `regimen_text` VARCHAR(99) NULL DEFAULT NULL AFTER `id_regimen`,
   ADD COLUMN `codigo` VARCHAR(99) NULL DEFAULT NULL AFTER `regimen_text`,
   ADD COLUMN `articulo` VARCHAR(99) NULL DEFAULT NULL AFTER `codigo`;

@@ -80,3 +80,7 @@ Thumbs.db
 /adjuntos_sitios/*
 !/adjuntos_sitios/.gitkeep
 .aider*
+
+documentacionParaFacturacion
+composer.json
+composer.lock
