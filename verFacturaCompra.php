@@ -15,11 +15,10 @@ if (!$id) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT fc.*, tc.tipo AS tipo_comprobante, lc.letra, m.moneda AS moneda_text,
+$sql = "SELECT fc.*, tc.descripcion AS tipo_comprobante, m.moneda AS moneda_text,
                cu.razon_social, e.empresa
         FROM facturas_compra fc
-        INNER JOIN tipos_comprobante tc ON tc.id = fc.id_tipo_comprobante
-        INNER JOIN letras_comprobante lc ON lc.id = fc.id_letra_comprobante
+        INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fc.id_tipo_comprobante >= 1001, fc.id_tipo_comprobante - 1000, fc.id_tipo_comprobante)
         INNER JOIN monedas m ON m.id = fc.id_moneda
         INNER JOIN cuentas cu ON cu.id = fc.id_cuenta_origen
         INNER JOIN empresas e ON e.id = fc.id_empresa
@@ -35,6 +34,8 @@ if (!$data) {
 }
 
 $estadoTexto = ($data['id_estado'] == 3) ? 'Definitivo' : 'Temporal';
+// La letra se deriva del tipo (la tabla letras_comprobante fue eliminada).
+$letraFactura = letraComprobanteDesdeTipo($data['tipo_comprobante'] ?? '');
 
 $qOC = $pdo->prepare("SELECT fcxc.id_compra, c.nro_oc
     FROM facturas_compra_x_compras fcxc
@@ -98,7 +99,7 @@ function fmt($val) {
                 <div class="card-header">
                   <h5>
                     <?= $ubicacion ?> N° <?= htmlspecialchars($data['numero']) ?>
-                    - <?= htmlspecialchars($data['tipo_comprobante']) ?> <?= htmlspecialchars($data['letra']) ?>
+                    - <?= htmlspecialchars($data['tipo_comprobante']) ?>
                   </h5>
                 </div>
                 <div class="card-body">
@@ -115,7 +116,7 @@ function fmt($val) {
                     <label class="col-sm-2 font-weight-bold">Tipo Comprobante</label>
                     <div class="col-sm-4"><?= htmlspecialchars($data['tipo_comprobante']) ?></div>
                     <label class="col-sm-2 font-weight-bold">Letra</label>
-                    <div class="col-sm-4"><?= htmlspecialchars($data['letra']) ?></div>
+                    <div class="col-sm-4"><?= htmlspecialchars($letraFactura) ?></div>
                   </div>
                   <div class="form-group row mt-1">
                     <label class="col-sm-2 font-weight-bold">Número</label>

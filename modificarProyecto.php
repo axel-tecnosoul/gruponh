@@ -306,6 +306,18 @@
 				document.getElementById("fecha_entrega").value = "";
 			}
 		});
+		// Precargar el cliente seleccionado en el buscador del select,
+		// para poder seguir editando el texto sin tipearlo de nuevo
+		$("#id_cliente").on("select2:open", function () {
+			var $search = $(".select2-search__field:visible").last();
+			if ($search.length && !$search.val()) {
+				var $op = $(this).find("option:selected");
+				var textoActual = $.trim($op.text());
+				if ($op.val() && textoActual) {
+					$search.val(textoActual).trigger("input");
+				}
+			}
+		});
 		</script>
   </body>
 </html>

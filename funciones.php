@@ -1,11 +1,11 @@
-<?php
+﻿<?php
 require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");
 
 /**
- * Obtiene la configuración SMTP.
- * Si APP_ENV=development y existe un archivo config.dev.php en la raíz,
- * se cargarán los datos desde ese archivo. Caso contrario se consultarán
+ * Obtiene la configuraciÃ³n SMTP.
+ * Si APP_ENV=development y existe un archivo config.dev.php en la raÃ­z,
+ * se cargarÃ¡n los datos desde ese archivo. Caso contrario se consultarÃ¡n
  * desde la base de datos (tabla parametros id 1-5).
  *
  * @param PDO $pdo
@@ -49,16 +49,16 @@ function getSmtpConfig(PDO $pdo): array {
 
 function debugQuery(PDO $pdo, string $sql, array $params): string {
   foreach ($params as $key => $value) {
-    // PDO::quote() añade comillas y escapa caracteres especiales
+    // PDO::quote() aÃ±ade comillas y escapa caracteres especiales
     $quoted = $pdo->quote($value);
 
     if (is_int($key)) {
-      // marcador posicional «?»
+      // marcador posicional Â«?Â»
       $sql = preg_replace('/\?/', $quoted, $sql, 1);
     } else {
       // marcador nombrado: quitamos un : adicional si lo trae la clave
       $name    = ltrim($key, ':');
-      // \b asegura que no coincida dentro de palabras más largas
+      // \b asegura que no coincida dentro de palabras mÃ¡s largas
       $pattern = '/:' . preg_quote($name, '/') . '\b/';
       $sql     = preg_replace($pattern, $quoted, $sql);
     }
@@ -67,14 +67,14 @@ function debugQuery(PDO $pdo, string $sql, array $params): string {
 }
 
 /**
- * Ejecuta una consulta (SELECT, UPDATE, etc.) y, si está en modo debug,
- * imprime el debugQuery y el resultado de la ejecución (para UPDATE/DELETE).
+ * Ejecuta una consulta (SELECT, UPDATE, etc.) y, si estÃ¡ en modo debug,
+ * imprime el debugQuery y el resultado de la ejecuciÃ³n (para UPDATE/DELETE).
  *
  * @param PDO    $pdo
  * @param string $sql
  * @param array  $params
  * @param bool   $modoDebug
- * @param string $etiqueta  Texto descriptivo que se mostrará en debug
+ * @param string $etiqueta  Texto descriptivo que se mostrarÃ¡ en debug
  * @return PDOStatement     El statement preparado y ejecutado
  */
 function debugExecute(PDO $pdo, string $sql, array $params, bool $modoDebug, string $etiqueta = ''): PDOStatement {
@@ -87,7 +87,7 @@ function debugExecute(PDO $pdo, string $sql, array $params, bool $modoDebug, str
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     if ($modoDebug && preg_match('/^\s*(UPDATE|DELETE)/i', $sql)) {
-        echo "  → Filas afectadas: " . $stmt->rowCount() . "<br><br>";
+        echo "  â†’ Filas afectadas: " . $stmt->rowCount() . "<br><br>";
     }
     return $stmt;
 }
@@ -102,7 +102,7 @@ function debugExecute(PDO $pdo, string $sql, array $params, bool $modoDebug, str
  */
 function fetchPedidoDetalle(PDO $pdo, int $idComputoDetalle, bool $modoDebug): ?array {
     $sql = "SELECT id, cantidad AS pedido_cantidad, comprado FROM pedidos_detalle WHERE id_computo_detalle = ?";
-    $stmt = debugExecute($pdo, $sql, [$idComputoDetalle], $modoDebug, "Recuperar pedidos_detalle para cómputo_detalle $idComputoDetalle");
+    $stmt = debugExecute($pdo, $sql, [$idComputoDetalle], $modoDebug, "Recuperar pedidos_detalle para cÃ³mputo_detalle $idComputoDetalle");
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     return $row ?: null;
 }
@@ -120,16 +120,16 @@ function cancelPedidoDetalle(PDO $pdo, int $idPedidoDetalle, bool $modoDebug): b
     $stmt=debugExecute($pdo, $sql, [$idPedidoDetalle], $modoDebug, "Cancelar pedido_detalle $idPedidoDetalle");
     $cancelado = $stmt->rowCount() == 1;
     
-    // Actualizar estado del pedido_detalle después de cancelar
+    // Actualizar estado del pedido_detalle despuÃ©s de cancelar
     if ($cancelado) {
         actualizarEstadoPedidoDetalle($pdo, $idPedidoDetalle);
     }
     
-    return $cancelado; // Retorna true si se canceló correctamente
+    return $cancelado; // Retorna true si se cancelÃ³ correctamente
 }
 
 /**
- * Pasa la reserva de un cómputo_detalle de la revision anterior a la nueva, ajustando cantidades si es necesario.
+ * Pasa la reserva de un cÃ³mputo_detalle de la revision anterior a la nueva, ajustando cantidades si es necesario.
  *
  * @param PDO  $pdo
  * @param int  $id_revision_anterior
@@ -140,16 +140,16 @@ function cancelPedidoDetalle(PDO $pdo, int $idPedidoDetalle, bool $modoDebug): b
  */
 function pasarReservaDeRevisionAnterior(PDO $pdo, int $id_revision_anterior, int $id_revision_actual, int $nueva_cantidad, bool $modoDebug): bool{
   $sql = "UPDATE computos_detalle SET reservado = ?, saldo = saldo - ? WHERE id = ?";
-  $stmt=debugExecute($pdo, $sql, [$nueva_cantidad,$nueva_cantidad, $id_revision_actual], $modoDebug, "Pasamos la reserva a la nueva revisión");
+  $stmt=debugExecute($pdo, $sql, [$nueva_cantidad,$nueva_cantidad, $id_revision_actual], $modoDebug, "Pasamos la reserva a la nueva revisiÃ³n");
 
   $sql = "UPDATE computos_detalle SET reservado = 0 WHERE id = ?";
   $stmt2=debugExecute($pdo, $sql, [$id_revision_anterior], $modoDebug, "Dejamos en 0 la reserva de la revision anterior");
 
-  return $stmt->rowCount() == 1 && $stmt2->rowCount() == 1; // Retorna true si se actualizó correctamente
+  return $stmt->rowCount() == 1 && $stmt2->rowCount() == 1; // Retorna true si se actualizÃ³ correctamente
 }
 
 /**
- * Reasigna o ajusta un pedido_detalle a otro cómputo_detalle.
+ * Reasigna o ajusta un pedido_detalle a otro cÃ³mputo_detalle.
  *
  * @param PDO  $pdo
  * @param int  $idPedidoDetalle
@@ -164,33 +164,33 @@ function reassignPedidoDetalle(PDO $pdo, int $idPedidoDetalle, int $nuevaCantida
 }
 
 /**
- * Comprueba y supera la revisión anterior de un cómputo.
+ * Comprueba y supera la revisiÃ³n anterior de un cÃ³mputo.
  *
- * @param PDO   $pdo            Conexión PDO ya en transacción.
- * @param int   $idComputo      ID del cómputo que acabas de aprobar por completo.
+ * @param PDO   $pdo            ConexiÃ³n PDO ya en transacciÃ³n.
+ * @param int   $idComputo      ID del cÃ³mputo que acabas de aprobar por completo.
  * @param int   $modoDebug      1 para volcar consultas, 0 para silencioso.
- * @return string Texto que detalle lo sucedido (vacío si no había revisión anterior).
+ * @return string Texto que detalle lo sucedido (vacÃ­o si no habÃ­a revisiÃ³n anterior).
  */
 
 function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): string {
   $texto = "";
 
-  // 1) Recuperar datos del cómputo actual
+  // 1) Recuperar datos del cÃ³mputo actual
   $sql = "SELECT c.nro_revision, c.nro AS nro_computo, c.id_tarea FROM computos c WHERE c.id = ?";
   //$stmt = $pdo->prepare($sql);
   $params = [$idComputo];
   //$stmt->execute($params);
-  $stmt=debugExecute($pdo,$sql,$params,$modoDebug,"Recuperar datos del cómputo actual ($idComputo)");
+  $stmt=debugExecute($pdo,$sql,$params,$modoDebug,"Recuperar datos del cÃ³mputo actual ($idComputo)");
 
   $info = $stmt->fetch(PDO::FETCH_ASSOC);
 
   if ($modoDebug) {
-    //echo "-Recuperar datos del cómputo actual ($idComputo):<br>" . debugQuery($pdo, $sql, $params) . "<br>";
+    //echo "-Recuperar datos del cÃ³mputo actual ($idComputo):<br>" . debugQuery($pdo, $sql, $params) . "<br>";
     var_dump($info);
   }
 
   if (!$info || $info['nro_revision'] < 1) {
-    // No hay revisión anterior
+    // No hay revisiÃ³n anterior
 
     //notificar que se ha aprobado un computo
     $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto, p.nombre AS proyecto, c.nro AS nro_computo, nro_revision FROM computos c LEFT JOIN tareas t ON c.id_tarea=t.id LEFT JOIN tipos_tarea tt on tt.id = t.id_tipo_tarea LEFT JOIN cuentas cu ON cu.id = c.id_cuenta_solicitante LEFT JOIN estados_computos ec ON ec.id = c.id_estado INNER JOIN proyectos p on p.id = t.id_proyecto INNER JOIN sitios s on s.id = p.id_sitio WHERE c.id = ? ";
@@ -198,14 +198,14 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
     $q->execute([$idComputo]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
 
-    //$descProyecto = " N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
-    $descProyecto = " N° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+    //$descProyecto = " NÂ° ".$data["nro_computo"]." Rev. NÂ° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+    $descProyecto = " NÂ° ".$data["nro_computo"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
 
     $idTipoNotificacion=15;
     $idEntidad=$idComputo;
     $detalleNotificacion="ID Computo: #".$idComputo;
-    $asuntoEmail="Producción - Aprobación de Cómputo ({$descProyecto})";
-    $cuerpoEmail="El cómputo #{$descProyecto} ha sido aprobado.";
+    $asuntoEmail="ProducciÃ³n - AprobaciÃ³n de CÃ³mputo ({$descProyecto})";
+    $cuerpoEmail="El cÃ³mputo #{$descProyecto} ha sido aprobado.";
     crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
 
     return $texto;
@@ -213,7 +213,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
 
   $revisionAnterior = $info['nro_revision'] - 1;
 
-  // 2) Obtener estado de la revisión anterior
+  // 2) Obtener estado de la revisiÃ³n anterior
   $sql = "SELECT c.id, c.id_estado, ec.estado FROM computos c JOIN estados_computos ec ON c.id_estado=ec.id WHERE c.id_tarea = ? AND c.nro = ? AND c.nro_revision = ?";
   $stmt = $pdo->prepare($sql);
   $params = [$info['id_tarea'], $info['nro_computo'], $revisionAnterior];
@@ -221,14 +221,14 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
   $prev = $stmt->fetch(PDO::FETCH_ASSOC);
 
   if ($modoDebug) {
-    echo "-Recuperar datos de la revisión anterior ($revisionAnterior):<br>" . debugQuery($pdo, $sql, $params) . "<br>";
+    echo "-Recuperar datos de la revisiÃ³n anterior ($revisionAnterior):<br>" . debugQuery($pdo, $sql, $params) . "<br>";
     var_dump($prev);
   }
 
   if (!$prev) {
-    // No existe esa revisión
+    // No existe esa revisiÃ³n
     if ($modoDebug) {
-      echo "-No existe revisión anterior N° {$revisionAnterior} para el cómputo N° {$info['nro_computo']}<br>";
+      echo "-No existe revisiÃ³n anterior NÂ° {$revisionAnterior} para el cÃ³mputo NÂ° {$info['nro_computo']}<br>";
     }
     return $texto;
   }
@@ -236,30 +236,30 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
   $detalleRealizadoCuerpoEmail="";
   if ($prev['id_estado'] != 4) {
     // ============================================================
-    // A) Si la revisión anterior NO estaba en “Gestionando” (4)
-    //    → se pasa directamente a “Superado” sin más lógica B
+    // A) Si la revisiÃ³n anterior NO estaba en â€œGestionandoâ€ (4)
+    //    â†’ se pasa directamente a â€œSuperadoâ€ sin mÃ¡s lÃ³gica B
     // ============================================================
 
     if ($modoDebug) {
-      echo "-La revision anterior del computo está en un estado diferente a 4 (Gestionando), por lo que se pasa directamente a Superado sin mayor lógica<br><br>";
+      echo "-La revision anterior del computo estÃ¡ en un estado diferente a 4 (Gestionando), por lo que se pasa directamente a Superado sin mayor lÃ³gica<br><br>";
     }
     
-    $texto = "La revisión anterior N° {$revisionAnterior} no se esta Gestionando, por lo que ha sido superada sin mas.";
+    $texto = "La revisiÃ³n anterior NÂ° {$revisionAnterior} no se esta Gestionando, por lo que ha sido superada sin mas.";
     $detalleRealizadoCuerpoEmail="<br>".$texto;
     $texto = ". ".$texto;
 
   }else{
-    $detalleRealizadoCuerpoEmail="<br>La revisión anterior N° {$revisionAnterior} se estaba gestionando, por lo que fue superada luego de revisar sus conceptos.<br>";
+    $detalleRealizadoCuerpoEmail="<br>La revisiÃ³n anterior NÂ° {$revisionAnterior} se estaba gestionando, por lo que fue superada luego de revisar sus conceptos.<br>";
 
     if ($modoDebug) {
-      echo "-La revision anterior del computo está en estado Gestionando, por lo que debemos comaprar linea por linea los conceptos de ambas revisiones y actuar segun cada caso<br><br>";
+      echo "-La revision anterior del computo estÃ¡ en estado Gestionando, por lo que debemos comaprar linea por linea los conceptos de ambas revisiones y actuar segun cada caso<br><br>";
     }
     // ============================================================
-    // B) Revisión anterior en “Gestionando” (4)
-    //    → comparaciones línea a línea según B.A y B.B
+    // B) RevisiÃ³n anterior en â€œGestionandoâ€ (4)
+    //    â†’ comparaciones lÃ­nea a lÃ­nea segÃºn B.A y B.B
     // ============================================================
 
-    // B) 2) Traer líneas NO canceladas de ambas revisiones
+    // B) 2) Traer lÃ­neas NO canceladas de ambas revisiones
     $sql = "SELECT
               cd_previo.id        AS id_previo,
               cd_previo.id_material,
@@ -283,7 +283,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
     $lineas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if ($modoDebug) {
-      echo "-Comparamos las líneas de cada revisión:<br>" . debugQuery($pdo, $sql, $params) . "<br>";
+      echo "-Comparamos las lÃ­neas de cada revisiÃ³n:<br>" . debugQuery($pdo, $sql, $params) . "<br>";
       var_dump($lineas);
     }
 
@@ -296,9 +296,9 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
         if ($modoDebug) {
           echo "-Se ha eliminado el concepto con ID ".$ln['id_previo']."<br><br>";
         }
-        // B.A.1) si tiene reserva → la borramos
+        // B.A.1) si tiene reserva â†’ la borramos
         if ($ln['reservado_previo'] > 0) {
-          $detalleRealizadoCuerpoEmail.=", como tenía una reserva previa de ".$ln['reservado_previo']." unidades, la hemos eliminado.<br>";
+          $detalleRealizadoCuerpoEmail.=", como tenÃ­a una reserva previa de ".$ln['reservado_previo']." unidades, la hemos eliminado.<br>";
           if ($modoDebug) {
             echo "-Tenia una reserva (".$ln['reservado_previo'].")<br><br>";
           }
@@ -310,7 +310,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             var_dump($ok);
           }
         }else{
-          $detalleRealizadoCuerpoEmail.=" que no tenía reserva previa.<br>";
+          $detalleRealizadoCuerpoEmail.=" que no tenÃ­a reserva previa.<br>";
           if ($modoDebug) {
             echo "-No tenia reserva (".$ln['reservado_previo'].")<br><br>";
           }
@@ -332,11 +332,11 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             //var_dump($pd);
           }
           if ($pd['comprado'] == 0) {
-            $detalleRealizadoCuerpoEmail.=" y aun no se está comprando por lo que lo cancelamos.<br>";
+            $detalleRealizadoCuerpoEmail.=" y aun no se estÃ¡ comprando por lo que lo cancelamos.<br>";
             if ($modoDebug) {
-              echo "-Aun no se está comprando (".$pd['comprado'].")<br><br>";
+              echo "-Aun no se estÃ¡ comprando (".$pd['comprado'].")<br><br>";
             }
-            // B.A.2) pedido no comprando → cancelar parcialmente
+            // B.A.2) pedido no comprando â†’ cancelar parcialmente
 
             $ok=cancelPedidoDetalle($pdo,$id_pedido_detalle=$pd['id'],$modoDebug);
 
@@ -345,20 +345,20 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
               var_dump($ok);
             }
           } else {
-            $detalleRealizadoCuerpoEmail.=" que está en proceso de compra (".$pd['comprado']."), por lo que no se pudo cancelar.<br>";
-            // B.A.3) pedido en compra → solo notificar
+            $detalleRealizadoCuerpoEmail.=" que estÃ¡ en proceso de compra (".$pd['comprado']."), por lo que no se pudo cancelar.<br>";
+            // B.A.3) pedido en compra â†’ solo notificar
             if ($modoDebug) {
-              echo "-El pedido ya está en compra, solo notificar<br><br>";
+              echo "-El pedido ya estÃ¡ en compra, solo notificar<br><br>";
             }
           }
         }else{
-          $detalleRealizadoCuerpoEmail.="No tenía pedidos asociados.<br>";
+          $detalleRealizadoCuerpoEmail.="No tenÃ­a pedidos asociados.<br>";
           if ($modoDebug) {
             echo "-No tenia pedido (".$ln['id_previo'].")<br><br>";
           }
         }
 
-        continue; // pasamos a la siguiente línea
+        continue; // pasamos a la siguiente lÃ­nea
       }
 
       // -----------------------------------
@@ -381,9 +381,9 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             echo "-La reserva en la revision anterior es mayor a 0 (".$ln['reservado_previo'].")<br><br>";
           }
           if ($cantidadActualEsMenorQueCantidadPrevio and $ln['cantidad_actual'] < $ln['reservado_previo']) {
-            // B.B.1.2) nueva cantidad < reserva → ajustar y heredar
+            // B.B.1.2) nueva cantidad < reserva â†’ ajustar y heredar
 
-            $detalleRealizadoCuerpoEmail.= ", como tenía una reserva previa de ".$ln['reservado_previo'].", la hemos ajustado a la nueva cantidad de ".$ln['cantidad_actual']."<br>";
+            $detalleRealizadoCuerpoEmail.= ", como tenÃ­a una reserva previa de ".$ln['reservado_previo'].", la hemos ajustado a la nueva cantidad de ".$ln['cantidad_actual']."<br>";
 
             if ($modoDebug) {
               echo "-La nueva cantidad (".$ln['cantidad_actual'].") es inferior a lo reservado en la revision anterior (".$ln['reservado_previo']."), pasamos la reserva a la nueva revision ajustando la cantidad y notificamos!<br><br>";
@@ -393,9 +393,9 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
 
           } else {
 
-            $detalleRealizadoCuerpoEmail.= ", como tenía una reserva previa de ".$ln['reservado_previo'].", la pasamos a esta revision<br>";
+            $detalleRealizadoCuerpoEmail.= ", como tenÃ­a una reserva previa de ".$ln['reservado_previo'].", la pasamos a esta revision<br>";
 
-            // B.B.1.1) nueva cantidad > reserva → no tocar reserva, notificar
+            // B.B.1.1) nueva cantidad > reserva â†’ no tocar reserva, notificar
             if ($modoDebug) {
               echo "-La nueva cantidad (".$ln['cantidad_actual'].") es mayor o igual a la cantidad reservada en la revision anterior (".$ln['reservado_previo']."), pasamos la reserva a la nueva revision y notificamos!<br><br>";
             }
@@ -404,7 +404,7 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
 
           }
         }else{
-          $detalleRealizadoCuerpoEmail.= " que no tenía reserva previa, por lo que no se ha ajustado nada.<br>";
+          $detalleRealizadoCuerpoEmail.= " que no tenÃ­a reserva previa, por lo que no se ha ajustado nada.<br>";
           if ($modoDebug) {
             echo "-No tenia reserva (".$ln['reservado_previo'].")<br><br>";
           }
@@ -424,14 +424,14 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
 
           if ($pd['comprado'] == 0) {
 
-            $detalleRealizadoCuerpoEmail.= " que aun no se está comprando";
+            $detalleRealizadoCuerpoEmail.= " que aun no se estÃ¡ comprando";
 
             if ($modoDebug) {
-              echo "-Aun no se está comprando<br><br>";
+              echo "-Aun no se estÃ¡ comprando<br><br>";
             }
 
             if ($cantidadActualEsMenorQueCantidadPrevio) {
-              // B.B.2.2) nueva cantidad < anterior → calcular cantidad a pedir
+              // B.B.2.2) nueva cantidad < anterior â†’ calcular cantidad a pedir
               $cantPedir = $ln['cantidad_actual'] - max(0, $ln['reservado_previo']);
 
               if ($modoDebug) {
@@ -462,20 +462,20 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
             } else {
               $detalleRealizadoCuerpoEmail.= " y como la nueva cantidad es mayor o igual a la del pedido ".$pd['id']." (".$pd["pedido_cantidad"].") no hemos realizado nada.<br>";
 
-              // B.B.2.1) nueva cantidad > anterior → solo notificar
+              // B.B.2.1) nueva cantidad > anterior â†’ solo notificar
               if ($modoDebug) {
                 echo "-La nueva cantidad (".$ln["cantidad_actual"].") es mayor o igual a la del pedido ".$pd['id']." (".$pd["pedido_cantidad"]."), notificamos!<br><br>";
               }
             }
           } else {
-            $detalleRealizadoCuerpoEmail.= " que está en proceso de compra (".$pd['comprado']."), por lo que no se pudo realizar nada.";
-            // B.B.3) pedido en compra → solo notificar
+            $detalleRealizadoCuerpoEmail.= " que estÃ¡ en proceso de compra (".$pd['comprado']."), por lo que no se pudo realizar nada.";
+            // B.B.3) pedido en compra â†’ solo notificar
             if ($modoDebug) {
-              echo "-El pedido está en proceso, ya se está comprando, solo notificamos!<br><br>";
+              echo "-El pedido estÃ¡ en proceso, ya se estÃ¡ comprando, solo notificamos!<br><br>";
             }
           }
         }else{
-          $detalleRealizadoCuerpoEmail.= "No tenía pedidos asociados.<br>";
+          $detalleRealizadoCuerpoEmail.= "No tenÃ­a pedidos asociados.<br>";
           if ($modoDebug) {
             echo "-No tenia pedido (".$ln['id_previo'].")<br><br>";
           }
@@ -483,10 +483,10 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
       }
     }
 
-    $texto = ". La Revisión anterior N° {$revisionAnterior} se estaba gestionando, por lo que fue superada luego de revisar sus conceptos.";
+    $texto = ". La RevisiÃ³n anterior NÂ° {$revisionAnterior} se estaba gestionando, por lo que fue superada luego de revisar sus conceptos.";
   }
 
-  // 3) Finalmente, marcar revisión anterior como “Superado”
+  // 3) Finalmente, marcar revisiÃ³n anterior como â€œSuperadoâ€
   $sql = "UPDATE computos SET id_estado = 7 WHERE id = ?";
   $params = [$prev['id']];
   $ok=$pdo->prepare($sql)->execute($params);
@@ -502,24 +502,24 @@ function superarRevisionAnterior(PDO $pdo, int $idComputo, int $modoDebug): stri
   $q->execute([$idComputo]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
 
-  $descProyecto = " N° ".$data["nro_computo"]." Rev. N° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
+  $descProyecto = " NÂ° ".$data["nro_computo"]." Rev. NÂ° ".$data["nro_revision"]." (".$data["sitio"]."_".$data["subsitio"]."_".$data["nro_proyecto"].")";
 
   $idTipoNotificacion=16;
   $idEntidad=$idComputo;
   //$detalleNotificacion="verComputo.php?id=";
   $detalleNotificacion="ID Computo: #".$idComputo;
-  $asuntoEmail="Producción - Aprobación de revisión de Cómputo ".$descProyecto;
-  $cuerpoEmail="El cómputo ".$descProyecto." ha sido aprobado.".$detalleRealizadoCuerpoEmail;
+  $asuntoEmail="ProducciÃ³n - AprobaciÃ³n de revisiÃ³n de CÃ³mputo ".$descProyecto;
+  $cuerpoEmail="El cÃ³mputo ".$descProyecto." ha sido aprobado.".$detalleRealizadoCuerpoEmail;
   crearNotificacion($pdo,$idTipoNotificacion,$idEntidad,$detalleNotificacion,$asuntoEmail,$cuerpoEmail);
 
   return $texto;
 }
 
 /**
- * Comprueba y supera la revisión anterior de un cómputo.
+ * Comprueba y supera la revisiÃ³n anterior de un cÃ³mputo.
  *
- * @param PDO   $pdo            Conexión PDO ya en transacción.
- * @param int   $idComputo      ID del cómputo que acabas de aprobar por completo.
+ * @param PDO   $pdo            ConexiÃ³n PDO ya en transacciÃ³n.
+ * @param int   $idComputo      ID del cÃ³mputo que acabas de aprobar por completo.
  * @param int   $modoDebug      1 para volcar consultas, 0 para silencioso.
  * @return int entero que indicar 1 si todo salio bien o 0 si hubo algun error.
  */
@@ -539,20 +539,20 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
   }
 
   $id_estado=4;//gestionando
-  $textoLog="Marcamos el computo como gestionando porque aún quedan saldos pendientes.";
+  $textoLog="Marcamos el computo como gestionando porque aÃºn quedan saldos pendientes.";
   if ($data['suma_saldos'] == 0) {
     $id_estado=5;//terminado
     $textoLog="Marcamos el computo como terminado porque no quedan saldos pendientes.";
   }
 
-  // 3) Actualizar estado de cómputo a “4” (reservado/pedido completo)
+  // 3) Actualizar estado de cÃ³mputo a â€œ4â€ (reservado/pedido completo)
   $sqlUpdComp = "UPDATE computos SET id_estado = $id_estado WHERE id = ?";
   $stmtComp = $pdo->prepare($sqlUpdComp);
 
   $params = [$idComputo];
 
   if ($modoDebug == 1) {
-    // Generar y mostrar la consulta “real”
+    // Generar y mostrar la consulta â€œrealâ€
     $fullSql = debugQuery($pdo, $sqlUpdComp, $params);
     echo $fullSql . "<br><br>";
   }
@@ -560,7 +560,7 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
   $ok = 0;
   if ($stmtComp->execute($params)) {
     // 3) Insertar log
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, '$textoLog', 'Cómputos', 'verComputo.php?id={$idComputo}')";
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (NOW(), ?, '$textoLog', 'CÃ³mputos', 'verComputo.php?id={$idComputo}')";
     $q = $pdo->prepare($sql);
 
     $params= [$_SESSION['user']['id']];
@@ -570,7 +570,7 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
     }
 
     if ($modoDebug == 1) {
-      // Generar y mostrar la consulta “real”
+      // Generar y mostrar la consulta â€œrealâ€
       $fullSql = debugQuery($pdo, $sql, $params);
       echo $fullSql . "<br><br>";
     }
@@ -582,14 +582,14 @@ function marcarComputoGestionandoOTerminado(PDO $pdo, int $idComputo, int $modoD
 
 
 function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, string $detalleNotificacion, string $asuntoEmail, string $cuerpoEmail): void {
-  // Se asume que $pdo es una conexión válida y con la configuración adecuada
+  // Se asume que $pdo es una conexiÃ³n vÃ¡lida y con la configuraciÃ³n adecuada
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   
   $smtp = getSmtpConfig($pdo);
   list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName, $smtpPort, $smtpSecure) = $smtp;
 
   error_log("=== DEBUG crearNotificacion ===");
-  error_log("Tipo notificación: $idTipoNotificacion");
+  error_log("Tipo notificaciÃ³n: $idTipoNotificacion");
   error_log("SMTP Host: $smtpHost");
   error_log("SMTP Port: $smtpPort");
   error_log("SMTP Secure: " . var_export($smtpSecure, true));
@@ -659,7 +659,7 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
   error_log("=== FIN DEBUG ===");
 }
 
-// Verifica si la función str_starts_with ya existe (PHP 8.0+)
+// Verifica si la funciÃ³n str_starts_with ya existe (PHP 8.0+)
 if (!function_exists('str_starts_with')) {
   function str_starts_with(string $haystack, string $needle): bool {
     return $needle !== '' && strpos($haystack, $needle) === 0;
@@ -667,7 +667,7 @@ if (!function_exists('str_starts_with')) {
 }
 
 /**
- * Obtene una descripción del proyecto asociado a un ID de proyecto.
+ * Obtene una descripciÃ³n del proyecto asociado a un ID de proyecto.
  */
 function getDescripcionProyecto($pdo, $id_proyecto) {
   $sql = "SELECT s.nro_sitio AS sitio, s.nro_subsitio AS subsitio, p.nro AS nro_proyecto FROM proyectos p INNER JOIN sitios s on s.id = p.id_sitio WHERE p.id = ? ";
@@ -678,7 +678,7 @@ function getDescripcionProyecto($pdo, $id_proyecto) {
 }
 
 /**
- * Duplica conjuntos, posiciones y procesos de una revisión de lista de corte en otra.
+ * Duplica conjuntos, posiciones y procesos de una revisiÃ³n de lista de corte en otra.
  */
 function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, bool $modoDebug = false): void {
   $sqlCon = "SELECT id, nombre, cantidad, peso, id_estado_lista_corte_conjuntos FROM listas_corte_conjuntos WHERE id_lista_corte = ?";
@@ -766,9 +766,9 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
 }
 
 /**
- * Calcula el estado de un ítem de pedido (pedidos_detalle) sin actualizar la BD.
+ * Calcula el estado de un Ã­tem de pedido (pedidos_detalle) sin actualizar la BD.
  * 
- * @param PDO $db Conexión a la base de datos
+ * @param PDO $db ConexiÃ³n a la base de datos
  * @param int $idPedidoDetalle ID del registro en pedidos_detalle
  * @return int|null ID del estado correspondiente en estados_pedidos_detalle o null si hay error
  */
@@ -810,16 +810,16 @@ function calcularEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): ?int {
     $stmtEntregada->execute([$idPedido, $idMaterial]);
     $cantidadEntregada = (float)$stmtEntregada->fetchColumn();
     
-    // 5) Verificar si tiene OC en elaboración (estados 1 = Elaboración, 2 = Para aprobar)
+    // 5) Verificar si tiene OC en elaboraciÃ³n (estados 1 = ElaboraciÃ³n, 2 = Para aprobar)
     $sqlElaboracion = "SELECT COUNT(*) as tiene_elaboracion FROM compras_detalle cd INNER JOIN compras c ON c.id = cd.id_compra WHERE c.id_pedido = ? AND cd.id_material = ? AND c.id_estado_compra IN (1, 2)";
     $stmtElaboracion = $db->prepare($sqlElaboracion);
     $stmtElaboracion->execute([$idPedido, $idMaterial]);
     $tieneOcEnElaboracion = (int)$stmtElaboracion->fetchColumn() > 0;
     
-    //echo "Cantidad Pedida: $cantidadPedida, Comprada: $cantidadComprada, Entregada: $cantidadEntregada, Tiene OC en elaboración: " . ($tieneOcEnElaboracion ? 'Sí' : 'No') . "\n";
-    // 6) Aplicar lógica de estados
+    //echo "Cantidad Pedida: $cantidadPedida, Comprada: $cantidadComprada, Entregada: $cantidadEntregada, Tiene OC en elaboraciÃ³n: " . ($tieneOcEnElaboracion ? 'SÃ­' : 'No') . "\n";
+    // 6) Aplicar lÃ³gica de estados
     
-    // Si cantidadEntregada >= cantidadPedida → Entregado
+    // Si cantidadEntregada >= cantidadPedida â†’ Entregado
     if ($cantidadEntregada >= $cantidadPedida) {
       return 7; // ID del estado "Entregado"
     }
@@ -853,7 +853,7 @@ function calcularEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): ?int {
       return 6; // ID del estado "Entregado Parcial"
     }
     
-    // Fallback por defecto (no debería llegar aquí en condiciones normales)
+    // Fallback por defecto (no deberÃ­a llegar aquÃ­ en condiciones normales)
     return 1; // ID del estado "Pendiente"
     
   } catch (Exception $e) {
@@ -866,7 +866,7 @@ function calcularEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): ?int {
 /**
  * Actualiza el campo id_estado en pedidos_detalle usando calcularEstadoPedidoDetalle.
  * 
- * @param PDO $db Conexión a la base de datos
+ * @param PDO $db ConexiÃ³n a la base de datos
  * @param int $idPedidoDetalle ID del registro en pedidos_detalle a actualizar
  * @return void
  */
@@ -897,20 +897,20 @@ function actualizarEstadoPedidoDetalle(PDO $db, int $idPedidoDetalle): void {
 
 /**
  * Verifica si un pedido debe cambiar al estado "Terminado" (5) 
- * cuando todas sus OC están terminadas y todos los items están comprados.
+ * cuando todas sus OC estÃ¡n terminadas y todos los items estÃ¡n comprados.
  * 
- * @param PDO $pdo Conexión a la base de datos
+ * @param PDO $pdo ConexiÃ³n a la base de datos
  * @param int $idPedido ID del pedido a verificar
- * @param bool $modoDebug Si está en modo debug para mostrar información
- * @return bool True si el pedido cambió de estado, false si no
+ * @param bool $modoDebug Si estÃ¡ en modo debug para mostrar informaciÃ³n
+ * @return bool True si el pedido cambiÃ³ de estado, false si no
  */
 function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDebug = false): bool {
   try {
     if ($modoDebug) {
-      echo "<h3>🔍 Verificando estado del pedido ID: $idPedido</h3>";
+      echo "<h3>ðŸ” Verificando estado del pedido ID: $idPedido</h3>";
     }
     
-    // Verificar si TODAS las OC del pedido están terminadas (estado 7 u 8)
+    // Verificar si TODAS las OC del pedido estÃ¡n terminadas (estado 7 u 8)
     $sqlVerificarPedido = "SELECT count(*) cant_pendientes FROM compras WHERE id_pedido = ? AND id_estado_compra NOT IN (7, 8)";
     $qVerificarPedido = $pdo->prepare($sqlVerificarPedido);
     $qVerificarPedido->execute([$idPedido]);
@@ -923,7 +923,7 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
       $sqlDebugOC = "SELECT c.id, c.id_estado_compra, ec.estado FROM compras c LEFT JOIN estados_compra ec ON ec.id = c.id_estado_compra WHERE id_pedido = ?";
       $qDebugOC = $pdo->prepare($sqlDebugOC);
       $qDebugOC->execute([$idPedido]);
-      echo "<b>🔍 TODAS LAS OC DEL PEDIDO:</b><br>";
+      echo "<b>ðŸ” TODAS LAS OC DEL PEDIDO:</b><br>";
       echo "<table border='1'><tr><th>ID OC</th><th>Estado ID</th><th>Estado</th></tr>";
       while ($ocDebug = $qDebugOC->fetch(PDO::FETCH_ASSOC)) {
         $color = in_array($ocDebug['id_estado_compra'], [7, 8]) ? '#ccffcc' : '#ffcccc';
@@ -936,7 +936,7 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
       echo "</table><br>";
     }
     
-    // Verificar que no se puedan crear más OC (calculando directamente desde compras_detalle)
+    // Verificar que no se puedan crear mÃ¡s OC (calculando directamente desde compras_detalle)
     $sqlVerificarComprado = "SELECT COUNT(*) as cant_sin_comprar FROM pedidos_detalle pd 
       INNER JOIN materiales m ON m.id = pd.id_material
     WHERE pd.id_pedido = ? 
@@ -956,7 +956,7 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
     if ($modoDebug) {
       echo "<b>Items sin comprar (cantidad > comprado real desde OC y no cancelados):</b> " . $dataComprado['cant_sin_comprar'] . "<br>";
       
-      // Mostrar detalle de items sin comprar con cálculo real
+      // Mostrar detalle de items sin comprar con cÃ¡lculo real
       if ($dataComprado['cant_sin_comprar'] > 0) {
         $sqlDebugItems = "SELECT pd.id, pd.id_material, m.concepto, pd.cantidad, pd.comprado as comprado_campo,COALESCE((
             SELECT SUM(cd.cantidad) 
@@ -981,7 +981,7 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
         $qDebugItems = $pdo->prepare($sqlDebugItems);
         $qDebugItems->execute([$idPedido]);
         $itemsDebug = $qDebugItems->fetchAll(PDO::FETCH_ASSOC);
-        echo "<b>🔍 ITEMS SIN COMPRAR COMPLETAMENTE:</b> " . count($itemsDebug) . "<br>";
+        echo "<b>ðŸ” ITEMS SIN COMPRAR COMPLETAMENTE:</b> " . count($itemsDebug) . "<br>";
         echo "<table border='1'><tr><th>ID</th><th>Material</th><th>Concepto</th><th>Cantidad</th><th>Comprado Campo</th><th>Comprado Real</th><th>Faltante</th></tr>";
         foreach ($itemsDebug as $itemDebug) {
           $faltante = $itemDebug['cantidad'] - $itemDebug['comprado_real'];
@@ -999,10 +999,10 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
       }
     }
     
-    // Si no hay OC pendientes Y no se pueden crear más OC, el pedido pasa a "Terminado"
+    // Si no hay OC pendientes Y no se pueden crear mÃ¡s OC, el pedido pasa a "Terminado"
     if ($dataPedido['cant_pendientes'] == 0 && $dataComprado['cant_sin_comprar'] == 0) {
       if ($modoDebug) {
-        echo "<b>🎉 PEDIDO COMPLETAMENTE TERMINADO - Cambiando a estado 5</b><br>";
+        echo "<b>ðŸŽ‰ PEDIDO COMPLETAMENTE TERMINADO - Cambiando a estado 5</b><br>";
       }
       
       $sql = "UPDATE pedidos set id_estado = 5 where id = ?";
@@ -1016,7 +1016,7 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
       return true;
     } else {
       if ($modoDebug) {
-        echo "<b>⏳ Pedido AÚN NO completamente terminado</b><br>";
+        echo "<b>â³ Pedido AÃšN NO completamente terminado</b><br>";
         echo "<b>- OC pendientes:</b> " . $dataPedido['cant_pendientes'] . "<br>";
         echo "<b>- Items sin comprar:</b> " . $dataComprado['cant_sin_comprar'] . "<br>";
       }
@@ -1025,7 +1025,7 @@ function verificarYActualizarEstadoPedido(PDO $pdo, int $idPedido, bool $modoDeb
     
   } catch (Exception $e) {
     if ($modoDebug) {
-      echo "<b>❌ Error al verificar estado del pedido:</b> " . $e->getMessage() . "<br>";
+      echo "<b>âŒ Error al verificar estado del pedido:</b> " . $e->getMessage() . "<br>";
     }
     error_log("Error en verificarYActualizarEstadoPedido: " . $e->getMessage());
     return false;
@@ -1091,21 +1091,21 @@ function obtenerStockYReservado(PDO $pdo, int $idMaterial): array
   ];
 }
 
-// Formato canónico de un certificado de avance: "Cert. 1/1" (nro_certificado / nro_revision)
+// Formato canÃ³nico de un certificado de avance: "Cert. 1/1" (nro_certificado / nro_revision)
 function fmtCertificadoAvance($nroCertificado, $nroRevision): string {
 	return 'Cert. ' . intval($nroCertificado) . '/' . intval($nroRevision);
 }
 
 /**
- * ¿La moneda indicada es una moneda dólar?
+ * Â¿La moneda indicada es una moneda dÃ³lar?
  *
  * Se normalizan espacios, puntos y guiones antes de comparar, y se aceptan
- * ambas variantes con y sin tilde ('dolar' / 'dólar') porque la tilde depende de
- * cómo se haya cargado cada valor en la tabla.
+ * ambas variantes con y sin tilde ('dolar' / 'dÃ³lar') porque la tilde depende de
+ * cÃ³mo se haya cargado cada valor en la tabla.
  *
- * Ojo: un '$' suelto NO se considera dólar. En la tabla `monedas` el valor '$'
- * es la moneda local, y tomarlo como dólar haría que toda factura en pesos pida
- * cotización.
+ * Ojo: un '$' suelto NO se considera dÃ³lar. En la tabla `monedas` el valor '$'
+ * es la moneda local, y tomarlo como dÃ³lar harÃ­a que toda factura en pesos pida
+ * cotizaciÃ³n.
  */
 function esMonedaDolar($moneda): bool {
 	$m = trim((string)$moneda);
@@ -1127,9 +1127,9 @@ function esMonedaDolar($moneda): bool {
 	}
 
 	// Se prueba contra la cadena original y contra la normalizada: quitar separadores
-	// puede partir una marca (ej. 'U.S.$' -> 'US$'), así que hacen falta ambas.
+	// puede partir una marca (ej. 'U.S.$' -> 'US$'), asÃ­ que hacen falta ambas.
 	foreach ([$original, $m] as $candidato) {
-		foreach (['dolar', 'dólar', 'usd', 'u$d', 'u$s'] as $marca) {
+		foreach (['dolar', 'dÃ³lar', 'usd', 'u$d', 'u$s'] as $marca) {
 			if (strpos($candidato, $marca) !== false) {
 				return true;
 			}
@@ -1140,14 +1140,14 @@ function esMonedaDolar($moneda): bool {
 }
 
 /**
- * Letra fiscal (A/B/C/E/X) derivada de la denominación del tipo de comprobante.
+ * Letra fiscal (A/B/C/E/X) derivada de la denominaciÃ³n del tipo de comprobante.
  *
  * Se usa porque el alta de facturas ya no pide letra: el tipo elegido
- * (padrón AFIP con codigo_afip) la determina. Reglas:
- *  - denominación terminada en " A"/" B"/" C" => esa letra;
- *  - códigos 19-22 o mención a exportación/exterior => E;
+ * (padrÃ³n AFIP con codigo_afip) la determina. Reglas:
+ *  - denominaciÃ³n terminada en " A"/" B"/" C" => esa letra;
+ *  - cÃ³digos 19-22 o menciÃ³n a exportaciÃ³n/exterior => E;
  *  - resto (M, tiques, remitos, ajustes, etc.) => X (mismo criterio
- *    histórico: ya hay facturas con letra X en la base).
+ *    histÃ³rico: ya hay facturas con letra X en la base).
  */
 function letraComprobanteDesdeTipo($denominacion, $codigoAfip = null): string {
 	$denominacion = trim((string)$denominacion);
@@ -1164,26 +1164,35 @@ function letraComprobanteDesdeTipo($denominacion, $codigoAfip = null): string {
 }
 
 /**
- * Id de `letras_comprobante` correspondiente al tipo de comprobante indicado.
- * Si la letra no existe en la tabla, usa X y como último recurso lanza error.
+ * Codigo ARCA del tipo de comprobante a partir del valor guardado en
+ * facturas_venta/facturas_compra.id_tipo_comprobante.
+ * Los registros nuevos guardan directamente el codigo de `arca_tipos_comprobante`,
+ * pero hay historicos que guardaban el id de la vieja tabla `tipos_comprobante`
+ * (id = 1000 + codigo_afip). Esa tabla se elimina (consultas.sql, correcciÃ³n 27).
+ */
+function codigoArcaDesdeTipo($idTipoComprobante): int {
+	$id = (int)$idTipoComprobante;
+	return $id >= 1001 ? $id - 1000 : $id;
+}
+
+/**
+ * Id numerico de letra para facturas_venta/facturas_compra.id_letra_comprobante.
+ * La tabla letras_comprobante se elimino (consultas.sql); la letra ahora se
+ * deriva del tipo (letraComprobanteDesdeTipo) y la convenciÃ³n de ids es la
+ * misma que tenia esa tabla: 1=A, 2=B, 3=C, 4=E, 5=X.
  */
 function derivarIdLetraComprobante(PDO $pdo, int $idTipoComprobante): int {
-	$q = $pdo->prepare("SELECT codigo_afip, tipo FROM tipos_comprobante WHERE id = ? AND activo = 1");
-	$q->execute([$idTipoComprobante]);
+	$codigo = codigoArcaDesdeTipo($idTipoComprobante);
+	$q = $pdo->prepare("SELECT codigo, descripcion FROM arca_tipos_comprobante WHERE codigo = ?");
+	$q->execute([$codigo]);
 	$fila = $q->fetch(PDO::FETCH_ASSOC);
 	if (!$fila) {
-		throw new RuntimeException('Seleccione un tipo de comprobante válido.');
+		throw new RuntimeException('Seleccione un tipo de comprobante vÃ¡lido.');
 	}
-	$letra = letraComprobanteDesdeTipo($fila['tipo'] ?? '', $fila['codigo_afip'] ?? null);
-	$qLetra = $pdo->prepare("SELECT id FROM letras_comprobante WHERE letra = ?");
-	$qLetra->execute([$letra]);
-	$idLetra = $qLetra->fetchColumn();
-	if ($idLetra === false && $letra !== 'X') {
-		$qLetra->execute(['X']);
-		$idLetra = $qLetra->fetchColumn();
-	}
-	if ($idLetra === false) {
+	$letra = letraComprobanteDesdeTipo($fila['descripcion'], $fila['codigo']);
+	$mapaIdLetra = ['A' => 1, 'B' => 2, 'C' => 3, 'E' => 4, 'X' => 5];
+	if (!isset($mapaIdLetra[$letra])) {
 		throw new RuntimeException('No se pudo determinar la letra del comprobante.');
 	}
-	return (int)$idLetra;
+	return $mapaIdLetra[$letra];
 }

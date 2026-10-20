@@ -703,7 +703,6 @@ $html .= 'Ricardo Gutiérrez 2874<br>';
 $html .= '(C1417EBL) - CABA<br>';
 $html .= 'Tel./Fax (54 11) 4505-8300';
 $html .= '</td>';
-$html .= '</td>';
 $html .= '</tr>';
 $html .= '</table>';
 $html .= '</div>';

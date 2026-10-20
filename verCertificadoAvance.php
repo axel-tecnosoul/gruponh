@@ -199,7 +199,7 @@ if (!empty($_POST)) {
                                   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
                                   {
-                                    $sql = " SELECT distinct fc.id, fc.observaciones, tc.tipo, lc.letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y'), fp.forma_pago, fc.total, m.moneda, ef.estado  FROM facturas_venta_detalle_x_certificados_avance fxc inner join facturas_venta_detalle fvd on fvd.id = fxc.id_factura_venta_detalle inner join facturas_venta fc on fc.id = fvd.id_factura_venta inner join tipos_comprobante tc on tc.id = fc.id_tipo_comprobante inner join letras_comprobante lc on lc.id = fc.id_letra_comprobante inner join cuentas c on c.id = fc.id_cuenta_destino inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda inner join estados_factura ef on ef.id = fc.id_estado WHERE fxc.id_certificado_avance = ".(int) $_GET['id'];
+                                    $sql = " SELECT distinct fc.id, fc.observaciones, tc.descripcion AS tipo, CASE WHEN UPPER(tc.descripcion) LIKE '%EXPORTACION%' OR UPPER(tc.descripcion) LIKE '%EXTERIOR%' THEN 'E' WHEN RIGHT(TRIM(tc.descripcion),1) IN ('A','B','C') THEN RIGHT(TRIM(tc.descripcion),1) ELSE 'X' END AS letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y'), fp.forma_pago, fc.total, m.moneda, ef.estado  FROM facturas_venta_detalle_x_certificados_avance fxc inner join facturas_venta_detalle fvd on fvd.id = fxc.id_factura_venta_detalle inner join facturas_venta fc on fc.id = fvd.id_factura_venta inner join arca_tipos_comprobante tc on tc.codigo = IF(fc.id_tipo_comprobante >= 1001, fc.id_tipo_comprobante - 1000, fc.id_tipo_comprobante) inner join cuentas c on c.id = fc.id_cuenta_destino inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda inner join estados_factura ef on ef.id = fc.id_estado WHERE fxc.id_certificado_avance = ".(int) $_GET['id'];
                                     foreach ($pdo->query($sql) as $row) {
                                       echo '<tr>';
                                       echo '<td class="d-none">'. $row[0] . '</td>';
@@ -242,7 +242,7 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-						            <a class="btn btn-primary" target="_blank" href="imprimirCertificadoAvance.php?id=<?=$id?>">Imprimir</a>
+						            <a class="btn btn-primary" target="_blank" href="imprimirCertificadosAvances.php?id_certificado_avance=<?=$id?>&id_certificado_maestro=<?=$data['id_certificado_maestro']?>">Imprimir</a>
                         <a href="listarCertificadosAvances.php?id_certificado_maestro=<?=$data['id_certificado_maestro']?>" class="btn btn-light">Volver</a>
                       </div>
                     </div>

@@ -26,6 +26,12 @@ $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $sql = "DELETE FROM computos_detalle WHERE id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute(array($id));
+
+// Touch: el computo fue modificado (se elimino un item)
+if (!empty($_GET['idComputo'])) {
+    $qt = $pdo->prepare("UPDATE computos SET fecha_hora_ultima_modificacion = NOW() WHERE id = ?");
+    $qt->execute(array((int)$_GET['idComputo']));
+}
     
 Database::disconnect();
     

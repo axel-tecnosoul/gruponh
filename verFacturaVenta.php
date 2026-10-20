@@ -16,12 +16,11 @@ if (!$id) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "SELECT fv.*, tc.tipo AS tipo_comprobante, lc.letra, m.moneda AS moneda_text,
+$sql = "SELECT fv.*, tc.descripcion AS tipo_comprobante, m.moneda AS moneda_text,
                cu.nombre AS cliente, e.empresa,
                CONCAT(s.nro_sitio, '-', s.nro_subsitio, '-', p.nro, ': ', p.nombre) AS proyecto
         FROM facturas_venta fv
-        INNER JOIN tipos_comprobante tc ON tc.id = fv.id_tipo_comprobante
-        INNER JOIN letras_comprobante lc ON lc.id = fv.id_letra_comprobante
+        INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
         INNER JOIN monedas m ON m.id = fv.id_moneda
         LEFT JOIN proyectos p ON p.id = fv.id_proyecto
         LEFT JOIN sitios s ON s.id = p.id_sitio
@@ -132,12 +131,6 @@ if (empty($_SESSION['csrf_factura_arca'])) {
           <div class="row">
             <div class="col-sm-12">
               <div class="card">
-                <div class="card-header">
-                  <h5>
-                    <?= $ubicacion ?> N° <?= htmlspecialchars($data['numero']) ?>
-                    - <?= htmlspecialchars($data['tipo_comprobante']) ?> <?= htmlspecialchars($data['letra']) ?>
-                  </h5>
-                </div>
                 <div class="card-body">
 
                   <?php if ($mensajeARCA): ?>
@@ -187,8 +180,6 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                     <div class="col-sm-4"><?= htmlspecialchars($data['tipo_comprobante']) ?></div>
                   </div>
                   <div class="form-group row mt-1">
-                    <label class="col-sm-2 font-weight-bold">Letra</label>
-                    <div class="col-sm-4"><?= htmlspecialchars($data['letra']) ?></div>
                     <label class="col-sm-2 font-weight-bold">Número</label>
                     <div class="col-sm-4"><?= htmlspecialchars($data['numero']) ?></div>
                   </div>

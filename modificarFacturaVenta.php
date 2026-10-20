@@ -174,15 +174,18 @@
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `tipo` FROM `tipos_comprobante` WHERE 1";
+							$sqlZon = "SELECT `codigo`, `descripcion` FROM `arca_tipos_comprobante` ORDER BY `codigo`";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_tipo_comprobante']) {
+								$codigoTipo = (int)$fila['codigo'];
+								echo "<option value='".$codigoTipo."'";
+								// El valor guardado puede ser el codigo ARCA o el id legacy de la
+								// vieja tabla tipos_comprobante (id = 1000 + codigo). Ambos matchean.
+								if ($codigoTipo == codigoArcaDesdeTipo($data['id_tipo_comprobante'])) {
                                         echo " selected ";
 								}
-								echo ">".$fila['tipo']."</option>";
+								echo ">".$fila['descripcion']."</option>";
 							}
 							Database::disconnect();
 							?>
@@ -194,20 +197,15 @@
 							<div class="col-sm-9">
 							<select name="id_letra_comprobante" id="id_letra_comprobante" class="js-example-basic-single col-sm-12" required="required">
 							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `letra` FROM `letras_comprobante` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_letra_comprobante']) {
+							<?php // La tabla letras_comprobante fue eliminada; convención de ids fija.
+							$opcionesLetra = [1 => 'A', 2 => 'B', 3 => 'C', 4 => 'E', 5 => 'X'];
+							foreach ($opcionesLetra as $idLetraOpt => $txtLetra) {
+								echo "<option value='".$idLetraOpt."'";
+								if ($idLetraOpt == $data['id_letra_comprobante']) {
                                         echo " selected ";
 								}
-								echo ">".$fila['letra']."</option>";
+								echo ">".$txtLetra."</option>";
 							}
-							Database::disconnect();
 							?>
 							</select>
 							</div>

@@ -23,13 +23,12 @@ if (!empty($ids)) {
 
 try {
   // Cabeceras de facturas
-  $qCab = $pdo->prepare("SELECT fv.id, tc.tipo, lc.letra, fv.numero,
+  $qCab = $pdo->prepare("SELECT fv.id, tc.descripcion AS tipo, fv.numero,
                               cu.nombre, cu.cuit, e.empresa,
                               DATE_FORMAT(fv.fecha_emitida,'%Y%m%d') as fe,
                               fv.total
                        FROM facturas_venta fv
-                       INNER JOIN tipos_comprobante tc ON tc.id = fv.id_tipo_comprobante
-                       INNER JOIN letras_comprobante lc ON lc.id = fv.id_letra_comprobante
+                       INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
                        INNER JOIN cuentas cu ON cu.id = fv.id_cuenta_destino
                        INNER JOIN empresas e ON e.id = fv.id_empresa
                        WHERE 1 $extraFilter $idFilter
@@ -84,7 +83,8 @@ try {
   foreach ($facturas as $f) {
     $idFactura = $f['id'];
     $tipo = $f['tipo'] ?? 'FC';
-    $letra = $f['letra'] ?? ' ';
+    // La letra se deriva del tipo (la tabla letras_comprobante fue eliminada).
+    $letra = letraComprobanteDesdeTipo($tipo);
     $tipoLetra = str_pad(substr($tipo, 0, 2) . $letra, 4);
     $numero = str_pad($f['numero'] ?? '', 12, '0', STR_PAD_LEFT);
     $fecha = $f['fe'] ?? date('Ymd');

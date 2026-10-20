@@ -97,6 +97,11 @@ if (!empty($_POST)) {
     $idComputoRetorno = (int)$stmtComp->fetchColumn();
   }
 
+  // Touch: el computo fue modificado (se edito un item)
+  if ($idComputoRetorno) {
+    $pdo->prepare("UPDATE computos SET fecha_hora_ultima_modificacion = NOW() WHERE id = ?")->execute([$idComputoRetorno]);
+  }
+
   Database::disconnect();
   header("Location: itemsComputo.php?id=" . $idComputoRetorno
     . "&modo=$modoPost&revision=$nro_revision&idOrigen=$idOrigen$prodParam");

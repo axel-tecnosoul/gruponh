@@ -58,7 +58,9 @@ if (!$localOnly) {
     $footerText = !empty($comprobante['homologacion']) ? 'HOMOLOGACIÓN - SIN VALIDEZ FISCAL' : 'Comprobante autorizado por ARCA';
 } else {
     $q = $pdo->prepare(
-        "SELECT fv.*, tc.id AS id_tipo_comprobante, tc.codigo_afip, tc.tipo AS tipo_comprobante, lc.letra, m.moneda,
+        "SELECT fv.*,
+                IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante) AS id_tipo_comprobante,
+                tc.codigo AS codigo_afip, tc.descripcion AS tipo_comprobante, m.moneda,
                 CASE WHEN p.id IS NULL THEN '' ELSE CONCAT(
                     COALESCE(s.nro_sitio, ''), '_',
                     COALESCE(s.nro_subsitio, ''), '_',
@@ -72,8 +74,7 @@ if (!$localOnly) {
                 c.direccion AS receptor_direccion, c.email AS receptor_email,
                 rc.condicion_iva AS receptor_condicion_iva
          FROM facturas_venta fv
-         INNER JOIN tipos_comprobante tc ON tc.id = fv.id_tipo_comprobante
-         INNER JOIN letras_comprobante lc ON lc.id = fv.id_letra_comprobante
+         INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
          INNER JOIN monedas m ON m.id = fv.id_moneda
          INNER JOIN empresas e ON e.id = fv.id_empresa
          LEFT JOIN proyectos p ON p.id = fv.id_proyecto
@@ -91,6 +92,8 @@ if (!$localOnly) {
         http_response_code(404);
         exit('Solo se pueden imprimir facturas definitivas.');
     }
+    // La letra se deriva del tipo (la tabla letras_comprobante fue eliminada).
+    $invoice['letra'] = letraComprobanteDesdeTipo((string)$invoice['tipo_comprobante']);
     $q = $pdo->prepare(
         'SELECT d.id, d.cantidad, d.precio, d.subtotal, d.descripcion,
                 COALESCE(NULLIF(d.porcentaje_descuento, 0), d.porcentaje_descuento, 0) AS descuento_porcentaje,
@@ -191,16 +194,7 @@ if (!$localOnly) {
         'id' => $idFactura,
         'punto_venta' => (int)($numberParts[0] ?? 0),
         'numero_comprobante' => $number,
-        'tipo_comprobante' => (int)($invoice['codigo_afip'] ?? 0) > 0
-            ? (int)$invoice['codigo_afip']
-            : ([
-            1 => ['A' => 1, 'B' => 6, 'C' => 11, 'E' => 19],
-            2 => ['A' => 3, 'B' => 8, 'C' => 13, 'E' => 21],
-            3 => ['A' => 2, 'B' => 7, 'C' => 12, 'E' => 20],
-            4 => ['A' => 201, 'B' => 206, 'C' => 211],
-            5 => ['A' => 202, 'B' => 207, 'C' => 212],
-            6 => ['A' => 203, 'B' => 208, 'C' => 213],
-        ][(int)$invoice['id_tipo_comprobante']][$invoice['letra']] ?? 0),
+        'tipo_comprobante' => (int)$invoice['codigo_afip'],
         'fecha_comprobante' => $invoice['fecha_emitida'],
         'fecha_servicio_desde' => null,
         'fecha_servicio_hasta' => null,

@@ -30,7 +30,7 @@ function abrirMenu($op) {
 		($current_page == "nuevoCertificadoAvanceDetalle.php") ||
 		($current_page == "modificarCertificadoAvanceDetalle.php") ||
 		($current_page == "verCertificadoAvance.php") ||
-		($current_page == "imprimirCertificadoAvance.php") ||
+		($current_page == "imprimirCertificadosAvances.php") ||
 		($current_page == "exportCertificadosAvances.php") ||
 		($current_page == "listarRegimenes.php") ||
 		($current_page == "listarEmpresas.php") ||

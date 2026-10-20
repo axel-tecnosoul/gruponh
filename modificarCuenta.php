@@ -498,10 +498,15 @@
 		fijarNombre(NOMBRE_ACTUAL);
 	}
 
-	// Guardar lo que se va tipeando en el buscador de select2
+	// Guardar lo que se va tipeando en el buscador de select2, precargando
+	// el valor actual para poder editarlo sin retipearlo desde cero
 	$("#nombre").on("select2:open", function () {
 		var $search = $(".select2-search__field:visible").last();
 		if ($search.length) {
+			var actual = $.trim(String($(this).val()));
+			if (actual && !$search.val()) {
+				$search.val(actual).trigger("input");
+			}
 			textoBusquedaNombre = $search.val() || "";
 			$search.off("input.nombre").on("input.nombre", function () {
 				textoBusquedaNombre = $(this).val() || "";

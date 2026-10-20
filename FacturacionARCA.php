@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/funciones.php';
 
 final class FacturacionARCA
 {
@@ -1015,7 +1016,7 @@ final class FacturacionARCA
     private static function loadInvoice(PDO $pdo, int $id): ?array
     {
         $q = $pdo->prepare(
-            "SELECT fv.*, tc.tipo AS tipo_comprobante, lc.letra, m.moneda,
+            "SELECT fv.*, tc.descripcion AS tipo_comprobante, lc.letra, m.moneda,
                     CASE WHEN p.id IS NULL THEN '' ELSE CONCAT(
                         COALESCE(s.nro_sitio, ''), '_',
                         COALESCE(s.nro_subsitio, ''), '_',
@@ -1030,8 +1031,7 @@ final class FacturacionARCA
                     c.direccion AS receptor_direccion, c.email AS receptor_email,
                     c.id_condicion_iva AS receptor_condicion_iva_id, rc.condicion_iva AS receptor_condicion_iva
              FROM facturas_venta fv
-             INNER JOIN tipos_comprobante tc ON tc.id = fv.id_tipo_comprobante
-             INNER JOIN letras_comprobante lc ON lc.id = fv.id_letra_comprobante
+             INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
              INNER JOIN monedas m ON m.id = fv.id_moneda
              INNER JOIN empresas e ON e.id = fv.id_empresa
              LEFT JOIN proyectos p ON p.id = fv.id_proyecto
@@ -1044,6 +1044,11 @@ final class FacturacionARCA
         );
         $q->execute([$id]);
         $row = $q->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            // La letra se deriva del descriptor del tipo (la tabla letras_comprobante fue eliminada).
+            // Ej: FACTURAS A => A, ...EXPORTACION => E, resto => X.
+            $row['letra'] = letraComprobanteDesdeTipo((string)$row['tipo_comprobante']);
+        }
         return $row ?: null;
     }
 

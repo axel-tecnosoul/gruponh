@@ -68,10 +68,11 @@ if (!empty($_POST)) {
       throw new RuntimeException('Ingrese un punto de venta válido.');
     }
 
-    // Tipo de comprobante del padrón AFIP (sin legacy) + letra derivada del tipo.
+    // Tipo de comprobante: codigo del padrón ARCA (con mapeo dual para
+    // históricos que guardaban el id de la vieja tabla tipos_comprobante).
     $idTipoComprobante = (int)($_POST['id_tipo_comprobante'] ?? 0);
-    $qTipo = $pdo->prepare("SELECT id FROM tipos_comprobante WHERE id = ? AND activo = 1 AND codigo_afip IS NOT NULL");
-    $qTipo->execute([$idTipoComprobante]);
+    $qTipo = $pdo->prepare("SELECT codigo FROM arca_tipos_comprobante WHERE codigo = ?");
+    $qTipo->execute([codigoArcaDesdeTipo($idTipoComprobante)]);
     if ($qTipo->fetchColumn() === false) {
       throw new RuntimeException('Seleccione un tipo de comprobante válido.');
     }

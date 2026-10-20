@@ -28,6 +28,11 @@ try {
     $q = $pdo->prepare($sql);
     $q->execute([$idDetalle]);
 
+    // Touch: el computo fue modificado (item cancelado)
+    $sql = "UPDATE computos SET fecha_hora_ultima_modificacion = NOW() WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$idComputo]);
+
     $textoComputo = "";
 
     // 2) Verificar si quedan pendientes

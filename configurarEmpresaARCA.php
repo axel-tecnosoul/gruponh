@@ -360,18 +360,11 @@ $escape = static function ($value): string {
 
                 <hr>
                 <h5 class="mb-3">Puntos de venta y tipos de comprobante</h5>
-                <p class="text-muted">
-                  Los catálogos importados se pueden guardar localmente. El SDK consulta los tipos de comprobante de forma general,
-                  no informa qué tipos están habilitados para cada punto; la asociación se selecciona aquí.
-                </p>
                 <div class="mb-3">
                   <button type="button" class="btn btn-outline-primary" id="consultarCatalogosArca"
                     <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
                     Consultar puntos y tipos en ARCA
                   </button>
-                  <?php if (!FacturacionARCA::habilitada()): ?>
-                    <small class="form-text text-muted">La consulta está deshabilitada. Active FACTURACION_ARCA_HABILITADA=1 y configure el certificado para usarla.</small>
-                  <?php endif; ?>
                   <div id="estadoConsultaArca" class="mt-2" role="status"></div>
                   <ul id="puntosVentaImportados" class="arca-import-list list-unstyled"></ul>
                 </div>

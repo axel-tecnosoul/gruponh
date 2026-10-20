@@ -76,7 +76,7 @@ $id_estado = $filters['id_estado'] ?? [];
                         <option value="">Todos</option>
                         <?php
                         $pdoTL = Database::connect();
-                        $qTL = $pdoTL->prepare("SELECT DISTINCT CONCAT(tc.tipo, ' ', lc.letra) as tipo_letra FROM facturas_venta fv INNER JOIN tipos_comprobante tc ON tc.id = fv.id_tipo_comprobante INNER JOIN letras_comprobante lc ON lc.id = fv.id_letra_comprobante WHERE 1 ORDER BY tipo_letra");
+                        $qTL = $pdoTL->prepare("SELECT DISTINCT tc.descripcion as tipo_letra FROM facturas_venta fv INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante) WHERE 1 ORDER BY tipo_letra");
                         $qTL->execute();
                         while ($filaTL = $qTL->fetch(PDO::FETCH_ASSOC)) {
                           echo "<option value='".$filaTL['tipo_letra']."'";
@@ -188,7 +188,7 @@ $id_estado = $filters['id_estado'] ?? [];
                         if ($hasSearched):
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sql = "SELECT fv.id, fv.observaciones, tc.tipo, lc.letra, fv.numero,
+                          $sql = "SELECT fv.id, fv.observaciones, tc.descripcion AS tipo, '' AS letra, fv.numero,
                                          c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'), fp.forma_pago,
                                           fv.subtotal_no_gravado, m.moneda,
                                           ef.estado,
@@ -196,8 +196,7 @@ $id_estado = $filters['id_estado'] ?? [];
                                           DATE_FORMAT(fv.fecha_emitida,'%y%m%d'),
                                           ef.id, fv.pagada, fv.exportada, fv.observaciones
                                   FROM facturas_venta fv
-                                  INNER JOIN tipos_comprobante   tc  ON tc.id  = fv.id_tipo_comprobante
-                                  INNER JOIN letras_comprobante  lc  ON lc.id  = fv.id_letra_comprobante
+                                  INNER JOIN arca_tipos_comprobante   tc  ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
                                   INNER JOIN cuentas             c   ON c.id   = fv.id_cuenta_destino
                                   INNER JOIN formas_pago         fp  ON fp.id  = fv.id_condicion_pago
                                   INNER JOIN monedas             m   ON m.id   = fv.id_moneda
@@ -221,7 +220,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             $params[] = '%' . $cliente . '%';
                           }
                           if (!empty($tipo_letra)) {
-                            $sql .= " AND CONCAT(tc.tipo, ' ', lc.letra) = ?";
+                            $sql .= " AND tc.descripcion = ?";
                             $params[] = $tipo_letra;
                           }
                           if (!empty($id_estado[0])) {
@@ -235,7 +234,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '">';
                             echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
                             echo '<td class="d-none">' . $row[0] . '</td>';
-                            echo '<td>' . htmlspecialchars($row[2]) . ' ' . htmlspecialchars($row[3]) . '</td>';
+                            echo '<td>' . htmlspecialchars(trim($row[2] . ' ' . $row[3])) . '</td>';
                             echo '<td>' . htmlspecialchars($row[4]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[5]) . '</td>';
                             echo '<td><span style="display:none;">' . $row[14] . '</span>' . htmlspecialchars($row[6]) . '</td>';

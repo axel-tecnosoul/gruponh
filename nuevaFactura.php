@@ -286,17 +286,18 @@ $fv = function($key, $default = '') use ($facturaData) {
                               <option value="">Seleccione...</option>
                               <?php
                               $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, tipo, codigo_afip FROM tipos_comprobante WHERE activo = 1 AND codigo_afip IS NOT NULL ORDER BY codigo_afip");
+                              $q = $pdo->prepare("SELECT codigo, descripcion FROM arca_tipos_comprobante ORDER BY codigo");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                $codigoAfip = (int)$f['codigo_afip'];
-                                $letraOpt = letraComprobanteDesdeTipo($f['tipo'], $codigoAfip);
-                                echo "<option value='{$f['id']}' data-codigo='$codigoAfip' data-letra='$letraOpt'>" . str_pad($codigoAfip, 3, '0', STR_PAD_LEFT) . ' - ' . htmlspecialchars($f['tipo']) . "</option>";
+                                $codigoAfip = (int)$f['codigo'];
+                                $letraOpt = letraComprobanteDesdeTipo($f['descripcion'], $codigoAfip);
+                                echo "<option value='{$codigoAfip}' data-codigo='$codigoAfip' data-letra='$letraOpt'>" . str_pad($codigoAfip, 3, '0', STR_PAD_LEFT) . ' - ' . htmlspecialchars($f['descripcion']) . "</option>";
                               }
                               Database::disconnect();
                               ?>
                             </select>
                             <input type="hidden" name="id_letra_comprobante" id="id_letra_comprobante" value="">
+                            <small id="tipoHabilitadosHint" class="text-danger d-none"></small>
                           </div>
                         </div>
 
@@ -575,9 +576,9 @@ $fv = function($key, $default = '') use ($facturaData) {
                           </select>
                           <small id="iva-info" class="text-info"></small>
                       </div>
-                      <div class="col-md-3 mb-2">
+                      <div class="<?= $vista === 'venta' ? 'col-md-4' : 'col-md-3' ?> mb-2">
                         <label class="col-form-label">Descripción</label>
-                        <textarea id="det_descripcion" class="form-control" rows="1" placeholder="Texto a mostrar impreso en la factura"></textarea>
+                        <textarea id="det_descripcion" class="form-control" rows="3" placeholder="Texto a mostrar impreso en la factura"></textarea>
                       </div>
 <?php if ($vista === 'venta' || ($vista === 'compra' && !empty($imputacionesOC))): ?>
                       <?php
@@ -625,7 +626,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                         </select>
                       </div>
                       <?php endif; ?>
-                      <div class="col-md-3 mb-2">
+                      <div class="<?= $vista === 'venta' ? 'col-md-2' : 'col-md-3' ?> mb-2">
                         <label class="col-form-label">Descuento (%)</label>
                         <div class="input-group" style="max-width:150px;">
                           <input id="det_descuento" type="number" min="0" max="100" step="0.01" class="form-control" value="0">
@@ -664,16 +665,14 @@ $fv = function($key, $default = '') use ($facturaData) {
                             <th>Base imponible</th>
                             <th>%</th>
                             <th>Retención</th>
-                            <th>Editar</th>
-                            <th>Quitar</th>
+                            <th>Acciones</th>
                           </tr>
                         </thead>
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th colspan="5" class="text-right">Total:</th>
+                            <th colspan="4" class="text-right">Total:</th>
                             <th id="totalRetenciones">$ 0.00</th>
-                            <th></th>
                             <th></th>
                           </tr>
                         </tfoot>
@@ -924,8 +923,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             '<td>' + monedaSimbolo + ' ' + parseFloat(base).toFixed(2) + '</td>' +
             '<td>' + parseFloat(item.porcentaje || 0).toFixed(2) + '%</td>' +
             '<td>' + monedaSimbolo + ' ' + parseFloat(item.monto).toFixed(2) + '</td>' +
-            '<td><a href="javascript:void(0)" onclick="editarRetencion(' + i + ')"><i data-feather="edit" style="color:#000;"></i></a></td>' +
-            '<td><a href="javascript:void(0)" onclick="quitarRetencion(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
+            '<td><img src="img/icon_modificar.png" onclick="editarRetencion(' + i + ')" style="cursor:pointer" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular">&nbsp;<a href="javascript:void(0)" onclick="quitarRetencion(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'
           );
         });
@@ -980,7 +978,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         }
         var texto, valor, deshab;
         if (found) {
-          texto = found.text;
+          texto = found.full_text || found.text;
           valor = found.value;
           deshab = !forzarHabilitadas && !imputacionHabilitadaPorMoneda(found.id_moneda);
         } else {
@@ -1213,19 +1211,8 @@ $fv = function($key, $default = '') use ($facturaData) {
     }
 
     // Letra derivada del tipo de comprobante (el alta ya no pide letra).
-    var mapaLetras = <?= json_encode((function() {
-      try {
-        $pdoM = Database::connect();
-        $mapa = [];
-        foreach ($pdoM->query("SELECT letra, id FROM letras_comprobante") as $filaM) {
-          $mapa[$filaM['letra']] = (int)$filaM['id'];
-        }
-        Database::disconnect();
-        return $mapa;
-      } catch (Exception $e) {
-        return ['A' => 1, 'B' => 2, 'C' => 3, 'E' => 4, 'X' => 5];
-      }
-    })()) ?>;
+    // Convención de ids igual a la eliminada tabla letras_comprobante.
+    var mapaLetras = { A: 1, B: 2, C: 3, E: 4, X: 5 };
     function actualizarLetraDesdeTipo() {
       var letra = ($('#id_tipo_comprobante option:selected').data('letra') || '').toString().toUpperCase();
       if (mapaLetras[letra] !== undefined) {
@@ -1338,21 +1325,33 @@ $fv = function($key, $default = '') use ($facturaData) {
           .done(function(data) {
             var allOpts = [];
             var monedaFv = monedaFacturaActual();
-            $.each(data || [], function(i, row) {
+            // Si hay CAs vinculados (preseleccionados), mostrar únicamente esos CAs
+            var solo = certVinculados.length
+              ? (data || []).filter(function(r) { return certVinculados.indexOf(parseInt(r.id, 10)) !== -1; })
+              : (data || []);
+            var preseleccionados = [];
+            $.each(solo, function(i, row) {
               var concepto = row.cert_label;
               var texto = (i + 1) + ' - ' + concepto + ' - CM: ' + row.numero_cm +
                 ' Emitido: ' + row.fecha_emision + ' ' +
-                (row.moneda || '') + parseFloat(row.monto_total).toFixed(2);
+                (row.moneda || '') + ' ' + parseFloat(row.monto_total).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
               var idMonedaCA = (row.id_moneda === undefined || row.id_moneda === null) ? '' : row.id_moneda;
               var otraMoneda = monedaFv && idMonedaCA !== '' && String(idMonedaCA) !== monedaFv;
               if (otraMoneda) { texto += ' (otra moneda)'; }
-              var optEl = new Option(texto, row.id, false, false);
+              var seleccionado = certVinculados.indexOf(parseInt(row.id, 10)) !== -1;
+              var optEl = new Option(texto, row.id, seleccionado, seleccionado);
               optEl.disabled = !!otraMoneda;
               select.append(optEl);
-              allOpts.push({ value: row.id, text: concepto, concepto_text: concepto, restante: 1, oc_precio: parseFloat(row.monto_total) || 0, id_moneda: idMonedaCA, moneda: row.moneda || '' });
+              if (seleccionado) { preseleccionados.push(String(row.id)); }
+              allOpts.push({ value: row.id, text: concepto, full_text: texto, concepto_text: concepto, restante: 1, oc_precio: parseFloat(row.monto_total) || 0, id_moneda: idMonedaCA, moneda: row.moneda || '' });
             });
             select.attr('data-all-options', JSON.stringify(allOpts));
-            try { select.trigger('change.select2'); } catch (e) {}
+            if (preseleccionados.length) {
+              // Preseleccionar los CAs vinculados; 'change' dispara el handler que arma las sub-líneas
+              select.val(preseleccionados).trigger('change');
+            } else {
+              try { select.trigger('change.select2'); } catch (e) {}
+            }
           })
           .fail(function() {
             if (window.console && console.error) { console.error('No se pudieron cargar las imputaciones (ajax_imputaciones).'); }
@@ -1741,29 +1740,60 @@ $fv = function($key, $default = '') use ($facturaData) {
 
       var puntosPorNumero = {};
 
-      // Habilita solo los tipos de comprobante asociados al punto de venta elegido.
+      var tiposCache = null;
+
+      // Hace que las opciones del tipo de comprobante reflejen los tipos
+      // asociados al punto de venta: sin punto elegido no se ve ninguna.
       function filtrarTiposPorPunto() {
+        var $tc = $('#id_tipo_comprobante');
         var puntoVal = $('#punto_venta').val();
         var tipos = puntoVal && puntosPorNumero[puntoVal] ? puntosPorNumero[puntoVal].tipos : null;
-        var tiposStr = Array.isArray(tipos) ? tipos.map(function (t) { return String(t); }) : [];
-        var habilitados = 0;
-        $('#id_tipo_comprobante option').each(function() {
-          var codigo = $(this).data('codigo');
-          if (codigo === undefined || codigo === '' || codigo === null) return;
-          var habilitado = tiposStr.indexOf(String(codigo).trim()) !== -1;
-          $(this).prop('disabled', !habilitado);
-          if (habilitado) { habilitados++; }
-        });
-        if (puntoVal && tiposStr.length && habilitados === 0 && window.console && console.warn) {
-          console.warn('El punto ' + puntoVal + ' trae tipos pero ninguno matchea con data-codigo del select.', tiposStr);
+        var tiposStr = Array.isArray(tipos) ? tipos.map(function (t) { return String(t).trim(); }) : [];
+
+        // Cache de las opciones generadas por PHP (se reusan en cada repoblado).
+        if (!tiposCache) {
+          tiposCache = [];
+          $tc.find('option').each(function () {
+            var codigo = $(this).data('codigo');
+            if (codigo === undefined || codigo === '' || codigo === null) return;
+            tiposCache.push($(this).detach());
+          });
         }
-        var $tc = $('#id_tipo_comprobante');
-        var sel = $tc.find('option:selected');
-        if (sel.length && sel.prop('disabled')) {
-          $tc.val('');
+
+        var nodos = [];
+        if (puntoVal && tiposStr.length) {
+          tiposCache.forEach(function ($op) {
+            if (tiposStr.indexOf(String($op.data('codigo'))) !== -1) {
+              nodos.push($op);
+            }
+          });
         }
-        // Refrescar Select2: el trigger namespaced no siempre repinta los disabled,
-        // se fuerza con change completo y re-inicialización del widget.
+
+        var valorPrevio = $tc.val();
+        $tc.empty();
+        $tc.append(new Option('Seleccione...', ''));
+        nodos.forEach(function ($op) { $tc.append($op); });
+
+        // Si el tipo previamente seleccionado ya no está entre los
+        // habilitados para este punto, se limpia la selección.
+        if (valorPrevio) {
+          var sigue = nodos.some(function ($op) { return String($op.val()) === String(valorPrevio); });
+          if (!sigue) {
+            $tc.val('');
+          }
+        }
+
+        // Aviso cuando el punto elegido no tiene tipos asociados.
+        var $hint = $('#tipoHabilitadosHint');
+        if ($hint.length) {
+          if (puntoVal && !tiposStr.length) {
+            $hint.text('El punto de venta elegido no tiene tipos de comprobante asociados.').removeClass('d-none');
+          } else {
+            $hint.addClass('d-none');
+          }
+        }
+
+        // Refrescar Select2: repuebla las opciones y el widget se reinicia.
         $tc.trigger('change');
         try {
           if ($tc.hasClass('select2-hidden-accessible')) {
@@ -1773,6 +1803,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         } catch (e) {
           if (window.console && console.error) { console.error(e); }
         }
+        if (typeof actualizarLetraDesdeTipo === 'function') { actualizarLetraDesdeTipo(); }
       }
 
       function cargarPuntosVentaEmpresa() {
@@ -1798,8 +1829,7 @@ $fv = function($key, $default = '') use ($facturaData) {
             data.puntos_venta.forEach(function(point) {
               puntosPorNumero[String(point.numero)] = point;
               var etiqueta = String(point.numero).padStart(4, '0')
-                + (point.emision_tipo ? ' — ' + point.emision_tipo : '')
-                + ' (tipos: ' + (point.tipos.length ? point.tipos.join(', ') : 'sin asociar') + ')';
+                + (point.emision_tipo ? ' — ' + point.emision_tipo : '');
               select.appendChild(new Option(etiqueta, String(point.numero)));
             });
             if (typeof puntoInicial !== 'undefined' && puntoInicial && puntosPorNumero[puntoInicial]) {

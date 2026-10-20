@@ -204,20 +204,24 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->SetXY($rightX, $copiaLineY + 2.5);
         $this->Cell(80, 7, $this->texto($this->titulo), 0, 0, 'L');
 
-        // Punto de Venta y Comp. Nro (en la misma línea, ambos en BOLD)
+        // Punto de Venta y Comp. Nro (rótulo en negrita, valor regular)
         $pv = str_pad((string)$this->comprobante['punto_venta'], 5, '0', STR_PAD_LEFT);
         $number = str_pad((string)$this->comprobante['numero_comprobante'], 8, '0', STR_PAD_LEFT);
         $this->SetXY($rightX, $copiaLineY + 11.5);
         $this->SetFont('Arial', 'B', 8);
         $this->Write(4, $this->texto('Punto de Venta: '));
+        $this->SetFont('Arial', '', 8);
         $this->Write(4, $this->texto($pv . '   '));
+        $this->SetFont('Arial', 'B', 8);
         $this->Write(4, $this->texto('Comp. Nro: '));
+        $this->SetFont('Arial', '', 8);
         $this->Write(4, $this->texto($number));
 
-        // Fecha de Emisión (rótulo y valor en BOLD)
+        // Fecha de Emisión (rótulo en negrita, valor regular)
         $this->SetXY($rightX, $copiaLineY + 16.5);
         $this->SetFont('Arial', 'B', 8);
         $this->Write(4, $this->texto('Fecha de Emisión: '));
+        $this->SetFont('Arial', '', 8);
         $this->Write(4, $this->texto($this->fecha($this->comprobante['fecha_comprobante'])));
 
         // CUIT

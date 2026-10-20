@@ -65,7 +65,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                       <select name="tipo_letra" class="form-control">
                         <option value="">Todos</option><?php
                         $pdoTL = Database::connect();
-                        $qTL = $pdoTL->prepare("SELECT DISTINCT CONCAT(tc.tipo, ' ', lc.letra) as tipo_letra FROM facturas_compra fc INNER JOIN tipos_comprobante tc ON tc.id = fc.id_tipo_comprobante INNER JOIN letras_comprobante lc ON lc.id = fc.id_letra_comprobante WHERE 1 ORDER BY tipo_letra");
+                        $qTL = $pdoTL->prepare("SELECT DISTINCT tc.descripcion as tipo_letra FROM facturas_compra fc INNER JOIN arca_tipos_comprobante tc ON tc.codigo = IF(fc.id_tipo_comprobante >= 1001, fc.id_tipo_comprobante - 1000, fc.id_tipo_comprobante) WHERE 1 ORDER BY tipo_letra");
                         $qTL->execute();
                         while ($filaTL = $qTL->fetch(PDO::FETCH_ASSOC)) {
                           $selected="";
@@ -154,7 +154,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         $hasSearched = isset($_SESSION['filtros_listarFacturasCompra']);
                         if ($hasSearched){
                           $pdo = Database::connect();
-                          $sql = " SELECT fc.id AS id_factura_compra, tc.tipo, lc.letra, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y') AS fecha_emitida_formatted, fp.forma_pago, fc.total, m.moneda, CASE WHEN fc.id_estado = 3 THEN 'Definitivo' ELSE 'Temporal' END as estado, date_format(fc.fecha_emitida,'%y%m%d') AS fecha_emitida, fc.id_estado, fc.exportada, fc.observaciones FROM facturas_compra fc inner join tipos_comprobante tc on tc.id = fc.id_tipo_comprobante inner join letras_comprobante lc on lc.id = fc.id_letra_comprobante inner join cuentas c on c.id = fc.id_cuenta_origen inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda WHERE 1 ";
+                          $sql = " SELECT fc.id AS id_factura_compra, tc.descripcion AS tipo, fc.numero, c.razon_social, date_format(fc.fecha_emitida,'%d/%m/%y') AS fecha_emitida_formatted, fp.forma_pago, fc.total, m.moneda, CASE WHEN fc.id_estado = 3 THEN 'Definitivo' ELSE 'Temporal' END as estado, date_format(fc.fecha_emitida,'%y%m%d') AS fecha_emitida, fc.id_estado, fc.exportada, fc.observaciones FROM facturas_compra fc inner join arca_tipos_comprobante tc on tc.codigo = IF(fc.id_tipo_comprobante >= 1001, fc.id_tipo_comprobante - 1000, fc.id_tipo_comprobante) inner join cuentas c on c.id = fc.id_cuenta_origen inner join formas_pago fp on fp.id = fc.id_condicion_pago inner join monedas m on m.id = fc.id_moneda WHERE 1 ";
                           $params = [];
 
                           if (!empty($nro)) {
@@ -174,7 +174,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $params[] = '%' . $proveedor . '%';
                           }
                           if (!empty($tipo_letra)) {
-                            $sql .= " AND CONCAT(tc.tipo, ' ', lc.letra) = ? ";
+                            $sql .= " AND tc.descripcion = ? ";
                             $params[] = $tipo_letra;
                           }
                           if (!empty($id_estado[0])) {
@@ -193,7 +193,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             <tr data-id-estado="<?=$row['id_estado'];?>" data-exportada="<?=(int)$row['exportada'];?>">
                               <td class="text-center"><input type="checkbox" class="chk-factura" value="<?=$row['id_factura_compra'];?>"></td>
                               <td><?=$row['id_factura_compra'];?></td>
-                              <td><?=$row['tipo'] . ' ' . $row['letra'];?></td>
+                              <td><?=htmlspecialchars($row['tipo'], ENT_QUOTES);?></td>
                               <td><?=$row['numero'];?></td>
                               <td><?=$row['razon_social'];?></td>
                               <td><span style="display: none;"><?=$row['fecha_emitida'];?></span><?=$row['fecha_emitida_formatted'];?></td>

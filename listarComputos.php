@@ -170,13 +170,14 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
                           <th>Realizó</th>
                           <th>Estado</th>
                           <th>Observaciones</th>
+                          <th>Últ. Mod.</th>
                         </tr>
                       </thead>
                       <tbody>
                         <?php
                         //if (!empty($_POST)) {
                         $pdo = Database::connect();
-                        $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number, p.id_estado_proyecto FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
+                        $sql = " SELECT s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto, p.nombre AS nombre_proyecto, c.id AS id_computo, c.nro_revision, (SELECT MAX(c2.nro_revision) FROM computos c2 WHERE c2.nro_computo = c.nro_computo) AS max_revision, date_format(c.fecha,'%d/%m/%y') AS fecha_computo, cu.nombre AS nombre_cuenta, ec.estado, ec.id as id_estado,c.nro AS nro_computo,c.comentarios_revision, date_format(c.fecha,'%y%m%d') AS fecha_computo_number, p.id_estado_proyecto, date_format(c.fecha_hora_ultima_modificacion,'%d/%m/%y %H:%i') AS fecha_modificacion_fmt, CONCAT(date_format(c.fecha_hora_ultima_modificacion,'%Y%m%d%H%i%s'), LPAD(c.id, 10, '0')) AS fecha_modificacion_number FROM computos c left join estados_computos ec on ec.id = c.id_estado left join cuentas cu on cu.id = c.id_cuenta_solicitante inner join tareas t on t.id = c.id_tarea inner join tipos_tarea tt on tt.id = t.id_tipo_tarea inner join proyectos p on p.id = t.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE 1 ";
                         if (!empty($_POST['nro'])) {
                           $nro = $_POST['nro'];
                           $ex  = explode("-", $nro);
@@ -220,6 +221,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
                             <td><?= $row["nombre_cuenta"] ?></td>
                             <td><?= $row["estado"] ?></td>
                             <td><?= $row["comentarios_revision"] ?></td>
+                            <td><span style="display:none;"><?= $row["fecha_modificacion_number"] ?></span><?= $row["fecha_modificacion_fmt"] ?></td>
                           </tr><?php
                               }
                               Database::disconnect();
@@ -258,6 +260,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
                           <th>Realizó</th>
                           <th>Estado</th>
                           <th>Observaciones</th>
+                          <th class="d-none">Últ. Mod.</th>
                         </tr>
                       </tfoot>
                     </table>
@@ -533,6 +536,8 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
 
         var table = $('#dataTables-example666').DataTable({
           stateSave: false,
+          // Orden inicial: recientemente modificados primero, empata por Fecha
+          order: [[11, 'desc'], [7, 'desc']],
           //searching: false,//debemos quitar esta linea para que funcione el buscador
           responsive: false,
           dom: 'Bfrtp<"bottom"l>',

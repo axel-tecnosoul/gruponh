@@ -60,10 +60,11 @@ if (!empty($_POST)) {
       throw new RuntimeException('Seleccione un punto de venta válido.');
     }
 
-    // Tipo de comprobante del padrón AFIP (sin legacy) + letra derivada del tipo.
+    // Tipo de comprobante: codigo del padrón ARCA (con mapeo dual para
+    // históricos que guardaban el id de la vieja tabla tipos_comprobante).
     $idTipoComprobante = (int)($_POST['id_tipo_comprobante'] ?? 0);
-    $qTipo = $pdo->prepare("SELECT id, codigo_afip FROM tipos_comprobante WHERE id = ? AND activo = 1 AND codigo_afip IS NOT NULL");
-    $qTipo->execute([$idTipoComprobante]);
+    $qTipo = $pdo->prepare("SELECT codigo, descripcion FROM arca_tipos_comprobante WHERE codigo = ?");
+    $qTipo->execute([codigoArcaDesdeTipo($idTipoComprobante)]);
     $tipoRow = $qTipo->fetch(PDO::FETCH_ASSOC);
     if (!$tipoRow) {
       throw new RuntimeException('Seleccione un tipo de comprobante válido.');
@@ -79,7 +80,7 @@ if (!empty($_POST)) {
          WHERE p.id_empresa = ? AND p.numero = ? AND p.bloqueado = 0
            AND p.fecha_baja IS NULL AND t.codigo_tipo_comprobante = ?'
       );
-      $qHab->execute([$idEmpresaVal, $puntoVenta, (int)$tipoRow['codigo_afip']]);
+      $qHab->execute([$idEmpresaVal, $puntoVenta, (int)$tipoRow['codigo']]);
       if ((int)$qHab->fetchColumn() === 0) {
         throw new RuntimeException('El tipo de comprobante no está habilitado para el punto de venta elegido.');
       }

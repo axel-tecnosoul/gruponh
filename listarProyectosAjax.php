@@ -6,12 +6,47 @@ $aContactos=[];
 
 $pdo = Database::connect();
 
-$orderBy = " ORDER BY ";
-foreach ($_GET['order'] as $order) {
-  $orderBy .= $order['column'] + 1 . " {$order['dir']}, ";
-}
+// Mapeo: columna visible del DataTable -> campo(s) SQL por los que se ordena.
+// Las columnas de montos (10-17) se calculan en PHP y no tienen campo en la DB.
+$camposOrden = [
+    0  => ['s.`nro_sitio`', 's.`nro_subsitio`'],   // Sitio/Sub
+    1  => ['p.`id`'],                              // Proy (oculta: ID)
+    2  => ['p.`nro`'],                             // Proy
+    3  => ['p.`nombre`'],                          // Nombre
+    4  => ['p.`descripcion`'],                     // Descripción
+    5  => ['c.`nombre`'],                          // Cliente
+    6  => ['ep.`estado`'],                         // Estado
+    7  => ['c2.`nombre`'],                         // Responsable
+    8  => ['p.`fecha_pedido`'],                    // F Adjudicado (fecha real, no el texto dd/mm/yy)
+    9  => ['p.`fecha_entrega`'],                   // F Entrega (fecha real)
+    10 => [], 11 => [], 12 => [], 13 => [],        // Presup$/Cert$/Facturado$/Pagado$ (PHP)
+    14 => [], 15 => [], 16 => [], 17 => [],        // USD (PHP)
+    18 => ['ln.`linea_negocio`'],                  // Línea de Negocio
+    19 => ['p.`tags`'],                            // Claves
+];
 
-$orderBy = substr($orderBy, 0, -2);
+$orderBy = " ORDER BY ";
+$hayOrden = false;
+$dirDefault = 'ASC';
+if (isset($_GET['order']) && is_array($_GET['order'])) {
+  foreach ($_GET['order'] as $order) {
+    $col = isset($order['column']) ? (int)$order['column'] : -1;
+    $dir = (isset($order['dir']) && strtolower($order['dir']) === 'desc') ? 'DESC' : 'ASC';
+    if (empty($hayOrden) && $col >= 0) {
+      $dirDefault = $dir; // dirección elegida, por si la columna no tiene campo SQL
+    }
+    if ($col < 0 || empty($camposOrden[$col])) continue;
+    foreach ($camposOrden[$col] as $campo) {
+      $orderBy .= $campo . " " . $dir . ", ";
+      $hayOrden = true;
+    }
+  }
+}
+if ($hayOrden) {
+  $orderBy = substr($orderBy, 0, -2);
+} else {
+  $orderBy = " ORDER BY p.`id` " . $dirDefault . " ";
+}
 
 $columns = $_GET['columns'];
 

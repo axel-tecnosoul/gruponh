@@ -218,6 +218,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
     $stmt->execute([$id, $_POST['id_material'], $cantidad, $cantidad, $_POST['fecha_necesidad'], $_POST['comentarios']]);
 
+    // Touch: el computo fue modificado (se agrego un item)
+    $pdo->prepare("UPDATE computos SET fecha_hora_ultima_modificacion = NOW() WHERE id = ?")->execute([$id]);
+
     $stmt = $pdo->prepare("
             INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) 
             VALUES (NOW(), ?, 'Se ha modificado un item de un cómputo', 'Cómputos', ?)

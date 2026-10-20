@@ -49,7 +49,13 @@ include 'database.php';
 						N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro" id="nro">
 					  </div>
 					  <div class="form-group mb-0">
-						Nombre:&nbsp;<input class="form-control" size="15" type="text" value="<?php if (isset($_POST['nombre'])) echo $_POST['nombre'] ?>" name="nombre" id="nombre">
+						Nombre:&nbsp;
+						<select class="form-control" style="width:200px;" name="nombre" id="nombre">
+						  <option value="">Todos</option>
+						  <?php if (isset($_POST['nombre'])) { ?>
+						  <option selected><?php echo htmlspecialchars($_POST['nombre'], ENT_QUOTES); ?></option>
+						  <?php } ?>
+						</select>
 					  </div>
 					  <div class="form-group mb-0">
 						Cliente:&nbsp;
@@ -378,7 +384,7 @@ include 'database.php';
 	$('#dataTables-example666').DataTable({
        stateSave: false,<?php
         if (!empty($_POST)) {?>
-          'ajax': 'listarProyectosAjax.php?nro=<?php echo $_POST['nro'];?>&nombre=<?php echo $_POST['nombre'];?>&cliente=<?php echo $_POST['cliente'];?>&linea=<?php echo $_POST['id_linea_negocio'];?>&estado=<?php if (!empty($_POST['id_estado'])) echo implode(",",$_POST['id_estado']);?>',<?php
+          'ajax': 'listarProyectosAjax.php?nro=<?php echo rawurlencode($_POST['nro'] ?? '');?>&nombre=<?php echo rawurlencode($_POST['nombre'] ?? '');?>&cliente=<?php echo rawurlencode($_POST['cliente'] ?? '');?>&linea=<?php echo rawurlencode($_POST['id_linea_negocio'] ?? '');?>&estado=<?php if (!empty($_POST['id_estado'])) echo implode(",",$_POST['id_estado']);?>',<?php
         } else {?>
           'ajax': 'listarProyectosAjax.php?nro=&nombre=&cliente=&linea=&estado=2',<?php
         }?>
@@ -804,6 +810,82 @@ include 'database.php';
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
 	<script src="assets/js/select2/select2.full.min.js"></script>
 	<script src="assets/js/select2/select2-custom.js"></script>
+	<script>
+    // Filtro "Nombre": select2 con búsqueda sobre los proyectos existentes
+    $("#nombre").select2({
+        width: '200px',
+        placeholder: "Todos",
+        allowClear: true,
+        minimumResultsForSearch: 0,
+        ajax: {
+            url: "ajaxNombresProyectos.php",
+            dataType: "json",
+            delay: 250,
+            data: function (params) {
+                return { q: params.term || "" };
+            },
+            processResults: function (data) {
+                return {
+                    results: [{ id: "", text: "Todos" }].concat($.map(data, function (nombre) {
+                        return { id: nombre, text: nombre };
+                    }))
+                };
+            }
+        }
+    });
+    // Restaurar el filtro enviado por POST
+    <?php if (isset($_POST['nombre'])) { ?>
+    var filtroNombrePOST = <?php echo json_encode($_POST['nombre'], JSON_UNESCAPED_UNICODE); ?>;
+    if (filtroNombrePOST) {
+        if (!$("#nombre").find("option").filter(function () { return ($(this).val() === filtroNombrePOST); }).length) {
+            $("#nombre").append(new Option(filtroNombrePOST, filtroNombrePOST, false, false));
+        }
+        $("#nombre").val(filtroNombrePOST).trigger("change");
+    }
+    <?php } ?>
+    </script>
+    <script>
+    // Mantener filtros: guardarlos al Buscar y restaurarlos al volver al listado sin POST
+    // (redirects tras guardar/eliminar, botón "Volver", menú Proyectos -> Proyecto, etc.)
+    (function() {
+      var KEY = 'listarProyectosFiltros';
+      var form = document.forms['form1'];
+      if (!form || !window.sessionStorage) { return; }
+      // 1) Al hacer Buscar, guardo el valor actual de cada filtro
+      form.addEventListener('submit', function() {
+        try {
+          sessionStorage.setItem(KEY, JSON.stringify({
+            nro: $('#nro').val() || '',
+            nombre: $('#nombre').val() || '',
+            cliente: $('#cliente').val() || '',
+            linea: $('#id_linea_negocio').val() || '',
+            estados: ($('#id_estado').val() || [])
+          }));
+        } catch (e) {}
+      });
+      // 2) Si llego sin POST y hay filtros guardados, los repinto y re-envío la búsqueda
+      <?php if (empty($_POST)): ?>
+      var guardado = null;
+      try { guardado = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { guardado = null; }
+      if (guardado) {
+        $('#nro').val(guardado.nro || '');
+        if (guardado.nombre) {
+          if (!$("#nombre").find("option").filter(function () { return ($(this).val() === guardado.nombre); }).length) {
+            $("#nombre").append(new Option(guardado.nombre, guardado.nombre, false, false));
+          }
+        }
+        $("#nombre").val(guardado.nombre || '').trigger("change");
+        $("#cliente").val(guardado.cliente || '').trigger("change");
+        $("#id_linea_negocio").val(guardado.linea || '').trigger("change");
+        // Si el usuario limpió los estados, envío la opción "Todos" (""), no el default del servidor
+        var estadosRest = (guardado.estados && guardado.estados.length) ? guardado.estados : [''];
+        $("#id_estado").val(estadosRest).trigger("change");
+        // form.submit() nativo no dispara el listener de guardado: no sobreescribe el storage
+        setTimeout(function() { form.submit(); }, 100);
+      }
+      <?php endif; ?>
+    })();
+    </script>
     <!-- Plugin used-->
   </body>
 </html>
