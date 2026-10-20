@@ -28,7 +28,22 @@
 		if (empty($_POST['id_tipo_estructura'])) {
 			$_POST['id_tipo_estructura'] = null;
 		}
-		
+
+		// Validación de duplicados: el "Nombre Sitio" no puede repetirse (excluyendo la propia cuenta/sitio)
+		$nombreSitio = isset($_POST['nombre']) ? trim($_POST['nombre']) : "";
+		if ($nombreSitio === "") {
+			$errorNombre = "Debe ingresar un Nombre de Sitio.";
+		} else {
+			$sqlDup = "SELECT COUNT(*) FROM sitios WHERE nro_subsitio = 0 AND LOWER(TRIM(nombre)) = LOWER(TRIM(?)) AND id <> ?";
+			$qDup = $pdo->prepare($sqlDup);
+			$qDup->execute([$nombreSitio, $id]);
+			if ($qDup->fetchColumn() > 0) {
+				$errorNombre = "Ya existe un sitio con el nombre ingresado.";
+			}
+		}
+
+		if (empty($errorNombre)) {
+
 		$sql = "UPDATE `sitios` set `nombre` = ?, id_cuenta_duenio = ?, `direccion` = ?, `latitud` = ?, `longitud` = ?, `observaciones` = ?, `id_pais` = ?, `id_empresa` = ?, `id_provincia` = ?, `id_localidad` = ?, `id_tipo_estructura` = ?, `altura` = ?, `ancho_cara` = ?, `peso_estructura` = ?, `id_tipo_montaje` = ?, `paso` = ?, `beta` = ?, `rugosidad` = ? where id = ?";
         $q = $pdo->prepare($sql);
         $q->execute([$_POST['nombre'],$_POST['id_cuenta_duenio'],$_POST['direccion'],$_POST['latitud'],$_POST['longitud'],$_POST['observaciones'],$_POST['id_pais'],$_POST['id_empresa'],$_POST['id_provincia'],$_POST['id_localidad'],$_POST['id_tipo_estructura'],$_POST['altura'],$_POST['ancho_cara'],$_POST['peso_estructura'],$_POST['id_tipo_montaje'],$_POST['paso'],$_POST['beta'],$_POST['rugosidad'],$_GET['id']]);
@@ -40,6 +55,13 @@
         Database::disconnect();
         
         header("Location: listarSitios.php");
+
+		} // fin if (empty($errorNombre))
+
+		if (!empty($errorNombre)) {
+			// Vuelve a mostrar el formulario con los datos ingresados
+			$data = $_POST;
+		}
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -82,6 +104,9 @@
                   </div>
 				  <form class="form theme-form" role="form" method="post" action="modificarSitio.php?id=<?php echo $id?>">
                     <div class="card-body">
+					<?php if (!empty($errorNombre)) { ?>
+                      <div class="alert alert-danger" role="alert"><?php echo $errorNombre; ?></div>
+					<?php } ?>
                       <div class="row">
                         <div class="col">
 							<div class="form-group row">
@@ -107,9 +132,21 @@
 							</select>
 							</div>
 							</div>
+							<?php
+							// Valor inicial del campo Nombre Sitio: datos del sitio o re-render con error
+							$nombreSitioPreset = isset($data['nombre']) ? $data['nombre'] : "";
+							?>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Nombre Sitio(*)</label>
-							<div class="col-sm-9"><input name="nombre" type="text" maxlength="99" autofocus class="form-control" required="required" value="<?php echo $data['nombre']; ?>"></div>
+							<div class="col-sm-9">
+							<select name="nombre" id="nombre" class="form-control texto-libre">
+							<option value=""></option>
+							</select>
+							<div class="invalid-feedback" id="nombreFeedback" style="display:none;">Ya existe un sitio con el nombre ingresado.</div>
+							<style>
+								.select2-results__option--disabled { color: #adb5bd !important; cursor: not-allowed; }
+							</style>
+							</div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Dueño(*)</label>
@@ -346,6 +383,147 @@
 		}
 	});
 	}
+	
+	// ---- Select2 del campo "Nombre Sitio": texto libre + listado deshabilitado de existentes ----
+	var LONGITUD_MAX = 99;
+	var textoBusquedaNombre = "";
+	// En modificarSitio solo se editan sitios principales; excluye esta fila de la validación
+	var EXCLUDE_ID = <?php echo (int)$id; ?>;
+	var NOMBRE_ACTUAL = <?php echo json_encode(isset($nombreSitioPreset) ? $nombreSitioPreset : "", JSON_UNESCAPED_UNICODE); ?>;
+	var FORM_SUBMITEADO = false;
+
+	function fijarNombre(texto) {
+		texto = $.trim(texto).substring(0, LONGITUD_MAX);
+		if (texto === "") {
+			return;
+		}
+		var $sel = $("#nombre");
+		if (!$sel.find("option").filter(function () { return ($(this).val() === texto); }).length) {
+			$sel.append(new Option(texto, texto, false, false));
+		}
+		$sel.val(texto).trigger("change");
+	}
+
+	function validarNombreSitio(callback) {
+		var valor = $("#nombre").val();
+		if ($.trim(String(valor)) === "" && $.trim(textoBusquedaNombre) !== "") {
+			fijarNombre(textoBusquedaNombre);
+			valor = $("#nombre").val();
+		}
+		valor = $.trim(String(valor));
+		var $feedback = $("#nombreFeedback");
+		if (valor === "") {
+			$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "");
+			$feedback.hide();
+			if (callback) callback(true);
+			return;
+		}
+		$.getJSON("ajaxNombresSitios.php", { q: valor, exact: 1, exclude_id: EXCLUDE_ID }, function (data) {
+			if (data && data.length > 0) {
+				$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "#dc3545");
+				$feedback.show();
+				if (callback) callback(false);
+			} else {
+				$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "");
+				$feedback.hide();
+				if (callback) callback(true);
+			}
+		});
+	}
+
+	$("#nombre").select2({
+		width: "100%",
+		placeholder: "Ingrese el Nombre de Sitio...",
+		allowClear: true,
+		tags: true,
+		createTag: function (params) {
+			var termino = $.trim(params.term || "").substring(0, LONGITUD_MAX);
+			if (termino === "") {
+				return null;
+			}
+			return { id: termino, text: termino, nuevo: true };
+		},
+		ajax: {
+			url: "ajaxNombresSitios.php",
+			dataType: "json",
+			delay: 250,
+			data: function (params) {
+				return { q: params.term || "", exclude_id: EXCLUDE_ID };
+			},
+			processResults: function (data) {
+				return {
+					results: $.map(data, function (nombre) {
+						return { id: nombre, text: nombre, disabled: true, existente: true };
+					})
+				};
+			}
+		},
+		templateResult: function (opcion) {
+			if (opcion.nuevo) {
+				return opcion.text;
+			}
+			var $nodo = $("<span>").text(opcion.text);
+			if (opcion.existente) {
+				var valorActual = $.trim(String($("#nombre").val())).toLowerCase();
+				if (valorActual === opcion.text.trim().toLowerCase()) {
+					$nodo.css({ "color": "#dc3545", "font-weight": "600" });
+				}
+			}
+			return $nodo;
+		}
+	});
+
+	// Valor actual del sitio (queda como opción del select para edición)
+	if ($.trim(String(NOMBRE_ACTUAL)) !== "") {
+		fijarNombre(NOMBRE_ACTUAL);
+	}
+
+	// Guardar lo que se va tipeando en el buscador de select2
+	$("#nombre").on("select2:open", function () {
+		var $search = $(".select2-search__field:visible").last();
+		if ($search.length) {
+			textoBusquedaNombre = $search.val() || "";
+			$search.off("input.nombre").on("input.nombre", function () {
+				textoBusquedaNombre = $(this).val() || "";
+			});
+		}
+	});
+
+	// Al cerrar el dropdown, si se tipeó algo sin confirmar, se fija como valor
+	$("#nombre").on("select2:close", function () {
+		var valor = $.trim(String($(this).val()));
+		var texto = $.trim(textoBusquedaNombre).substring(0, LONGITUD_MAX);
+		if (texto && valor !== texto) {
+			fijarNombre(texto);
+		}
+		setTimeout(function () { validarNombreSitio(); }, 50);
+	});
+
+	// Bloquear el submit si el nombre está vacío o ya existe
+	$("form[role='form']").on("submit", function (e) {
+		e.preventDefault();
+		if (FORM_SUBMITEADO) {
+			return;
+		}
+		FORM_SUBMITEADO = true;
+		if ($.trim(textoBusquedaNombre) !== "" && $.trim(String($("#nombre").val())) === "") {
+			fijarNombre(textoBusquedaNombre);
+		}
+		if ($.trim(String($("#nombre").val())) === "") {
+			$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "#dc3545");
+			$("#nombreFeedback").text("Debe ingresar un Nombre de Sitio.");
+			$("#nombreFeedback").show();
+			FORM_SUBMITEADO = false;
+			return;
+		}
+		validarNombreSitio(function (ok) {
+			if (ok) {
+				$("form[role='form']").off("submit");
+				$("form[role='form']")[0].submit();
+			}
+			FORM_SUBMITEADO = false;
+		});
+	});
 	
 	</script>
   </body>

@@ -47,7 +47,13 @@ include 'database.php';
 						Nro.Sitio:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro" id="nro">
 					  </div>
 					  <div class="form-group mb-0">
-						Nombre Sitio:&nbsp;<input class="form-control" size="20" type="text" value="<?php if (isset($_POST['nombre'])) echo $_POST['nombre'] ?>" name="nombre" id="nombre">
+						Nombre Sitio:&nbsp;
+						<select class="form-control" style="width:200px;" name="nombre" id="nombre">
+						  <option value="">Todos</option>
+						  <?php if (isset($_POST['nombre'])) { ?>
+						  <option selected><?php echo htmlspecialchars($_POST['nombre'], ENT_QUOTES); ?></option>
+						  <?php } ?>
+						</select>
 					  </div>
 					  <div class="form-group mb-0">
 						Cliente:&nbsp;<input class="form-control" size="20" type="text" value="<?php if (isset($_POST['cliente'])) echo $_POST['cliente'] ?>" name="cliente" id="cliente">
@@ -164,6 +170,9 @@ include 'database.php';
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
+    <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+    <script src="assets/js/select2/select2.full.min.js"></script>
+    <script src="assets/js/select2/select2-custom.js"></script>
   <script>
     $(document).ready(function() {
     // Setup - add a text input to each footer cell
@@ -173,7 +182,7 @@ include 'database.php';
 		<?php
 		if (!empty($_POST)) {
 		?>
-		'ajax': 'listarSitiosAjax.php?nro=<?php echo $_POST['nro'];?>&nombre=<?php echo $_POST['nombre'];?>&cliente=<?php echo $_POST['cliente'];?>',	
+		'ajax': 'listarSitiosAjax.php?nro=<?php echo rawurlencode($_POST['nro']);?>&nombre=<?php echo rawurlencode($_POST['nombre']);?>&cliente=<?php echo rawurlencode($_POST['cliente']);?>',	
 		<?php
 		} else {
 		?>
@@ -307,6 +316,40 @@ include 'database.php';
     
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
+    <script>
+    // Filtro "Nombre Sitio": select2 con búsqueda sobre los sitios existentes
+    $("#nombre").select2({
+        width: '200px',
+        placeholder: "Todos",
+        allowClear: true,
+        minimumResultsForSearch: 0,
+        ajax: {
+            url: "ajaxNombresSitios.php",
+            dataType: "json",
+            delay: 250,
+            data: function (params) {
+                return { q: params.term || "" };
+            },
+            processResults: function (data) {
+                return {
+                    results: [{ id: "", text: "Todos" }].concat($.map(data, function (nombre) {
+                        return { id: nombre, text: nombre };
+                    }))
+                };
+            }
+        }
+    });
+    // Restaurar el filtro enviado por POST
+    <?php if (isset($_POST['nombre'])) { ?>
+    var filtroNombrePOST = <?php echo json_encode($_POST['nombre'], JSON_UNESCAPED_UNICODE); ?>;
+    if (filtroNombrePOST) {
+        if (!$("#nombre").find("option").filter(function () { return ($(this).val() === filtroNombrePOST); }).length) {
+            $("#nombre").append(new Option(filtroNombrePOST, filtroNombrePOST, false, false));
+        }
+        $("#nombre").val(filtroNombrePOST).trigger("change");
+    }
+    <?php } ?>
+    </script>
     <!-- Plugin used-->
   </body>
 </html>

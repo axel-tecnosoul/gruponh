@@ -29,6 +29,18 @@
 		if (empty($_POST['id_puesto'])) {
 			$_POST['id_puesto'] = null;
 		}
+
+		// Validación de duplicados: el "Nombre Corto" no puede repetirse (excluyendo la propia cuenta)
+		$nombreCorto = isset($_POST['nombre']) ? trim($_POST['nombre']) : "";
+		if ($nombreCorto === "") {
+			$errorNombre = "Debe ingresar un Nombre Corto.";
+		} else {
+			$sqlDup = "SELECT COUNT(*) FROM cuentas WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) AND anulado = 0 AND id <> ?";
+			$qDup = $pdo->prepare($sqlDup);
+			$qDup->execute([$nombreCorto, $id]);
+			if ($qDup->fetchColumn() > 0) {
+				$errorNombre = "Ya existe una cuenta con el Nombre Corto ingresado.";
+			} else {
 		
         $sql = "UPDATE `cuentas` set `id_tipo_cuenta` = ?, `nombre` = ?, `razon_social` = ?, `cuit` = ?, `contacto` = ?, `email` = ?, `telefono` = ?, `id_puesto` = ?, `codigo_postal` = ?, `id_pais` = ?, `id_provincia` = ?, `id_localidad` = ?, `observaciones` = ?, `es_recurso` = ?, `cuenta_gestion` = ?, `codigo_externo` = ?, `id_condicion_iva` = ?, `direccion` = ?, `id_usuario` = ?, activo = ? where id = ?";
         $q = $pdo->prepare($sql);
@@ -41,6 +53,12 @@
         Database::disconnect();
         
         header("Location: listarCuentas.php");
+			}
+		} // fin validación nombre corto
+		if (!empty($errorNombre)) {
+			// Vuelve a mostrar el formulario con los datos ingresados
+			$data = $_POST;
+		}
     } else {
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -83,6 +101,9 @@
                   </div>
 				  <form class="form theme-form" role="form" method="post" action="modificarCuenta.php?id=<?php echo $id?>">
                     <div class="card-body">
+					<?php if (!empty($errorNombre)) { ?>
+                      <div class="alert alert-danger" role="alert"><?php echo $errorNombre; ?></div>
+					<?php } ?>
                       <div class="row">
                         <div class="col">
 							<div class="form-group row">
@@ -110,7 +131,15 @@
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Nombre Corto(*)</label>
-							<div class="col-sm-9"><input name="nombre" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['nombre']; ?>"></div>
+							<div class="col-sm-9">
+							<select name="nombre" id="nombre" class="form-control texto-libre">
+							<option value=""></option>
+							</select>
+							<div class="invalid-feedback" id="nombreFeedback" style="display:none;">Ya existe una cuenta con el Nombre Corto ingresado.</div>
+							<style>
+								.select2-results__option--disabled { color: #adb5bd !important; cursor: not-allowed; }
+							</style>
+							</div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Razón Social(*)</label>
@@ -376,6 +405,140 @@
 		}
 	});
 	}
+	
+	// ---- Select2 del campo "Nombre Corto": texto libre + listado deshabilitado de existentes ----
+	var LONGITUD_MAX = 99;
+	var textoBusquedaNombre = "";
+	var EXCLUDE_ID = <?php echo (int)$id; ?>;
+	var NOMBRE_ACTUAL = <?php echo json_encode(isset($data['nombre']) ? $data['nombre'] : "", JSON_UNESCAPED_UNICODE); ?>;
+
+	function fijarNombre(texto) {
+		texto = $.trim(texto).substring(0, LONGITUD_MAX);
+		if (texto === "") {
+			return;
+		}
+		var $sel = $("#nombre");
+		if (!$sel.find("option").filter(function () { return ($(this).val() === texto); }).length) {
+			$sel.append(new Option(texto, texto, false, false));
+		}
+		$sel.val(texto).trigger("change");
+	}
+
+	function validarNombreCorto(callback) {
+		var valor = $("#nombre").val();
+		if ($.trim(String(valor)) === "" && $.trim(textoBusquedaNombre) !== "") {
+			fijarNombre(textoBusquedaNombre);
+			valor = $("#nombre").val();
+		}
+		valor = $.trim(String(valor));
+		var $feedback = $("#nombreFeedback");
+		if (valor === "") {
+			$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "");
+			$feedback.hide();
+			if (callback) callback(true);
+			return;
+		}
+		$.getJSON("ajaxNombresCuentas.php", { q: valor, exact: 1, exclude_id: EXCLUDE_ID }, function (data) {
+			if (data && data.length > 0) {
+				$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "#dc3545");
+				$feedback.show();
+				if (callback) callback(false);
+			} else {
+				$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "");
+				$feedback.hide();
+				if (callback) callback(true);
+			}
+		});
+	}
+
+	$("#nombre").select2({
+		width: "100%",
+		placeholder: "Ingrese el Nombre Corto...",
+		allowClear: true,
+		tags: true,
+		createTag: function (params) {
+			var termino = $.trim(params.term || "").substring(0, LONGITUD_MAX);
+			if (termino === "") {
+				return null;
+			}
+			return { id: termino, text: termino, nuevo: true };
+		},
+		ajax: {
+			url: "ajaxNombresCuentas.php",
+			dataType: "json",
+			delay: 250,
+			data: function (params) {
+				return { q: params.term || "", exclude_id: EXCLUDE_ID };
+			},
+			processResults: function (data) {
+				return {
+					results: $.map(data, function (nombre) {
+						return { id: nombre, text: nombre, disabled: true, existente: true };
+					})
+				};
+			}
+		},
+		templateResult: function (opcion) {
+			if (opcion.nuevo) {
+				return opcion.text;
+			}
+			var $nodo = $("<span>").text(opcion.text);
+			if (opcion.existente) {
+				var valorActual = $.trim(String($("#nombre").val())).toLowerCase();
+				if (valorActual === opcion.text.trim().toLowerCase()) {
+					$nodo.css({ "color": "#dc3545", "font-weight": "600" });
+				}
+			}
+			return $nodo;
+		}
+	});
+
+	// Valor actual de la cuenta (queda como opción del select para edición)
+	if ($.trim(String(NOMBRE_ACTUAL)) !== "") {
+		fijarNombre(NOMBRE_ACTUAL);
+	}
+
+	// Guardar lo que se va tipeando en el buscador de select2
+	$("#nombre").on("select2:open", function () {
+		var $search = $(".select2-search__field:visible").last();
+		if ($search.length) {
+			textoBusquedaNombre = $search.val() || "";
+			$search.off("input.nombre").on("input.nombre", function () {
+				textoBusquedaNombre = $(this).val() || "";
+			});
+		}
+	});
+
+	// Al cerrar el dropdown, si se tipeó algo sin confirmar, se fija como valor
+	$("#nombre").on("select2:close", function () {
+		var valor = $.trim(String($(this).val()));
+		var texto = $.trim(textoBusquedaNombre).substring(0, LONGITUD_MAX);
+		if (texto && valor !== texto) {
+			fijarNombre(texto);
+		}
+		setTimeout(validarNombreCorto, 50);
+	});
+
+	// Bloquear el submit si el nombre está vacío o ya existe: se revalida contra el servidor
+	$("form[role='form']").on("submit", function (e) {
+		e.preventDefault();
+		if ($.trim(textoBusquedaNombre) !== "" && $.trim(String($("#nombre").val())) === "") {
+			fijarNombre(textoBusquedaNombre);
+		}
+		if ($.trim(String($("#nombre").val())) === "") {
+			$("#nombre").closest(".select2-container").find(".select2-selection").css("border-color", "#dc3545");
+			$("#nombreFeedback").text("Debe ingresar un Nombre Corto.");
+			$("#nombreFeedback").show();
+			return;
+		}
+		validarNombreCorto(function (ok) {
+			if (ok) {
+				$("form[role='form']").off("submit");
+				$("form[role='form']")[0].submit();
+			}
+		});
+	});
+	
 	
 	</script>
   </body>
