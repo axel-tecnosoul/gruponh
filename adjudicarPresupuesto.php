@@ -96,7 +96,7 @@ if (null==$id) {
 			
 			$address = $row[1];
 			
-			$titulo = "Módulo Comercial - Adjudicación de Presupuesto Nro $id de NHNET";
+			$titulo = "ERP Notificaciones - Módulo Comercial - Adjudicación de Presupuesto Nro $id de NHNET";
 			$mensaje="El presupuesto #".$id." ha sido adjudicado en el sistema y se requiere alta de proyecto";
 
 			$mail = new PHPMailer();

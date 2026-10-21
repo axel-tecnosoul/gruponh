@@ -2,6 +2,7 @@
 session_start(); 
 header('Content-Disposition: attachment; filename="listas_corte.xls"');
 include 'database.php';
+require_once 'funciones.php';
 ?>
 <!doctype html>
 <html lang="en">
@@ -45,11 +46,13 @@ include 'database.php';
 			<th>Proceso</th>
 			<th>Observaciones</th>
 			<th>Estado</th>
+			<th>Observaciones Posición</th>
+			<th>Peso Total Posición Kg</th>
          </tr>
         </thead>
         <tbody><?php
 			$pdo = Database::connect();
-			$sql = "SELECT lcr.`numero`, lcr.`nro_revision`, lcr.`nombre`, lcr.`fecha`, elc.`estado`, lcr.`descripcion`, p.descripcion, lcc.`nombre`, lcc.`cantidad`, lcc.`peso`, elcc.`estado`, m.`codigo`, m.`concepto`, lcpo.`posicion`, lcpo.`cantidad`, lcpo.`largo`, lcpo.`ancho`, lcpo.`marca`, lcpo.`peso`, lcpo.`finalizado`, lcpo.`diametro`, lcpo.`calidad`, tp.`tipo`, lcp.`observaciones`, elcp.`estado`,p.nro,p.nombre,s.nro_sitio,s.nro_subsitio,lcr.adjunto FROM `lista_corte_procesos` lcp inner join estados_lista_corte_procesos elcp on elcp.id = lcp.`id_estado_lista_corte_proceso` inner join tipos_procesos tp on tp.id = lcp.`id_tipo_proceso` inner join lista_corte_posiciones lcpo on lcpo.id = lcp.`id_lista_corte_posicion` inner join materiales m on m.id = lcpo.`id_material` inner join listas_corte_conjuntos lcc on lcc.id = lcpo.`id_lista_corte_conjunto` inner join estados_lista_corte_conjuntos elcc on elcc.id = lcc.`id_estado_lista_corte_conjuntos` inner join listas_corte_revisiones lcr on lcr.id = lcc.`id_lista_corte` inner join estados_lista_corte elc on elc.id = lcr.`id_estado_lista_corte` inner join proyectos p on p.id = lcr.`id_proyecto` inner join sitios s on s.id = p.id_sitio WHERE lcr.`anulado` = 0 ";
+			$sql = "SELECT lcr.`numero`, lcr.`nro_revision`, lcr.`nombre`, lcr.`fecha`, elc.`estado`, lcr.`descripcion`, p.descripcion, lcc.`nombre`, lcc.`cantidad`, lcc.`peso`, elcc.`estado`, m.`codigo`, m.`concepto`, lcpo.`posicion`, lcpo.`cantidad`, lcpo.`largo`, lcpo.`ancho`, lcpo.`marca`, lcpo.`peso`, lcpo.`finalizado`, lcpo.`diametro`, lcpo.`calidad`, tp.`tipo`, lcp.`observaciones`, elcp.`estado`,p.nro,p.nombre,s.nro_sitio,s.nro_subsitio,lcr.adjunto,lcpo.`observaciones`,lcpo.`peso_calculado_posicion`,lcc.`id` FROM `lista_corte_procesos` lcp inner join estados_lista_corte_procesos elcp on elcp.id = lcp.`id_estado_lista_corte_proceso` inner join tipos_procesos tp on tp.id = lcp.`id_tipo_proceso` inner join lista_corte_posiciones lcpo on lcpo.id = lcp.`id_lista_corte_posicion` inner join materiales m on m.id = lcpo.`id_material` inner join listas_corte_conjuntos lcc on lcc.id = lcpo.`id_lista_corte_conjunto` inner join estados_lista_corte_conjuntos elcc on elcc.id = lcc.`id_estado_lista_corte_conjuntos` inner join listas_corte lcr on lcr.id = lcc.`id_lista_corte` inner join estados_lista_corte elc on elc.id = lcr.`id_estado_lista_corte` inner join proyectos p on p.id = lcr.`id_proyecto` inner join sitios s on s.id = p.id_sitio WHERE lcr.`anulado` = 0 ";
 			if (!empty($_GET['nro'])) {
 				$sql .= " and (p.nro = ".$_GET['nro']." or s.nro_sitio = ".$_GET['nro'].") ";
 			}
@@ -61,8 +64,9 @@ include 'database.php';
 			}
 			
 			if (!empty($_GET['estado'])) {
-				$sql .= " and e.id = ".$_GET['estado'];
+				$sql .= " and elc.id = ".(int)$_GET['estado'];
 			}
+			$pesosConjuntos = [];
 			foreach ($pdo->query($sql) as $row) {
             echo '<tr>';
 			if (empty($row[28])) {
@@ -84,7 +88,11 @@ include 'database.php';
             echo '<td>'. $row[6] . '</td>';
 			echo '<td>'. $row[7] . '</td>';
             echo '<td>'. $row[8] . '</td>';
-            echo '<td>'. $row[9] . '</td>';
+            $idConjuntoExport = (int)$row[32];
+            if (!isset($pesosConjuntos[$idConjuntoExport])) {
+              $pesosConjuntos[$idConjuntoExport] = calcularPesoConjunto($pdo, $idConjuntoExport);
+            }
+            echo '<td>'. number_format($pesosConjuntos[$idConjuntoExport], 2, ',', '.') . '</td>';
             echo '<td>'. $row[10] . '</td>';
             echo '<td>'. $row[11] . '</td>';
             echo '<td>'. $row[12] . '</td>';
@@ -100,6 +108,15 @@ include 'database.php';
             echo '<td>'. $row[22] . '</td>';
             echo '<td>'. $row[23] . '</td>';
             echo '<td>'. $row[24] . '</td>';
+            $pesoPosicion = calcularPesoPosicion([
+              'peso' => $row[18],
+              'largo' => $row[15],
+              'ancho' => $row[16],
+              'cantidad' => $row[14],
+              'peso_calculado_posicion' => $row[31]
+            ], (string)$row[12]);
+            echo '<td>'. htmlspecialchars($row[30] ?? '') . '</td>';
+            echo '<td>'. number_format($pesoPosicion, 2, ',', '.') . '</td>';
             echo '</tr>';
           }
           Database::disconnect();?>

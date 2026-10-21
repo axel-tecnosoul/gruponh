@@ -547,7 +547,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                         <tfoot>
                           <tr>
                             <th colspan="6" class="text-right">Total:</th>
-                            <th id="totalDetalle">$ 0.00</th>
+                            <th id="totalDetalle" data-raw="0">$ 0,00</th>
                             <th colspan="1"></th>
                           </tr>
                         </tfoot>
@@ -831,6 +831,10 @@ $fv = function($key, $default = '') use ($facturaData) {
       });
     }
 
+    function totalDetalleValue() {
+      return parseFloat($('#totalDetalle').attr('data-raw')) || 0;
+    }
+
     function renderDetalles() {
       actualizarProyectoDetalle();
       var tbody = $('#tablaDetalles tbody');
@@ -863,8 +867,8 @@ $fv = function($key, $default = '') use ($facturaData) {
               imputacionesHtml += '<tr>';
               imputacionesHtml += '<td style="padding:2px 4px;">' + prefijoOC + htmlEsc(imp.concepto_text) + '</td>';
               imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + parseFloat(imp.cantidad||0).toFixed(2) + '</td>';
-              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + monedaSimbolo + ' ' + parseFloat(imp.precio||0).toFixed(2) + '</td>';
-              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + monedaSimbolo + ' ' + subImp.toFixed(2) + '</td>';
+              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + monedaSimbolo + ' ' + formatNumber(parseFloat(imp.precio||0)) + '</td>';
+              imputacionesHtml += '<td style="padding:2px 4px;text-align:right;">' + monedaSimbolo + ' ' + formatNumber(subImp) + '</td>';
               imputacionesHtml += '</tr>';
             });
             imputacionesHtml += '</table>';
@@ -889,11 +893,11 @@ $fv = function($key, $default = '') use ($facturaData) {
         if (typeof feather !== 'undefined') { feather.replace(); }
       }
 
-      $('#totalDetalle').text(monedaSimbolo + ' ' + total.toFixed(2));
+      $('#totalDetalle').text(monedaSimbolo + ' ' + formatNumber(total)).attr('data-raw', total);
 
       var ocTotal = parseFloat($('#ocTotalData').val()) || 0;
       if (ocTotal > 0) {
-        $('#topeMaximo').text('(*)Tope Maximo Recomendado: ' + monedaSimbolo + ' ' + (ocTotal - total).toFixed(2));
+        $('#topeMaximo').text('(*)Tope Maximo Recomendado: ' + monedaSimbolo + ' ' + formatNumber(ocTotal - total));
       } else {
         $('#topeMaximo').text('');
       }
@@ -920,9 +924,9 @@ $fv = function($key, $default = '') use ($facturaData) {
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
             '<td>' + htmlEsc(item.regimen_text) + '</td>' +
-            '<td>' + monedaSimbolo + ' ' + parseFloat(base).toFixed(2) + '</td>' +
+            '<td>' + monedaSimbolo + ' ' + formatNumber(parseFloat(base)) + '</td>' +
             '<td>' + parseFloat(item.porcentaje || 0).toFixed(2) + '%</td>' +
-            '<td>' + monedaSimbolo + ' ' + parseFloat(item.monto).toFixed(2) + '</td>' +
+            '<td>' + monedaSimbolo + ' ' + formatNumber(parseFloat(item.monto)) + '</td>' +
             '<td><img src="img/icon_modificar.png" onclick="editarRetencion(' + i + ')" style="cursor:pointer" width="24" height="25" border="0" alt="Modificar/Anular" title="Modificar/Anular">&nbsp;<a href="javascript:void(0)" onclick="quitarRetencion(' + i + ')"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a></td>' +
             '</tr>'
           );
@@ -930,7 +934,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#countRetenciones').text('(' + retenciones.length + ')');
       }
 
-      $('#totalRetenciones').text(monedaSimbolo + ' ' + total.toFixed(2));
+      $('#totalRetenciones').text(monedaSimbolo + ' ' + formatNumber(total));
       $('#retenciones_json').val(JSON.stringify(retenciones));
 
       actualizarGranTotal();
@@ -1099,14 +1103,14 @@ $fv = function($key, $default = '') use ($facturaData) {
           '<div class="col-md-5"><span class="imp-sub-label" style="font-size:13px;">' + label + '</span></div>' +
           '<div class="col-md-2"><span style="font-size:13px; color:#333; margin-right:6px;">Cant:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-cant" style="display:inline-block; width:60%;" value="' + cant + '" data-restante="' + (item.restante || 0) + '"></div>' +
           '<div class="col-md-2"><span style="font-size:13px; color:#333; margin-right:6px;">Precio:</span><input type="number" step="0.01" min="0" class="form-control imp-sub-prec" style="display:inline-block; width:60%;" value="' + prec + '"></div>' +
-          '<div class="col-md-3 text-right"><span class="imp-sub-subtotal" style="font-size:13px; font-weight:bold;">' + monedaSimbolo + ' ' + sub.toFixed(2) + '</span></div>' +
+          '<div class="col-md-3 text-right"><span class="imp-sub-subtotal" style="font-size:13px; font-weight:bold;">' + monedaSimbolo + ' ' + formatNumber(sub) + '</span></div>' +
           '</div>'
         );
       });
       container.append(
         '<div class="row" id="imp-sub-total-row" style="margin:0; padding:8px 0; border-top:2px solid #333;">' +
         '<div class="col-md-9 text-right font-weight-bold">Total Imputación:</div>' +
-        '<div class="col-md-3 text-right"><span id="imp-sub-total-value" style="font-weight:bold;">' + monedaSimbolo + ' 0.00</span></div>' +
+        '<div class="col-md-3 text-right"><span id="imp-sub-total-value" style="font-weight:bold;">' + monedaSimbolo + ' ' + formatNumber(0) + '</span></div>' +
         '</div>'
       );
       actualizarSubTotalesImputacion();
@@ -1118,10 +1122,10 @@ $fv = function($key, $default = '') use ($facturaData) {
         var cant = parseFloat($(this).find('.imp-sub-cant').val()) || 0;
         var prec = parseFloat($(this).find('.imp-sub-prec').val()) || 0;
         var sub = cant * prec;
-        $(this).find('.imp-sub-subtotal').text(monedaSimbolo + ' ' + sub.toFixed(2));
+        $(this).find('.imp-sub-subtotal').text(monedaSimbolo + ' ' + formatNumber(sub));
         total += sub;
       });
-      $('#imp-sub-total-value').text(monedaSimbolo + ' ' + total.toFixed(2));
+      $('#imp-sub-total-value').text(monedaSimbolo + ' ' + formatNumber(total));
     }
 
     function quitarRetencion(index) {
@@ -1198,15 +1202,15 @@ $fv = function($key, $default = '') use ($facturaData) {
       ivaTotal = Math.round(ivaTotal * 100) / 100;
       var brutoTotal = subTotal;
       var netoTotal = Math.round((brutoTotal - ivaTotal) * 100) / 100;
-      $('#granIva').text(monedaSimbolo + ' ' + ivaTotal.toFixed(2));
-      $('#granSubtotal').text(monedaSimbolo + ' ' + netoTotal.toFixed(2));
-      $('#granRetenciones').text(monedaSimbolo + ' ' + retTotal.toFixed(2));
-      $('#granTotal').text(monedaSimbolo + ' ' + (brutoTotal + retTotal).toFixed(2));
+      $('#granIva').text(monedaSimbolo + ' ' + formatNumber(ivaTotal));
+      $('#granSubtotal').text(monedaSimbolo + ' ' + formatNumber(netoTotal));
+      $('#granRetenciones').text(monedaSimbolo + ' ' + formatNumber(retTotal));
+      $('#granTotal').text(monedaSimbolo + ' ' + formatNumber(brutoTotal + retTotal));
       <?php else: ?>
-      subTotal = parseFloat($('#totalDetalle').text().replace(/[^0-9.-]/g, '')) || 0;
-      $('#granSubtotal').text(monedaSimbolo + ' ' + subTotal.toFixed(2));
-      $('#granRetenciones').text(monedaSimbolo + ' ' + retTotal.toFixed(2));
-      $('#granTotal').text(monedaSimbolo + ' ' + (subTotal + ivaTotal + retTotal).toFixed(2));
+      subTotal = totalDetalleValue();
+      $('#granSubtotal').text(monedaSimbolo + ' ' + formatNumber(subTotal));
+      $('#granRetenciones').text(monedaSimbolo + ' ' + formatNumber(retTotal));
+      $('#granTotal').text(monedaSimbolo + ' ' + formatNumber(subTotal + ivaTotal + retTotal));
       <?php endif; ?>
     }
 
@@ -1693,7 +1697,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         var porc = parseFloat($(this).find('option:selected').data('porcentaje')) || 0;
         $('#ret_porcentaje').val(porc > 0 ? porc : '');
         if (!$('#ret_base').val()) {
-          var neto = parseFloat($('#totalDetalle').text().replace(/[^0-9.-]/g, '')) || 0;
+          var neto = totalDetalleValue();
           if (neto > 0) $('#ret_base').val(neto.toFixed(2));
         }
         calcularRetencion();
@@ -1856,7 +1860,7 @@ $fv = function($key, $default = '') use ($facturaData) {
       <?php if ($vista === 'compra'): ?>
       var ocTotal = parseFloat($('#ocTotalData').val()) || 0;
       if (detalles.length === 0 && ocTotal > 0) {
-        $('#topeMaximo').text('(*)Tope Máximo Recomendado: $ ' + ocTotal.toFixed(2));
+        $('#topeMaximo').text('(*)Tope Máximo Recomendado: ' + monedaSimbolo + ' ' + formatNumber(ocTotal));
       }
 
       $("#fecha_recibida").change(function() {

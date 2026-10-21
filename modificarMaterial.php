@@ -22,13 +22,46 @@ if (!empty($_POST)) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-  $sql = "UPDATE `materiales` set `codigo` = ?, `concepto` = ?, `calidad` = ?, `descripcion` = ?, `espesor` = ?, `ancho` = ?, `largo` = ?, `peso_metro` = ?, `perimetro` = ?, `id_categoria` = ?, `id_unidad_medida` = ?, `stock_minimo` = ? where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['calidad'], $_POST['descripcion'], $_POST['espesor'] ?: null, $_POST['ancho'] ?: null, $_POST['largo'], $_POST['peso_metro'], $_POST['perimetro'] ?: null, $_POST['id_categoria'], $_POST['id_unidad_medida'], $_POST['stock_minimo'], $_GET['id']]);
+  try {
+    $pdo->beginTransaction();
 
-  $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de concepto','Conceptos','verMaterial.php?id=$id')";
-  $q = $pdo->prepare($sql);
-  $q->execute(array($_SESSION['user']['id']));
+    $qAnterior = $pdo->prepare("SELECT concepto, peso_metro, calidad FROM materiales WHERE id = ?");
+    $qAnterior->execute([(int)$id]);
+    $materialAnterior = $qAnterior->fetch(PDO::FETCH_ASSOC) ?: [];
+
+    $sql = "UPDATE `materiales` set `codigo` = ?, `concepto` = ?, `calidad` = ?, `descripcion` = ?, `espesor` = ?, `ancho` = ?, `largo` = ?, `peso_metro` = ?, `perimetro` = ?, `id_categoria` = ?, `id_unidad_medida` = ?, `stock_minimo` = ? where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['codigo'], $_POST['concepto'], $_POST['calidad'], $_POST['descripcion'], $_POST['espesor'] ?: null, $_POST['ancho'] ?: null, $_POST['largo'], $_POST['peso_metro'], $_POST['perimetro'] ?: null, $_POST['id_categoria'], $_POST['id_unidad_medida'], $_POST['stock_minimo'], $_GET['id']]);
+
+    // Solo propagamos si cambió algún dato que la LC copia del concepto.
+    $cambioRelevante = empty($materialAnterior)
+      || numeroListaCorte($materialAnterior['peso_metro'] ?? 0) !== numeroListaCorte($_POST['peso_metro'])
+      || (string)($materialAnterior['concepto'] ?? '') !== (string)$_POST['concepto']
+      || (string)($materialAnterior['calidad'] ?? '') !== (string)$_POST['calidad'];
+
+    $sincronizacion = ['posiciones' => 0, 'conjuntos' => 0];
+    if ($cambioRelevante) {
+      // Propagar peso, calidad y peso calculado a las listas de corte no terminadas.
+      $sincronizacion = sincronizarConceptosEnListasCorte($pdo, [(int)$id]);
+    }
+
+    $detalleLog = 'Modificación de concepto';
+    if ($sincronizacion['posiciones'] > 0) {
+      $detalleLog .= ' (' . $sincronizacion['posiciones'] . ' posiciones de Lista de Corte actualizadas)';
+    }
+
+    $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,?,'Conceptos',?)";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_SESSION['user']['id'], $detalleLog, "verMaterial.php?id=" . (int)$id]);
+
+    $pdo->commit();
+  } catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+      $pdo->rollBack();
+    }
+    Database::disconnect();
+    die('Error al modificar el concepto: ' . htmlspecialchars($e->getMessage()));
+  }
 
   Database::disconnect();
 

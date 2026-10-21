@@ -126,6 +126,7 @@ include 'database.php';
 					  </div>
 					  <div class="form-group mb-0">
 						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarProyectos.php'">Buscar</button>
+						<button type="button" class="btn btn-secondary ml-2" id="btnLimpiarFiltros">Limpiar</button>
 					  </div>
 					</form>
 				</div>
@@ -196,6 +197,30 @@ include 'database.php';
                         </thead>
                         <tbody>
                         </tbody>
+                        <tfoot>
+                          <tr>
+                            <th>Sitio/Sub</th>
+                            <th class="d-none"></th>
+                            <th>Proy</th>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Cliente</th>
+                            <th>Estado</th>
+                            <th>Responsable</th>
+                            <th>F Adjudicado</th>
+                            <th>F Entrega</th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th data-no-filter="1"></th>
+                            <th>Línea de Negocio</th>
+                            <th>Claves</th>
+                          </tr>
+                        </tfoot>
                       </table>
                     </div>
                   </div>
@@ -377,17 +402,52 @@ include 'database.php';
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
+  <?php
+  $filtrosInicialesProyectos = [
+      'nro' => $_POST['nro'] ?? '',
+      'nombre' => $_POST['nombre'] ?? '',
+      'cliente' => $_POST['cliente'] ?? '',
+      'linea' => $_POST['id_linea_negocio'] ?? '',
+      'estados' => !empty($_POST)
+          ? (isset($_POST['id_estado'])
+              ? array_values(array_filter((array)$_POST['id_estado'], function ($v) { return $v !== ''; }))
+              : [])
+          : [2],
+  ];
+  ?>
   <script>
     $(document).ready(function() {
+    var filtrosProyectos = <?= json_encode($filtrosInicialesProyectos, JSON_UNESCAPED_UNICODE) ?>;
+    <?php if (empty($_POST)): ?>
+    try {
+      var guardadosProyectos = JSON.parse(sessionStorage.getItem('listarProyectosFiltros') || 'null');
+      if (guardadosProyectos) {
+        filtrosProyectos = guardadosProyectos;
+      }
+    } catch (e) {}
+    <?php endif; ?>
+    function urlAjaxProyectos(filtros) {
+      var estados = Array.isArray(filtros.estados)
+        ? filtros.estados.filter(function (v) { return v !== ''; }).join(',')
+        : (filtros.estados || '');
+      return 'listarProyectosAjax.php?' + $.param({
+        nro: filtros.nro || '',
+        nombre: filtros.nombre || '',
+        cliente: filtros.cliente || '',
+        linea: filtros.linea || '',
+        estado: estados
+      });
+    }
     // Setup - add a text input to each footer cell
-    
+    $('#dataTables-example666 tfoot th').each( function () {
+        if ($(this).hasClass('d-none') || $(this).is('[data-no-filter]')) { return; }
+        var title = $(this).text().trim();
+        if (!title) { return; }
+        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
+    } );
 	$('#dataTables-example666').DataTable({
-       stateSave: false,<?php
-        if (!empty($_POST)) {?>
-          'ajax': 'listarProyectosAjax.php?nro=<?php echo rawurlencode($_POST['nro'] ?? '');?>&nombre=<?php echo rawurlencode($_POST['nombre'] ?? '');?>&cliente=<?php echo rawurlencode($_POST['cliente'] ?? '');?>&linea=<?php echo rawurlencode($_POST['id_linea_negocio'] ?? '');?>&estado=<?php if (!empty($_POST['id_estado'])) echo implode(",",$_POST['id_estado']);?>',<?php
-        } else {?>
-          'ajax': 'listarProyectosAjax.php?nro=&nombre=&cliente=&linea=&estado=2',<?php
-        }?>
+       stateSave: false,
+        ajax: urlAjaxProyectos(filtrosProyectos),
         responsive: false,
         serverSide: true,
         //searching: false,//debemos quitar esta linea para que funcione el buscador
@@ -461,6 +521,18 @@ include 'database.php';
  
     // DataTable
     var table = $('#dataTables-example666').DataTable();
+
+    // Aplicar la búsqueda del pie a la columna correspondiente (serverSide)
+    $('#dataTables-example666 tfoot th').each( function (indice) {
+        var input = $(this).find('input');
+        if (!input.length) { return; }
+        input.on('keyup change', function () {
+            var valor = this.value;
+            if (table.column(indice).search() !== valor) {
+                table.column(indice).search(valor).draw();
+            }
+        });
+    });
  
     
 		
@@ -849,6 +921,13 @@ include 'database.php';
     // (redirects tras guardar/eliminar, botón "Volver", menú Proyectos -> Proyecto, etc.)
     (function() {
       var KEY = 'listarProyectosFiltros';
+      var btnLimpiar = document.getElementById('btnLimpiarFiltros');
+      if (btnLimpiar) {
+        btnLimpiar.addEventListener('click', function() {
+          try { sessionStorage.removeItem(KEY); } catch (e) {}
+          window.location.replace('listarProyectos.php');
+        });
+      }
       var form = document.forms['form1'];
       if (!form || !window.sessionStorage) { return; }
       // 1) Al hacer Buscar, guardo el valor actual de cada filtro
@@ -863,7 +942,7 @@ include 'database.php';
           }));
         } catch (e) {}
       });
-      // 2) Si llego sin POST y hay filtros guardados, los repinto y re-envío la búsqueda
+      // 2) Si llego sin POST y hay filtros guardados, repinto los controles.
       <?php if (empty($_POST)): ?>
       var guardado = null;
       try { guardado = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch (e) { guardado = null; }
@@ -880,8 +959,7 @@ include 'database.php';
         // Si el usuario limpió los estados, envío la opción "Todos" (""), no el default del servidor
         var estadosRest = (guardado.estados && guardado.estados.length) ? guardado.estados : [''];
         $("#id_estado").val(estadosRest).trigger("change");
-        // form.submit() nativo no dispara el listener de guardado: no sobreescribe el storage
-        setTimeout(function() { form.submit(); }, 100);
+        // La tabla ya se inicializó con estos filtros: no reenviar el formulario.
       }
       <?php endif; ?>
     })();

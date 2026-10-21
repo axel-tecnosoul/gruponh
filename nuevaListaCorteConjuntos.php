@@ -51,6 +51,9 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $cantidad = filter_input(INPUT_POST,'cantidad',FILTER_VALIDATE_FLOAT);
     $q->execute([$_POST['nombre'],$cantidad,$id_lista_corte_conjunto]);
+
+    // La cantidad de conjuntos multiplica el peso total del conjunto.
+    recalcularPesoConjunto($pdo, (int)$id_lista_corte_conjunto);
 		
 		$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificacion de Conjunto ID #$id_lista_corte_conjunto de Lista de Corte','Listas de Corte','')";
 		$q = $pdo->prepare($sql);
@@ -159,7 +162,7 @@ Database::disconnect();?>
                                     <th>ID</th>
                                     <th>Nombre</th>
                                     <th>Cantidad</th>
-                                    <th>Peso kg</th>
+                                    <th>Peso total kg</th>
                                     <th>Estado</th>
                                   </tr>
                                 </thead>
@@ -168,7 +171,7 @@ Database::disconnect();?>
                                     <th>ID</th>
                                     <th>Nombre</th>
                                     <th>Cantidad</th>
-                                    <th>Peso kg</th>
+                                    <th>Peso total kg</th>
                                     <th>Estado</th>
                                   </tr>
                                 </tfoot>
@@ -179,12 +182,13 @@ Database::disconnect();?>
                                   $sql = " SELECT c.id, c.nombre, c.cantidad, c.peso, e.estado FROM listas_corte_conjuntos c inner join estados_lista_corte_conjuntos e on e.id = c.id_estado_lista_corte_conjuntos WHERE c.id_lista_corte = ?";
                                   $q = $pdo->prepare($sql);
                                   $q->execute([$id_lista_corte]);
-                                  while ($row = $q->fetch(PDO::FETCH_ASSOC)) {?>
+                                  while ($row = $q->fetch(PDO::FETCH_ASSOC)) {
+                                    $pesoConjunto = calcularPesoConjunto($pdo, (int)$row["id"]);?>
                                     <tr>
                                       <td><?=$row["id"]?></td>
                                       <td><?=$row["nombre"]?></td>
                                       <td><?=$row["cantidad"]?></td>
-                                      <td><?=$row["peso"]?></td>
+                                      <td><?=number_format($pesoConjunto,2,',','.')?></td>
                                       <td><?=$row["estado"]?></td>
                                     </tr><?php
                                   }

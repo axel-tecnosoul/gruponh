@@ -35,6 +35,8 @@
           $q = $pdo->prepare($sql);
           $q->execute([$_POST['nombre'],$_POST['cantidad'],$_POST['id_estado_conjunto'],$_POST['id_conjunto']]);
 
+          recalcularPesoConjunto($pdo, (int)$_POST['id_conjunto']);
+
           $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de conjunto de lista de corte','Listas de Corte','imprimirListaCorte.php?id=".$_GET["id_lista_corte"]."')";
           $q = $pdo->prepare($sql);
           $q->execute(array($_SESSION['user']['id']));
@@ -61,9 +63,11 @@
         
         }else{
           
-          $sql = "UPDATE listas_corte_conjuntos set nombre = ?, cantidad = ?, peso = ?, id_estado_lista_corte_conjuntos = ? where id = ?";
+          $sql = "UPDATE listas_corte_conjuntos set nombre = ?, cantidad = ?, id_estado_lista_corte_conjuntos = ? where id = ?";
           $q = $pdo->prepare($sql);
-          $q->execute([$_POST['nombre'],$_POST['cantidad'],$_POST['peso'],$_POST['id_estado_lista_corte_conjuntos'],$_GET['id']]);
+          $q->execute([$_POST['nombre'],$_POST['cantidad'],$_POST['id_estado_lista_corte_conjuntos'],$_GET['id']]);
+
+          recalcularPesoConjunto($pdo, (int)$_GET['id']);
 
           $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de conjunto de lista de corte','Listas de Corte','verConjunto.php?id=$id')";
           $q = $pdo->prepare($sql);
@@ -81,6 +85,7 @@
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
+        $pesoConjunto = calcularPesoConjunto($pdo, (int)$id);
         
         Database::disconnect();
     }
@@ -128,8 +133,8 @@
 							<div class="col-sm-9"><input name="cantidad" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['cantidad']; ?>"></div>
 						  </div>
 						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Peso kg</label>
-							<div class="col-sm-9"><input name="peso" type="number" step="0.01" class="form-control" value="<?php echo $data['peso']; ?>"></div>
+							<label class="col-sm-3 col-form-label">Peso total (kg)</label>
+							<div class="col-sm-9"><input name="peso" type="number" step="0.01" class="form-control" readonly="readonly" value="<?php echo number_format($pesoConjunto,2,'.',''); ?>"></div>
 						  </div>
 						<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Estado(*)</label>

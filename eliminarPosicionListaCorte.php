@@ -54,16 +54,6 @@ if ($modoDebug==1) {
   echo "<br><br>";
 }
 
-$sql = "UPDATE listas_corte_conjuntos set peso = peso - (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
-$q = $pdo->prepare($sql);
-$q->execute([$cantidad,$idMaterial,$idConjunto]);
-
-if ($modoDebug==1) {
-  $q->debugDumpParams();
-  echo "<br><br>Afe: ".$q->rowCount();
-  echo "<br><br>";
-}
-
 $sql = "DELETE from lista_corte_posiciones WHERE id = ?";
 $q = $pdo->prepare($sql);
 $q->execute([$id]);
@@ -73,6 +63,9 @@ if ($modoDebug==1) {
   echo "<br><br>Afe: ".$q->rowCount();
   echo "<br><br>";
 }
+
+// Recalcula el peso total real del conjunto (posiciones x cantidad de conjuntos)
+recalcularPesoConjunto($pdo, (int)$idConjunto);
 
 $idComputoDetalle = 0;
 //$sql = "SELECT cd.id idComputoDetalle from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join listas_corte_revisiones lcr on lcr.id_proyecto = p.id inner join listas_corte_conjuntos lcc on lcc.id_lista_corte = lcr.id where lcc.id = ? and m.id = ?";

@@ -960,3 +960,9 @@ UPDATE facturas_compra SET id_tipo_comprobante = id_tipo_comprobante - 1000 WHER
 
 ALTER TABLE `facturas_venta` ADD CONSTRAINT `facturas_venta_ibfk_8` FOREIGN KEY (`id_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`);
 ALTER TABLE `facturas_compra` ADD CONSTRAINT `facturas_compra_ibfk_8` FOREIGN KEY (`id_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`);
+-- ---------------------------------------------------------------------------
+-- CORRECCION 30 (Listas de Corte): observaciones/notas por posicion.
+-- Ejecutar una sola vez. Si la columna ya existe, omitir este ALTER.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `lista_corte_posiciones`
+  ADD COLUMN `observaciones` TEXT NULL DEFAULT NULL AFTER `calidad`;

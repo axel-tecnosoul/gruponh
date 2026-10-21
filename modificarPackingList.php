@@ -110,11 +110,11 @@ if (!empty($_POST)) {
         echo "<br><br>";
       }
 
-      $sql = "SELECT lcp.id,lcp.id_lista_corte_conjunto,lcp.id_material,lcp.posicion,lcp.cantidad,lcp.largo,lcp.ancho,lcp.marca,lcp.peso,lcp.finalizado,lcp.id_colada,lcp.diametro,lcp.calidad FROM lista_corte_posiciones lcp WHERE lcp.id_lista_corte_conjunto = ".$row["id"];
+      $sql = "SELECT lcp.id,lcp.id_lista_corte_conjunto,lcp.id_material,lcp.posicion,lcp.cantidad,lcp.largo,lcp.ancho,lcp.marca,lcp.peso,lcp.peso_calculado_posicion,lcp.finalizado,lcp.id_colada,lcp.diametro,lcp.calidad,lcp.observaciones FROM lista_corte_posiciones lcp WHERE lcp.id_lista_corte_conjunto = ".$row["id"];
       foreach ($pdo->query($sql) as $row) {
-        $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto,id_material,posicion,cantidad,largo,ancho,marca,peso,finalizado,id_colada,diametro,calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto,id_material,posicion,cantidad,largo,ancho,marca,peso,peso_calculado_posicion,finalizado,id_colada,diametro,calidad,observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
         $q = $pdo->prepare($sql);
-        $q->execute([$id_lista_corte_conjunto,$row["id_material"],$row["posicion"],$row["cantidad"],$row["largo"],$row["ancho"],$row["marca"],$row["peso"],$row["finalizado"],$row["id_colada"],$row["diametro"],$row["calidad"]]);
+        $q->execute([$id_lista_corte_conjunto,$row["id_material"],$row["posicion"],$row["cantidad"],$row["largo"],$row["ancho"],$row["marca"],$row["peso"],$row["peso_calculado_posicion"],$row["finalizado"],$row["id_colada"],$row["diametro"],$row["calidad"],$row["observaciones"]]);
         $id_lista_corte_posicion = $pdo->lastInsertId();
 
         if ($modoDebug==1) {

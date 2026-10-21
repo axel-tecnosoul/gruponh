@@ -74,7 +74,8 @@ if (!empty($_POST)) {
   $ancho=trim($_POST['ancho']);
   $marca=trim($_POST['marca']);
   $peso=trim($_POST['peso']);
-  $peso_calculado_posicion=trim($_POST['hiddenPesoCalculado']);
+  $observaciones=trim($_POST['observaciones'] ?? '');
+  $peso_calculado_posicion=0;
   // Normalizamos el diámetro para evitar diferencias entre 0 y cadena vacía
   $diametro = isset($_POST['diametro']) && $_POST['diametro'] !== '' ? trim($_POST['diametro']) : 0;
 
@@ -93,7 +94,7 @@ if (!empty($_POST)) {
     $qVal = $pdo->prepare($sqlVal);
     $params = [$id_material];
     $qVal->execute($params);
-    $conceptoMat = $qVal->fetchColumn();
+    $conceptoMat = (string)$qVal->fetchColumn();
 
     if ($modoDebug == 1) {
       // Generar y mostrar la consulta “real”
@@ -102,7 +103,7 @@ if (!empty($_POST)) {
       echo "Concepto material: " . $conceptoMat . "<br><br>";
     }
 
-    if (str_starts_with($conceptoMat, 'Chapa')) {
+    if (stripos($conceptoMat, 'Chapa') === 0) {
       if (!is_numeric($ancho) || $ancho <= 0 || !is_numeric($largo) || $largo <= 0) {
         Database::disconnect();
         header("Location: nuevaListaCortePosiciones.php?error_medidas=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
@@ -116,6 +117,10 @@ if (!empty($_POST)) {
       }
     }
   }
+
+  // El peso unitario se calcula siempre en el servidor, sin confiar en el
+  // valor que pueda enviar el navegador.
+  $peso_calculado_posicion = calcularPesoUnitarioPosicion($peso, $largo, $ancho, $conceptoMat ?? '');
 
   if (!empty($_POST['btn3'])) {
     //editar posicion
@@ -206,9 +211,9 @@ if (!empty($_POST)) {
       echo "<br><br>";
     }
 
-    $sql = "UPDATE lista_corte_posiciones set id_material=?, largo=?, ancho=?, marca=?, peso=?, peso_calculado_posicion=?, diametro=?, id_colada=?, calidad=? where id = ?";
+    $sql = "UPDATE lista_corte_posiciones set id_material=?, largo=?, ancho=?, marca=?, peso=?, peso_calculado_posicion=?, diametro=?, id_colada=?, calidad=?, observaciones=? where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$id_material,$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$diametro,$idColada,$calidad,$id_lista_corte_posicion]);
+    $q->execute([$id_material,$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$diametro,$idColada,$calidad,$observaciones,$id_lista_corte_posicion]);
 
     if(isset($cantidad_posicion) and isset($nombre_posicion)){
       $sql = "UPDATE lista_corte_posiciones set cantidad=?, posicion=? where id = ?";
@@ -243,11 +248,11 @@ if (!empty($_POST)) {
     }
 
     foreach ($procesos as $key => $id_proceso) {
-      $observaciones="";
+      $observacionProceso="";
 
       $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, id_estado_lista_corte_proceso, observaciones) VALUES (?,?,1,?)";
       $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte_posicion,$id_proceso,$observaciones]);
+      $q->execute([$id_lista_corte_posicion,$id_proceso,$observacionProceso]);
 
       if ($modoDebug==1) {
         $q->debugDumpParams();
@@ -256,9 +261,7 @@ if (!empty($_POST)) {
       }
     }
 
-    $sql = "UPDATE listas_corte_conjuntos set peso = (SELECT SUM(peso_calculado_posicion) FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?) where id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_lista_corte_conjunto,$id_lista_corte_conjunto]);
+    recalcularPesoConjunto($pdo, (int)$id_lista_corte_conjunto);
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -360,9 +363,9 @@ if (!empty($_POST)) {
     
     if ($dataP['cant'] == 0) {
       
-      $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?)";
+      $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad, observaciones) VALUES (?,?,?,?,?,?,?,?,?,0,?,?,?,?)";
       $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte_conjunto,$id_material,$nombre_posicion,$cantidad_posicion,$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$idColada,$diametro,$calidad]);
+      $q->execute([$id_lista_corte_conjunto,$id_material,$nombre_posicion,$cantidad_posicion,$largo,$ancho,$marca,$peso,$peso_calculado_posicion,$idColada,$diametro,$calidad,$observaciones]);
       $id_posicion = $pdo->lastInsertId();
 
       if ($modoDebug==1) {
@@ -382,11 +385,11 @@ if (!empty($_POST)) {
       }
       
       foreach ($procesos as $key => $id_proceso) {
-        $observaciones="";
+        $observacionProceso="";
 
         $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, id_estado_lista_corte_proceso, observaciones) VALUES (?,?,1,?)";
         $q = $pdo->prepare($sql);
-        $q->execute([$id_posicion,$id_proceso,$observaciones]);
+        $q->execute([$id_posicion,$id_proceso,$observacionProceso]);
 
         if ($modoDebug==1) {
         $q->debugDumpParams();
@@ -395,9 +398,7 @@ if (!empty($_POST)) {
         }
       }
 
-      $sql = "UPDATE listas_corte_conjuntos set peso = peso + $peso_calculado_posicion where id = ?";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_lista_corte_conjunto]);
+      recalcularPesoConjunto($pdo, (int)$id_lista_corte_conjunto);
 
       if ($modoDebug==1) {
         $q->debugDumpParams();
@@ -467,7 +468,7 @@ if (!empty($_POST)) {
 //$id_lista_corte_conjunto=$_GET['id_lista_corte_conjunto'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT lcc.nombre, lcc.id_lista_corte, lc.id_estado_lista_corte, lc.id AS id_lista_corte_revision, lc.id_proyecto, lc.numero, lc.nro_revision FROM listas_corte_conjuntos lcc INNER JOIN listas_corte lc ON lcc.id_lista_corte=lc.id WHERE lcc.id = ? ";
+$sql = "SELECT lcc.nombre, lcc.cantidad AS cantidad_conjunto, lcc.id_lista_corte, lc.id_estado_lista_corte, lc.id AS id_lista_corte_revision, lc.id_proyecto, lc.numero, lc.nro_revision FROM listas_corte_conjuntos lcc INNER JOIN listas_corte lc ON lcc.id_lista_corte=lc.id WHERE lcc.id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$id_lista_corte_conjunto]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -537,8 +538,9 @@ Database::disconnect();?>
                                   <th>Largo</th>
                                   <th>Diametro</th>
                                   <th>Marca</th>
-                                  <th>Peso (Kg.)</th>
+                                  <th>Peso posición (kg)</th>
                                   <th>Procesos</th>
+                                  <th>Observaciones</th>
                                 </tr>
                               </thead>
                               <tbody><?php
@@ -547,11 +549,12 @@ Database::disconnect();?>
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                                 
-                                $sql = " SELECT pos.id, pos.posicion, pos.cantidad, m.concepto, pos.id_material, pos.ancho, pos.largo, pos.diametro, pos.marca, pos.peso_calculado_posicion, GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, GROUP_CONCAT(tp.id SEPARATOR ',') AS id_procesos, pos.finalizado FROM lista_corte_posiciones pos inner join materiales m on m.id = pos.id_material LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion=pos.id LEFT JOIN tipos_procesos tp ON lcp.id_tipo_proceso=tp.id WHERE pos.id_lista_corte_conjunto = ".$id_lista_corte_conjunto." GROUP BY pos.id ";
+                                $sql = " SELECT pos.id, pos.posicion, pos.cantidad, m.concepto, pos.id_material, pos.ancho, pos.largo, pos.diametro, pos.marca, pos.peso, pos.peso_calculado_posicion, pos.observaciones, GROUP_CONCAT(tp.tipo SEPARATOR ',') AS procesos, GROUP_CONCAT(tp.id SEPARATOR ',') AS id_procesos, pos.finalizado FROM lista_corte_posiciones pos inner join materiales m on m.id = pos.id_material LEFT JOIN lista_corte_procesos lcp ON lcp.id_lista_corte_posicion=pos.id LEFT JOIN tipos_procesos tp ON lcp.id_tipo_proceso=tp.id WHERE pos.id_lista_corte_conjunto = ".$id_lista_corte_conjunto." GROUP BY pos.id ";
                                 foreach ($pdo->query($sql) as $row) {
-                                  $pesoPosicion = $row["peso_calculado_posicion"];
+                                  $pesoUnitario = pesoUnitarioDesdePosicion($row, $row["concepto"]);
+                                  $pesoPosicion = calcularPesoPosicion($row, $row["concepto"]);
                                   $pesoTotal += $pesoPosicion;?>
-                                  <tr>
+                                  <tr data-peso="<?=$row["peso"]?>" data-peso-calculado="<?=$pesoUnitario?>" data-observaciones="<?=htmlspecialchars($row["observaciones"] ?? '', ENT_QUOTES)?>">
                                     <td class="d-none"><?=$row["id"]?></td>
                                     <td><?=$row["posicion"]?></td>
                                     <td><?=$row["cantidad"]?></td>
@@ -560,14 +563,17 @@ Database::disconnect();?>
                                     <td><?=$row["largo"]?></td>
                                     <td><?=$row["diametro"]?></td>
                                     <td><?=$row["marca"]?></td>
-                                    <td><?=$pesoPosicion?></td>
+                                    <td><?=number_format($pesoPosicion,2,',','.')?></td>
                                     <td data-id="<?=$row["id_procesos"]?>"><?=$row["procesos"]?></td>
+                                    <td><?=htmlspecialchars($row["observaciones"] ?? '')?></td>
                                   </tr><?php
                                 }
+                                $pesoTotalConjunto = round($pesoTotal * numeroListaCorte($data["cantidad_conjunto"]), 2);
                                 Database::disconnect();?>
                               </tbody>
                             </table>
-                            <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotal,2,",",".");?>&nbsp;kgs</b>
+                            <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotalConjunto,2,",",".");?>&nbsp;kgs</b>
+                            <small class="text-muted d-block">Incluye la cantidad de posiciones y la cantidad de conjuntos (<?=numeroListaCorte($data["cantidad_conjunto"])?>).</small>
                           </div>
                         </div>
                       </div>
@@ -589,7 +595,7 @@ Database::disconnect();?>
                         </div>
                         <div class="form-group col-8">
                           <label>Concepto(*)</label><br>
-                          <select name="id_material" class="js-example-basic-single id_material" onchange="jsCompletarPeso(this.value);" required="required">
+                          <select name="id_material" class="js-example-basic-single id_material" required="required">
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -667,6 +673,12 @@ Database::disconnect();?>
                           </select>
                         </div>
                         <?php if (!empty($_GET['error_proceso'])) { echo "<div class='col-12'><font color='red'><b>Seleccione al menos un proceso</b></font></div>"; } ?>
+                      </div>
+                      <div class="row">
+                        <div class="form-group col-12">
+                          <label>Observaciones</label>
+                          <textarea name="observaciones" rows="2" maxlength="2000" class="form-control observaciones" placeholder="Notas u observaciones de la posición"></textarea>
+                        </div>
                       </div>
                     </div>
                     <div class="card-footer">
@@ -849,6 +861,12 @@ Database::disconnect();?>
     <script>
       $(document).ready(function () {
         var id_estado_lista_corte="<?=$data["id_estado_lista_corte"]?>"
+        let cargandoPosicion = false;
+
+        $("select[name='id_material']").on("change", function(){
+          if (cargandoPosicion) { return; }
+          jsCompletarPeso(this.value);
+        });
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
           var title = $(this).text();
@@ -944,7 +962,8 @@ Database::disconnect();?>
               let largo = t.find("td:nth-child(6)").html();
               let diametro = t.find("td:nth-child(7)").html();
               let marca = t.find("td:nth-child(8)").html();
-              let peso = t.find("td:nth-child(9)").html();
+              let pesoKgM = t.data("peso");
+              let observaciones = t.data("observaciones") ?? "";
               let procesos = t.find("td:nth-child(10)").data("id");
               console.log(procesos);
               //let aProcesos = procesos.split(",");
@@ -956,12 +975,14 @@ Database::disconnect();?>
               }
               $("input[name='nombre_posicion']").val(posicion).attr("readonly",disablePosicion)
               $("input[name='cantidad_posicion']").val(cantidad).attr("readonly",disablePosicion)
+              cargandoPosicion = true;
               $("select[name='id_material']").val(id_material).trigger('change');
               $("input[name='ancho']").val(ancho).focus()
               $("input[name='largo']").val(largo)
               $("input[name='diametro']").val(diametro)
               $("input[name='marca']").val(marca)
-              $("input[name='peso']").val(peso)
+              $("input[name='peso']").val(pesoKgM)
+              $("textarea[name='observaciones']").val(observaciones)
               $("input[name='proceso[]']").each(function(){
                 this.checked=false;
                 if (aProcesos.includes(this.value)) {
@@ -974,6 +995,8 @@ Database::disconnect();?>
                 }
               }).get();
               $("select[name='id_terminacion']").val(id_terminacion).trigger('change');
+              cargandoPosicion = false;
+              calcularPesoMaterial();
 
               $("#editPosicion").val(id_posicion)
               if($("#editPosicion").hasClass("d-none")){
@@ -989,7 +1012,7 @@ Database::disconnect();?>
           }
         });
 
-        $("input[name='largo'], input[name='ancho'], input[name='peso']").on("input change", calcularPesoMaterial);
+        $("input[name='largo'], input[name='ancho'], input[name='peso'], input[name='cantidad_posicion']").on("input change", calcularPesoMaterial);
         $("select[name='id_material']").on("input change", calcularPesoMaterial);
 
         $("#link_eliminar_posicion").on("click",function(){
@@ -1010,10 +1033,12 @@ Database::disconnect();?>
           $("input[name='diametro']").val("")
           $("input[name='marca']").val("")
           $("input[name='peso']").val("")
+          $("textarea[name='observaciones']").val("")
           $("input[name='proceso[]']").each(function(){
             this.checked=false;
           })
           $("select[name='id_terminacion']").val("").trigger('change');
+          calcularPesoMaterial();
 
           $(".addPosicion").toggleClass("d-none")
           $("#editPosicion").toggleClass("d-none")
@@ -1058,7 +1083,8 @@ Database::disconnect();?>
           var nombre = $("input[name='nombre_posicion']").val();
           var cantidad = $("input[name='cantidad_posicion']").val();
           var material = $("select[name='id_material']").val();
-          if(nombre !== "" || cantidad !== "" || material !== ""){
+          var observaciones = $("textarea[name='observaciones']").val();
+          if(nombre !== "" || cantidad !== "" || material !== "" || observaciones !== ""){
             alert("No se puede enviar a aprobación si hay datos sin guardar.");
             return false;
           }
@@ -1088,9 +1114,10 @@ Database::disconnect();?>
           const diametro = $("input[name='diametro']").val();
           const marca = $("input[name='marca']").val();
           const peso = $("input[name='peso']").val();
+          const observaciones = $("textarea[name='observaciones']").val();
           const procesos = $("input[name='proceso[]']:checked").length;
           const terminacion = $("select[name='id_terminacion']").val();
-          const tieneDatos = nombre !== "" || cantidad !== "" || material !== "" || ancho !== "" || largo !== "" || diametro !== "" || marca !== "" || peso !== "" || procesos > 0 || terminacion !== "";
+          const tieneDatos = nombre !== "" || cantidad !== "" || material !== "" || ancho !== "" || largo !== "" || diametro !== "" || marca !== "" || peso !== "" || observaciones !== "" || procesos > 0 || terminacion !== "";
           if(tieneDatos){
             alert("No se puede guardar y volver si hay datos sin crear.");
             return;
@@ -1188,8 +1215,15 @@ Database::disconnect();?>
           pesoCalculado = r2(largo_m * peso);
         }
 
-        // Actualiza UI / hidden
-        $("#pesoCalculado").text(`${pesoCalculado.toFixed(2)} kg`);
+        const cantidad = parseFloat(String($("input[name='cantidad_posicion']").val()).replace(',', '.'));
+        const pesoTotal = r2(pesoCalculado * (isFinite(cantidad) ? cantidad : 0));
+
+        // Actualiza UI / hidden. El hidden conserva el peso UNITARIO, que es
+        // lo que se guarda en peso_calculado_posicion.
+        $("#pesoCalculado").html(
+          `${pesoTotal.toFixed(2)} kg total ` +
+          `<small class="text-muted">(${pesoCalculado.toFixed(2)} kg/unidad × ${isFinite(cantidad) ? cantidad : 0})</small>`
+        );
         $("#hiddenPesoCalculado").val(pesoCalculado); // valor numérico (con . decimal)
       }
 
