@@ -960,3 +960,6 @@ UPDATE facturas_compra SET id_tipo_comprobante = id_tipo_comprobante - 1000 WHER
 
 ALTER TABLE `facturas_venta` ADD CONSTRAINT `facturas_venta_ibfk_8` FOREIGN KEY (`id_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`);
 ALTER TABLE `facturas_compra` ADD CONSTRAINT `facturas_compra_ibfk_8` FOREIGN KEY (`id_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`);
+
+UPDATE `empresas` SET `empresa` = 'NH Construcciones SRL' WHERE `empresas`.`id` = 1
+UPDATE `empresas` SET `empresa` = 'NH Net SA' WHERE `empresas`.`id` = 2
