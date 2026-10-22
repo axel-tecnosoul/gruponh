@@ -35,22 +35,19 @@ if (!empty($_POST)) {
   $id_lista_corte=$data['id_lista_corte'];
   $id_lista_corte_conjunto=$data['id_lista_corte_conjunto'];
 
-  $sql = "UPDATE listas_corte_conjuntos set peso = peso - (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$data['cantidad'],$data['id_material'],$id_lista_corte_conjunto]);
-
-  if ($modoDebug==1) {
-    $q->debugDumpParams();
-    echo "<br><br>Afe: ".$q->rowCount();
-    echo "<br><br>";
+  $conceptoMat = '';
+  if (!empty($_POST['id_material'])) {
+    $qMat = $pdo->prepare("SELECT concepto FROM materiales WHERE id = ?");
+    $qMat->execute([$_POST['id_material']]);
+    $conceptoMat = (string)$qMat->fetchColumn();
   }
-  
-  /*$sql = "UPDATE lista_corte_posiciones set largo=?,ancho=?,marca=?,peso=?,finalizado=?,diametro= ?,calidad= ? where id = ?";
+
+  $pesoCalculado = calcularPesoUnitarioPosicion($_POST['peso'], $_POST['largo'], $_POST['ancho'], $conceptoMat);
+  $observaciones = trim($_POST['observaciones'] ?? '');
+
+  $sql = "UPDATE lista_corte_posiciones set id_material=?, largo=?, ancho=?, marca=?, peso=?, peso_calculado_posicion=?, diametro=?, observaciones=? where id = ?";
   $q = $pdo->prepare($sql);
-  $q->execute([$_POST['largo'],$_POST['ancho'],$_POST['marca'],$_POST['peso'],$_POST['finalizado'],$_POST['diametro'],$_POST['calidad'],$id]);*/
-  $sql = "UPDATE lista_corte_posiciones set largo=?,ancho=?,marca=?,peso=?,diametro=? where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST['largo'],$_POST['ancho'],$_POST['marca'],$_POST['peso'],$_POST['diametro'],$id]);
+  $q->execute([$_POST['id_material'], $_POST['largo'], $_POST['ancho'], $_POST['marca'], $_POST['peso'], $pesoCalculado, $_POST['diametro'], $observaciones, $id]);
 
   if ($modoDebug==1) {
     $q->debugDumpParams();
@@ -71,11 +68,11 @@ if (!empty($_POST)) {
   }
   
   foreach ($procesos as $key => $id_proceso) {
-    $observaciones="";
+    $observacionProceso="";
 
     $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, id_estado_lista_corte_proceso, observaciones) VALUES (?,?,1,?)";
     $q = $pdo->prepare($sql);
-    $q->execute([$id,$id_proceso,$observaciones]);
+    $q->execute([$id,$id_proceso,$observacionProceso]);
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -84,17 +81,9 @@ if (!empty($_POST)) {
     }
   }
 
-  $sql = "UPDATE listas_corte_conjuntos set peso = peso + (SELECT peso_metro * ? FROM materiales WHERE id = ?) where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST['cantidad_posicion'],$_POST['id_material'],$id_lista_corte_conjunto]);
-
-  if ($modoDebug==1) {
-    $q->debugDumpParams();
-    echo "<br><br>Afe: ".$q->rowCount();
-    echo "<br><br>";
-  }
+  recalcularPesoConjunto($pdo, (int)$id_lista_corte_conjunto);
 		
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de posición ID #$id en conjunto de lista de corte','Listas de Corte')";
+  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de posición ID #$id en conjunto de lista de corte','Listas de Corte','')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
 
@@ -119,7 +108,7 @@ if (!empty($_POST)) {
 }else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id, id_lista_corte_conjunto, posicion, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id = ? ";
+  $sql = "SELECT id, id_lista_corte_conjunto, posicion, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad, observaciones FROM lista_corte_posiciones WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -216,6 +205,12 @@ Database::disconnect();*/
                         <div class="form-group col-2">
                           <label>Peso KG</label>
                           <input name="peso" type="number" step="0.01" maxlength="99" class="form-control peso" value="<?=$data["peso"]?>">
+                        </div>
+                      </div>
+                      <div class="row">
+                        <div class="form-group col-12">
+                          <label>Observaciones</label>
+                          <textarea name="observaciones" rows="2" maxlength="2000" class="form-control observaciones"><?=htmlspecialchars($data["observaciones"] ?? '', ENT_QUOTES)?></textarea>
                         </div>
                       </div>
                       <div class="row">

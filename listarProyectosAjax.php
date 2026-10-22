@@ -96,22 +96,29 @@ $columnasBusqueda = [
 	"p.`tags`",                                 // 19 Claves
 ];
 
-if (isset($_GET['search']) && is_array($_GET['search'])) {
-	if (!empty($_GET['search']['value'])) {
-		$likes = array();
-		foreach ($columnasBusqueda as $campo) {
-			if ($campo === null) continue;
-			$likes[] = $campo." like '%".$pdo->quote($_GET['search']['value'])."%'";
-		}
-		if (!empty($likes)) {
-			$where .= ' and ('.implode(' or ', $likes).') ';
-		}
+// Buscador global del DataTable.
+$searchValue = isset($_GET['search']['value']) ? trim($_GET['search']['value']) : '';
+if ($searchValue !== '') {
+	$like = $pdo->quote('%' . $searchValue . '%');
+	$likes = array();
+	foreach ($columnasBusqueda as $campo) {
+		if ($campo === null) continue;
+		$likes[] = $campo . ' LIKE ' . $like;
 	}
-	if (isset($_GET['search']['columns']) && is_array($_GET['search']['columns'])) {
-		foreach ($_GET['search']['columns'] as $indice => $columna) {
-			$valor = $columna['search']['value'] ?? '';
-			if ($valor === '' || !isset($columnasBusqueda[$indice]) || $columnasBusqueda[$indice] === null) continue;
-			$where .= " and ".$columnasBusqueda[$indice]." like '%".$pdo->quote($valor)."%' ";
+	if (!empty($likes)) {
+		$where .= ' and (' . implode(' or ', $likes) . ') ';
+	}
+}
+
+// Buscadores del pie: DataTables serverSide envía columns[i][search][value].
+if (isset($_GET['columns']) && is_array($_GET['columns'])) {
+	foreach ($columnasBusqueda as $indice => $campo) {
+		if ($campo === null) continue;
+		$valor = isset($_GET['columns'][$indice]['search']['value'])
+			? trim($_GET['columns'][$indice]['search']['value'])
+			: '';
+		if ($valor !== '') {
+			$where .= ' and ' . $campo . ' LIKE ' . $pdo->quote('%' . $valor . '%') . ' ';
 		}
 	}
 }

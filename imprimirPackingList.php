@@ -173,8 +173,9 @@ if (!empty($_POST)) {
 												echo '<td>'. $row2[6]*$row2[7]/1000 . '</td>';
 												$pesoTotal += $row2[6]*$row2[7]/1000;
 											} else {
-												echo '<td>'. $row2[8] . '</td>';
-												$pesoTotal += $row2[8];
+												$pesoComponente = calcularPesoConjunto($pdo, (int)$row2[9]);
+												echo '<td>'. number_format($pesoComponente,2,',','.') . '</td>';
+												$pesoTotal += $pesoComponente;
 											}
 										}
 										
@@ -206,12 +207,20 @@ if (!empty($_POST)) {
 												  <th>Diámetro</th>
 												  <th>Calidad</th>
 												  <th>Procesos</th>
+												  <th>Observaciones</th>
 											  </tr>
 											</thead>
 											<tbody>
 											<?php
-											$sql22 = "SELECT lcp.`id`, m.concepto, lcp.`posicion`, lcp.`cantidad`, lcp.`largo`, lcp.`ancho`, lcp.`marca`, lcp.`peso`, lcp.`finalizado`, c.nro_colada, lcp.`diametro`, lcp.`calidad` FROM `lista_corte_posiciones` lcp inner join materiales m on m.id = lcp.`id_material` left join coladas c on c.id = lcp.`id_colada`  WHERE lcp.`id_lista_corte_conjunto` = ".$row2[9];
+											$sql22 = "SELECT lcp.`id`, m.concepto, lcp.`posicion`, lcp.`cantidad`, lcp.`largo`, lcp.`ancho`, lcp.`marca`, lcp.`peso`, lcp.`finalizado`, c.nro_colada, lcp.`diametro`, lcp.`calidad`, lcp.`peso_calculado_posicion`, lcp.`observaciones` FROM `lista_corte_posiciones` lcp inner join materiales m on m.id = lcp.`id_material` left join coladas c on c.id = lcp.`id_colada`  WHERE lcp.`id_lista_corte_conjunto` = ".$row2[9];
 											foreach ($pdo->query($sql22) as $row22) {
+												$pesoPosicion = calcularPesoPosicion([
+													'peso' => $row22[7],
+													'largo' => $row22[4],
+													'ancho' => $row22[5],
+													'cantidad' => $row22[3],
+													'peso_calculado_posicion' => $row22[12]
+												], (string)$row22[1]);
 												echo '<tr>';
 												echo '<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>';
 												echo '<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>';
@@ -222,10 +231,10 @@ if (!empty($_POST)) {
 												echo '<td>'. $row22[3] . '</td>';
 												echo '<td>'. $row22[4] . '</td>';
 												echo '<td>'. $row22[5] . '</td>';
+												echo '<td>'. $row22[6] . '</td>';
 												if ($_GET['peso']==1) {
-													echo '<td>'. $row22[6] . '</td>';
+													echo '<td>'. number_format($pesoPosicion,2,',','.') . '</td>';
 												}
-												echo '<td>'. $row22[7] . '</td>';
 												echo '<td>'. $row22[9] . '</td>';
 												echo '<td>'. $row22[10] . '</td>';
 												echo '<td>'. $row22[11] . '</td>';
@@ -240,6 +249,7 @@ if (!empty($_POST)) {
 												
 												<?php
 												echo '</td>';
+												echo '<td>'. htmlspecialchars($row22[13] ?? '') . '</td>';
 												echo '</tr>';
 											}
 											?>

@@ -155,22 +155,14 @@ if (!empty($_POST)) {
                                         <th>Diámetro</th>
                                         <th>Calidad</th>
                                         <th>Procesos</th>
+                                        <th>Observaciones</th>
                                       </tr>
                                     </thead>
                                     <tbody><?php
-                                      $sql2 = "SELECT lcp.id, m.concepto, lcp.posicion, lcp.cantidad, lcp.largo, lcp.ancho, lcp.marca, lcp.peso, lcp.peso_calculado_posicion, lcp.finalizado, c.nro_colada, lcp.diametro, m.calidad FROM lista_corte_posiciones lcp inner join materiales m on m.id = lcp.id_material left join coladas c on c.id = lcp.id_colada  WHERE lcp.id_lista_corte_conjunto = ".$row[0];
+                                      $sql2 = "SELECT lcp.id, m.concepto, lcp.posicion, lcp.cantidad, lcp.largo, lcp.ancho, lcp.marca, lcp.peso, lcp.peso_calculado_posicion, lcp.finalizado, c.nro_colada, lcp.diametro, m.calidad, lcp.observaciones FROM lista_corte_posiciones lcp inner join materiales m on m.id = lcp.id_material left join coladas c on c.id = lcp.id_colada  WHERE lcp.id_lista_corte_conjunto = ".$row[0];
                                       foreach ($pdo->query($sql2) as $row2) {
-                                        /*$pesoPosicion = $row2[7];
-                                        if (str_starts_with($row2[1], "Chapa")) {
-                                          if (empty($row2[4]) && empty($row2[5])) {
-                                            $pesoPosicion = $row2[7]*$row2[10]*$row2[10];
-                                          } else {
-                                            $pesoPosicion = $row2[7]*$row2[4]*$row2[5]/1000;	
-                                          }
-                                        }
-                                        if (str_starts_with($row2[1], "Perfil")) {
-                                          $pesoPosicion = $row2[7]*$row2[4]/1000000;
-                                        }*/
+                                        $pesoPosicion = calcularPesoPosicion($row2, $row2["concepto"]);
+                                        $pesoConjunto += $pesoPosicion;
                                         echo '<tr>';
                                         echo '<td>'. $row2["concepto"] . '</td>';
                                         echo '<td>'. $row2["posicion"] . '</td>';
@@ -178,7 +170,7 @@ if (!empty($_POST)) {
                                         echo '<td>'. $row2["largo"] . '</td>';
                                         echo '<td>'. $row2["ancho"] . '</td>';
                                         echo '<td>'. $row2["marca"] . '</td>';
-                                        echo '<td>'. $row2["peso_calculado_posicion"] . '</td>';
+                                        echo '<td>'. number_format($pesoPosicion,2,',','.') . '</td>';
                                         echo '<td>'. $row2["nro_colada"] . '</td>';
                                         echo '<td>'. $row2["diametro"] . '</td>';
                                         echo '<td>'. $row2["calidad"] . '</td>';
@@ -188,22 +180,24 @@ if (!empty($_POST)) {
                                           echo $row3[1] . ',';
                                         }
                                         echo '</td>';
+                                        echo '<td>'. htmlspecialchars($row2["observaciones"] ?? '') . '</td>';
                                         echo '</tr>';
-                                        //$pesoConjunto += $pesoPosicion;
                                       }?>
                                     </tbody>
                                   </table><?php
+                                  // El peso del conjunto incluye la cantidad de conjuntos.
+                                  $pesoConjunto = round($pesoConjunto * numeroListaCorte($row["cantidad"]), 2);
                                   echo '</td>';
-                                  echo '<td>'. $row["peso"] . 'kg</td>';
+                                  echo '<td>'. number_format($pesoConjunto,2,',','.') . ' kg</td>';
                                   echo '</tr>';
-                                  $pesoTotal += $row["peso"];
+                                  $pesoTotal += $pesoConjunto;
                                 }
                                 Database::disconnect();?>
                               </tbody>
                             </table>
                           </div>
                         </div>
-                        Peso <b>TOTAL</b> de la lista: <?=number_format($pesoTotal,2);?>kgs
+                        Peso <b>TOTAL</b> de la lista: <?=number_format($pesoTotal,2,',','.')?>kgs
                         <div class="col-sm-3 bordered-div">
                           <b>Referencias</b><br>
                           <b>C: </b>Cortar<br>

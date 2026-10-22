@@ -29,6 +29,7 @@ if (!empty($_POST)) {
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $id_lista_corte=$data["id_lista_corte"];
+  $pesoConjunto = calcularPesoConjunto($pdo, (int)$id);
   
   Database::disconnect();
 }?>
@@ -75,8 +76,8 @@ if (!empty($_POST)) {
                             <div class="col-sm-9"><input name="cantidad" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['cantidad']; ?>"></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Peso</label>
-                            <div class="col-sm-9"><input name="peso" type="number" step="0.01" class="form-control" value="<?php echo $data['peso']; ?>"></div>
+                            <label class="col-sm-3 col-form-label">Peso total (kg)</label>
+                            <div class="col-sm-9"><input name="peso" type="number" step="0.01" class="form-control" readonly="readonly" value="<?php echo number_format($pesoConjunto,2,'.',''); ?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Estado(*)</label>

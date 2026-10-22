@@ -49,6 +49,9 @@ try {
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
+            <?php if (isset($_GET['guardado'])): ?>
+              <div class="alert alert-success" role="alert">La empresa se guardó correctamente.</div>
+            <?php endif; ?>
             <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">

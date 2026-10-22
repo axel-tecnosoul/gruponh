@@ -963,3 +963,9 @@ ALTER TABLE `facturas_compra` ADD CONSTRAINT `facturas_compra_ibfk_8` FOREIGN KE
 
 UPDATE `empresas` SET `empresa` = 'NH Construcciones SRL' WHERE `empresas`.`id` = 1
 UPDATE `empresas` SET `empresa` = 'NH Net SA' WHERE `empresas`.`id` = 2
+-- ---------------------------------------------------------------------------
+-- CORRECCION 30 (Listas de Corte): observaciones/notas por posicion.
+-- Ejecutar una sola vez. Si la columna ya existe, omitir este ALTER.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `lista_corte_posiciones`
+  ADD COLUMN `observaciones` TEXT NULL DEFAULT NULL AFTER `calidad`;

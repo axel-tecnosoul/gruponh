@@ -697,7 +697,7 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
     }
     $idConjNuevo = (int)$pdo->lastInsertId();
 
-    $sql = 'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?';
+    $sql = 'SELECT id, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad, observaciones FROM lista_corte_posiciones WHERE id_lista_corte_conjunto = ?';
     $stmtPos = $pdo->prepare($sql);
     $params = [$conj['id']];
     if ($modoDebug) {
@@ -708,7 +708,7 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
       echo "Afe: " . $stmtPos->rowCount() . "<br><br>";
     }
     while ($pos = $stmtPos->fetch(PDO::FETCH_ASSOC)) {
-      $sql = 'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)';
+      $sql = 'INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, peso_calculado_posicion, finalizado, id_colada, diametro, calidad, observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)';
       $q = $pdo->prepare($sql);
       $params = [
         $idConjNuevo,
@@ -723,7 +723,8 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
         $pos['finalizado'],
         $pos['id_colada'],
         $pos['diametro'],
-        $pos['calidad']
+        $pos['calidad'],
+        $pos['observaciones']
       ];
       if ($modoDebug) {
         echo debugQuery($pdo, $sql, $params) . "<br>";
@@ -762,6 +763,9 @@ function duplicarListaCorteRevision(PDO $pdo, int $idOrigen, int $idDestino, boo
         }
       }
     }
+
+    // La revision clonada es una lista nueva: guardamos el peso total real.
+    recalcularPesoConjunto($pdo, $idConjNuevo);
   }
 }
 
@@ -1195,4 +1199,191 @@ function derivarIdLetraComprobante(PDO $pdo, int $idTipoComprobante): int {
 		throw new RuntimeException('No se pudo determinar la letra del comprobante.');
 	}
 	return $mapaIdLetra[$letra];
+}
+
+/**
+ * Normaliza un numero que puede venir con coma decimal.
+ */
+function numeroListaCorte($valor): float {
+	if (is_string($valor)) {
+		$valor = str_replace(',', '.', trim($valor));
+	}
+	return is_numeric($valor) ? (float)$valor : 0.0;
+}
+
+/**
+ * Peso unitario de una posicion de lista de corte.
+ * - Chapa: peso (kg/m2) por superficie (largo x ancho en metros).
+ * - Resto (Perfil, Cano, etc.): peso (kg/m) por largo en metros.
+ * El resultado NO incluye la cantidad de piezas.
+ */
+function calcularPesoUnitarioPosicion($peso, $largo, $ancho, $conceptoMaterial): float {
+	$peso  = numeroListaCorte($peso);
+	$largo = numeroListaCorte($largo);
+	$ancho = numeroListaCorte($ancho);
+
+	if ($peso <= 0 || $largo <= 0) {
+		return 0.0;
+	}
+
+	$concepto = trim((string)$conceptoMaterial);
+	if (stripos($concepto, 'Chapa') === 0) {
+		if ($ancho <= 0) {
+			return 0.0;
+		}
+		return round(($largo / 1000) * ($ancho / 1000) * $peso, 2);
+	}
+
+	return round(($largo / 1000) * $peso, 2);
+}
+
+/**
+ * Peso unitario de una fila de lista_corte_posiciones.
+ * Usa peso_calculado_posicion si existe; si es NULL o 0 lo recalcula
+ * con las medidas de la posicion (util para datos historicos).
+ */
+function pesoUnitarioDesdePosicion(array $posicion, string $conceptoMaterial = ''): float {
+	$calculado = $posicion['peso_calculado_posicion'] ?? null;
+	if ($calculado !== null && numeroListaCorte($calculado) != 0.0) {
+		return numeroListaCorte($calculado);
+	}
+
+	return calcularPesoUnitarioPosicion(
+		$posicion['peso'] ?? 0,
+		$posicion['largo'] ?? 0,
+		$posicion['ancho'] ?? 0,
+		$conceptoMaterial
+	);
+}
+
+/**
+ * Peso total de una posicion: peso unitario x cantidad de piezas.
+ */
+function calcularPesoPosicion(array $posicion, string $conceptoMaterial = ''): float {
+	$cantidad = numeroListaCorte($posicion['cantidad'] ?? 0);
+	return round(pesoUnitarioDesdePosicion($posicion, $conceptoMaterial) * $cantidad, 2);
+}
+
+/**
+ * Calcula el peso total de un conjunto sin modificar la base:
+ * suma de los pesos de sus posiciones x cantidad de conjuntos.
+ */
+function calcularPesoConjunto(PDO $pdo, int $idConjunto): float {
+	$q = $pdo->prepare("SELECT cantidad FROM listas_corte_conjuntos WHERE id = ?");
+	$q->execute([$idConjunto]);
+	$cantidadConjunto = numeroListaCorte($q->fetchColumn());
+
+	$sql = "SELECT p.peso, p.largo, p.ancho, p.cantidad, p.peso_calculado_posicion, m.concepto
+	        FROM lista_corte_posiciones p
+	        LEFT JOIN materiales m ON m.id = p.id_material
+	        WHERE p.id_lista_corte_conjunto = ?";
+	$q = $pdo->prepare($sql);
+	$q->execute([$idConjunto]);
+
+	$pesoConjunto = 0.0;
+	while ($pos = $q->fetch(PDO::FETCH_ASSOC)) {
+		$pesoConjunto += calcularPesoPosicion($pos, (string)($pos['concepto'] ?? ''));
+	}
+
+	return round($pesoConjunto * $cantidadConjunto, 2);
+}
+
+/**
+ * Recalcula y guarda el peso total real de un conjunto:
+ * suma de pesos de posiciones (unitario x cantidad) x cantidad de conjuntos.
+ */
+function recalcularPesoConjunto(PDO $pdo, int $idConjunto): float {
+	$total = calcularPesoConjunto($pdo, $idConjunto);
+	$q = $pdo->prepare("UPDATE listas_corte_conjuntos SET peso = ? WHERE id = ?");
+	$q->execute([$total, $idConjunto]);
+	return $total;
+}
+
+/**
+ * Estados de lista de corte en los que se propagan los cambios del concepto.
+ * Se excluyen Terminada (5), Cancelada (6) y Superada (7).
+ */
+function estadosListaCorteSincronizables(): array {
+	return [1, 2, 3, 4, 8];
+}
+
+/**
+ * Propaga peso, calidad y peso calculado de uno o varios conceptos a las
+ * posiciones de listas de corte no terminadas y recalcula los conjuntos
+ * afectados.
+ *
+ * @param PDO $pdo
+ * @param array $idsMateriales
+ * @return array{posiciones:int, conjuntos:int}
+ */
+function sincronizarConceptosEnListasCorte(PDO $pdo, array $idsMateriales): array {
+	$ids = [];
+	foreach ($idsMateriales as $idMaterial) {
+		$idMaterial = (int)$idMaterial;
+		if ($idMaterial > 0) {
+			$ids[$idMaterial] = $idMaterial;
+		}
+	}
+
+	$resultado = ['posiciones' => 0, 'conjuntos' => 0];
+	if (empty($ids)) {
+		return $resultado;
+	}
+
+	$placeholders = implode(',', array_fill(0, count($ids), '?'));
+	$q = $pdo->prepare("SELECT id, concepto, peso_metro, calidad FROM materiales WHERE id IN ($placeholders)");
+	$q->execute(array_values($ids));
+
+	$materiales = [];
+	while ($material = $q->fetch(PDO::FETCH_ASSOC)) {
+		$materiales[(int)$material['id']] = $material;
+	}
+	if (empty($materiales)) {
+		return $resultado;
+	}
+
+	$estados = implode(',', estadosListaCorteSincronizables());
+	$placeholders = implode(',', array_fill(0, count($materiales), '?'));
+	$sql = "SELECT p.id, p.id_material, p.largo, p.ancho, p.id_lista_corte_conjunto
+	        FROM lista_corte_posiciones p
+	        INNER JOIN listas_corte_conjuntos lcc ON lcc.id = p.id_lista_corte_conjunto
+	        INNER JOIN listas_corte lc ON lc.id = lcc.id_lista_corte
+	        WHERE p.id_material IN ($placeholders)
+	          AND lc.anulado = 0
+	          AND lc.id_estado_lista_corte IN ($estados)";
+	$q = $pdo->prepare($sql);
+	$q->execute(array_keys($materiales));
+
+	$posiciones = $q->fetchAll(PDO::FETCH_ASSOC);
+	if (empty($posiciones)) {
+		return $resultado;
+	}
+
+	$qUpdate = $pdo->prepare("UPDATE lista_corte_posiciones SET peso = ?, calidad = ?, peso_calculado_posicion = ? WHERE id = ?");
+	$conjuntos = [];
+	foreach ($posiciones as $posicion) {
+		$material = $materiales[(int)$posicion['id_material']];
+		$pesoCalculado = calcularPesoUnitarioPosicion(
+			$material['peso_metro'],
+			$posicion['largo'],
+			$posicion['ancho'],
+			(string)$material['concepto']
+		);
+		$qUpdate->execute([
+			$material['peso_metro'],
+			$material['calidad'],
+			$pesoCalculado,
+			$posicion['id']
+		]);
+
+		$conjuntos[(int)$posicion['id_lista_corte_conjunto']] = true;
+		$resultado['posiciones']++;
+	}
+
+	foreach (array_keys($conjuntos) as $idConjunto) {
+		recalcularPesoConjunto($pdo, $idConjunto);
+		$resultado['conjuntos']++;
+	}
+
+	return $resultado;
 }

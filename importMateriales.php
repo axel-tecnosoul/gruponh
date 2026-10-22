@@ -92,11 +92,12 @@
                 $anulados = 0;
                 $codigosArchivo = [];
                 $categoriasArchivo = [];
+                $idsActualizados = [];
                 $pdo->beginTransaction();
 
                 $qCategoria = $pdo->prepare("SELECT id FROM categorias WHERE id = ?");
                 $qUnidad = $pdo->prepare("SELECT id FROM unidades_medida WHERE id = ?");
-                $qExiste = $pdo->prepare("SELECT id FROM materiales WHERE codigo = ?");
+                $qExiste = $pdo->prepare("SELECT id, concepto, peso_metro FROM materiales WHERE codigo = ?");
                 $qInsert = $pdo->prepare("INSERT INTO materiales (codigo, concepto, descripcion, largo, peso_metro, id_categoria, id_unidad_medida, stock_minimo, anulado, calidad, perimetro, espesor, ancho) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
                 foreach ($rows as $i => $row) {
@@ -201,8 +202,8 @@
 
                     try {
                         if ($existente) {
-                            $sets = ['concepto = ?', 'descripcion = ?', 'largo = ?', 'peso_metro = ?', 'id_categoria = ?', 'stock_minimo = ?', 'calidad = ?', 'perimetro = ?', 'espesor = ?', 'ancho = ?', 'anulado = ?'];
-                            $params = [$concepto, $descripcion, $largo, $peso_metro, $id_categoria, $stock_minimo, '', 0, $espesor, $ancho, 0];
+                            $sets = ['concepto = ?', 'descripcion = ?', 'largo = ?', 'peso_metro = ?', 'id_categoria = ?', 'stock_minimo = ?', 'perimetro = ?', 'espesor = ?', 'ancho = ?', 'anulado = ?'];
+                            $params = [$concepto, $descripcion, $largo, $peso_metro, $id_categoria, $stock_minimo, 0, $espesor, $ancho, 0];
                             if ($id_unidad_medida_final !== null) {
                                 array_splice($sets, 5, 0, 'id_unidad_medida = ?');
                                 array_splice($params, 5, 0, $id_unidad_medida_final);
@@ -211,6 +212,12 @@
                             $qUpdate = $pdo->prepare("UPDATE materiales SET " . implode(', ', $sets) . " WHERE codigo = ?");
                             $qUpdate->execute($params);
                             $actualizados++;
+
+                            $cambioRelevante = numeroListaCorte($existente['peso_metro'] ?? 0) !== numeroListaCorte($peso_metro)
+                                || (string)($existente['concepto'] ?? '') !== (string)$concepto;
+                            if ($cambioRelevante) {
+                                $idsActualizados[(int)$existente['id']] = (int)$existente['id'];
+                            }
                         } else {
                             $qInsert->execute([$codigo, $concepto, $descripcion, $largo, $peso_metro, $id_categoria, $id_unidad_medida_final, $stock_minimo, 0, '', 0, $espesor, $ancho]);
                             $insertados++;
@@ -231,6 +238,10 @@
                         $qAnular->execute(array_merge([$cat], $codigos));
                         $anulados += $qAnular->rowCount();
                     }
+                }
+
+                if (!empty($idsActualizados)) {
+                    sincronizarConceptosEnListasCorte($pdo, $idsActualizados);
                 }
 
                 $pdo->commit();

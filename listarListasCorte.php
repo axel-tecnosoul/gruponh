@@ -107,6 +107,7 @@ if($prodQuery){
                       </div>
                       <div class="form-group mb-0">
                         <button class="btn btn-primary" id="btnFiltrar" onclick="document.form1.target='_self';document.form1.action='listarListasCorte.php<?= $prodQuery ?>'">Buscar</button>
+                        <button type="button" class="btn btn-secondary ml-2" id="btnLimpiarFiltros">Limpiar</button>
                       </div>
                     </form>
                   </div>
@@ -834,6 +835,69 @@ if($prodQuery){
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
+    <script>
+      // Mantener los filtros del listado al volver (sessionStorage), igual que listarProyectos.php.
+      // Se usa una clave distinta para el modo producción (prod=1) para no mezclar estados.
+      $(function() {
+        var KEY_BASE = 'listarListasCorteFiltros';
+        var prodActual = new URLSearchParams(window.location.search).get('prod')
+          || (document.getElementById('prod') ? document.getElementById('prod').value : '')
+          || '';
+        var KEY = KEY_BASE + (prodActual ? '_prod' : '');
+        var btnLimpiar = document.getElementById('btnLimpiarFiltros');
+        if (btnLimpiar) {
+          btnLimpiar.addEventListener('click', function() {
+            try {
+              sessionStorage.removeItem(KEY_BASE);
+              sessionStorage.removeItem(KEY_BASE + '_prod');
+            } catch (e) {}
+            window.location.replace('listarListasCorte.php<?= $prodQuery ?>');
+          });
+        }
+        var form = document.forms['form1'];
+        if (!form || !window.sessionStorage) { return; }
+
+        // 1) Al hacer Buscar, guardo el valor actual de cada filtro
+        form.addEventListener('submit', function() {
+          try {
+            sessionStorage.setItem(KEY, JSON.stringify({
+              nro: $('#nro').val() || '',
+              fecha: $('#fecha').val() || '',
+              fechah: $('#fechah').val() || '',
+              estados: ($('#id_estado').val() || [])
+            }));
+          } catch (e) {}
+        });
+
+        // 2) Si llego sin POST y hay filtros guardados, los repinto y reenvío la búsqueda
+        <?php if (empty($_POST)): ?>
+        var guardado = null;
+        try {
+          guardado = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+        } catch (e) {
+          guardado = null;
+        }
+        if (guardado) {
+          $('#nro').val(guardado.nro || '');
+          $('#fecha').val(guardado.fecha || '');
+          $('#fechah').val(guardado.fechah || '');
+          // Si el usuario limpió los estados, envío la opción "Todos" ("") y no el default del servidor
+          var estadosRest = (guardado.estados && guardado.estados.length) ? guardado.estados : [''];
+          $('#id_estado').val(estadosRest).trigger('change');
+
+          // Conservar mensajes de error de la URL (por ejemplo, LC no aprobada para OT)
+          var errorActual = new URLSearchParams(window.location.search).get('error');
+          if (errorActual) {
+            var separador = form.action.indexOf('?') === -1 ? '?' : '&';
+            form.action += separador + 'error=' + encodeURIComponent(errorActual);
+          }
+
+          // form.submit() nativo no dispara el listener de guardado: no sobreescribe el storage
+          setTimeout(function() { form.submit(); }, 100);
+        }
+        <?php endif; ?>
+      });
+    </script>
     <!-- Plugin used-->
   </body>
 </html>

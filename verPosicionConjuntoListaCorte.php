@@ -21,11 +21,13 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id, id_lista_corte_conjunto, id_material, posicion, cantidad, largo, ancho, marca, peso, finalizado, id_colada, diametro, calidad FROM lista_corte_posiciones WHERE id = ? ";
+  $sql = "SELECT p.id, p.id_lista_corte_conjunto, p.id_material, p.posicion, p.cantidad, p.largo, p.ancho, p.marca, p.peso, p.peso_calculado_posicion, p.finalizado, p.id_colada, p.diametro, p.calidad, p.observaciones, m.concepto FROM lista_corte_posiciones p LEFT JOIN materiales m ON m.id = p.id_material WHERE p.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $id_lista_corte_conjunto=$data["id_lista_corte_conjunto"];
+  $pesoUnitario = pesoUnitarioDesdePosicion($data, (string)($data["concepto"] ?? ''));
+  $pesoTotalPosicion = calcularPesoPosicion($data, (string)($data["concepto"] ?? ''));
   Database::disconnect();
 }?>
 <!DOCTYPE html>
@@ -102,8 +104,16 @@ if (!empty($_POST)) {
                               <div class="col-sm-9"><input name="diametro" type="number" step="0.01" class="form-control" readonly="readonly" value="<?php echo $data['diametro']; ?>"></div>
                             </div>
                             <div class="form-group row">
-                              <label class="col-sm-3 col-form-label">Peso kg</label>
+                              <label class="col-sm-3 col-form-label">Peso kg/m o kg/m²</label>
                               <div class="col-sm-9"><input name="peso" type="number" step="0.01" class="form-control" readonly="readonly" value="<?php echo $data['peso']; ?>"></div>
+                            </div>
+                            <div class="form-group row">
+                              <label class="col-sm-3 col-form-label">Peso unitario (kg)</label>
+                              <div class="col-sm-9"><input name="peso_unitario" type="text" class="form-control" readonly="readonly" value="<?php echo number_format($pesoUnitario,2,',','.'); ?>"></div>
+                            </div>
+                            <div class="form-group row">
+                              <label class="col-sm-3 col-form-label">Peso total posición (kg)</label>
+                              <div class="col-sm-9"><input name="peso_total" type="text" class="form-control" readonly="readonly" value="<?php echo number_format($pesoTotalPosicion,2,',','.'); ?>"></div>
                             </div>
                             <div class="form-group row">
                               <label class="col-sm-3 col-form-label">Marca</label>
@@ -112,6 +122,10 @@ if (!empty($_POST)) {
                             <div class="form-group row">
                               <label class="col-sm-3 col-form-label">Calidad</label>
                               <div class="col-sm-9"><input name="calidad" type="text" maxlength="99" class="form-control" readonly="readonly" value="<?php echo $data['calidad']; ?>"></div>
+                            </div>
+                            <div class="form-group row">
+                              <label class="col-sm-3 col-form-label">Observaciones</label>
+                              <div class="col-sm-9"><textarea name="observaciones" rows="3" class="form-control" readonly="readonly"><?=htmlspecialchars($data['observaciones'] ?? '', ENT_QUOTES)?></textarea></div>
                             </div>
                             <div class="form-group row">
                               <label class="col-sm-3 col-form-label">¿Finalizado?(*)</label>

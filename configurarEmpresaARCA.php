@@ -144,9 +144,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($errorMessage === '') {
                 if ($cuitEditable && $empCuit === '') {
                     $errorMessage = 'Complete el CUIT de la empresa.';
-                } elseif ($empDireccion === '' || $empEmail === '' || $empIibb === '' || $empFechaInicio === '') {
-                    $errorMessage = 'Complete dirección, email, ingresos brutos y fecha de inicio de actividades.';
-                } elseif (filter_var($empEmail, FILTER_VALIDATE_EMAIL) === false) {
+                } elseif ($empDireccion === '' || $empIibb === '' || $empFechaInicio === '') {
+                    $errorMessage = 'Complete dirección, ingresos brutos y fecha de inicio de actividades.';
+                } elseif ($empEmail !== '' && filter_var($empEmail, FILTER_VALIDATE_EMAIL) === false) {
                     $errorMessage = 'El email de la empresa no es válido.';
                 } elseif ($empCondicionIva === false || $empCondicionIva < 1) {
                     $errorMessage = 'Seleccione la condición frente al IVA.';
@@ -197,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                     $log->execute([(int)$_SESSION['user']['id']]);
                     $pdo->commit();
-                    header('Location: configurarEmpresaARCA.php?id=' . $companyId . '&guardado=1');
+                    header('Location: listarEmpresas.php?guardado=1');
                     exit;
                 } catch (Throwable $exception) {
                     if ($pdo->inTransaction()) {
@@ -267,6 +267,7 @@ $escape = static function ($value): string {
     .arca-point-types + .select2-container { min-width: 280px; width: 100% !important; }
     .arca-import-list { margin-top: 12px; }
     .arca-import-list li { margin-bottom: 6px; }
+    .arca-icon-button:disabled { opacity: .45; cursor: not-allowed; }
     .provincia-check-label { display: flex; align-items: center; gap: .5rem; margin: 0; cursor: pointer; font-weight: 400; }
     .provincia-check-label input { width: 1.1rem; height: 1.1rem; flex: none; cursor: pointer; }
     .retention-flag {
@@ -344,8 +345,8 @@ $escape = static function ($value): string {
                       <div class="col-sm-8"><input name="direccion" type="text" maxlength="199" class="form-control" required="required" value="<?= $escape($formEmpresa['direccion']) ?>"></div>
                     </div>
                     <div class="form-group row">
-                      <label class="col-sm-4 col-form-label">Email(*)</label>
-                      <div class="col-sm-8"><input name="email" type="email" maxlength="99" class="form-control" required="required" value="<?= $escape($formEmpresa['email']) ?>"></div>
+                      <label class="col-sm-4 col-form-label">Email</label>
+                      <div class="col-sm-8"><input name="email" type="email" maxlength="99" class="form-control" value="<?= $escape($formEmpresa['email']) ?>"></div>
                     </div>
                     <div class="form-group row">
                       <label class="col-sm-4 col-form-label">Ingresos Brutos(*)</label>
@@ -359,16 +360,24 @@ $escape = static function ($value): string {
                 </div>
 
                 <hr>
-                <h5 class="mb-3">Puntos de venta y tipos de comprobante</h5>
+                <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+                  <h5 class="mb-0">Puntos de venta y tipos de comprobante</h5>
+                  <div class="d-flex align-items-center">
+                    <button type="button" class="btn btn-link p-0 arca-icon-button mr-2" id="consultarCatalogosArca"
+                      title="Consultar puntos y tipos en ARCA" aria-label="Consultar puntos y tipos en ARCA"
+                      <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
+                      <img src="img/import.png" width="24" height="25" border="0" alt="Consultar puntos y tipos en ARCA">
+                    </button>
+                    <button type="button" class="btn btn-link p-0 arca-icon-button" id="agregarPuntoVentaManual"
+                      title="Agregar punto manual" aria-label="Agregar punto manual">
+                      <img src="img/icon_alta.png" width="24" height="25" border="0" alt="Agregar punto manual">
+                    </button>
+                  </div>
+                </div>
                 <div class="mb-3">
-                  <button type="button" class="btn btn-outline-primary" id="consultarCatalogosArca"
-                    <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
-                    Consultar puntos y tipos en ARCA
-                  </button>
-                  <div id="estadoConsultaArca" class="mt-2" role="status"></div>
+                  <div id="estadoConsultaArca" role="status"></div>
                   <ul id="puntosVentaImportados" class="arca-import-list list-unstyled"></ul>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-secondary mb-2" id="agregarPuntoVentaManual">Agregar punto manual</button>
                 <div class="dt-ext table-responsive">
                   <table class="display table table-bordered table-sm dynamic-grid-table" id="tablaPuntosVenta">
                     <thead>
@@ -435,9 +444,11 @@ $escape = static function ($value): string {
                   </div>
                 </div>
               </div>
-              <div class="card-footer text-right">
-                <button class="btn btn-primary" type="submit">Guardar</button>
-                <a class="btn btn-light" href="listarEmpresas.php">Volver al listado</a>
+              <div class="card-footer">
+                <div class="col-sm-9 offset-sm-3">
+                  <button class="btn btn-primary" type="submit">Guardar</button>
+                  <a class="btn btn-light" href="listarEmpresas.php">Volver</a>
+                </div>
               </div>
             </form>
           </div>
