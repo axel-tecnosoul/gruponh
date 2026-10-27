@@ -52,8 +52,8 @@ if (!empty($_POST)) {
   $nroPL = $data['cant']+1;
   
 	$idCuentaRealizo = null;
-	$idCuentaReviso = $_POST['id_cuenta_reviso'];
-	$idCuentaValido = $_POST['id_cuenta_valido'];
+	$idCuentaReviso = null;
+	$idCuentaValido = null;
 
 	$sql = "SELECT id FROM `cuentas` WHERE id_usuario = ? ";
 	$q = $pdo->prepare($sql);
@@ -220,46 +220,6 @@ if (!empty($_POST)) {
                               </select>
                             </div>
                           </div>
-						  <div class="form-group row">
-							<label class="col-sm-3 col-form-label">Revisó(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_reviso" id="id_cuenta_reviso" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Aprobó(*)</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta_valido" id="id_cuenta_valido" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
                                                   <input type="hidden" name="id_tarea" value="<?php if (!empty($_GET['idTarea'])) echo $_GET['idTarea'];?>" />
                                                   <input type="hidden" name="prod" value="<?= $_REQUEST['prod'] ?? '' ?>" />
                         </div>

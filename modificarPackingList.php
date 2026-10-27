@@ -13,7 +13,8 @@ if (!empty($_GET['id_packing_list_revision'])) {
 }
 
 if (null==$id_packing_list_revision) {
-  header("Location: listarListasCorte.php");
+  header("Location: listarPackingList.php");
+  exit;
 }
 
 if (!empty($_POST)) {
@@ -21,6 +22,17 @@ if (!empty($_POST)) {
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+  // Solo se puede modificar la última revisión de la packing list
+  $sqlGuarda = "SELECT plr.nro_revision, pl.ultimo_nro_revision FROM packing_lists_revisiones plr INNER JOIN packing_lists pl ON pl.id = plr.id_packing_list WHERE plr.id = ?";
+  $qGuarda = $pdo->prepare($sqlGuarda);
+  $qGuarda->execute([$id_packing_list_revision]);
+  $revGuarda = $qGuarda->fetch(PDO::FETCH_ASSOC);
+  if (empty($revGuarda) || $revGuarda['nro_revision'] != $revGuarda['ultimo_nro_revision']) {
+    Database::disconnect();
+    header("Location: listarPackingList.php");
+    exit;
+  }
 
   $modoDebug=0;
 
@@ -152,16 +164,25 @@ if (!empty($_POST)) {
     Database::disconnect();
     //header("Location: listarListasCorte.php");
     header("Location: ".$redirect);
+    exit;
   }
 
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
   //$sql = "SELECT lc.id AS id_lista_corte, lcr.id AS id_packing_list_revision, lcr.id_proyecto, lcr.fecha, lcr.id_usuario, lcr.id_estado_lista_corte, lcr.nro_revision, lcr.anulado, lcr.nombre, lcr.numero, lcr.adjunto, lcr.id_cuenta_realizo, lcr.id_cuenta_reviso, lcr.id_cuenta_valido FROM listas_corte_revisiones lcr INNER JOIN listas_corte lc ON lcr.id_lista_corte=lc.id AND lcr.nro_revision=lc.ultimo_nro_revision WHERE lcr.id = ?";
-  $sql = "SELECT * FROM packing_lists_revisiones plr INNER JOIN packing_lists pl ON plr.id_packing_list=pl.id AND plr.nro_revision=pl.ultimo_nro_revision WHERE plr.id = ?";
+  $sql = "SELECT plr.*, pl.ultimo_nro_revision FROM packing_lists_revisiones plr INNER JOIN packing_lists pl ON pl.id = plr.id_packing_list WHERE plr.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id_packing_list_revision]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  if (empty($data)) {
+    Database::disconnect();
+    header("Location: listarPackingList.php");
+    exit;
+  }
+
+  $esUltimaRevision = ($data['nro_revision'] == $data['ultimo_nro_revision']);
 
   $id_estado_packing_list=$data["id_estado_packing_list"];
   $nro_revision=$data["nro_revision"];
@@ -213,7 +234,10 @@ if (!empty($_POST)) {
                   </div>
 					        <form class="form theme-form" role="form" method="post" action="modificarPackingList.php?id_packing_list_revision=<?=$id_packing_list_revision?>" enctype="multipart/form-data">
                     <div class="card-body"><?php
-                      if($id_estado_packing_list!=1){?>
+                      if(!$esUltimaRevision){?>
+                        <div class="alert alert-light mb-3" role="alert">Revisión histórica N° <?=$data['nro_revision']?>: solo lectura.</div><?php
+                      }
+                      if(!$esUltimaRevision || $id_estado_packing_list!=1){?>
                         <div class="row">
                           <div class="col-12 titulo">
                             <h4>Historial de revisiones</h4>
@@ -236,7 +260,7 @@ if (!empty($_POST)) {
                                 
                                 //$b=0;
                                 //$sql = " SELECT nro_revision,date_format(fecha,'%d/%m/%y') AS fecha,descripcion,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_realizo=c.id) AS realizo,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_reviso=c.id) AS reviso,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_valido=c.id) AS valido FROM listas_corte_revisiones lcr WHERE lcr.id_packing_list = $data[id_packing_list] ORDER BY nro_revision ASC";
-                                $sql = " SELECT nro_revision,date_format(fecha,'%d/%m/%y') AS fecha,descripcion FROM packing_lists_revisiones plr WHERE plr.id_packing_list = $data[id_packing_list] ORDER BY nro_revision ASC";//,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_realizo=c.id) AS realizo,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_reviso=c.id) AS reviso,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_valido=c.id) AS valido
+                                $sql = " SELECT nro_revision,date_format(fecha,'%d/%m/%y') AS fecha,descripcion FROM packing_lists_revisiones plr WHERE plr.id_packing_list = {$data['id_packing_list']} ORDER BY nro_revision ASC";//,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_realizo=c.id) AS realizo,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_reviso=c.id) AS reviso,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_valido=c.id) AS valido
                                 foreach ($pdo->query($sql) as $row) {
                                   //$b=1;
                                   echo '<tr>';
@@ -264,13 +288,13 @@ if (!empty($_POST)) {
                           }?>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
-                            <div class="col-sm-9"><input name="fecha" type="date" autofocus onfocus="this.showPicker()" maxlength="99" class="form-control" required="required" value="<?=$data['fecha']; ?>"></div>
+                            <div class="col-sm-9"><input name="fecha" type="date" <?php if($esUltimaRevision){?>autofocus onfocus="this.showPicker()"<?php }else{?>readonly<?php }?> maxlength="99" class="form-control" required="required" value="<?=$data['fecha']; ?>"></div>
                           </div>
 						  <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Nombre PL(*)</label>
-                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" class="form-control" required="required" value="<?=$data['nombre']; ?>"></div>
+                            <div class="col-sm-9"><input name="nombre" type="text" maxlength="99" class="form-control" required="required" value="<?=$data['nombre']; ?>" <?php if(!$esUltimaRevision){?>readonly<?php }?>></div>
                           </div><?php
-                          if($accion=="modificar"){?>
+                          if($accion=="modificar" && $esUltimaRevision){?>
                             <div class="form-group row">
                               <label class="col-sm-3 col-form-label">Proyecto(*)</label>
                               <div class="col-sm-9">
@@ -298,7 +322,7 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Estado(*)</label>
                             <div class="col-sm-9">
-                              <select name="id_estado_packing_list" id="id_estado_packing_list" class="js-example-basic-single col-sm-12" required="required">
+                              <select name="id_estado_packing_list" id="id_estado_packing_list" class="js-example-basic-single col-sm-12" required="required" <?php if(!$esUltimaRevision){?>disabled<?php }?>>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -321,7 +345,11 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
+					              <?php if($esUltimaRevision){?>
 					              <button class="btn btn-primary" value="<?=$accion?>" name="btn1" type="submit">Modificar</button>
+					              <?php }else{?>
+					              <span class="badge badge-light">Solo lectura</span>
+					              <?php }?>
                         <a href='listarPackingList.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>

@@ -1387,3 +1387,230 @@ function sincronizarConceptosEnListasCorte(PDO $pdo, array $idsMateriales): arra
 
 	return $resultado;
 }
+
+/**
+ * Calcula el impacto y diferencias que provocaría modificar un concepto
+ * en las listas de corte no terminadas que lo utilizan (posiciones y conjuntos).
+ *
+ * @param PDO $pdo
+ * @param int $idMaterial
+ * @param array $nuevosDatos
+ * @return array
+ */
+function obtenerImpactoModificacionConceptoEnListasCorte(PDO $pdo, int $idMaterial, array $nuevosDatos): array {
+	$idMaterial = (int)$idMaterial;
+	if ($idMaterial <= 0) {
+		return [
+			'afecta_lc' => false,
+			'error'     => 'ID de concepto inválido'
+		];
+	}
+
+	$qAnterior = $pdo->prepare("SELECT id, codigo, concepto, calidad, peso_metro FROM materiales WHERE id = ?");
+	$qAnterior->execute([$idMaterial]);
+	$materialActual = $qAnterior->fetch(PDO::FETCH_ASSOC);
+	if (!$materialActual) {
+		return [
+			'afecta_lc' => false,
+			'error'     => 'Concepto no encontrado'
+		];
+	}
+
+	$nuevoConcepto  = trim((string)($nuevosDatos['concepto'] ?? $materialActual['concepto']));
+	$nuevoPesoMetro = numeroListaCorte($nuevosDatos['peso_metro'] ?? $materialActual['peso_metro']);
+	$nuevaCalidad   = trim((string)($nuevosDatos['calidad'] ?? $materialActual['calidad']));
+	$nuevoCodigo    = trim((string)($nuevosDatos['codigo'] ?? $materialActual['codigo']));
+	$pesoMetroActual = numeroListaCorte($materialActual['peso_metro']);
+	$conceptoActual  = trim((string)$materialActual['concepto']);
+	$calidadActual   = trim((string)$materialActual['calidad']);
+	$codigoActual    = trim((string)$materialActual['codigo']);
+
+	$cambioPesoMetro = $pesoMetroActual !== $nuevoPesoMetro;
+	$cambioConcepto  = $conceptoActual !== $nuevoConcepto;
+	$cambioCalidad   = $calidadActual !== $nuevaCalidad;
+	$cambioCodigo    = $codigoActual !== $nuevoCodigo;
+
+	$hayCambioRelevante = $cambioPesoMetro || $cambioConcepto || $cambioCalidad || $cambioCodigo;
+	if (!$hayCambioRelevante) {
+		return [
+			'afecta_lc'        => false,
+			'motivo'           => 'sin_cambios',
+			'total_lcs'        => 0,
+			'total_conjuntos'  => 0,
+			'total_posiciones' => 0,
+			'listas_corte'     => []
+		];
+	}
+
+	$estados = implode(',', estadosListaCorteSincronizables());
+	$sql = "SELECT 
+	        p.id AS id_posicion,
+	        p.posicion,
+	        p.cantidad AS cant_posicion,
+	        p.largo,
+	        p.ancho,
+	        p.peso,
+	        p.calidad,
+	        p.peso_calculado_posicion,
+	        lcc.id AS id_conjunto,
+	        lcc.nombre AS conjunto_nombre,
+	        lcc.cantidad AS cant_conjunto,
+	        lcc.peso AS peso_conjunto_actual,
+	        lc.id AS id_lista_corte,
+	        lc.numero AS lc_numero,
+	        lc.nombre AS lc_nombre,
+	        lc.nro_revision,
+	        elc.id AS id_estado_lc,
+	        elc.estado AS estado_lc,
+	        proy.id AS id_proyecto,
+	        proy.nombre AS proyecto_nombre,
+	        proy.nro AS proyecto_nro
+	    FROM lista_corte_posiciones p
+	    INNER JOIN listas_corte_conjuntos lcc ON lcc.id = p.id_lista_corte_conjunto
+	    INNER JOIN listas_corte lc ON lc.id = lcc.id_lista_corte
+	    INNER JOIN estados_lista_corte elc ON elc.id = lc.id_estado_lista_corte
+	    LEFT JOIN proyectos proy ON proy.id = lc.id_proyecto
+	    WHERE p.id_material = ?
+	      AND lc.anulado = 0
+	      AND lc.id_estado_lista_corte IN ($estados)
+	    ORDER BY proy.nombre, lc.numero, lc.nro_revision, lcc.nombre, p.posicion";
+
+	$q = $pdo->prepare($sql);
+	$q->execute([$idMaterial]);
+	$filas = $q->fetchAll(PDO::FETCH_ASSOC);
+
+	if (empty($filas)) {
+		return [
+			'afecta_lc'        => false,
+			'motivo'           => 'sin_lcs_activas',
+			'total_lcs'        => 0,
+			'total_conjuntos'  => 0,
+			'total_posiciones' => 0,
+			'listas_corte'     => []
+		];
+	}
+	// Simulación de los nuevos pesos de los conjuntos afectados
+	$conjuntoIds = array_unique(array_column($filas, 'id_conjunto'));
+	$conjuntosSimulados = [];
+
+	$qPosConj = $pdo->prepare("SELECT p.id, p.id_material, p.peso, p.largo, p.ancho, p.cantidad, p.peso_calculado_posicion, m.concepto 
+	                           FROM lista_corte_posiciones p 
+	                           LEFT JOIN materiales m ON m.id = p.id_material 
+	                           WHERE p.id_lista_corte_conjunto = ?");
+
+	foreach ($conjuntoIds as $idC) {
+		$qPosConj->execute([$idC]);
+		$posList = $qPosConj->fetchAll(PDO::FETCH_ASSOC);
+		$sumSim = 0.0;
+		foreach ($posList as $pos) {
+			if ((int)$pos['id_material'] === $idMaterial) {
+				$pUnit = calcularPesoUnitarioPosicion($nuevoPesoMetro, $pos['largo'], $pos['ancho'], $nuevoConcepto);
+			} else {
+				$pUnit = pesoUnitarioDesdePosicion($pos, (string)($pos['concepto'] ?? ''));
+			}
+			$sumSim += round($pUnit * numeroListaCorte($pos['cantidad']), 2);
+		}
+		$conjuntosSimulados[$idC] = $sumSim;
+	}
+
+	$listasCorte = [];
+	foreach ($filas as $fila) {
+		$idLC = (int)$fila['id_lista_corte'];
+		if (!isset($listasCorte[$idLC])) {
+			$proyectoTexto = trim(($fila['proyecto_nro'] ? '[' . $fila['proyecto_nro'] . '] ' : '') . ($fila['proyecto_nombre'] ?? 'Sin Proyecto'));
+			$listasCorte[$idLC] = [
+				'id'           => $idLC,
+				'numero'       => $fila['lc_numero'],
+				'nombre'       => $fila['lc_nombre'],
+				'nro_revision' => (int)$fila['nro_revision'],
+				'estado'       => $fila['estado_lc'],
+				'proyecto'     => $proyectoTexto,
+				'conjuntos'    => []
+			];
+		}
+
+		$idConj = (int)$fila['id_conjunto'];
+		if (!isset($listasCorte[$idLC]['conjuntos'][$idConj])) {
+			$cantConj = numeroListaCorte($fila['cant_conjunto']);
+			$pesoConjActual = numeroListaCorte($fila['peso_conjunto_actual']);
+			$pesoConjNuevo = round($conjuntosSimulados[$idConj] * $cantConj, 2);
+
+			$listasCorte[$idLC]['conjuntos'][$idConj] = [
+				'id'          => $idConj,
+				'nombre'      => $fila['conjunto_nombre'],
+				'cantidad'    => $cantConj,
+				'peso_actual' => $pesoConjActual,
+				'peso_nuevo'  => $pesoConjNuevo,
+				'cambio_peso' => round($pesoConjActual, 2) !== round($pesoConjNuevo, 2),
+				'posiciones'  => []
+			];
+		}
+
+		$pesoMetroPosActual = numeroListaCorte($fila['peso']);
+		$calidadPosActual   = trim((string)($fila['calidad'] ?? ''));
+
+		$posicionParaCalculo = [
+			'peso'                    => $fila['peso'],
+			'largo'                   => $fila['largo'],
+			'ancho'                   => $fila['ancho'],
+			'peso_calculado_posicion' => $fila['peso_calculado_posicion'],
+		];
+		$pesoUnitActual = pesoUnitarioDesdePosicion($posicionParaCalculo, $conceptoActual);
+		$pesoUnitNuevo  = calcularPesoUnitarioPosicion($nuevoPesoMetro, $fila['largo'], $fila['ancho'], $nuevoConcepto);
+		$cantPos = numeroListaCorte($fila['cant_posicion']);
+		$pesoTotalPosActual = round($pesoUnitActual * $cantPos, 2);
+		$pesoTotalPosNuevo  = round($pesoUnitNuevo * $cantPos, 2);
+
+		$listasCorte[$idLC]['conjuntos'][$idConj]['posiciones'][] = [
+			'id'                   => (int)$fila['id_posicion'],
+			'posicion'             => $fila['posicion'],
+			'cantidad'             => $cantPos,
+			'largo'                => numeroListaCorte($fila['largo']),
+			'ancho'                => numeroListaCorte($fila['ancho']),
+			'peso_metro_actual'    => $pesoMetroPosActual,
+			'peso_metro_nuevo'     => $nuevoPesoMetro,
+			'cambio_peso_metro'    => round($pesoMetroPosActual, 4) !== round($nuevoPesoMetro, 4),
+			'calidad_actual'       => $calidadPosActual,
+			'calidad_nueva'        => $nuevaCalidad,
+			'cambio_calidad'       => $calidadPosActual !== $nuevaCalidad,
+			'peso_unitario_actual' => $pesoUnitActual,
+			'peso_unitario_nuevo'  => $pesoUnitNuevo,
+			'cambio_peso_unitario' => round($pesoUnitActual, 2) !== round($pesoUnitNuevo, 2),
+			'peso_total_actual'    => $pesoTotalPosActual,
+			'peso_total_nuevo'     => $pesoTotalPosNuevo,
+			'cambio_peso_total'    => round($pesoTotalPosActual, 2) !== round($pesoTotalPosNuevo, 2),
+		];
+	}
+	return [
+		'afecta_lc'        => true,
+		'total_lcs'        => count($listasCorte),
+		'total_conjuntos'  => count($conjuntoIds),
+		'total_posiciones' => count($filas),
+		'cambios_concepto' => [
+			'concepto' => [
+				'anterior' => $conceptoActual,
+				'nuevo'    => $nuevoConcepto,
+				'cambio'   => $cambioConcepto
+			],
+			'codigo' => [
+				'anterior' => $codigoActual,
+				'nuevo'    => $nuevoCodigo,
+				'cambio'   => $cambioCodigo
+			],
+			'calidad' => [
+				'anterior' => $calidadActual,
+				'nuevo'    => $nuevaCalidad,
+				'cambio'   => $cambioCalidad
+			],
+			'peso_metro' => [
+				'anterior' => $pesoMetroActual,
+				'nuevo'    => $nuevoPesoMetro,
+				'cambio'   => $cambioPesoMetro
+			]
+		],
+		'listas_corte' => array_values(array_map(function($lc) {
+			$lc['conjuntos'] = array_values($lc['conjuntos']);
+			return $lc;
+		}, $listasCorte))
+	];
+}

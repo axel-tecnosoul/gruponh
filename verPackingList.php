@@ -13,6 +13,7 @@ if (!empty($_GET['id'])) {
 
 if (null==$id) {
   header("Location: listarPackingList.php");
+  exit;
 }
 
 if (!empty($_POST)) {
@@ -20,10 +21,16 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT pl.id, plr.id_proyecto, plr.fecha, plr.id_usuario, plr.id_estado_packing_list, plr.nro_revision, plr.anulado FROM packing_lists pl INNER JOIN packing_lists_revisiones plr ON plr.id_packing_list=pl.id AND plr.nro_revision=pl.ultimo_nro_revision WHERE plr.id = ? ";
+  $sql = "SELECT plr.id, plr.id_proyecto, plr.fecha, plr.id_usuario, plr.id_estado_packing_list, plr.nro_revision, plr.anulado FROM packing_lists_revisiones plr WHERE plr.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  if (empty($data)) {
+    Database::disconnect();
+    header("Location: listarPackingList.php");
+    exit;
+  }
   
   Database::disconnect();
 }?>
