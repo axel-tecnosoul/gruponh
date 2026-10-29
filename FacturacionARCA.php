@@ -107,6 +107,86 @@ final class FacturacionARCA
         return ['puntos_venta' => $salesPoints, 'tipos_comprobante' => $voucherTypes];
     }
 
+    public static function consultarActividadesEmpresa(PDO $pdo, int $companyId): array
+    {
+        if (!self::habilitada()) {
+            throw new RuntimeException('La consulta de catálogos ARCA está deshabilitada. Active FACTURACION_ARCA_HABILITADA=1 para habilitarla.');
+        }
+
+        $query = $pdo->prepare('SELECT cuit FROM empresas WHERE id = ?');
+        $query->execute([$companyId]);
+        $cuit = self::digits((string)$query->fetchColumn());
+        if (!self::validCuit($cuit)) {
+            throw new RuntimeException('La empresa debe tener un CUIT válido para consultar sus actividades en ARCA.');
+        }
+
+        $afip = self::afipClient([
+            'id_empresa' => $companyId,
+            'homologacion' => self::homologacion(),
+            'datos_emisor' => self::encode(['cuit' => $cuit]),
+        ]);
+        $taxpayer = $afip->RegisterScopeFive->GetTaxpayerDetails($cuit);
+        if (!is_object($taxpayer)) {
+            throw new RuntimeException('ARCA no devolvió los datos registrales de la empresa.');
+        }
+
+        $activities = [];
+        $groups = [
+            [
+                'regimen' => 'regimen_general',
+                'items' => self::listResponse(self::field(
+                    self::field($taxpayer, 'datosRegimenGeneral'),
+                    'actividad'
+                )),
+            ],
+            [
+                'regimen' => 'monotributo',
+                'items' => self::listResponse(self::field(
+                    self::field($taxpayer, 'datosMonotributo'),
+                    'actividad'
+                )),
+            ],
+            [
+                'regimen' => 'actividad_monotributista',
+                'items' => self::listResponse(self::field(
+                    self::field($taxpayer, 'datosMonotributo'),
+                    'actividadMonotributista'
+                )),
+            ],
+        ];
+
+        $seen = [];
+        foreach ($groups as $group) {
+            foreach ($group['items'] as $activity) {
+                $code = (int)self::field($activity, 'idActividad', 0);
+                if ($code < 1) {
+                    continue;
+                }
+                $nomenclador = (int)self::field($activity, 'nomenclador', 0);
+                $key = $group['regimen'] . '|' . $nomenclador . '|' . $code;
+                if (isset($seen[$key])) {
+                    continue;
+                }
+                $seen[$key] = true;
+                $description = trim((string)self::field($activity, 'descripcionActividad', ''));
+                $activities[] = [
+                    'regimen' => $group['regimen'],
+                    'codigo' => $code,
+                    'descripcion' => mb_substr($description, 0, 255),
+                    'nomenclador' => $nomenclador,
+                    'orden' => (int)self::field($activity, 'orden', 0),
+                    'periodo' => (int)self::field($activity, 'periodo', 0) ?: null,
+                ];
+            }
+        }
+
+        usort($activities, static function (array $a, array $b): int {
+            return [$a['regimen'], $a['orden'], $a['codigo']] <=> [$b['regimen'], $b['orden'], $b['codigo']];
+        });
+
+        return $activities;
+    }
+
     public static function validarFactura(PDO $pdo, int $idFactura, array $input): void
     {
         $invoice = self::loadInvoice($pdo, $idFactura);
@@ -795,28 +875,34 @@ final class FacturacionARCA
 
         $ivaByCode = [];
         $items = [];
-        $grossCents = 0;
+        $receiverExempt = $conditionId === 5;
+        $exemptCents = 0;
         foreach ($rows as $row) {
             $quantity = (float)$row['cantidad'];
             $discount = (float)($row['porcentaje_descuento'] ?? 0);
-            $subtotalCents = (int)round((float)$row['subtotal'] * 100);
-            if ($quantity <= 0 || $subtotalCents < 0 || $discount < 0 || $discount > 100) {
+            // Los subtotales guardados ya son bases netas, también para los CA imputados.
+            $netBaseCents = (int)round((float)$row['subtotal'] * 100);
+            if ($quantity <= 0 || $netBaseCents < 0 || $discount < 0 || $discount > 100) {
                 throw new RuntimeException('Hay un renglón con cantidad, importe o descuento inválido.');
             }
-            $rate = $letter === 'C' ? 0.0 : (float)$row['tasa_iva'];
-            if ($letter !== 'C' && abs($rate) < 0.0001) {
+            $rate = ($letter === 'C' || $receiverExempt) ? 0.0 : (float)$row['tasa_iva'];
+            if ($letter !== 'C' && !$receiverExempt && abs($rate) < 0.0001) {
                 throw new RuntimeException('No se puede emitir un renglón al 0% sin distinguir si es gravado, exento o no gravado. Configure su clasificación fiscal antes de emitir.');
             }
-            $code = self::aliquotCode($rate);
-            $grossCents += $subtotalCents;
-            if (!isset($ivaByCode[$code])) {
-                $ivaByCode[$code] = ['base' => 0, 'importe' => 0, 'tasa' => $rate];
+            if ($receiverExempt) {
+                $code = 0;
+                $exemptCents += $netBaseCents;
+                $netPrice = (float)$row['precio'] > 0 ? round((float)$row['precio'], 2) : 0;
+                $itemBaseCents = 0;
+            } else {
+                $code = self::aliquotCode($rate);
+                if (!isset($ivaByCode[$code])) {
+                    $ivaByCode[$code] = ['base' => 0, 'importe' => 0, 'tasa' => $rate];
+                }
+                $ivaByCode[$code]['base'] += $netBaseCents;
+                $netPrice = ((float)$row['precio'] > 0) ? round((float)$row['precio'], 2) : 0;
+                $itemBaseCents = $netBaseCents;
             }
-            $ivaByCode[$code]['base'] += $subtotalCents;
-
-            $factor = ($rate > 0) ? (1 + $rate / 100) : 1;
-            $netPrice = ((float)$row['precio'] > 0) ? round((float)$row['precio'] / $factor, 2) : 0;
-            $netBase = round((float)$row['subtotal'] / $factor, 2);
 
             $projectCode = (string)($invoice['proyecto_codigo'] ?? '');
             $items[] = [
@@ -828,7 +914,7 @@ final class FacturacionARCA
                 'cantidad' => $quantity,
                 'precio_unitario' => $netPrice,
                 'descuento_porcentaje' => $discount,
-                'base_imponible' => $netBase,
+                'base_imponible' => $itemBaseCents / 100,
                 'codigo_iva_arca' => $code,
                 'alicuota_iva' => $rate,
             ];
@@ -838,10 +924,8 @@ final class FacturacionARCA
         $netCents = 0;
         foreach ($ivaByCode as $code => &$amounts) {
             $t = (float)$amounts['tasa'];
-            $grossBaseCents = (int)$amounts['base'];
-            $ivaPartCents = ($t > 0) ? (int)round($grossBaseCents * $t / (100 + $t)) : 0;
-            $netBaseCents = $grossBaseCents - $ivaPartCents;
-            $amounts['base'] = $netBaseCents;
+            $netBaseCents = (int)$amounts['base'];
+            $ivaPartCents = ($t > 0) ? (int)round($netBaseCents * $t / 100) : 0;
             $amounts['importe'] = $ivaPartCents;
             $ivaCents += $ivaPartCents;
             $netCents += $netBaseCents;
@@ -884,11 +968,11 @@ final class FacturacionARCA
             'moneda' => $currency,
             'moneda_texto' => (string)$invoice['moneda'],
             'cotizacion' => $exchangeRate,
-            'total_centavos' => $netCents + $ivaCents,
+            'total_centavos' => $netCents + $ivaCents + $exemptCents,
             'neto_centavos' => $netCents,
             'iva_centavos' => $ivaCents,
             'no_gravado_centavos' => 0,
-            'exento_centavos' => 0,
+            'exento_centavos' => $exemptCents,
             'tributos_centavos' => 0,
             'iva_por_codigo' => $ivaByCode,
             'detalle' => [
@@ -951,6 +1035,9 @@ final class FacturacionARCA
         $groups = [];
         foreach (($detail['items'] ?? []) as $item) {
             $code = (int)$item['codigo_iva_arca'];
+            if ($code < 1) {
+                continue;
+            }
             if (!isset($groups[$code])) {
                 $groups[$code] = ['base' => 0, 'rate' => (float)$item['alicuota_iva']];
             }
@@ -968,6 +1055,11 @@ final class FacturacionARCA
     }
 
     private static function billing(array $record)
+    {
+        return self::afipClient($record)->ElectronicBilling;
+    }
+
+    private static function afipClient(array $record)
     {
         if (!class_exists('SoapClient')) {
             throw new RuntimeException('El módulo PHP SOAP no está habilitado en el servidor.');
@@ -1013,7 +1105,7 @@ final class FacturacionARCA
             'key' => basename($key),
         ];
         $afip = new Afip($options);
-        return $afip->ElectronicBilling;
+        return $afip;
     }
 
     private static function loadInvoice(PDO $pdo, int $id): ?array

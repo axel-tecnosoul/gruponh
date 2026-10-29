@@ -244,6 +244,13 @@ foreach ($pointRows as &$pointRow) {
     $pointRow['tipos'] = array_map('intval', $pointTypeQuery->fetchAll(PDO::FETCH_COLUMN));
 }
 unset($pointRow);
+$activityQuery = $pdo->prepare(
+    'SELECT regimen, codigo, descripcion, nomenclador, orden, periodo, fecha_sincronizacion
+     FROM arca_actividades_empresa WHERE id_empresa = ?
+     ORDER BY FIELD(regimen, "regimen_general", "monotributo", "actividad_monotributista"), orden, codigo'
+);
+$activityQuery->execute([$companyId]);
+$activityRows = $activityQuery->fetchAll(PDO::FETCH_ASSOC);
 
 $provinceRows = $pdo->query('SELECT id, provincia FROM provincias ORDER BY provincia')->fetchAll(PDO::FETCH_ASSOC);
 $provinceQuery = $pdo->prepare('SELECT id_provincia, url_padron FROM empresas_padrones_retencion WHERE id_empresa = ?');
@@ -402,6 +409,48 @@ $escape = static function ($value): string {
                         <td><button type="button" class="btn btn-link p-0 quitarPuntoVenta" title="Quitar punto de venta"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Quitar" title="Quitar"></button></td>
                       </tr>
                     <?php endforeach; ?>
+                    </tbody>
+                  </table>
+                </div>
+
+                <hr>
+                <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
+                  <h5 class="mb-0">Actividades económicas registradas en ARCA</h5>
+                  <button type="button" class="btn btn-link p-0 arca-icon-button" id="consultarActividadesArca"
+                    title="Consultar actividades en ARCA" aria-label="Consultar actividades en ARCA"
+                    <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
+                    <img src="img/import.png" width="24" height="25" border="0" alt="Consultar actividades en ARCA">
+                  </button>
+                </div>
+                <div id="estadoConsultaActividadesArca" class="mb-2" role="status"></div>
+                <div class="dt-ext table-responsive">
+                  <table class="table table-bordered table-sm" id="tablaActividadesArca">
+                    <thead>
+                      <tr>
+                        <th>Régimen</th>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Nomenclador</th>
+                        <th>Orden</th>
+                        <th>Período</th>
+                        <th>Sincronizada</th>
+                      </tr>
+                    </thead>
+                    <tbody id="actividadesArca">
+                      <?php foreach ($activityRows as $activity): ?>
+                        <tr>
+                          <td><?= $escape($activity['regimen']) ?></td>
+                          <td><?= (int)$activity['codigo'] ?></td>
+                          <td><?= $escape($activity['descripcion']) ?></td>
+                          <td><?= (int)$activity['nomenclador'] ?: '—' ?></td>
+                          <td><?= (int)$activity['orden'] ?: '—' ?></td>
+                          <td><?= $activity['periodo'] !== null ? (int)$activity['periodo'] : '—' ?></td>
+                          <td><?= $escape($activity['fecha_sincronizacion']) ?></td>
+                        </tr>
+                      <?php endforeach; ?>
+                      <?php if (count($activityRows) === 0): ?>
+                        <tr><td colspan="7" class="text-muted">Todavía no se sincronizaron actividades desde ARCA.</td></tr>
+                      <?php endif; ?>
                     </tbody>
                   </table>
                 </div>
@@ -667,6 +716,72 @@ $escape = static function ($value): string {
         } catch (error) {
           status.textContent = error.message;
           status.className = 'text-danger';
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      document.getElementById('consultarActividadesArca').addEventListener('click', async function () {
+        const status = document.getElementById('estadoConsultaActividadesArca');
+        const body = document.getElementById('actividadesArca');
+        const button = this;
+        button.disabled = true;
+        status.className = 'text-muted mb-2';
+        status.textContent = 'Consultando actividades en ARCA...';
+
+        try {
+          const response = await fetch('consultarActividadesEmpresaARCA.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: new URLSearchParams({
+              id_empresa: '<?= (int)$companyId ?>',
+              csrf_token: '<?= $escape($_SESSION['csrf_empresa_arca']) ?>'
+            })
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'No se pudieron consultar las actividades de ARCA.');
+          }
+
+          body.replaceChildren();
+          const regimenLabels = {
+            regimen_general: 'Régimen general',
+            monotributo: 'Monotributo',
+            actividad_monotributista: 'Actividad monotributista'
+          };
+          data.actividades.forEach(function (activity) {
+            const row = document.createElement('tr');
+            [
+              regimenLabels[activity.regimen] || activity.regimen,
+              activity.codigo,
+              activity.descripcion,
+              Number(activity.nomenclador) || '—',
+              Number(activity.orden) || '—',
+              activity.periodo || '—',
+              data.sincronizada_en
+            ].forEach(function (value) {
+              const cell = document.createElement('td');
+              cell.textContent = String(value);
+              row.appendChild(cell);
+            });
+            body.appendChild(row);
+          });
+
+          if (data.actividades.length === 0) {
+            const row = document.createElement('tr');
+            const cell = document.createElement('td');
+            cell.colSpan = 7;
+            cell.className = 'text-muted';
+            cell.textContent = 'ARCA no informó actividades para esta empresa.';
+            row.appendChild(cell);
+            body.appendChild(row);
+          }
+
+          status.className = 'text-success mb-2';
+          status.textContent = 'Sincronización completada: ' + data.cantidad + ' actividad(es).';
+        } catch (error) {
+          status.className = 'text-danger mb-2';
+          status.textContent = error.message;
         } finally {
           button.disabled = false;
         }

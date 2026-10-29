@@ -186,6 +186,14 @@ if (!empty($_POST)) {
     $iva = 0;
     $totalFv = 0;
     $basesPorAlicuota = [];
+    $qCondicionReceptor = $pdo->prepare('SELECT id_condicion_iva FROM cuentas WHERE id = ?');
+    $qCondicionReceptor->execute([$idCuentaDest]);
+    $condicionReceptor = $qCondicionReceptor->fetchColumn();
+    if ($condicionReceptor === false) {
+      throw new RuntimeException('Seleccione un cliente válido para la factura.');
+    }
+    $receptorExento = (int)$condicionReceptor === 5;
+    $esFacturaC = strtoupper(letraComprobanteDesdeTipo((string)$tipoRow['descripcion'])) === 'C';
     $detalles = !empty($_POST['detalles_json']) ? json_decode($_POST['detalles_json'], true) : [];
 
     if (is_array($detalles)) {
@@ -270,23 +278,29 @@ if (!empty($_POST)) {
 
         $qTasa->execute([intval($det['id_concepto'])]);
         $tasaIva = (float)$qTasa->fetchColumn();
-        $noGravado += $subtotal;
-        $claveTasa = number_format($tasaIva, 4, '.', '');
-        $basesPorAlicuota[$claveTasa] = ($basesPorAlicuota[$claveTasa] ?? 0) + (int)round($subtotal * 100);
+        if ($receptorExento || $esFacturaC) {
+          $tasaIva = 0;
+        }
+        if ($tasaIva > 0) {
+          $gravado += $subtotal;
+          $claveTasa = number_format($tasaIva, 4, '.', '');
+          $basesPorAlicuota[$claveTasa] = ($basesPorAlicuota[$claveTasa] ?? 0) + (int)round($subtotal * 100);
+        } else {
+          $noGravado += $subtotal;
+        }
       }
     }
 
     foreach ($basesPorAlicuota as $tasa => $baseCentavos) {
       $t = (float)$tasa;
       if ($t > 0) {
-        $iva += round($baseCentavos * $t / (100 + $t)) / 100;
+        $iva += round($baseCentavos * $t / 100) / 100;
       }
     }
-    $brutoTotal = round($noGravado, 2);
+    $gravado = round($gravado, 2);
+    $noGravado = round($noGravado, 2);
     $iva = round($iva, 2);
-    $noGravado = round($brutoTotal - $iva, 2);
-    $gravado = $brutoTotal;
-    $totalFv = $brutoTotal;
+    $totalFv = round($gravado + $noGravado + $iva, 2);
 
     // Retenciones
     $totalOtros = 0;
@@ -540,9 +554,12 @@ if ($editMode && $editId) {
       ];
     }
 
+    $qCondicionReceptor = $pdo->prepare('SELECT id_condicion_iva FROM cuentas WHERE id = ?');
+    $qCondicionReceptor->execute([$facturaData['id_cuenta_destino']]);
     $proyectoDatos = [
       'id_empresa' => $facturaData['id_empresa'],
       'id_cliente' => $facturaData['id_cuenta_destino'],
+      'id_condicion_iva' => $qCondicionReceptor->fetchColumn(),
     ];
     $_GET['id_proyecto'] = $facturaData['id_proyecto'];
 
@@ -554,7 +571,7 @@ if ($editMode && $editId) {
 } elseif (!empty($_GET['id_proyecto'])) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $q = $pdo->prepare("SELECT p.id, p.nombre, p.id_cliente, p.solicitante,
+  $q = $pdo->prepare("SELECT p.id, p.nombre, p.id_cliente, p.solicitante, cu.id_condicion_iva,
                                s.id_empresa,
                                COALESCE(cu.nombre, p.solicitante) AS nombre_cliente
                         FROM proyectos p

@@ -169,16 +169,17 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <div class="col-sm-8">
                             <?php if ($preseleccionado): ?>
                               <p class="form-control-plaintext"><?= htmlspecialchars($clienteLabel) ?></p>
-                              <input type="hidden" name="id_cuenta_destino" id="id_cuenta_destino" value="<?= intval($proyectoDatos['id_cliente']) ?>">
+                              <input type="hidden" name="id_cuenta_destino" id="id_cuenta_destino" value="<?= intval($proyectoDatos['id_cliente']) ?>" data-exento="<?= (int)($proyectoDatos['id_condicion_iva'] ?? 0) === 5 ? 'true' : 'false' ?>">
                             <?php else: ?>
                             <select name="id_cuenta_destino" id="id_cuenta_destino" class="js-example-basic-single col-sm-12" required>
                               <option value="">Seleccione...</option>
                               <?php
                               $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (1) AND activo = 1 AND anulado = 0");
+                              $q = $pdo->prepare("SELECT id, nombre, id_condicion_iva FROM cuentas WHERE id_tipo_cuenta IN (1) AND activo = 1 AND anulado = 0");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                echo "<option value='{$f['id']}'>" . htmlspecialchars($f['nombre']) . "</option>";
+                                $esExento = (int)$f['id_condicion_iva'] === 5 ? 'true' : 'false';
+                                echo "<option value='{$f['id']}' data-exento='{$esExento}'>" . htmlspecialchars($f['nombre']) . "</option>";
                               }
                               Database::disconnect();
                               ?>
@@ -1175,10 +1176,13 @@ $fv = function($key, $default = '') use ($facturaData) {
       <?php if ($vista === 'venta'): ?>
       var basesPorAlicuota = {};
       var esFacturaC = ($('#id_tipo_comprobante option:selected').data('letra') || '').toString().toUpperCase() === 'C';
+      var cliente = $('#id_cuenta_destino');
+      var clienteSeleccionado = cliente.is('select') ? cliente.find('option:selected') : cliente;
+      var receptorExento = String(clienteSeleccionado.data('exento')) === 'true';
       detalles.forEach(function(item) {
         var tasa = parseFloat($('#det_concepto option[value="' + item.id_concepto + '"]').data('tasa'));
         if (!Number.isFinite(tasa)) tasa = 21;
-        if (esFacturaC) tasa = 0;
+        if (esFacturaC || receptorExento) tasa = 0;
         var sub = 0;
         var impsData = item.imputaciones_data || [];
         if (impsData.length) {
@@ -1196,16 +1200,14 @@ $fv = function($key, $default = '') use ($facturaData) {
       Object.keys(basesPorAlicuota).forEach(function(tasa) {
         var t = parseFloat(tasa);
         if (t > 0) {
-          ivaTotal += Math.round(basesPorAlicuota[tasa] * t / (100 + t)) / 100;
+          ivaTotal += Math.round(basesPorAlicuota[tasa] * t / 100) / 100;
         }
       });
       ivaTotal = Math.round(ivaTotal * 100) / 100;
-      var brutoTotal = subTotal;
-      var netoTotal = Math.round((brutoTotal - ivaTotal) * 100) / 100;
       $('#granIva').text(monedaSimbolo + ' ' + formatNumber(ivaTotal));
-      $('#granSubtotal').text(monedaSimbolo + ' ' + formatNumber(netoTotal));
+      $('#granSubtotal').text(monedaSimbolo + ' ' + formatNumber(subTotal));
       $('#granRetenciones').text(monedaSimbolo + ' ' + formatNumber(retTotal));
-      $('#granTotal').text(monedaSimbolo + ' ' + formatNumber(brutoTotal + retTotal));
+      $('#granTotal').text(monedaSimbolo + ' ' + formatNumber(subTotal + ivaTotal + retTotal));
       <?php else: ?>
       subTotal = totalDetalleValue();
       $('#granSubtotal').text(monedaSimbolo + ' ' + formatNumber(subTotal));
@@ -1362,6 +1364,7 @@ $fv = function($key, $default = '') use ($facturaData) {
           });
       }
       $('#id_cuenta_destino').on('change', cargarImputacionesVenta);
+      $('#id_cuenta_destino').on('change', actualizarGranTotal);
       <?php endif; ?>
 
       // Cotización del dólar: selector de tipo + valor del día anterior (ver assets/js/cotizacion-dolar.js)

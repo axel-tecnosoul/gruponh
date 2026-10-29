@@ -716,6 +716,22 @@ CREATE TABLE IF NOT EXISTS `arca_punto_venta_tipos` (
     FOREIGN KEY (`codigo_tipo_comprobante`) REFERENCES `arca_tipos_comprobante` (`codigo`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Actividades económicas sincronizadas por empresa desde el padrón ARCA (WS SR Padrón A5).
+CREATE TABLE IF NOT EXISTS `arca_actividades_empresa` (
+  `id_empresa` INT NOT NULL,
+  `regimen` VARCHAR(32) NOT NULL,
+  `codigo` BIGINT NOT NULL,
+  `descripcion` VARCHAR(255) NOT NULL DEFAULT '',
+  `nomenclador` INT NOT NULL DEFAULT 0,
+  `orden` INT NOT NULL DEFAULT 0,
+  `periodo` INT NULL,
+  `fecha_sincronizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_empresa`, `regimen`, `nomenclador`, `codigo`),
+  KEY `idx_arca_actividades_empresa_codigo` (`codigo`),
+  CONSTRAINT `fk_arca_actividades_empresa_empresa`
+    FOREIGN KEY (`id_empresa`) REFERENCES `empresas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `empresas_padrones_retencion` (
   `id_empresa` INT NOT NULL,
   `id_provincia` INT NOT NULL,
