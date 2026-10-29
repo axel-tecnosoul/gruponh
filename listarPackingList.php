@@ -8,6 +8,8 @@ include 'database.php';
 $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
 $prodQuery = $prod ? '?prod=' . $prod : '';
 $prodParam = $prod ? '&prod=' . $prod : '';
+$estadosPackingPost = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,10 +67,10 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 					  <div class="form-group mb-0">
 						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
 					  </div>
-					  <div class="form-group mb-0">
+                                        <div class="form-group mb-0 filter-state-group">
 						Estado:&nbsp;
-						<select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple" multiple="multiple">
-							<option value="">Todos</option>
+						<select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
+							<option value="" <?= $seleccionarTodosEstadosPacking ? 'selected' : '' ?>>Todos</option>
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -77,10 +79,8 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if (isset($_POST['id_estado'])) {
-									if (in_array($fila['id'],$_POST['id_estado'])) {
-										echo " selected ";
-									}
+								if (in_array((int)$fila['id'], $estadosPackingPost, true)) {
+									echo " selected ";
 								}
 								echo ">".$fila['estado']."</option>";
 							}
@@ -88,7 +88,7 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 							?>
 							</select>
 					  </div>
-					  <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-form-actions">
                                                 <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarPackingList.php<?= $prodQuery ?>'">Buscar</button>
 					  </div>
 					</form>
@@ -166,8 +166,8 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 							if (!empty($_POST['fechah'])) {
 								$sql .= " AND plr.fecha <= '".$_POST['fechah']."' ";
 							}
-							if (!empty($_POST['id_estado'][0])) {
-								$sql .= " AND e.id in (".implode(', ',$_POST['id_estado']).") ";
+							if ($estadosPackingPost) {
+								$sql .= " AND e.id in (".implode(', ', $estadosPackingPost).") ";
 							}
 									 
                             foreach ($pdo->query($sql) as $row) {

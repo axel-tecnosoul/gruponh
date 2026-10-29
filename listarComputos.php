@@ -7,6 +7,8 @@ if (empty($_SESSION['user'])) {
 include 'config.php';
 include 'database.php';
 $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
+$estadosComputoPost = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$estadosComputoSeleccionados = $estadosComputoPost ?: [1, 2, 3, 4];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -78,9 +80,9 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
                     <div class="form-group mb-0">
                       Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha" id="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah" id="fechah">
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-state-group">
                       Estado:&nbsp;
-                      <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
+                      <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
                         <option value="">Todos</option><?php
                                                         $pdo = Database::connect();
                                                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -89,21 +91,15 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
                                                         $q->execute();
                                                         while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                                                           echo "<option value='" . $fila['id'] . "'";
-                                                          if (isset($_POST['id_estado'])) {
-                                                            if (in_array($fila['id'], $_POST['id_estado'])) {
-                                                              echo " selected ";
-                                                            }
-                                                          } else {
-                                                            if (in_array($fila['id'], [1, 2, 3, 4])) {
-                                                              echo " selected ";
-                                                            }
+                                                          if (in_array((int)$fila['id'], $estadosComputoSeleccionados, true)) {
+                                                            echo " selected ";
                                                           }
                                                           echo ">" . $fila['estado'] . "</option>";
                                                         }
                                                         Database::disconnect(); ?>
                       </select>
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-form-actions">
                       <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php<?= $prodQuery ?>'">Buscar</button>
                     </div>
                   </form>
@@ -202,11 +198,7 @@ $prodQuery = isset($_GET['prod']) ? '?prod=' . (int)$_GET['prod'] : '';
                         if (!empty($_POST['fechah'])) {
                           $sql .= " AND c.fecha <= '" . $_POST['fechah'] . "' ";
                         }
-                        if (!empty($_POST['id_estado'][0])) {
-                          $sql .= " AND ec.id in (" . implode(', ', $_POST['id_estado']) . ") ";
-                        } else {
-                          $sql .= " AND ec.id in (1,2,3,4) ";
-                        }
+                        $sql .= " AND ec.id in (" . implode(', ', $estadosComputoSeleccionados) . ") ";
                         foreach ($pdo->query($sql) as $row) {
                         ?>
                           <tr data-estado-id="<?= $row["id_estado"] ?>" data-id="<?= $row["id_computo"] ?>" data-nro-revision="<?= $row["nro_revision"] ?>" data-max-revision="<?= $row["max_revision"] ?>" data-estado-proyecto="<?= $row["id_estado_proyecto"] ?>">

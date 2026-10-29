@@ -5,6 +5,9 @@ if (empty($_SESSION['user'])) {
     die("Redirecting to index.php");
 }
 include 'database.php';
+$estadosProyectoPost = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$estadosProyectoSeleccionados = empty($_POST) ? [2] : $estadosProyectoPost;
+$seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSeleccionados);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -99,10 +102,10 @@ include 'database.php';
 							?>
 							</select>
 					  </div>
-					  <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-state-group">
 						Estado:&nbsp;
-						<select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-							<option value="">Todos</option>
+						<select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
+							<option value="" <?= $seleccionarTodosEstadosProyecto ? 'selected' : '' ?>>Todos</option>
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -111,11 +114,7 @@ include 'database.php';
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-                if (isset($_POST['id_estado'])) {
-                    if (in_array($fila['id'],$_POST['id_estado'])) {
-                        echo " selected ";
-                    }
-                } elseif (empty($_POST) && $fila['id'] == 2) {
+                if (in_array((int)$fila['id'], $estadosProyectoSeleccionados, true)) {
                     echo " selected ";
                 }
 								echo ">".$fila['estado']."</option>";
@@ -124,7 +123,7 @@ include 'database.php';
 							?>
 							</select>
 					  </div>
-					  <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-form-actions">
 						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarProyectos.php'">Buscar</button>
 						<button type="button" class="btn btn-secondary ml-2" id="btnLimpiarFiltros">Limpiar</button>
 					  </div>

@@ -14,7 +14,10 @@ $filters = gestionarFiltros('listarOrdenesTrabajo');
 $nro       = $filters['nro']       ?? "";
 $fecha     = $filters['fecha']     ?? "";
 $fechah    = $filters['fechah']    ?? "";
-$id_estado = $filters['id_estado'] ?? [];
+$id_estado = array_values(array_filter(array_map('intval', (array)($filters['id_estado'] ?? []))));
+if (!$id_estado) {
+  $id_estado = [1, 2, 3, 4];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -65,9 +68,9 @@ $id_estado = $filters['id_estado'] ?? [];
                       <div class="form-group mb-0">
                         Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=htmlspecialchars($fecha)?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=htmlspecialchars($fechah)?>" name="fechah">
                       </div>
-                      <div class="form-group mb-0">
-                        Estado:&nbsp;
-                        <select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple" multiple="multiple">
+                        <div class="form-group mb-0 filter-state-group">
+                          Estado:&nbsp;
+                        <select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
                           <option value="">Todos</option><?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -75,13 +78,13 @@ $id_estado = $filters['id_estado'] ?? [];
                           $q = $pdo->prepare($sqlZon);
                           $q->execute();
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                            $selected = in_array($fila['id'], $id_estado) ? " selected" : "";?>
+                            $selected = in_array((int)$fila['id'], $id_estado, true) ? " selected" : "";?>
                             <option value='<?=$fila['id']?>'<?=$selected?>><?=$fila['estado']?></option><?php
                           }
                           Database::disconnect();?>
                         </select>
                       </div>
-                      <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-form-actions">
                         <button type="submit" class="btn btn-primary">Buscar</button>
                         <a href="listarOrdenesTrabajo.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                       </div>

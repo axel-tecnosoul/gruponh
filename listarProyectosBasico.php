@@ -5,6 +5,8 @@ if (empty($_SESSION['user'])) {
     die("Redirecting to index.php");
 }
 include 'database.php';
+$estadosProyectoBasicoSeleccionados = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -93,10 +95,10 @@ include 'database.php';
 							?>
 							</select>
 					  </div>
-					  <div class="form-group mb-0">
+            <div class="form-group mb-0 filter-state-group">
 						Estado:&nbsp;
-						<select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-							<option value="">Todos</option>
+						<select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
+							<option value="" <?= $seleccionarTodosEstadosBasico ? 'selected' : '' ?>>Todos</option>
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -105,10 +107,8 @@ include 'database.php';
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if (isset($_POST['id_estado'])) {
-									if (in_array($fila['id'],$_POST['id_estado'])) {
-										echo " selected ";
-									}
+								if (in_array((int)$fila['id'], $estadosProyectoBasicoSeleccionados, true)) {
+									echo " selected ";
 								}
 								echo ">".$fila['estado']."</option>";
 							}
@@ -116,7 +116,7 @@ include 'database.php';
 							?>
 							</select>
 					  </div>
-					  <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-form-actions">
 						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarProyectosBasico.php'">Buscar</button>
 					  </div>
 					</form>

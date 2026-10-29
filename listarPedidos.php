@@ -17,16 +17,24 @@ $id_estado = $filters['id_estado'] ?? [];
 
 if (empty($filters)) {
   $id_estado = [1, 2, 3, 4];
+} elseif (!array_key_exists('id_estado', $filters)) {
+  $id_estado = ['todos'];
 }
 
 if (in_array("todos", $id_estado)) {
   $id_estado = ["todos"];
   $filtrarPorEstado = false;
 } else {
-  $id_estado = array_filter($id_estado, function($v) {
+  $id_estado = array_values(array_filter($id_estado, function($v) {
     return $v !== "" && $v !== null;
-  });
+  }));
+  if (!$id_estado) {
+    $id_estado = ['todos'];
+  }
   $filtrarPorEstado = !empty($id_estado);
+  if (in_array('todos', $id_estado, true)) {
+    $filtrarPorEstado = false;
+  }
 }
 
 ?>
@@ -134,9 +142,9 @@ if (in_array("todos", $id_estado)) {
                       <div class="form-group mb-0">
                         Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?=$fecha?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?=$fechah?>" name="fechah">
                       </div>
-                      <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-state-group">
                         Estado:&nbsp;
-                        <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
+                        <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
                           <option value="todos" <?= in_array("todos", $id_estado) ? 'selected' : '' ?>>Todos</option>
                           <?php
                           $pdo = Database::connect();
@@ -154,7 +162,7 @@ if (in_array("todos", $id_estado)) {
                           Database::disconnect();?>
                         </select>
                       </div>
-                      <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-form-actions">
                         <button type="submit" class="btn btn-primary">Buscar</button>
                         <a href="listarPedidos.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                       </div>

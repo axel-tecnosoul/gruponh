@@ -139,3 +139,30 @@ body {
   line-height: 1.5 !important;
   padding: 0.25rem 0.5rem !important;
 }
+.filter-state-group {
+  flex: 1 1 350px;
+  min-width: 350px;
+}
+
+.filter-state-multiple + .select2-container {
+  width: 300px !important;
+  min-width: 300px;
+}
+
+.filter-form-actions .btn {
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+@media (max-width: 767.98px) {
+  .filter-state-group {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .filter-state-multiple + .select2-container {
+    width: calc(100% - 58px) !important;
+    min-width: 0;
+  }
+}

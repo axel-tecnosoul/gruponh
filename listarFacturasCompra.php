@@ -12,7 +12,10 @@ $fecha = $filters['fecha'] ?? "";
 $fechah = $filters['fechah'] ?? "";
 $proveedor = $filters['proveedor'] ?? "";
 $tipo_letra = $filters['tipo_letra'] ?? "";
-$id_estado = $filters['id_estado'] ?? [];?>
+$id_estado = $filters['id_estado'] ?? [];
+$estadosSeleccionados = array_values(array_filter(array_map('intval', (array)$id_estado)));
+$seleccionarTodosEstados = empty($estadosSeleccionados);
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -77,10 +80,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         Database::disconnect();?>
                       </select>
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-state-group">
                       Estado:&nbsp;
-                      <select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple" multiple="multiple">
-                        <option value="">Todos</option><?php
+                      <select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
+                        <option value="" <?= $seleccionarTodosEstados ? 'selected' : '' ?>>Todos</option><?php
                         $pdo = Database::connect();
                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                         $sqlZon = "SELECT `id`, `estado` FROM `estados_factura` WHERE 1 ORDER BY id ASC";
@@ -88,7 +91,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         $q->execute();
                         while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                           $selected="";
-                          if (in_array($fila['id'], $id_estado)) {
+                          if (in_array((int)$fila['id'], $estadosSeleccionados, true)) {
                             $selected="selected";
                           }?>
                           <option value='<?=$fila['id']?>' <?=$selected?>><?=$fila['estado']?></option><?php
@@ -96,7 +99,7 @@ $id_estado = $filters['id_estado'] ?? [];?>
                         Database::disconnect();?>
                       </select>
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-form-actions">
                       <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarFacturasCompra.php'">Buscar</button>
                       <a href="listarFacturasCompra.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                     </div>
@@ -177,10 +180,10 @@ $id_estado = $filters['id_estado'] ?? [];?>
                             $sql .= " AND tc.descripcion = ? ";
                             $params[] = $tipo_letra;
                           }
-                          if (!empty($id_estado[0])) {
-                            $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
+                          if ($estadosSeleccionados) {
+                            $placeholders = implode(',', array_fill(0, count($estadosSeleccionados), '?'));
                             $sql .= " AND fc.id_estado IN ($placeholders) ";
-                            $params = array_merge($params, $id_estado);
+                            $params = array_merge($params, $estadosSeleccionados);
                           }
 
                           $q = $pdo->prepare($sql);

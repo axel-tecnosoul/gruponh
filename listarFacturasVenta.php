@@ -13,6 +13,8 @@ $fechah = $filters['fechah'] ?? '';
 $cliente = $filters['cliente'] ?? '';
 $tipo_letra = $filters['tipo_letra'] ?? '';
 $id_estado = $filters['id_estado'] ?? [];
+$estadosSeleccionados = array_values(array_filter(array_map('intval', (array)$id_estado)));
+$seleccionarTodosEstados = empty($estadosSeleccionados);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -87,24 +89,24 @@ $id_estado = $filters['id_estado'] ?? [];
                         ?>
                       </select>
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-state-group">
                       Estado:&nbsp;
-                      <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-                        <option value="">Todos</option>
+                      <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
+                        <option value="" <?= $seleccionarTodosEstados ? 'selected' : '' ?>>Todos</option>
                         <?php
                         $pdo = Database::connect();
                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                         $q = $pdo->prepare("SELECT id, estado FROM estados_factura ORDER BY id ASC");
                         $q->execute();
                         while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                          $sel = in_array($fila['id'], $id_estado) ? ' selected' : '';
+                          $sel = in_array((int)$fila['id'], $estadosSeleccionados, true) ? ' selected' : '';
                           echo "<option value='{$fila['id']}'$sel>{$fila['estado']}</option>";
                         }
                         Database::disconnect();
                         ?>
                       </select>
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-form-actions">
                       <button class="btn btn-primary" type="submit">Buscar</button>
                       <a href="listarFacturasVenta.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
                     </div>
@@ -227,10 +229,10 @@ $id_estado = $filters['id_estado'] ?? [];
                             $sql .= " AND tc.descripcion = ?";
                             $params[] = $tipo_letra;
                           }
-                          if (!empty($id_estado[0])) {
-                            $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
-                            $sql .= " AND ef.id IN ($placeholders)";
-                            $params = array_merge($params, $id_estado);
+                           if ($estadosSeleccionados) {
+                             $placeholders = implode(',', array_fill(0, count($estadosSeleccionados), '?'));
+                             $sql .= " AND ef.id IN ($placeholders)";
+                             $params = array_merge($params, $estadosSeleccionados);
                           }
                            $q = $pdo->prepare($sql);
                            $q->execute($params);

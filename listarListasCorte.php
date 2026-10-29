@@ -11,6 +11,13 @@ $estadosProd = '';
 if($prodQuery){
   $estadosProd = '3,4'; //Aprobada y Gestionando
 }
+$estadosCortePermitidos = !empty($estadosProd) ? array_map('intval', explode(',', $estadosProd)) : null;
+$estadosCorteDefault = $estadosCortePermitidos ?? [1, 2, 3, 4];
+$estadosCortePost = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$estadosCorteSeleccionados = $estadosCortePost
+  ? ($estadosCortePermitidos ? array_values(array_intersect($estadosCortePost, $estadosCortePermitidos)) : $estadosCortePost)
+  : $estadosCorteDefault;
+if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefault;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,9 +83,9 @@ if($prodQuery){
                       <div class="form-group mb-0">
                         Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha" id="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah" id="fechah">
                       </div>
-                      <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-state-group">
                         Estado:&nbsp;
-                        <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
+                        <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
                           <option value="">Todos</option><?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -88,24 +95,17 @@ if($prodQuery){
                           while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                             $id_estado = (int)$fila['id'];
                             $inProd = !empty($estadosProd);
-                            $permitidos = $inProd ? array_map('intval', explode(',', $estadosProd)) : null;
+                            $permitidos = $estadosCortePermitidos;
                             // Mostrar opción si no es producción o si el estado está permitido en producción
                             if (!$inProd || ($permitidos && in_array($id_estado, $permitidos, true))) {
-                              $selected = '';
-                              if (isset($_POST['id_estado'])) {
-                                // Forzar a int por seguridad
-                                $postEstados = array_map('intval', (array)$_POST['id_estado']);
-                                if (in_array($id_estado, $postEstados, true)) {
-                                  $selected = " selected ";
-                                }
-                              }?>
+                              $selected = in_array($id_estado, $estadosCorteSeleccionados, true) ? ' selected' : '';?>
                               <option value='<?=$id_estado?>'<?=$selected?>><?=$fila['estado']?></option><?php
                             }
                           }
                           Database::disconnect();?>
                         </select>
                       </div>
-                      <div class="form-group mb-0">
+                      <div class="form-group mb-0 filter-form-actions">
                         <button class="btn btn-primary" id="btnFiltrar" onclick="document.form1.target='_self';document.form1.action='listarListasCorte.php<?= $prodQuery ?>'">Buscar</button>
                         <button type="button" class="btn btn-secondary ml-2" id="btnLimpiarFiltros">Limpiar</button>
                       </div>
@@ -185,22 +185,8 @@ if($prodQuery){
                           if (!empty($_POST['fechah'])) {
                             $sql .= " AND lc.fecha <= '".$_POST['fechah']."' ";
                           }
-                          // Filtro por estado: en modo producción forzar 3 y 4 por defecto
-                          $selectedEstados = [];
-                          if (!empty($_POST['id_estado'][0])) {
-                            // Sanitizar a enteros
-                            $selectedEstados = array_map('intval', (array)$_POST['id_estado']);
-                            if (!empty($estadosProd)) {
-                              // En producción, limitar a 3 y 4 aunque envíen otros valores
-                              $permitidos = array_map('intval', explode(',', $estadosProd));
-                              $selectedEstados = array_values(array_intersect($selectedEstados, $permitidos));
-                            }
-                          }
-                          if (!empty($selectedEstados)) {
-                            $sql .= " AND e.id in (".implode(',', $selectedEstados).") ";
-                          } else {
-                            $sql .= " AND e.id in (" . (!empty($estadosProd) ? $estadosProd : '1,2,3,4') . ") ";
-                          }
+                          // Los estados que se muestran seleccionados son los mismos que filtran al iniciar.
+                          $sql .= " AND e.id in (".implode(',', $estadosCorteSeleccionados).") ";
                           //echo $sql;
                           foreach ($pdo->query($sql) as $row) {?>
                             <tr data-estado-id="<?=$row["id_estado_lista_corte"]?>" data-estado-nombre="<?=$row["estado"]?>" data-id-lista-corte="<?=$row["id_lista_corte"]?>" data-numero-lc="<?=$row["numero_lc"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-proyecto="<?=$row["nombre_proyecto"]?>" data-sitio="<?=$row["nro_sitio"]?>" data-subsitio="<?=$row["nro_subsitio"]?>" data-proy="<?=$row["nro_proyecto"]?>">

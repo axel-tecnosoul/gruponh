@@ -1,7 +1,11 @@
 <?php
 
 include 'config.php';
-include 'database.php';?>
+include 'database.php';
+$estadosComputo3Post = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$estadosComputo3Seleccionados = empty($_POST) ? [1, 2, 3, 4] : $estadosComputo3Post;
+$seleccionarTodosComputo3 = !empty($_POST) && empty($estadosComputo3Seleccionados);
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head><?php
@@ -57,10 +61,10 @@ include 'database.php';?>
                     <div class="form-group mb-0">
                       Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha" id="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah" id="fechah">
                     </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-state-group">
                       Estado:&nbsp;
-                      <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple" multiple="multiple">
-							          <option value="">Todos</option><?php
+                      <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
+								          <option value="" <?= $seleccionarTodosComputo3 ? 'selected' : '' ?>>Todos</option><?php
                         $pdo = Database::connect();
                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                         $sqlZon = "SELECT `id`, `estado` FROM `estados_computos` WHERE 1 ORDER BY id ASC";
@@ -68,17 +72,15 @@ include 'database.php';?>
                         $q->execute();
                         while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
                           echo "<option value='".$fila['id']."'";
-                          if (isset($_POST['id_estado'])) {
-                            if (in_array($fila['id'],$_POST['id_estado'])) {
-                              echo " selected ";
-                            }
+                          if (in_array((int)$fila['id'], $estadosComputo3Seleccionados, true)) {
+                            echo " selected ";
                           }
                           echo ">".$fila['estado']."</option>";
                         }
                         Database::disconnect();?>
 							        </select>
 					          </div>
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-0 filter-form-actions">
                       <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarComputos.php'">Buscar</button>
                     </div>
                   </form>
