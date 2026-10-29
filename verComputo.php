@@ -560,7 +560,7 @@ if (!empty($_POST)) {
                   <select name="id_cuenta_recibe" id="inputRecibe" class="js-example-basic-single col-sm-12" required="required">
                     <option value="">Seleccione...</option>
                     <?php
-                    $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
+                    $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (4) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (4))) and activo = 1 and anulado = 0";
                     $q = $pdo->prepare($sqlZon);
                     $q->execute();
                     while ($fila = $q->fetch(PDO::FETCH_ASSOC)) { ?>

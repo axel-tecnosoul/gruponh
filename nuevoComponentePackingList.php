@@ -10,6 +10,15 @@
     $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
     $prodQuery = $prod ? '?prod=' . $prod : '';
     $prodParam = $prod ? '&prod=' . $prod : '';
+
+    $id = null;
+    if (!empty($_GET['id'])) {
+      $id = $_REQUEST['id'];
+    }
+    if (null==$id) {
+      header("Location: listarPackingList.php$prodQuery");
+      exit;
+    }
     
     if (!empty($_POST)) {
         
@@ -19,19 +28,20 @@
 		
 		$sql = "INSERT INTO `packing_lists_componentes`(`id_packing_list_seccion`, `id_conjunto_lista_corte`, `id_concepto`, `cantidad`, `observaciones`, `id_estado_componente_packing_list`) VALUES (?,?,?,?,?,1)";
         $q = $pdo->prepare($sql);
-        $q->execute([$_GET['id'],$_POST['id_conjunto_lista_corte'],$_POST['id_concepto'],$_POST['cantidad'],$_POST['observaciones']]);
+        $q->execute([$id,$_POST['id_conjunto_lista_corte'],$_POST['id_concepto'],$_POST['cantidad'],$_POST['observaciones']]);
         
-                $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Nuevo Componente de Sección en Packing List','Packing List','verPackingList.php?id=$id$prodParam')";
+                $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,?, 'Packing List','listarPackingList.php')";
 		$q = $pdo->prepare($sql);
-		$q->execute(array($_SESSION['user']['id']));
+		$q->execute(array($_SESSION['user']['id'], 'Nuevo Componente de Sección en Packing List'));
 		
         Database::disconnect();
         header("Location: listarPackingList.php$prodQuery");
+        exit;
     } 
 	$pdo = Database::connect();
 	$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-	$sql = "select plr.id_proyecto, pls.observaciones from packing_lists_secciones pls inner join packing_lists_revisiones plr on plr.id = pls.id_packing_list_revision where pls.id = ".$_GET['id'];
+	$sql = "select plr.id_proyecto, pls.observaciones from packing_lists_secciones pls inner join packing_lists_revisiones plr on plr.id = pls.id_packing_list_revision where pls.id = ".$id;
 	$q = $pdo->prepare($sql);
 	$q->execute();
 	$data = $q->fetch(PDO::FETCH_ASSOC);
@@ -101,7 +111,7 @@
                               <option value="">Seleccione...</option><?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              $sqlZon = "SELECT lcc.`id`, lcc.`nombre`, lcc.`cantidad` FROM `listas_corte_conjuntos` lcc inner join listas_corte_revisiones lcr on lcr.id = lcc.id_lista_corte inner join proyectos p on p.id = lcr.id_proyecto WHERE lcr.id_proyecto = ".$idProyecto;
+                              $sqlZon = "SELECT lcc.`id`, lcc.`nombre`, lcc.`cantidad` FROM `listas_corte_conjuntos` lcc inner join listas_corte lcr on lcr.id = lcc.id_lista_corte inner join proyectos p on p.id = lcr.id_proyecto WHERE lcr.anulado = 0 and lcr.id_proyecto = ".$idProyecto;
                               $q = $pdo->prepare($sqlZon);
                               $q->execute();
                               while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {

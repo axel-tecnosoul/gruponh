@@ -21,7 +21,7 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT plr.id, plr.id_proyecto, plr.fecha, plr.id_usuario, plr.id_estado_packing_list, plr.nro_revision, plr.anulado FROM packing_lists_revisiones plr WHERE plr.id = ? ";
+  $sql = "SELECT plr.id, plr.id_packing_list, plr.id_proyecto, plr.fecha, plr.id_usuario, plr.id_estado_packing_list, plr.nro_revision, plr.anulado FROM packing_lists_revisiones plr WHERE plr.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -96,17 +96,33 @@ if (!empty($_POST)) {
 								<div class="timeline-small">
 								  <?php 
 									$pdo = Database::connect();
-									$sql = " SELECT id_packing_list, nro_revision, descripcion, date_format(fecha,'%d/%m/%y %H:%i') FROM packing_lists_revisiones WHERE id = ".$_GET['id'];
+									$sql = " SELECT nro_revision, descripcion, date_format(fecha,'%d/%m/%y %H:%i') FROM packing_lists_revisiones WHERE id_packing_list = ".(int)$data['id_packing_list']." ORDER BY nro_revision ASC ";
 									
+									$revisiones = [];
 									foreach ($pdo->query($sql) as $row) {
+										$revisiones[] = $row;
+									}
+									
+									if (count($revisiones) == 0) {
 										echo '<div class="media">';
 										echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
 										echo '<div class="media-body">';
-										echo '<h6>Revisión: '.$row[1].' <span class="pull-right f-14">'.$row[3].'hs</span></h6>';
-										echo '<p>'.$row[2].'</p>';
+										echo '<h6>Revisión: -</h6>';
+										echo '<p>Sin revisiones registradas</p>';
 										echo '</div></div>';
-								   }
-								   Database::disconnect();
+									} else {
+										foreach ($revisiones as $row) {
+											$fechaRev = !empty($row[3]) ? $row[3].'hs' : '';
+											echo '<div class="media">';
+											echo '<div class="timeline-round m-r-30 timeline-line-1 bg-primary"><i data-feather="message-circle"></i></div>';
+											echo '<div class="media-body">';
+											echo '<h6>Revisión: '.$row[1].($fechaRev != '' ? ' <span class="pull-right f-14">'.$fechaRev.'</span>' : '').'</h6>';
+											echo '<p>'.(isset($row[2]) ? htmlspecialchars($row[2]) : '').'</p>';
+											echo '</div></div>';
+										}
+									}
+									
+									Database::disconnect();
 								  ?>
 								</div>
 								</div>
@@ -155,103 +171,7 @@ if (!empty($_POST)) {
     <!-- Plugin used-->
 	<script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-	<script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-	<script>
-		$(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example666 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example666').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example666').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
-	
-	$('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
-		
-		</script>
-		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
+
     <!-- Plugin used-->
 
   </body>

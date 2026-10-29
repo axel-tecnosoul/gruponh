@@ -24,7 +24,15 @@
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
-        
+
+        // Tipos asociados a la cuenta (desde la tabla de relación)
+        $qTipo = $pdo->prepare("SELECT id_tipo_cuenta FROM cuentas_x_tipos_cuenta WHERE id_cuenta = ?");
+        $qTipo->execute([$id]);
+        $tiposDeCuenta = array_map('intval', $qTipo->fetchAll(PDO::FETCH_COLUMN));
+        if (empty($tiposDeCuenta) && !empty($data['id_tipo_cuenta'])) {
+            $tiposDeCuenta = [(int)$data['id_tipo_cuenta']];
+        }
+
         Database::disconnect();
     }
     
@@ -64,7 +72,7 @@
 						<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Tipo de Cuenta</label>
 							<div class="col-sm-9">
-							<select name="id_tipo_cuenta" id="id_tipo_cuenta" class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_tipo_cuenta[]" id="id_tipo_cuenta" class="js-example-basic-multiple col-sm-12" multiple="multiple" disabled="disabled">
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -74,7 +82,7 @@
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_tipo_cuenta']) {
+								if (in_array($fila['id'], $tiposDeCuenta)) {
                                         echo " selected ";
 								}
 								echo ">".$fila['tipo_cuenta']."</option>";

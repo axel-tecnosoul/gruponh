@@ -30,9 +30,15 @@
 			$_POST['id_puesto'] = null;
 		}
 
+		// Tipos de cuenta seleccionados (multi-tipo): se espera un array del select múltiple
+		$tiposCuenta = isset($_POST['id_tipo_cuenta']) ? (array)$_POST['id_tipo_cuenta'] : [];
+		$tiposCuenta = array_values(array_filter($tiposCuenta, function($v){ return $v !== '' && $v !== null; }));
+
 		// Validación de duplicados: el "Nombre Corto" no puede repetirse (excluyendo la propia cuenta)
 		$nombreCorto = isset($_POST['nombre']) ? trim($_POST['nombre']) : "";
-		if ($nombreCorto === "") {
+		if (empty($tiposCuenta)) {
+			$errorNombre = "Debe seleccionar al menos un Tipo de Cuenta.";
+		} elseif ($nombreCorto === "") {
 			$errorNombre = "Debe ingresar un Nombre Corto.";
 		} else {
 			$sqlDup = "SELECT COUNT(*) FROM cuentas WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(?)) AND anulado = 0 AND id <> ?";
@@ -42,9 +48,17 @@
 				$errorNombre = "Ya existe una cuenta con el Nombre Corto ingresado.";
 			} else {
 		
+        // El primer tipo seleccionado queda como "tipo principal" (compatibilidad)
         $sql = "UPDATE `cuentas` set `id_tipo_cuenta` = ?, `nombre` = ?, `razon_social` = ?, `cuit` = ?, `contacto` = ?, `email` = ?, `telefono` = ?, `id_puesto` = ?, `codigo_postal` = ?, `id_pais` = ?, `id_provincia` = ?, `id_localidad` = ?, `observaciones` = ?, `es_recurso` = ?, `cuenta_gestion` = ?, `codigo_externo` = ?, `id_condicion_iva` = ?, `direccion` = ?, `id_usuario` = ?, activo = ? where id = ?";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['id_tipo_cuenta'],$_POST['nombre'],$_POST['razon_social'],$_POST['cuit'],$_POST['contacto'],$_POST['email'],$_POST['telefono'],$_POST['id_puesto'],$_POST['codigo_postal'],$_POST['id_pais'],$_POST['id_provincia'],$_POST['id_localidad'],$_POST['observaciones'],$_POST['es_recurso'],$_POST['cuenta_gestion'],$_POST['codigo_externo'],$_POST['id_condicion_iva'],$_POST['direccion'],$_POST['id_usuario'],$_POST['activo'],$_GET['id']]);
+        $q->execute([$tiposCuenta[0],$_POST['nombre'],$_POST['razon_social'],$_POST['cuit'],$_POST['contacto'],$_POST['email'],$_POST['telefono'],$_POST['id_puesto'],$_POST['codigo_postal'],$_POST['id_pais'],$_POST['id_provincia'],$_POST['id_localidad'],$_POST['observaciones'],$_POST['es_recurso'],$_POST['cuenta_gestion'],$_POST['codigo_externo'],$_POST['id_condicion_iva'],$_POST['direccion'],$_POST['id_usuario'],$_POST['activo'],$_GET['id']]);
+
+        // Se sincronizan todos los tipos seleccionados en la tabla de relación
+        $pdo->prepare("DELETE FROM cuentas_x_tipos_cuenta WHERE id_cuenta = ?")->execute([$id]);
+        $qTipo = $pdo->prepare("INSERT IGNORE INTO cuentas_x_tipos_cuenta (id_cuenta, id_tipo_cuenta) VALUES (?,?)");
+        foreach ($tiposCuenta as $tipoCuenta) {
+            $qTipo->execute([$id, $tipoCuenta]);
+        }
 
 		$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de cuenta','Cuentas','verCuenta.php?id=$id')";
 		$q = $pdo->prepare($sql);
@@ -58,6 +72,7 @@
 		if (!empty($errorNombre)) {
 			// Vuelve a mostrar el formulario con los datos ingresados
 			$data = $_POST;
+			$tiposDeCuenta = array_map('strval', $tiposCuenta);
 		}
     } else {
         $pdo = Database::connect();
@@ -66,7 +81,15 @@
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
-        
+
+        // Tipos asociados a la cuenta (desde la tabla de relación)
+        $qTipo = $pdo->prepare("SELECT id_tipo_cuenta FROM cuentas_x_tipos_cuenta WHERE id_cuenta = ?");
+        $qTipo->execute([$id]);
+        $tiposDeCuenta = array_map('intval', $qTipo->fetchAll(PDO::FETCH_COLUMN));
+        if (empty($tiposDeCuenta) && !empty($data['id_tipo_cuenta'])) {
+            $tiposDeCuenta = [(int)$data['id_tipo_cuenta']];
+        }
+
         Database::disconnect();
     }
     
@@ -109,7 +132,7 @@
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Tipo de Cuenta(*)</label>
 							<div class="col-sm-9">
-							<select name="id_tipo_cuenta" id="id_tipo_cuenta" autofocus class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_tipo_cuenta[]" id="id_tipo_cuenta" autofocus class="js-example-basic-multiple col-sm-12" multiple="multiple" required="required">
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -119,7 +142,7 @@
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_tipo_cuenta']) {
+								if (in_array($fila['id'], $tiposDeCuenta)) {
                                         echo " selected ";
 								}
 								echo ">".$fila['tipo_cuenta']."</option>";

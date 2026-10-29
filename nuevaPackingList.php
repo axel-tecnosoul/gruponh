@@ -35,9 +35,12 @@ if (!empty($_POST)) {
   
   $id_packing_list = $pdo->lastInsertId();
   
-  $sql = "update tareas set `fecha_inicio_real`=now(), `fecha_fin_real`=now() where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$idTarea]);
+  // La tarea comienza al crear el PK, pero solo se finaliza cuando el PK pasa a Terminado.
+  if ($idTarea !== null) {
+    $sql = "UPDATE tareas SET fecha_inicio_real = COALESCE(fecha_inicio_real, NOW()) WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$idTarea]);
+  }
   
 	$sql = "select s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
 	$q = $pdo->prepare($sql);
@@ -71,77 +74,10 @@ if (!empty($_POST)) {
   $id_packing_list_revision = $pdo->lastInsertId();
 
 
-  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Packing List','Listas de Corte','verPackingList.php?id=$id_packing_list_revision$prodParam')";
+  $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nueva Packing List','Packing List','verPackingList.php?id=".$id_packing_list_revision.$prodParam."')";
   $q = $pdo->prepare($sql);
   $q->execute(array($_SESSION['user']['id']));
   
-	$sql = "SELECT valor FROM `parametros` WHERE id = 1 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpHost = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 2 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpUsuario = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 3 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpClave = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 4 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpFrom = $data['valor'];  
-	
-	$sql = "SELECT valor FROM `parametros` WHERE id = 5 ";
-	$q = $pdo->prepare($sql);
-	$q->execute();
-	$data = $q->fetch(PDO::FETCH_ASSOC);
-	$smtpFromName = $data['valor'];  
-	
-	$sql = " select t.id_usuario,u.email from usuarios_tipos_notificacion t inner join usuarios u on u.id = t.id_usuario where t.id_tipo_notificacion = 7 ";
-	foreach ($pdo->query($sql) as $row) {
-		
-		$sql = "INSERT INTO `notificaciones`(`id_tipo_notificacion`, `id_usuario`, `fecha_hora`, `leida`,detalle,id_entidad) VALUES (7,?,now(),0,?,?)";
-		$q = $pdo->prepare($sql);
-		$q->execute([$row[0],'ID PackingList: #'.$id_packing_list_revision,$id_packing_list_revision]);
-		
-		$address = $row[1];
-		
-		$titulo = "ERP Notificaciones - Módulo Ingeniería - Nueva Packing List (".$descripcionProyecto.")";
-		$mensaje="Nueva packing list dada de alta en el sistema: #".$id_packing_list_revision;
-		
-		$mail = new PHPMailer();
-		$mail->IsSMTP();
-		$mail->SMTPAuth = true;
-		$mail->Port = 25; 
-		$mail->SMTPSecure = 'ssl';
-		$mail->SMTPAutoTLS = false;
-		$mail->SMTPSecure = false;
-		$mail->IsHTML(true); 
-		$mail->CharSet = "utf-8";
-		$mail->From = $smtpFrom;
-		$mail->FromName = $_SESSION['user']['usuario'];
-		$mail->Host = $smtpHost; 
-		$mail->Username = $smtpUsuario; 
-		$mail->Password = $smtpClave;
-		$mail->AddAddress($address);
-		$mail->Subject = $titulo; 
-		$mensajeHtml = nl2br($mensaje);
-		$mail->Body = "{$mensajeHtml} <br /><br />"; 
-		$mail->AltBody = "{$mensaje} \n\n"; 
-		$mail->Send();
-	
-	}
-	
-	
-
   Database::disconnect();
   //header("Location: listarPackingList.php");
   header("Location: nuevaPackingListSecciones.php?id_packing_list_revision=".$id_packing_list_revision.$prodParam);

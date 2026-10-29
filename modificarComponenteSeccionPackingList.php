@@ -120,7 +120,7 @@
                               <option value="">Seleccione...</option><?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              $sqlZon = "SELECT lcc.`id`, lcc.`nombre`, lcc.`cantidad` FROM `listas_corte_conjuntos` lcc inner join listas_corte_revisiones lcr on lcr.id = lcc.id_lista_corte inner join proyectos p on p.id = lcr.id_proyecto WHERE lcr.id_proyecto = ".$idProyecto;
+                              $sqlZon = "SELECT lcc.`id`, lcc.`nombre`, lcc.`cantidad` FROM `listas_corte_conjuntos` lcc inner join listas_corte lcr on lcr.id = lcc.id_lista_corte inner join proyectos p on p.id = lcr.id_proyecto WHERE lcr.anulado = 0 and lcr.id_proyecto = ".$idProyecto;
                               $q = $pdo->prepare($sqlZon);
                               $q->execute();
                               while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {

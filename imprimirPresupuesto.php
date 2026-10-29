@@ -96,7 +96,7 @@ if (!empty($_POST)) {
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta = 1 and activo = 1 and anulado = 0 order by nombre";
+							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE (id_tipo_cuenta = 1 or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = 1)) and activo = 1 and anulado = 0 order by nombre";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {

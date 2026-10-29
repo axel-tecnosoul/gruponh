@@ -480,7 +480,7 @@ $ubicacion = "Nuevo Consumo" . ($infoOT ? ' ' . $infoOT : '');
                         <?php
                         $pdo = Database::connect();
                         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                        $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (4) AND activo = 1 AND anulado = 0";
+                        $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (4) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (4))) AND activo = 1 AND anulado = 0";
                         $q = $pdo->prepare($sqlZon);
                         $q->execute();
                         while ($fila = $q->fetch(PDO::FETCH_ASSOC)) { ?>

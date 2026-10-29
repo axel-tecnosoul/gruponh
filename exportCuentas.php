@@ -41,7 +41,7 @@ include 'database.php';
 		             <tbody>
 		              <?php     
 						$pdo = Database::connect();
-						$sql = " SELECT c.`id`, tc.`tipo_cuenta`, c.`nombre`, c.`razon_social`, c.`cuit`, c.`contacto`, c.`email`, c.`telefono`, p.`puesto`, c.`codigo_postal`, pa.`nombre`, prov.`provincia`, loc.`localidad`, c.`observaciones`, c.`activo`, c.`es_recurso`, c.`cuenta_gestion`, c.`codigo_externo`, ci.`condicion_iva`, c.`direccion` FROM `cuentas` c left join tipos_cuenta tc on tc.id = c.`id_tipo_cuenta` left join puestos p on p.id = c.`id_puesto` left join paises pa on pa.id = c.id_pais left join provincias prov on prov.id = c.id_provincia left join localidades loc on loc.id = c.id_localidad left join condiciones_iva ci on ci.id = c.`id_condicion_iva` WHERE c.`anulado` = 0 ";
+						$sql = " SELECT c.`id`, (SELECT GROUP_CONCAT(t2.`tipo_cuenta` ORDER BY t2.`id` SEPARATOR ', ') FROM cuentas_x_tipos_cuenta cxt INNER JOIN tipos_cuenta t2 ON t2.`id` = cxt.`id_tipo_cuenta` WHERE cxt.`id_cuenta` = c.`id`) AS tipo_cuenta, c.`nombre`, c.`razon_social`, c.`cuit`, c.`contacto`, c.`email`, c.`telefono`, p.`puesto`, c.`codigo_postal`, pa.`nombre`, prov.`provincia`, loc.`localidad`, c.`observaciones`, c.`activo`, c.`es_recurso`, c.`cuenta_gestion`, c.`codigo_externo`, ci.`condicion_iva`, c.`direccion` FROM `cuentas` c left join puestos p on p.id = c.`id_puesto` left join paises pa on pa.id = c.id_pais left join provincias prov on prov.id = c.id_provincia left join localidades loc on loc.id = c.id_localidad left join condiciones_iva ci on ci.id = c.`id_condicion_iva` WHERE c.`anulado` = 0 ";
 						foreach ($pdo->query($sql) as $row) {
 							echo '<tr>';
 								echo '<td>'. $row[0] . '</td>';

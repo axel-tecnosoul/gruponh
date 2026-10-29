@@ -737,11 +737,15 @@ final class FacturacionARCA
     {
         $letter = strtoupper(trim((string)$invoice['letra']));
         $typeName = self::normalize((string)$invoice['tipo_comprobante']);
-        $unsupportedType = strpos($typeName, 'credito') !== false
-            || strpos($typeName, 'mipyme') !== false
+        $voucherTypeCode = (int)$invoice['id_tipo_comprobante'];
+        if ($voucherTypeCode >= 1001) $voucherTypeCode -= 1000;
+        $isFceInvoice = in_array($voucherTypeCode, [201, 206, 211], true);
+        $unsupportedType = (strpos($typeName, 'credito') !== false && !$isFceInvoice)
+            || (strpos($typeName, 'mipyme') !== false && !$isFceInvoice)
             || strpos($typeName, 'export') !== false;
-        if (strpos($typeName, 'factura') !== 0 || $unsupportedType || !isset(['A' => 1, 'B' => 6, 'C' => 11][$letter])) {
-            throw new RuntimeException('Solo se emiten facturas locales A, B o C comunes. Exportación, crédito electrónico y notas requieren su circuito fiscal propio.');
+        if (strpos($typeName, 'factura') !== 0 || $unsupportedType
+            || (!$isFceInvoice && !isset(['A' => 1, 'B' => 6, 'C' => 11][$letter]))) {
+            throw new RuntimeException('Solo se emiten facturas locales A, B y C comunes y Facturas de Crédito Electrónicas MiPyME A, B y C. Exportación y notas requieren su circuito fiscal propio.');
         }
 
         $issuerConditionId = (int)$invoice['emisor_condicion_iva_id'];
@@ -770,7 +774,13 @@ final class FacturacionARCA
         if ($pointOfSale < 1 || $pointOfSale > 99998) {
             throw new RuntimeException('El punto de venta de la factura debe estar entre 1 y 99998.');
         }
-        $voucherTypeCode = ['A' => 1, 'B' => 6, 'C' => 11][$letter];
+        if (!$isFceInvoice) {
+            $voucherTypeCode = ['A' => 1, 'B' => 6, 'C' => 11][$letter];
+        } elseif (($letter === 'A' && $voucherTypeCode !== 201)
+            || ($letter === 'B' && $voucherTypeCode !== 206)
+            || ($letter === 'C' && $voucherTypeCode !== 211)) {
+            throw new RuntimeException('El tipo ARCA de Factura de Crédito Electrónica no coincide con la letra del comprobante.');
+        }
         $configuredType = $pdo->prepare(
             'SELECT COUNT(*)
              FROM arca_puntos_venta p
@@ -796,13 +806,41 @@ final class FacturacionARCA
         if ($concept !== 1) {
             $serviceFrom = self::validDate((string)($input['fecha_servicio_desde'] ?? ''), 'inicio del período de servicio');
             $serviceTo = self::validDate((string)($input['fecha_servicio_hasta'] ?? ''), 'fin del período de servicio');
-            $paymentDue = self::validDate((string)($input['fecha_vencimiento_pago'] ?? ''), 'vencimiento de pago');
             if ($serviceFrom > $serviceTo) {
                 throw new RuntimeException('El inicio del período de servicio no puede ser posterior al fin.');
             }
+        }
+        if ($isFceInvoice || $concept !== 1) {
+            $paymentDueRaw = $isFceInvoice
+                ? (string)($invoice['fce_fecha_vencimiento'] ?? $input['fecha_vencimiento_pago'] ?? '')
+                : (string)($input['fecha_vencimiento_pago'] ?? '');
+            $paymentDue = self::validDate($paymentDueRaw, 'vencimiento de pago');
             if ($paymentDue < $date) {
                 throw new RuntimeException('El vencimiento de pago no puede ser anterior a la fecha de emisión.');
             }
+        }
+
+        $fceData = null;
+        if ($isFceInvoice) {
+            $fceCbu = preg_replace('/\D+/', '', (string)($invoice['fce_cbu'] ?? ''));
+            $fceAlias = trim((string)($invoice['fce_alias_cbu'] ?? ''));
+            $fceTransfer = strtoupper(trim((string)($invoice['fce_transferencia'] ?? '')));
+            if (($fceCbu !== '' && !preg_match('/^\d{22}$/D', $fceCbu))
+                || ($fceAlias !== '' && !preg_match('/^[A-Za-z0-9.-]{6,20}$/D', $fceAlias))
+                || ($fceCbu === '' && $fceAlias === '')) {
+                throw new RuntimeException('Configure un CBU de 22 dígitos y/o un alias CBU válido para la empresa emisora.');
+            }
+            if ($fceTransfer !== 'SCA' && $fceTransfer !== 'ADC') {
+                throw new RuntimeException('Seleccione Sistema de Circulación Abierta o Agente de Depósito Colectivo.');
+            }
+            $fceData = [
+                'cbu' => $fceCbu,
+                'alias_cbu' => $fceAlias,
+                'transferencia' => $fceTransfer,
+                'leyenda_sca' => $fceTransfer === 'SCA'
+                    ? 'Luego de su aceptación tácita o expresa, esta Factura de Crédito Electrónica MiPyMEs será transmitida al Sistema de Circulación Abierta para Facturas de Crédito Electrónicas MiPyMEs, para su circulación y negociación, incluso en los Mercados de Valores, en este caso, a través de un Agente de Depósito Colectivo o agentes que cumplan similares funciones.'
+                    : '',
+            ];
         }
 
         $conditionId = (int)$invoice['receptor_condicion_iva_id'];
@@ -826,10 +864,29 @@ final class FacturacionARCA
             $receiverDocument = '0';
             $receiverDocumentType = 99;
         } else {
-            throw new RuntimeException('El documento del cliente debe ser un CUIT válido o, para consumidor final, un DNI válido.');
-        }
+            $receiverDocumentType = 99;
+            $receiverDocument = '0'; /* ESTO DESCOMENTAR PARA GENERAR SIN PROBLEMAS FACTURAS TIPO B */
+            //throw new RuntimeException('El documento del cliente debe ser un CUIT válido o, para consumidor final, un DNI válido.');        
+            }
         if ($letter === 'A' && ($receiverVat !== 1 || $receiverDocumentType !== 80)) {
             throw new RuntimeException('Una factura A requiere un receptor Responsable Inscripto.');
+        }
+
+        $activityId = (int)($invoice['actividad_arca_id'] ?? 0);
+        if ($activityId < 1) {
+            throw new RuntimeException('Seleccione una actividad ARCA para la factura antes de emitirla.');
+        }
+        $activityCheck = $pdo->prepare(
+            "SELECT regimen FROM arca_actividades_empresa WHERE id_empresa = ? AND codigo = ?
+             ORDER BY CASE WHEN regimen = 'prueba' THEN 1 ELSE 0 END, orden LIMIT 1"
+        );
+        $activityCheck->execute([(int)$invoice['id_empresa'], $activityId]);
+        $activityRegimen = $activityCheck->fetchColumn();
+        if ($activityRegimen === false) {
+            throw new RuntimeException('La actividad ARCA guardada en la factura ya no está configurada para la empresa emisora.');
+        }
+        if ($activityRegimen === 'prueba') {
+            throw new RuntimeException('La actividad seleccionada es solo de prueba y no puede enviarse a ARCA. Sincronice las actividades registrales de la empresa.');
         }
 
         $currency = self::currency((string)$invoice['moneda']);
@@ -841,7 +898,7 @@ final class FacturacionARCA
         }
 
         $q = $pdo->prepare(
-            "SELECT d.id, d.descripcion, d.cantidad, d.precio, d.subtotal,
+            "SELECT d.id, d.descripcion, d.ncm, d.cantidad, d.precio, d.subtotal,
                     d.porcentaje_descuento, cc.codigo AS concepto_codigo,
                     cc.descripcion AS concepto_text, COALESCE(ti.tasa, 21) AS tasa_iva
              FROM facturas_venta_detalle d
@@ -873,6 +930,16 @@ final class FacturacionARCA
             throw new RuntimeException('La factura tiene regímenes fiscales sin correspondencia ARCA configurada. No se omitieron ni se enviaron como tributos incorrectos.');
         }
 
+        $defaultNcm = '73.08.20.00';
+        try {
+            $qNcm = $pdo->query("SELECT valor FROM parametros WHERE id = 13");
+            if ($qNcm && ($valNcm = $qNcm->fetchColumn()) !== false && trim((string)$valNcm) !== '') {
+                $defaultNcm = trim((string)$valNcm);
+            }
+        } catch (Exception $e) {
+            $defaultNcm = '73.08.20.00';
+        }
+
         $ivaByCode = [];
         $items = [];
         $receiverExempt = $conditionId === 5;
@@ -889,7 +956,7 @@ final class FacturacionARCA
             if ($letter !== 'C' && !$receiverExempt && abs($rate) < 0.0001) {
                 throw new RuntimeException('No se puede emitir un renglón al 0% sin distinguir si es gravado, exento o no gravado. Configure su clasificación fiscal antes de emitir.');
             }
-            if ($receiverExempt) {
+            if ($receiverExempt || ($isFceInvoice && $letter === 'C')) {
                 $code = 0;
                 $exemptCents += $netBaseCents;
                 $netPrice = (float)$row['precio'] > 0 ? round((float)$row['precio'], 2) : 0;
@@ -905,9 +972,10 @@ final class FacturacionARCA
             }
 
             $projectCode = (string)($invoice['proyecto_codigo'] ?? '');
+            $itemNcm = !empty($row['ncm']) && trim((string)$row['ncm']) !== '' ? trim((string)$row['ncm']) : $defaultNcm;
             $items[] = [
                 'codigo' => (string)$row['concepto_codigo'],
-                'ncm' => '73.08.20.00',
+                'ncm' => $itemNcm,
                 'proyecto' => $projectCode,
                 'concepto' => (string)$row['concepto_text'],
                 'descripcion' => (string)($row['descripcion'] ?: $row['concepto_text']),
@@ -935,6 +1003,40 @@ final class FacturacionARCA
         $number = $receiverDocument;
         $companyCond = (string)$invoice['emisor_condicion_iva'];
         $receiverCond = (string)$invoice['receptor_condicion_iva'];
+        $relatedRemito = null;
+        $remitoText = '';
+        $remitoPoint = trim((string)($invoice['remito_punto_venta'] ?? ''));
+        $remitoNumber = trim((string)($invoice['remito_numero'] ?? ''));
+        if (($remitoPoint === '') !== ($remitoNumber === '')) {
+            throw new RuntimeException('El Remito R relacionado debe incluir punto de venta y número.');
+        }
+        if ($remitoPoint !== '') {
+            $remitoPoint = filter_var($remitoPoint, FILTER_VALIDATE_INT);
+            $remitoNumber = filter_var($remitoNumber, FILTER_VALIDATE_INT);
+            if ($remitoPoint === false || $remitoPoint < 1 || $remitoPoint > 99998
+                || $remitoNumber === false || $remitoNumber < 1 || $remitoNumber > 99999999) {
+                throw new RuntimeException('El punto de venta o el número del Remito R relacionado no son válidos.');
+            }
+            $relatedRemito = [
+                'tipo' => 91, // Remito R
+                'punto_venta' => (int)$remitoPoint,
+                'numero' => (int)$remitoNumber,
+            ];
+            $remitoText = str_pad((string)$remitoPoint, 4, '0', STR_PAD_LEFT)
+                . '-' . str_pad((string)$remitoNumber, 8, '0', STR_PAD_LEFT);
+        }
+
+        $qPaymentConditions = $pdo->prepare(
+            'SELECT fp.forma_pago
+             FROM facturas_venta_condiciones_pago fvp
+             INNER JOIN formas_pago fp ON fp.id = fvp.id_forma_pago
+             WHERE fvp.id_factura_venta = ? ORDER BY fp.forma_pago'
+        );
+        $qPaymentConditions->execute([(int)$invoice['id']]);
+        $paymentConditions = $qPaymentConditions->fetchAll(PDO::FETCH_COLUMN);
+        if (!$paymentConditions && !empty($invoice['condicion_venta'])) {
+            $paymentConditions = [(string)$invoice['condicion_venta']];
+        }
 
         return [
             'emisor' => [
@@ -965,6 +1067,8 @@ final class FacturacionARCA
             'fecha_servicio_desde' => $serviceFrom,
             'fecha_servicio_hasta' => $serviceTo,
             'fecha_vencimiento_pago' => $paymentDue,
+            'es_fce' => $isFceInvoice,
+            'fce' => $fceData,
             'moneda' => $currency,
             'moneda_texto' => (string)$invoice['moneda'],
             'cotizacion' => $exchangeRate,
@@ -979,11 +1083,17 @@ final class FacturacionARCA
                 'version' => 1,
                 'letra' => $letter,
                 'tipo_comprobante_nombre' => (string)$invoice['tipo_comprobante'],
-                'ncm' => '73.08.20.00',
+                'ncm' => $defaultNcm,
                 'proyecto' => (string)($invoice['proyecto_codigo'] ?? ''),
                 'observaciones' => (string)($invoice['observaciones'] ?? ''),
+                'leyenda_impositiva' => (string)($invoice['leyenda_impositiva'] ?? ''),
+                'comprobante_asociado' => $relatedRemito,
+                'remito' => $remitoText,
                 'moneda_texto' => (string)$invoice['moneda'],
                 'condicion_venta' => (string)($invoice['condicion_venta'] ?? ''),
+                'condiciones_venta' => array_values($paymentConditions),
+                'actividad_arca_id' => $activityId,
+                'fce' => $fceData,
                 'items' => $items,
             ],
         ];
@@ -1017,11 +1127,51 @@ final class FacturacionARCA
         if ((int)$record['concepto'] !== 1) {
             $request['FchServDesde'] = date('Ymd', strtotime((string)$record['fecha_servicio_desde']));
             $request['FchServHasta'] = date('Ymd', strtotime((string)$record['fecha_servicio_hasta']));
+        }
+        if ((int)$record['concepto'] !== 1 || !empty($detail['fce'])) {
             $request['FchVtoPago'] = date('Ymd', strtotime((string)$record['fecha_vencimiento_pago']));
         }
 
+        $activityId = (int)($detail['actividad_arca_id'] ?? 0);
+        if ($activityId > 0) {
+            $request['Actividades'] = [
+                'Actividad' => [['Id' => $activityId]],
+            ];
+        }
+
+        $relatedVoucher = $detail['comprobante_asociado'] ?? null;
+        if (is_array($relatedVoucher)
+            && (int)($relatedVoucher['tipo'] ?? 0) === 91
+            && (int)($relatedVoucher['punto_venta'] ?? 0) > 0
+            && (int)($relatedVoucher['numero'] ?? 0) > 0) {
+            $request['CbtesAsoc'] = [
+                'CbteAsoc' => [[
+                    'Tipo' => 91,
+                    'PtoVta' => (int)$relatedVoucher['punto_venta'],
+                    'Nro' => (int)$relatedVoucher['numero'],
+                ]],
+            ];
+        }
+
+        $fce = $detail['fce'] ?? null;
+        if (is_array($fce)) {
+            $optionalFields = [];
+            if (!empty($fce['cbu'])) {
+                $optionalFields[] = ['Id' => 2101, 'Valor' => (string)$fce['cbu']];
+            }
+            if (!empty($fce['alias_cbu'])) {
+                $optionalFields[] = ['Id' => 2102, 'Valor' => (string)$fce['alias_cbu']];
+            }
+            if (!empty($fce['transferencia'])) {
+                $optionalFields[] = ['Id' => 27, 'Valor' => (string)$fce['transferencia']];
+            }
+            if ($optionalFields) {
+                $request['Opcionales'] = $optionalFields;
+            }
+        }
+
         $ivaRows = self::ivaRowsFromSnapshot($detail);
-        if ($ivaRows && (int)$record['tipo_comprobante'] !== 11) {
+        if ($ivaRows && !in_array((int)$record['tipo_comprobante'], [11, 211], true)) {
             $request['Iva'] = $ivaRows;
         }
         if (isset($issuer['cuit'], $receiver['numero_documento'])) {
@@ -1121,7 +1271,13 @@ final class FacturacionARCA
                     e.direccion AS emisor_direccion, e.email AS emisor_email, e.iibb AS emisor_iibb,
                     e.fecha_inicio_actividades AS emisor_fecha_inicio_actividades,
                     e.id_condicion_iva AS emisor_condicion_iva_id, ec.condicion_iva AS emisor_condicion_iva,
-                    fp.forma_pago AS condicion_venta,
+                    COALESCE(
+                        (SELECT GROUP_CONCAT(fp2.forma_pago ORDER BY fp2.forma_pago SEPARATOR ', ')
+                         FROM facturas_venta_condiciones_pago fvp
+                         INNER JOIN formas_pago fp2 ON fp2.id = fvp.id_forma_pago
+                         WHERE fvp.id_factura_venta = fv.id),
+                        fp.forma_pago
+                    ) AS condicion_venta,
                     c.razon_social AS receptor_razon_social, c.cuit AS receptor_cuit,
                     c.direccion AS receptor_direccion, c.email AS receptor_email,
                     c.id_condicion_iva AS receptor_condicion_iva_id, rc.condicion_iva AS receptor_condicion_iva

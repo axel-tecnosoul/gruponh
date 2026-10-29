@@ -222,7 +222,7 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <!-- Theme js-->
    <script src="assets/js/script.js"></script>
-<script src="assets/js/cotizacion-dolar.js"></script>
+<script src="assets/js/cotizacion-dolar.js?v=<?=filemtime(__DIR__ . '/assets/js/cotizacion-dolar.js')?>"></script>
     <!-- Plugin used-->
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
@@ -269,7 +269,7 @@ if (!empty($_POST)) {
       badge: '#estadoDolar',
       info: '#infoCotizacion',
       selectTipo: '#tipo_dolar',
-      tipoInicial: 'blue',
+      tipoInicial: 'mayorista',
       noSobrescribir: true
     });
 

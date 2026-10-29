@@ -59,7 +59,7 @@ if (!empty($_POST)) {
       echo "<br><br>";
     }
 
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificación de Lista de Corte','Listas de Corte')";
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificación de Packing List','Packing List')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
 
@@ -74,87 +74,8 @@ if (!empty($_POST)) {
     }
 
   }else{
-    //AÑADIMOS UNA REVISION
-    $nuevo_nro_revision=$ultimo_nro_revision+1;
-
-    $sql = "UPDATE listas_corte set ultimo_nro_revision = ? where id = ? and ultimo_nro_revision = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$nuevo_nro_revision,$id_lista_corte,$ultimo_nro_revision]);
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
-
-    $sql = "SELECT lcr.id, lcr.id_lista_corte, lcr.id_proyecto, lcr.fecha, lcr.id_usuario, lcr.id_estado_lista_corte, lcr.anulado, lcr.nombre, lcr.numero, lcr.adjunto, lcr.id_cuenta_realizo, lcr.id_cuenta_reviso, lcr.id_cuenta_valido FROM listas_corte_revisiones lcr WHERE lcr.id_lista_corte = ? AND lcr.nro_revision = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_lista_corte,$ultimo_nro_revision]);
-    $data = $q->fetch(PDO::FETCH_ASSOC);
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
-
-    $sql = "INSERT INTO listas_corte_revisiones (id_lista_corte, id_proyecto, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$data["id_lista_corte"],$data['id_proyecto'],$_POST['fecha'],$data['id_usuario'],$_POST['id_estado_lista_corte'],$nuevo_nro_revision,$data['anulado'],$_POST['nombre'],$_POST['numero'],$_POST['descripcion'],$_POST['id_cuenta_realizo'],$_POST['id_cuenta_reviso'],$_POST['id_cuenta_valido']]);
-    $id_packing_list_revision = $pdo->lastInsertId();
-
-    if ($modoDebug==1) {
-      $q->debugDumpParams();
-      echo "<br><br>Afe: ".$q->rowCount();
-      echo "<br><br>";
-    }
-
-    $sql = "SELECT lcc.id,lcc.id_lista_corte,lcc.nombre,lcc.cantidad,lcc.peso,lcc.id_estado_lista_corte_conjuntos FROM listas_corte_conjuntos lcc WHERE lcc.id_lista_corte = ".$data['id'];
-    foreach ($pdo->query($sql) as $row) {
-      $sql = "INSERT INTO listas_corte_conjuntos (id_lista_corte, nombre, cantidad, peso, id_estado_lista_corte_conjuntos) VALUES (?,?,?,?,?)";
-      $q = $pdo->prepare($sql);
-      $q->execute([$id_packing_list_revision,$row['nombre'],$row['cantidad'],$row['peso'],$row['id_estado_lista_corte_conjuntos']]);
-      $id_lista_corte_conjunto = $pdo->lastInsertId();
-
-      if ($modoDebug==1) {
-        $q->debugDumpParams();
-        echo "<br><br>Afe: ".$q->rowCount();
-        echo "<br><br>";
-      }
-
-      $sql = "SELECT lcp.id,lcp.id_lista_corte_conjunto,lcp.id_material,lcp.posicion,lcp.cantidad,lcp.largo,lcp.ancho,lcp.marca,lcp.peso,lcp.peso_calculado_posicion,lcp.finalizado,lcp.id_colada,lcp.diametro,lcp.calidad,lcp.observaciones FROM lista_corte_posiciones lcp WHERE lcp.id_lista_corte_conjunto = ".$row["id"];
-      foreach ($pdo->query($sql) as $row) {
-        $sql = "INSERT INTO lista_corte_posiciones (id_lista_corte_conjunto,id_material,posicion,cantidad,largo,ancho,marca,peso,peso_calculado_posicion,finalizado,id_colada,diametro,calidad,observaciones) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-        $q = $pdo->prepare($sql);
-        $q->execute([$id_lista_corte_conjunto,$row["id_material"],$row["posicion"],$row["cantidad"],$row["largo"],$row["ancho"],$row["marca"],$row["peso"],$row["peso_calculado_posicion"],$row["finalizado"],$row["id_colada"],$row["diametro"],$row["calidad"],$row["observaciones"]]);
-        $id_lista_corte_posicion = $pdo->lastInsertId();
-
-        if ($modoDebug==1) {
-          $q->debugDumpParams();
-          echo "<br><br>Afe: ".$q->rowCount();
-          echo "<br><br>";
-        }
-
-        $sql = "SELECT lcp.id_lista_corte_posicion,lcp.id_tipo_proceso,lcp.observaciones,lcp.id_estado_lista_corte_proceso FROM lista_corte_procesos lcp WHERE lcp.id_lista_corte_posicion = ".$row["id"];
-        foreach ($pdo->query($sql) as $row) {
-          $sql = "INSERT INTO lista_corte_procesos (id_lista_corte_posicion, id_tipo_proceso, observaciones, id_estado_lista_corte_proceso) VALUES (?,?,?,?)";
-          $q = $pdo->prepare($sql);
-          $q->execute([$id_lista_corte_posicion,$row['id_tipo_proceso'],$row['observaciones'],$row['id_estado_lista_corte_proceso']]);
-
-          if ($modoDebug==1) {
-            $q->debugDumpParams();
-            echo "<br><br>Afe: ".$q->rowCount();
-            echo "<br><br>";
-          }
-        }
-      }
-    }
-
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Nueva Revision de Lista de Corte','Listas de Corte')";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
-
-    $redirect="nuevaPackingListSeccion.php?id_packing_list_revision=".$id_packing_list_revision;
+    //POST sin accion reconocida: no modificamos nada y volvemos al listado
+    $redirect="listarPackingList.php";
   }
 
   if ($modoDebug==1) {
@@ -208,7 +129,6 @@ if (!empty($_POST)) {
         margin-bottom: 15px;
       }
     </style>
-  </head>
   </head>
   <body>
     <!-- Loader ends-->

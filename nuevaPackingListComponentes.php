@@ -12,21 +12,38 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 
 $id_packing_list_seccion = null;
 if (!empty($_GET['id_packing_list_seccion'])) {
-  $id_packing_list_seccion = $_REQUEST['id_packing_list_seccion'];
+  $id_packing_list_seccion = (int)$_REQUEST['id_packing_list_seccion'];
 }
 
 if (null==$id_packing_list_seccion) {
   header("Location: listarPackingList.php$prodQuery");
+  exit;
 }
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$sql = "select plr.id_proyecto from packing_lists_secciones pls inner join packing_lists_revisiones plr on plr.id = pls.id_packing_list_revision where pls.id = ".$id_packing_list_seccion;
+$sql = "SELECT plr.id_proyecto, plr.id AS id_packing_list_revision, plr.id_estado_packing_list, plr.nro_revision, pl.ultimo_nro_revision FROM packing_lists_secciones pls INNER JOIN packing_lists_revisiones plr ON plr.id = pls.id_packing_list_revision INNER JOIN packing_lists pl ON pl.id = plr.id_packing_list WHERE pls.id = ?";
 $q = $pdo->prepare($sql);
-$q->execute();
+$q->execute([$id_packing_list_seccion]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
-$idProyecto=$data['id_proyecto'];
+if (empty($data)) {
+  Database::disconnect();
+  header("Location: listarPackingList.php".$prodQuery);
+  exit;
+}
+$idProyecto=(int)$data['id_proyecto'];
+$idPackingListRevision=(int)$data['id_packing_list_revision'];
+$puedeEnviarAprobacion=(int)$data['id_estado_packing_list'] === 1 && (int)$data['nro_revision'] === (int)$data['ultimo_nro_revision'];
+
+$sql = "SELECT COUNT(*) AS secciones, SUM(CASE WHEN NOT EXISTS (SELECT 1 FROM packing_lists_componentes plc WHERE plc.id_packing_list_seccion = pls.id) THEN 1 ELSE 0 END) AS secciones_sin_componentes FROM packing_lists_secciones pls WHERE pls.id_packing_list_revision = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$idPackingListRevision]);
+$estadoSecciones = $q->fetch(PDO::FETCH_ASSOC);
+$puedeEnviarAprobacion = $puedeEnviarAprobacion
+  && !empty($estadoSecciones)
+  && (int)$estadoSecciones['secciones'] > 0
+  && (int)$estadoSecciones['secciones_sin_componentes'] === 0;
 
 if (!empty($_POST)) {
   // insert data
@@ -69,7 +86,7 @@ if (!empty($_POST)) {
     $q = $pdo->prepare($sql);
     $q->execute([$id_packing_list_componente,$_POST['id_concepto']]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
-    $idComputoDetalle = $data['idComputoDetalle'];
+    $idComputoDetalle = $data['idComputoDetalle'] ?? null;
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -89,9 +106,9 @@ if (!empty($_POST)) {
       }
     }
       
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificación de Componente ID #$id_packing_list en conjunto de lista de corte','Listas de Corte','')";
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Packing List','')";
     $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
+    $q->execute(array($_SESSION['user']['id'], 'Modificación de Componente ID #'.$id_packing_list_componente.' de Packing List'));
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -149,7 +166,7 @@ if (!empty($_POST)) {
 			$q = $pdo->prepare($sql);
 			$q->execute([$id_componente,$_POST['id_concepto']]);
 			$data = $q->fetch(PDO::FETCH_ASSOC);
-			$idComputoDetalle = $data['idComputoDetalle'];
+            $idComputoDetalle = $data['idComputoDetalle'] ?? null;
 
 			if ($modoDebug==1) {
 			  $q->debugDumpParams();
@@ -169,9 +186,15 @@ if (!empty($_POST)) {
 			  }
 			}
 			  
-                    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Componente ID #$id_componente en Seccion de Packing List','Packing List','verPackingList.php?id=$id_packing_list$prodParam')";
+                    $sql = "SELECT id_packing_list_revision FROM packing_lists_secciones WHERE id = ? ";
 			$q = $pdo->prepare($sql);
-			$q->execute(array($_SESSION['user']['id']));
+			$q->execute([$id_packing_list_seccion]);
+			$data = $q->fetch(PDO::FETCH_ASSOC);
+			$linkRevision = 'verPackingList.php?id='.$data['id_packing_list_revision'].$prodParam;
+
+                    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?,'Packing List',?)";
+			$q = $pdo->prepare($sql);
+			$q->execute(array($_SESSION['user']['id'], 'Nuevo Componente ID #'.$id_componente.' de Packing List', $linkRevision));
 
 			if ($modoDebug==1) {
 			  $q->debugDumpParams();
@@ -311,27 +334,34 @@ Database::disconnect();
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon ="SELECT distinct m.id, m.codigo, m.concepto, cd.cantidad from computos_detalle cd inner join materiales m on m.id = cd.id_material inner join computos c on c.id = cd.id_computo inner join tareas t on t.id = c.id_tarea inner join proyectos p on p.id = t.id_proyecto inner join packing_lists_revisiones plr on plr.id_proyecto = p.id INNER JOIN packing_lists pl ON plr.id_packing_list=pl.id AND pl.ultimo_nro_revision=plr.nro_revision inner join packing_lists_secciones pls on pls.id_packing_list_revision = plr.id where cd.cancelado = 0 and p.id = ".$idProyecto;
+                            $sqlZon = "SELECT m.id, m.codigo, m.concepto, SUM(cd.cantidad) AS cantidad FROM computos_detalle cd INNER JOIN materiales m ON m.id = cd.id_material INNER JOIN computos c ON c.id = cd.id_computo INNER JOIN tareas t ON t.id = c.id_tarea WHERE cd.cancelado = 0 AND c.id_estado IN (3,4,5) AND t.id_proyecto = ? GROUP BY m.id, m.codigo, m.concepto ORDER BY m.concepto";
 							$q = $pdo->prepare($sqlZon);
-                            $q->execute();
-                            while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                            $q->execute([$idProyecto]);
+                            $conceptosDisponibles = $q->fetchAll(PDO::FETCH_ASSOC);
+                            if (empty($conceptosDisponibles)) {
+                              echo "<option value='' disabled>No hay conceptos disponibles en cómputos aprobados del proyecto</option>";
+                            }
+                            foreach ($conceptosDisponibles as $fila) {
                                 echo "<option value='".$fila['id']."'";
-							    echo ">".$fila['concepto']." (".$fila['codigo'].") x".$fila['cantidad']." </option>";	
+							    echo ">".$fila['concepto']." (".$fila['codigo'].") x".$fila['cantidad']." </option>";
                             }
                             Database::disconnect();?>
                           </select>
                         </div>
                         <div class="form-group col-sm-6">
                           <label for="id_conjunto_lista_corte">Conjunto de LC</label>
-                          <div class="col-sm-9">
                             <select name="id_conjunto_lista_corte" id="id_conjunto_lista_corte" class="js-example-basic-single col-sm-12" onchange="jsCompletarCant(this.value);">
                               <option value="">Seleccione...</option><?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              $sqlZon = "SELECT distinct lcc.`id`, lcc.`nombre`, lcc.`cantidad` FROM `listas_corte_conjuntos` lcc inner join listas_corte_revisiones lcr on lcr.id = lcc.id_lista_corte inner join proyectos p on p.id = lcr.id_proyecto WHERE lcr.id_estado_lista_corte in (1,2,3,4) and lcr.id_proyecto = ".$idProyecto;
+                              $sqlZon = "SELECT DISTINCT lcc.id, lcc.nombre, lcc.cantidad FROM listas_corte_conjuntos lcc INNER JOIN listas_corte lc ON lc.id = lcc.id_lista_corte WHERE lc.id_estado_lista_corte IN (1,2,3,4) AND lc.anulado = 0 AND lc.id_proyecto = ? ORDER BY lcc.nombre";
                               $q = $pdo->prepare($sqlZon);
-                              $q->execute();
-                              while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                              $q->execute([$idProyecto]);
+                              $conjuntosDisponibles = $q->fetchAll(PDO::FETCH_ASSOC);
+                              if (empty($conjuntosDisponibles)) {
+                                echo "<option value='' disabled>No hay conjuntos de LC disponibles para este proyecto</option>";
+                              }
+                              foreach ($conjuntosDisponibles as $fila) {
                                 echo "<option value='".$fila['id']."'";
                                 echo ">".$fila['nombre']." (".$fila['cantidad'].")</option>";
                               }
@@ -343,7 +373,6 @@ Database::disconnect();
 							  <br>
 							</div>
 							<?php } ?>
-                          </div>
                         </div>
 						<?php if ((isset($errorDobleSeleccion)) && ($errorDobleSeleccion == 1)) { ?>
 						<div class="form-group col-sm-12 checkbox p-0">
@@ -369,6 +398,9 @@ Database::disconnect();
                         <button type="submit" value="3" name="btn3" id="editComponente" class="btn btn-primary d-none">Modificar</button>
                         <button type="button" id="cancelEditComponente" class="btn btn-danger d-none">Cancelar Modificar</button>
                         <a href='nuevaPackingListSecciones.php?id_packing_list_revision=<?=$data["id_packing_list"]?><?= $prodParam ?>' class="btn btn-light">Volver</a>
+                        <?php if ($puedeEnviarAprobacion) { ?>
+                        <button type="button" id="btnEnviarAprobacionPK" class="btn btn-primary" data-id="<?=$idPackingListRevision?>">Enviar a aprobación</button>
+                        <?php } ?>
                       </div>
                     </div>
                   </form>
@@ -549,6 +581,22 @@ Database::disconnect();
         $("#editComponente").val("")
         $("#cancelEditComponente").toggleClass("d-none")
       })
+
+      $("#btnEnviarAprobacionPK").on("click", function(){
+        const idRevision = $(this).data("id");
+        if (!idRevision || !confirm("¿Enviar este Packing List y la tarea asociada a aprobación?")) {
+          return;
+        }
+        $.ajax({
+          type: "POST",
+          url: "modificarEstadoPackingList.php",
+          data: {idPosicion: idRevision, idEstado: 2}
+        }).done(function(){
+          window.location.href = "listarPackingList.php" + prodQuery;
+        }).fail(function(xhr){
+          alert(xhr.responseText || "No se pudo enviar el Packing List a aprobación.");
+        });
+      });
 
       function selectRow(t){
         t.addClass('selected');

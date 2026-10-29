@@ -17,6 +17,7 @@ if (!empty($_GET['id'])) {
 
 if (null==$id) {
   header("Location: listarPackingList.php$prodQuery");
+  exit;
 }
 
 $pdo = Database::connect();
@@ -40,3 +41,4 @@ Database::disconnect();
   
 //header("Location: listarPackingList.php");
 header("Location: nuevaPackingListComponentes.php?id_packing_list_seccion=".$id_packing_list_seccion.$prodParam);
+exit;

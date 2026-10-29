@@ -156,7 +156,7 @@ function fmt($val) {
 
                   <?php if (!empty($data['observaciones'])): ?>
                   <div class="form-group row mt-1">
-                    <label class="col-sm-2 font-weight-bold">Observaciones</label>
+                    <label class="col-sm-2 font-weight-bold">Datos pie de factura</label>
                     <div class="col-sm-10"><?= nl2br(htmlspecialchars($data['observaciones'])) ?></div>
                   </div>
                   <?php endif; ?>

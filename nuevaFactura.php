@@ -5,6 +5,18 @@ $fv = function($key, $default = '') use ($facturaData) {
   }
   return htmlspecialchars($default);
 };
+$empresaFceId = (int)($_POST['id_empresa'] ?? $facturaData['id_empresa'] ?? $proyectoDatos['id_empresa'] ?? 0);
+$tipoComprobanteFce = $vista === 'venta' ? codigoArcaDesdeTipo($_POST['id_tipo_comprobante'] ?? $facturaData['id_tipo_comprobante'] ?? 0) : 0;
+$esTipoFceInicial = in_array((int)$tipoComprobanteFce, [201, 206, 211], true);
+$fechaVencimientoFceDefault = $_POST['fecha_vencimiento_pago'] ?? ($esTipoFceInicial ? ($facturaData['fce_fecha_vencimiento'] ?? date('Y-m-d')) : '');
+$empresaFceDefaults = ['cbu_emisor' => '', 'alias_cbu' => ''];
+if ($vista === 'venta' && $empresaFceId > 0) {
+  $pdoEmpresaFce = Database::connect();
+  $qEmpresaFce = $pdoEmpresaFce->prepare('SELECT cbu_emisor, alias_cbu FROM empresas WHERE id = ?');
+  $qEmpresaFce->execute([$empresaFceId]);
+  $empresaFceDefaults = $qEmpresaFce->fetch(PDO::FETCH_ASSOC) ?: $empresaFceDefaults;
+  Database::disconnect();
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -146,7 +158,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                               <?php
                               $pdo = Database::connect();
                               $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                              $q = $pdo->prepare("SELECT id, empresa FROM empresas WHERE 1");
+                              $q = $pdo->prepare("SELECT id, empresa, cbu_emisor, alias_cbu FROM empresas WHERE 1");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 if ($vista === 'venta') {
@@ -154,7 +166,9 @@ $fv = function($key, $default = '') use ($facturaData) {
                                 } else {
                                   $sel = ($idEmpresa != 0 && $f['id'] == $idEmpresa) ? ' selected' : '';
                                 }
-                                echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['empresa']) . "</option>";
+                                $cbuAttr = htmlspecialchars((string)($f['cbu_emisor'] ?? ''), ENT_QUOTES, 'UTF-8');
+                                $aliasAttr = htmlspecialchars((string)($f['alias_cbu'] ?? ''), ENT_QUOTES, 'UTF-8');
+                                echo "<option value='{$f['id']}' data-cbu='{$cbuAttr}' data-alias-cbu='{$aliasAttr}'$sel>" . htmlspecialchars($f['empresa']) . "</option>";
                               }
                               Database::disconnect();
                               ?>
@@ -175,7 +189,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                               <option value="">Seleccione...</option>
                               <?php
                               $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, nombre, id_condicion_iva FROM cuentas WHERE id_tipo_cuenta IN (1) AND activo = 1 AND anulado = 0");
+                              $q = $pdo->prepare("SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (1) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (1))) AND activo = 1 AND anulado = 0");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 $esExento = (int)$f['id_condicion_iva'] === 5 ? 'true' : 'false';
@@ -231,7 +245,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                               $q = $pdo->prepare("SELECT p.id, p.razon_social, p.cuit, c.condicion_iva
                                                 FROM cuentas p
                                                 LEFT JOIN condiciones_iva c ON c.id = p.id_condicion_iva
-                                                WHERE p.id_tipo_cuenta IN (5) AND p.activo = 1 AND p.anulado = 0");
+                                                WHERE (p.id_tipo_cuenta in (5) or p.id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (5))) AND p.activo = 1 AND p.anulado = 0");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 echo "<option value='{$f['id']}'>" . htmlspecialchars($f['razon_social']) . " (" . htmlspecialchars($f['cuit']) . ") - Iva: " . htmlspecialchars($f['condicion_iva']) . "</option>";
@@ -302,6 +316,63 @@ $fv = function($key, $default = '') use ($facturaData) {
                           </div>
                         </div>
 
+                        <?php if ($vista === 'venta'):
+                          $empresaActividadesId = (int)($proyectoDatos['id_empresa'] ?? $facturaData['id_empresa'] ?? 0);
+                          $actividadSeleccionadaId = (int)($_POST['actividad_arca_id'] ?? $facturaData['actividad_arca_id'] ?? 0);
+                          $actividadesDisponibles = [];
+                          if ($empresaActividadesId > 0) {
+                            $pdo = Database::connect();
+                            $qActividades = $pdo->prepare(
+                              'SELECT codigo, MAX(descripcion) AS descripcion, MIN(orden) AS orden
+                               FROM arca_actividades_empresa WHERE id_empresa = ?
+                               GROUP BY codigo ORDER BY MIN(orden), codigo'
+                            );
+                            $qActividades->execute([$empresaActividadesId]);
+                            $actividadesDisponibles = $qActividades->fetchAll(PDO::FETCH_ASSOC);
+                            Database::disconnect();
+                          }
+                        ?>
+                        <div class="form-group row">
+                          <label class="col-sm-4 col-form-label" for="actividad_arca_id">Actividad ARCA(*)</label>
+                          <div class="col-sm-8">
+                            <select name="actividad_arca_id" id="actividad_arca_id" class="js-example-basic-single col-sm-12" required>
+                              <option value=""><?= $empresaActividadesId > 0 ? 'Seleccione una actividad...' : 'Seleccione primero la empresa...' ?></option>
+                              <?php foreach ($actividadesDisponibles as $actividad): ?>
+                                <option value="<?= (int)$actividad['codigo'] ?>" <?= (int)$actividad['codigo'] === $actividadSeleccionadaId ? 'selected' : '' ?>>
+                                  <?= (int)$actividad['codigo'] ?> — <?= htmlspecialchars($actividad['descripcion']) ?>
+                                </option>
+                              <?php endforeach; ?>
+                            </select>
+                            <small id="estadoActividadesFactura" class="form-text text-muted">
+                              <?php if ($empresaActividadesId > 0 && !$actividadesDisponibles): ?>
+                                No hay actividades sincronizadas para esta empresa. Sincronícelas desde Administración → Empresas.
+                              <?php endif; ?>
+                            </small>
+                          </div>
+                        </div>
+
+                        <div class="form-group row">
+                          <label class="col-sm-4 col-form-label" for="condiciones_venta">Condiciones de venta(*)</label>
+                          <div class="col-sm-8">
+                            <select name="condiciones_venta[]" id="condiciones_venta" class="js-example-basic-multiple col-sm-12" multiple required>
+                              <?php
+                                $pdo = Database::connect();
+                                $formasPagoVenta = $pdo->query('SELECT id, forma_pago, dias_vencimiento FROM formas_pago ORDER BY forma_pago')->fetchAll(PDO::FETCH_ASSOC);
+                                Database::disconnect();
+                                foreach ($formasPagoVenta as $formaPagoVenta) {
+                                  $idFormaPagoVenta = (int)$formaPagoVenta['id'];
+                                  $seleccionada = in_array($idFormaPagoVenta, $condicionesVentaSeleccionadas, true) ? 'selected' : '';
+                                  $diasPlazo = $formaPagoVenta['dias_vencimiento'] !== null ? (int)$formaPagoVenta['dias_vencimiento'] : '';
+                                  echo '<option value="'.$idFormaPagoVenta.'" data-dias-vencimiento="'.$diasPlazo.'" '.$seleccionada.'>'.htmlspecialchars($formaPagoVenta['forma_pago']).'</option>';
+                                }
+                              ?>
+                            </select>
+                            <small class="form-text text-muted">Seleccione una o más. Se guardan en la factura; WSFE no envía una condición de venta estructurada.</small>
+                            <a href="configurarPlazosPago.php" target="_blank" class="small">Configurar días de vencimiento</a>
+                          </div>
+                        </div>
+                        <?php endif; ?>
+
                       </div>
 
                       <!-- COLUMNA DERECHA -->
@@ -317,16 +388,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           </div>
                         </div>
 
-                        <?php if ($vista === 'venta'): ?>
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Fecha Enviada(*)</label>
-                          <div class="col-sm-8">
-                            <input name="fecha_enviada" id="fecha_enviada" type="date"
-                              onfocus="this.showPicker()" class="form-control"
-                              value="<?= $fv('fecha_enviada', date('Y-m-d')) ?>" required>
-                          </div>
-                        </div>
-                        <?php else: ?>
+                        <?php if ($vista === 'compra'): ?>
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Fecha Recibida(*)</label>
                           <div class="col-sm-8">
@@ -420,13 +482,6 @@ $fv = function($key, $default = '') use ($facturaData) {
 
                         <?php endif; ?>
 
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Observaciones</label>
-                          <div class="col-sm-8">
-                            <textarea name="observaciones" class="form-control" rows="3"><?= $fv('observaciones') ?></textarea>
-                          </div>
-                        </div>
-
                       </div>
                     </div>
 
@@ -494,11 +549,10 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <option value="2" <?= $conceptoArca === 2 ? 'selected' : '' ?>>Servicios</option>
                           <option value="3" <?= $conceptoArca === 3 ? 'selected' : '' ?>>Productos y servicios</option>
                         </select>
-                        <small class="form-text text-muted">El concepto se informa a ARCA y no se deduce del texto de los renglones.</small>
                       </div>
                     </div>
                     <div id="arcaPeriodoServicio">
-                      <div class="form-group row">
+                      <div class="form-group row" id="arcaFechasServicio">
                         <label class="col-sm-3 col-form-label" for="fecha_servicio_desde">Período del servicio(*)</label>
                         <div class="col-sm-4">
                           <input type="date" class="form-control" id="fecha_servicio_desde" name="fecha_servicio_desde"
@@ -511,11 +565,34 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <small class="form-text text-muted">Hasta</small>
                         </div>
                       </div>
-                      <div class="form-group row">
+                      <div class="form-group row" id="fceVencimientoRow">
                         <label class="col-sm-3 col-form-label" for="fecha_vencimiento_pago">Vencimiento de pago(*)</label>
                         <div class="col-sm-9">
                           <input type="date" class="form-control" id="fecha_vencimiento_pago" name="fecha_vencimiento_pago"
-                            value="<?= htmlspecialchars($_POST['fecha_vencimiento_pago'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            value="<?= htmlspecialchars((string)$fechaVencimientoFceDefault, ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                      </div>
+                      <div id="datosFce" class="border rounded p-3 mb-3" style="display:none;">
+                        <h6>Datos de Factura de Crédito Electrónica MiPyME</h6>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label" for="fce_cbu">CBU del emisor</label>
+                          <div class="col-sm-9"><input type="text" class="form-control" id="fce_cbu" name="fce_cbu" inputmode="numeric" maxlength="22" readonly value="<?= htmlspecialchars((string)($_POST['fce_cbu'] ?? ($facturaData['fce_cbu'] ?? $empresaFceDefaults['cbu_emisor'])), ENT_QUOTES, 'UTF-8') ?>"></div>
+                        </div>
+                        <div class="form-group row">
+                          <label class="col-sm-3 col-form-label" for="fce_alias_cbu">Alias CBU</label>
+                          <div class="col-sm-9"><input type="text" class="form-control" id="fce_alias_cbu" name="fce_alias_cbu" maxlength="20" readonly value="<?= htmlspecialchars((string)($_POST['fce_alias_cbu'] ?? ($facturaData['fce_alias_cbu'] ?? $empresaFceDefaults['alias_cbu'])), ENT_QUOTES, 'UTF-8') ?>"></div>
+                        </div>
+                        <div class="form-group row mb-0">
+                          <label class="col-sm-3 col-form-label" for="fce_transferencia">Transferencia(*)</label>
+                          <div class="col-sm-9">
+                            <?php $transferenciaFce = (string)($_POST['fce_transferencia'] ?? ($facturaData['fce_transferencia'] ?? '')); ?>
+                            <select class="form-control" id="fce_transferencia" name="fce_transferencia">
+                              <option value="">Seleccione...</option>
+                              <option value="ADC" <?= $transferenciaFce === 'ADC' ? 'selected' : '' ?>>Agente de Depósito Colectivo</option>
+                              <option value="SCA" <?= $transferenciaFce === 'SCA' ? 'selected' : '' ?>>Sistema de Circulación Abierta</option>
+                            </select>
+                            <small class="form-text text-muted">CBU y alias se completan desde la configuración de la empresa.</small>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -537,6 +614,9 @@ $fv = function($key, $default = '') use ($facturaData) {
                             <th>#</th>
                             <th>Concepto</th>
                             <th>Descripción</th>
+                            <?php if ($vista === 'venta'): ?>
+                            <th>N.C.M.</th>
+                            <?php endif; ?>
                             <th>Imputación</th>
                             <th>Precio</th>
                             <th>Descuento</th>
@@ -547,7 +627,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                         <tbody></tbody>
                         <tfoot>
                           <tr>
-                            <th colspan="6" class="text-right">Total:</th>
+                            <th colspan="<?= $vista === 'venta' ? '7' : '6' ?>" class="text-right">Total:</th>
                             <th id="totalDetalle" data-raw="0">$ 0,00</th>
                             <th colspan="1"></th>
                           </tr>
@@ -558,7 +638,13 @@ $fv = function($key, $default = '') use ($facturaData) {
                     <div id="topeMaximo" style="color:red; text-align:right; padding:4px 0; font-weight:bold;"></div>
 
                     <div class="form-group row">
-                      <div class="col-md-3 mb-2">
+                      <?php if ($vista === 'venta'): ?>
+                      <div class="col-md-2 mb-2">
+                        <label class="col-form-label">N.C.M.</label>
+                        <input id="det_ncm" type="text" maxlength="20" class="form-control" value="<?= htmlspecialchars($ncmDefault ?? '73.08.20.00') ?>" placeholder="73.08.20.00">
+                      </div>
+                      <?php endif; ?>
+                      <div class="<?= $vista === 'venta' ? 'col-md-2' : 'col-md-3' ?> mb-2">
                         <label class="col-form-label">Concepto Contable(*)</label>
                           <select id="det_concepto" class="js-example-basic-single col-sm-12">
                             <option value="">Seleccione...</option>
@@ -577,7 +663,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           </select>
                           <small id="iva-info" class="text-info"></small>
                       </div>
-                      <div class="<?= $vista === 'venta' ? 'col-md-4' : 'col-md-3' ?> mb-2">
+                      <div class="<?= $vista === 'venta' ? 'col-md-3' : 'col-md-3' ?> mb-2">
                         <label class="col-form-label">Descripción</label>
                         <textarea id="det_descripcion" class="form-control" rows="3" placeholder="Texto a mostrar impreso en la factura"></textarea>
                       </div>
@@ -601,7 +687,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           }
                         endif;
                       ?>
-                      <div class="col-md-3 mb-2">
+                      <div class="<?= $vista === 'venta' ? 'col-md-3' : 'col-md-3' ?> mb-2">
                         <label class="col-form-label">Imputaciones</label>
                         <?php
                           $dataOptions = [];
@@ -650,10 +736,10 @@ $fv = function($key, $default = '') use ($facturaData) {
                   </div>
                 </div>
 
-                <!-- CARD 3 - RETENCIONES -->
+                <!-- CARD 3 - RETENCIONES / PERCEPCIONES -->
                 <div class="card">
                   <div class="card-header">
-                    <h5><?= $vista === 'venta' ? 'Retenciones de Factura de Venta' : 'Retenciones de Factura Compra' ?> <span id="countRetenciones"></span></h5>
+                    <h5><?= $vista === 'venta' ? 'Percepciones de Factura de Venta' : 'Retenciones de Factura de Compra' ?> <span id="countRetenciones"></span></h5>
                   </div>
                   <div class="card-body">
 
@@ -665,7 +751,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                             <th>Régimen</th>
                             <th>Base imponible</th>
                             <th>%</th>
-                            <th>Retención</th>
+                            <th><?= $vista === 'venta' ? 'Percepción' : 'Retención' ?></th>
                             <th>Acciones</th>
                           </tr>
                         </thead>
@@ -687,10 +773,17 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <option value="">Seleccione...</option>
                           <?php
                           $pdo = Database::connect();
-                          $q = $pdo->prepare("SELECT id, regimen, porcentaje, signo_cpr, signo_vta FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
+                          $q = $pdo->prepare("SELECT id, codigo, regimen, porcentaje, signo_cpr, signo_vta FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
                           $q->execute();
                           $signoCampo = $vista === 'venta' ? 'signo_vta' : 'signo_cpr';
                           while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
+                            $tipoClasif = clasificarTipoRegimenFacturacion($f['regimen'], $f['codigo']);
+                            if ($vista === 'venta' && $tipoClasif === 'RETENCION') {
+                              continue;
+                            }
+                            if ($vista === 'compra' && $tipoClasif === 'PERCEPCION') {
+                              continue;
+                            }
                             echo "<option value='{$f['id']}' data-porcentaje='{$f['porcentaje']}' data-signo='{$f[$signoCampo]}'>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
                           }
                           Database::disconnect();
@@ -707,25 +800,67 @@ $fv = function($key, $default = '') use ($facturaData) {
                         </div>
                       </div>
                       <div class="col-md-4 mb-2">
-                        <label class="col-form-label">Retención(*)</label>
+                        <label class="col-form-label"><?= $vista === 'venta' ? 'Percepción(*)' : 'Retención(*)' ?></label>
                         <div class="input-group" style="max-width:250px;">
                           <div class="input-group-prepend">
                             <span class="input-group-text">$</span>
                           </div>
-                          <input id="ret_monto" type="number" step="0.01" class="form-control" placeholder="Monto retención">
+                          <input id="ret_monto" type="number" step="0.01" class="form-control" placeholder="Monto <?= $vista === 'venta' ? 'percepción' : 'retención' ?>">
                         </div>
                       </div>
                     </div>
 
                     <div class="form-group row">
                       <div class="col-sm-9 offset-sm-3">
-                        <button type="button" class="btn btn-success" id="btnAgregarRetencion">Agregar Retención</button>
+                        <button type="button" class="btn btn-success" id="btnAgregarRetencion"><?= $vista === 'venta' ? 'Agregar Percepción' : 'Agregar Retención' ?></button>
                         <button type="button" class="btn btn-light ml-2" id="btnCancelarRetencion" style="display:none;">Cancelar</button>
                       </div>
                     </div>
 
                   </div>
                 </div>
+
+                <!-- CARD OBSERVACIONES -->
+                <div class="card">
+                  <div class="card-header">
+                    <h5>Datos pie de factura</h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="form-group row mb-0">
+                      <div class="col-sm-12">
+                        <textarea name="observaciones" class="form-control" rows="3" placeholder="Texto o notas para el pie de factura"><?= $fv('observaciones') ?></textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <?php if ($vista === 'venta'): ?>
+                <div class="card">
+                  <div class="card-header"><h5>Leyenda impositiva y remito relacionado</h5></div>
+                  <div class="card-body">
+                    <div class="form-group">
+                      <label for="leyenda_impositiva">Leyenda impositiva</label>
+                      <?php $leyendaValue = $_POST['leyenda_impositiva'] ?? ($facturaData['leyenda_impositiva'] ?? ''); ?>
+                      <textarea name="leyenda_impositiva" id="leyenda_impositiva" class="form-control" rows="2" maxlength="1000"><?= htmlspecialchars((string)$leyendaValue, ENT_QUOTES, 'UTF-8') ?></textarea>
+                      <small class="form-text text-muted">Se completa automáticamente con los importes de la factura. Puede editarla o regenerarla.</small>
+                      <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="regenerarLeyenda">Regenerar leyenda</button>
+                    </div>
+                    <hr>
+                    <div class="form-group mb-0">
+                      <label>Remito R relacionado (opcional)</label>
+                      <div class="form-row">
+                        <div class="col-md-4 mb-2 mb-md-0">
+                          <input type="number" name="remito_punto_venta" class="form-control" min="1" max="99998" placeholder="Punto de venta" value="<?= htmlspecialchars((string)($_POST['remito_punto_venta'] ?? ($facturaData['remito_punto_venta'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                        <div class="col-md-8">
+                          <input type="number" name="remito_numero" class="form-control" min="1" max="99999999" placeholder="Número de comprobante" value="<?= htmlspecialchars((string)($_POST['remito_numero'] ?? ($facturaData['remito_numero'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                      </div>
+                      <small class="form-text text-muted">Complete ambos datos para informar el remito como comprobante asociado a ARCA.</small>
+                    </div>
+                  </div>
+                </div>
+                <?php endif; ?>
 
                 <!-- CARD 4 - RESUMEN Y GUARDAR -->
                 <div class="card">
@@ -740,7 +875,7 @@ $fv = function($key, $default = '') use ($facturaData) {
                           <?php if ($vista === 'venta'): ?>
                             <tr><td class="text-right">IVA:</td><td class="text-right" id="granIva">$ 0.00</td></tr>
                           <?php endif; ?>
-                          <tr><td class="text-right">Retenciones:</td><td class="text-right" id="granRetenciones">$ 0.00</td></tr>
+                          <tr><td class="text-right"><?= $vista === 'venta' ? 'Percepciones:' : 'Retenciones:' ?></td><td class="text-right" id="granRetenciones">$ 0.00</td></tr>
                           <tr class="font-weight-bold" style="border-top: 2px solid #000;"><td class="text-right">Total:</td><td class="text-right" id="granTotal">$ 0.00</td></tr>
                         </table>
                       </div>
@@ -748,6 +883,11 @@ $fv = function($key, $default = '') use ($facturaData) {
                   </div>
                   <div class="card-footer">
                     <div class="col-sm-9 offset-sm-3">
+                        <?php if ($vista === 'venta'): ?>
+                        <button type="button" class="btn btn-outline-primary" id="btnVistaPreviaFacturaVenta">
+                          Descargar vista previa PDF
+                        </button>
+                        <?php endif; ?>
                         <button type="submit" class="btn btn-primary" name="btn_definitivo" value="1">
                           <?= $vista === 'venta' ? 'Emitir y guardar definitivo' : 'Guardar Definitivo' ?>
                         </button>
@@ -784,7 +924,7 @@ $fv = function($key, $default = '') use ($facturaData) {
   <script src="assets/js/script.js"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    <script src="assets/js/cotizacion-dolar.js"></script>
+    <script src="assets/js/cotizacion-dolar.js?v=<?=filemtime(__DIR__ . '/assets/js/cotizacion-dolar.js')?>"></script>
 
   <?php if ($vista === 'compra'): ?>
   <script src="assets/js/typeahead/handlebars.js"></script>
@@ -808,6 +948,7 @@ $fv = function($key, $default = '') use ($facturaData) {
     var retenciones = [];
     var editIndex = -1;
     var editRetencionIndex = -1;
+    var leyendaManual = $('#leyenda_impositiva').length > 0 && $('#leyenda_impositiva').val().trim() !== '';
     var monedaSimbolo = "<?= !empty($monedaLabel) ? htmlspecialchars($monedaLabel) : '$' ?>";
     var PROYECTO_DETALLE = "<?= !empty($proyectoLabel) ? htmlspecialchars(preg_replace('/:\s*.*$/', '', $proyectoLabel)) : '' ?>";
 
@@ -877,11 +1018,17 @@ $fv = function($key, $default = '') use ($facturaData) {
             imputacionesHtml = item.imputaciones_text.join('<br>');
           }
 
+          var ncmTd = '';
+          <?php if ($vista === 'venta'): ?>
+          ncmTd = '<td>' + htmlEsc(item.ncm || <?= json_encode($ncmDefault ?? '73.08.20.00') ?>) + '</td>';
+          <?php endif; ?>
+
           tbody.append(
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
             '<td>' + item.concepto_text + '</td>' +
             '<td>' + (PROYECTO_DETALLE ? htmlEsc(PROYECTO_DETALLE) + ' ' : '') + (item.descripcion ? htmlEsc(item.descripcion) : '') + '</td>' +
+            ncmTd +
             '<td>' + imputacionesHtml + '</td>' +
             '<td class="text-right">' + monedaSimbolo + ' ' + formatNumber(totalSubImp) + '</td>' +
             '<td class="text-right">' + porcDesc.toFixed(2) + '%</td>' +
@@ -1214,7 +1361,27 @@ $fv = function($key, $default = '') use ($facturaData) {
       $('#granRetenciones').text(monedaSimbolo + ' ' + formatNumber(retTotal));
       $('#granTotal').text(monedaSimbolo + ' ' + formatNumber(subTotal + ivaTotal + retTotal));
       <?php endif; ?>
+      <?php if ($vista === 'venta'): ?>
+      if (!leyendaManual) {
+        var cotizacion = parseFloat($('#cotizacion').val()) || 1;
+        var esDolar = $('#id_moneda option:selected').data('esusd') === true || $('#id_moneda option:selected').data('esusd') === 'true'
+          || <?= esMonedaDolar((string)$monedaLabel) ? 'true' : 'false' ?>;
+        var factor = esDolar ? cotizacion : 1;
+        var totalFiscal = subTotal + ivaTotal;
+        $('#leyenda_impositiva').val('A los fines impositivos Importe Neto $ ' + formatNumber(subTotal * factor)
+          + ', IVA $ ' + formatNumber(ivaTotal * factor) + ' y el Total $ ' + formatNumber(totalFiscal * factor) + '.');
+      }
+      <?php endif; ?>
     }
+
+    <?php if ($vista === 'venta'): ?>
+    $('#leyenda_impositiva').on('input', function() { leyendaManual = true; });
+    $('#regenerarLeyenda').on('click', function() {
+      leyendaManual = false;
+      actualizarGranTotal();
+    });
+    $('#cotizacion, #id_moneda').on('input change', function() { actualizarGranTotal(); });
+    <?php endif; ?>
 
     // Letra derivada del tipo de comprobante (el alta ya no pide letra).
     // Convención de ids igual a la eliminada tabla letras_comprobante.
@@ -1270,6 +1437,7 @@ $fv = function($key, $default = '') use ($facturaData) {
 
       $('#det_concepto').val(item.id_concepto).trigger('change');
       $('#det_descripcion').val(item.descripcion || '');
+      $('#det_ncm').val(item.ncm || <?= json_encode($ncmDefault ?? '73.08.20.00') ?>);
       $('#det_descuento').val(item.porcentaje_descuento || 0);
 
       // Select imputaciones in select2 y reconstruir sub-líneas con montos guardados
@@ -1296,19 +1464,98 @@ $fv = function($key, $default = '') use ($facturaData) {
 
     $(document).ready(function() {
 
+      $('#btnVistaPreviaFacturaVenta').on('click', async function() {
+        var form = document.getElementById('formFactura');
+        if (!form || !form.reportValidity()) return;
+        var button = this;
+        var buttonText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Generando PDF...';
+
+        try {
+          var response = await fetch('previsualizarFacturaVentaPDF.php', {
+            method: 'POST',
+            body: new FormData(form),
+            credentials: 'same-origin'
+          });
+          var contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+          if (!response.ok || contentType.indexOf('application/pdf') === -1) {
+            var responseText = await response.text();
+            var parsedResponse = new DOMParser().parseFromString(responseText, 'text/html');
+            var serverMessage = parsedResponse.querySelector('body')
+              ? parsedResponse.querySelector('body').innerText.trim()
+              : responseText.trim();
+            throw new Error(serverMessage || 'No se pudo generar la vista previa.');
+          }
+
+          var pdfBlob = await response.blob();
+          if (!pdfBlob.size) throw new Error('El servidor devolvió un PDF vacío.');
+          var pdfUrl = URL.createObjectURL(pdfBlob);
+          var downloadLink = document.createElement('a');
+          downloadLink.href = pdfUrl;
+          downloadLink.download = 'Vista-Previa-Factura-Venta.pdf';
+          document.body.appendChild(downloadLink);
+          downloadLink.click();
+          downloadLink.remove();
+          window.setTimeout(function() { URL.revokeObjectURL(pdfUrl); }, 1000);
+        } catch (error) {
+          alert(error.message || 'No se pudo generar la vista previa.');
+        } finally {
+          button.disabled = false;
+          button.textContent = buttonText;
+        }
+      });
+
       <?php if ($vista === 'venta'): ?>
+      function esFacturaCreditoElectronica() {
+        return [201, 206, 211].indexOf(parseInt($('#id_tipo_comprobante').val(), 10)) !== -1;
+      }
+      var fceFechaFijada = <?= ($esTipoFceInicial && (!empty($facturaData['fce_fecha_vencimiento']) || !empty($_POST['fecha_vencimiento_pago']))) ? 'true' : 'false' ?>;
       function actualizarCamposServicioARCA() {
         var requierePeriodo = $('#concepto_arca').val() !== '1';
-        $('#arcaPeriodoServicio').toggle(requierePeriodo);
+        var esFce = esFacturaCreditoElectronica();
+        $('#arcaPeriodoServicio').toggle(requierePeriodo || esFce);
+        $('#arcaFechasServicio').toggle(requierePeriodo);
+        $('#fceVencimientoRow').toggle(requierePeriodo || esFce);
+        $('#datosFce').toggle(esFce);
+        $('#fce_transferencia').prop('required', esFce);
       }
       $('#concepto_arca').on('change', actualizarCamposServicioARCA);
       actualizarCamposServicioARCA();
-      $('#id_tipo_comprobante').on('change', function() { actualizarLetraDesdeTipo(); });
+      $('#id_tipo_comprobante').on('change', function() {
+        actualizarLetraDesdeTipo();
+        actualizarCamposServicioARCA();
+        actualizarVencimientoFce();
+      });
+      function actualizarVencimientoFce() {
+        if (!esFacturaCreditoElectronica() || fceFechaFijada) return;
+        var selected = $('#condiciones_venta option:selected');
+        var dias = selected.length === 1 ? parseInt(selected.first().attr('data-dias-vencimiento'), 10) : NaN;
+        var baseText = $('#fecha_emitida').val() || new Date().toISOString().slice(0, 10);
+        var base = new Date(baseText + 'T12:00:00');
+        if (!Number.isFinite(dias) || dias < 0) dias = 0;
+        base.setDate(base.getDate() + dias);
+        var yyyy = base.getFullYear();
+        var mm = String(base.getMonth() + 1).padStart(2, '0');
+        var dd = String(base.getDate()).padStart(2, '0');
+        $('#fecha_vencimiento_pago').val(yyyy + '-' + mm + '-' + dd);
+      }
+      $('#condiciones_venta, #fecha_emitida').on('change', function() {
+        fceFechaFijada = false;
+        actualizarVencimientoFce();
+      });
+      $('#fecha_vencimiento_pago').on('input', function() { fceFechaFijada = true; });
       $('#formFactura').on('submit', function(e) {
         var submitter = e.originalEvent ? e.originalEvent.submitter : null;
-        if (!submitter || submitter.name !== 'btn_definitivo' || $('#concepto_arca').val() === '1') {
+        if (!submitter || submitter.name !== 'btn_definitivo') {
           return;
         }
+        if (esFacturaCreditoElectronica() && (!$('#fecha_vencimiento_pago').val() || !$('#fce_transferencia').val() || (!$('#fce_cbu').val() && !$('#fce_alias_cbu').val()))) {
+          e.preventDefault();
+          alert('Complete el vencimiento, una cuenta CBU/alias y la opción de transferencia para la Factura de Crédito Electrónica.');
+          return;
+        }
+        if ($('#concepto_arca').val() === '1') return;
         var fechas = [
           $('#fecha_servicio_desde').val(),
           $('#fecha_servicio_hasta').val(),
@@ -1318,6 +1565,11 @@ $fv = function($key, $default = '') use ($facturaData) {
           e.preventDefault();
           alert('Complete el período del servicio y el vencimiento de pago para emitir esta factura.');
         }
+      });
+      $('#id_empresa').on('change', function() {
+        var option = $('#id_empresa option:selected');
+        $('#fce_cbu').val(option.attr('data-cbu') || '');
+        $('#fce_alias_cbu').val(option.attr('data-alias-cbu') || '');
       });
 
       var certVinculados = <?= json_encode(array_values(array_map('intval', (array)($certIds ?? [])))) ?>;
@@ -1375,7 +1627,7 @@ $fv = function($key, $default = '') use ($facturaData) {
           badge: '#estadoDolar',
           info: '#infoCotizacion',
           selectTipo: '#tipo_dolar',
-          tipoInicial: 'oficial'
+          tipoInicial: 'mayorista'
         });
       } catch (e) {
         if (window.console && console.error) { console.error('CotizacionDolar no disponible, sigo sin cotización automática.'); }
@@ -1480,10 +1732,12 @@ $fv = function($key, $default = '') use ($facturaData) {
       // Auto-fill descripcion and show IVA from concepto contable
       $('#det_concepto').on('change', function() {
         var opt = $(this).find(':selected');
+        <?php if ($vista === 'compra'): ?>
         var texto = opt.text();
-        if (texto) {
+        if (texto && $(this).val()) {
           $('#det_descripcion').val(texto);
         }
+        <?php endif; ?>
         var tasa = opt.data('tasa');
         if (tasa || tasa === 0) {
           $('#iva-info').text('IVA: ' + parseFloat(tasa).toFixed(2) + '%');
@@ -1520,6 +1774,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         var idConcepto = $('#det_concepto').val();
         var conceptoText = $('#det_concepto option:selected').text();
         var descripcion = $('#det_descripcion').val() || '';
+        var ncm = $('#det_ncm').length ? ($('#det_ncm').val() || '') : '';
         var porcDescuento = parseFloat($('#det_descuento').val()) || 0;
 
         if (!idConcepto) {
@@ -1584,7 +1839,7 @@ $fv = function($key, $default = '') use ($facturaData) {
 
         var item = {
           id_concepto: idConcepto, concepto_text: conceptoText,
-          descripcion: descripcion, porcentaje_descuento: porcDescuento,
+          descripcion: descripcion, ncm: ncm, porcentaje_descuento: porcDescuento,
           cantidad: impsData.reduce(function(s, x) { return s + x.cantidad; }, 0), precio: 0,
           imputaciones: allImpIds, imputaciones_data: impsData, imputaciones_text: imputacionesText
         };
@@ -1607,6 +1862,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         // Reset form
         $('#det_concepto').val('').trigger('change');
         $('#det_descripcion').val('');
+        $('#det_ncm').val(<?= json_encode($ncmDefault ?? '73.08.20.00') ?>);
         $('#det_descuento').val(0);
         $('#imp-sub-lines').empty();
         renderDetalles();
@@ -1619,6 +1875,7 @@ $fv = function($key, $default = '') use ($facturaData) {
         $('#btnCancelarDetalle').hide();
         $('#det_concepto').val('').trigger('change');
         $('#det_descripcion').val('');
+        $('#det_ncm').val(<?= json_encode($ncmDefault ?? '73.08.20.00') ?>);
         $('#det_descuento').val(0);
         $('#det_imputaciones').val(null).trigger('change');
         $('#imp-sub-lines').empty();
@@ -1729,15 +1986,6 @@ $fv = function($key, $default = '') use ($facturaData) {
       <?php endif; ?>
 
       <?php if ($vista === 'venta'): ?>
-      $('#fecha_enviada').on('change', function() {
-        var desde = $('#fecha_emitida').val();
-        var hasta = $(this).val();
-        if (desde && hasta && Date.parse(hasta) < Date.parse(desde)) {
-          alert('La fecha enviada debe ser mayor o igual a la fecha emitida');
-          $(this).val('');
-        }
-      });
-
       var clienteInicial = $('#id_cuenta_destino').val();
       if (clienteInicial && typeof cargarImputacionesVenta === 'function') {
         cargarImputacionesVenta();
@@ -1850,9 +2098,49 @@ $fv = function($key, $default = '') use ($facturaData) {
             filtrarTiposPorPunto();
           });
       }
+      var actividadArcaInicial = <?= (int)($_POST['actividad_arca_id'] ?? $facturaData['actividad_arca_id'] ?? 0) ?>;
+      function cargarActividadesEmpresa(preservarSeleccion) {
+        var idEmpresa = $('#id_empresa').val();
+        var select = document.getElementById('actividad_arca_id');
+        var status = document.getElementById('estadoActividadesFactura');
+        if (!select) return;
+
+        var seleccionPrevia = preservarSeleccion ? (select.value || String(actividadArcaInicial || '')) : '';
+        select.replaceChildren(new Option(idEmpresa ? 'Cargando actividades...' : 'Seleccione primero la empresa...', ''));
+        if (!idEmpresa) return;
+
+        fetch('obtenerActividadesEmpresaARCA.php?id_empresa=' + encodeURIComponent(idEmpresa))
+          .then(function(response) {
+            return response.json().then(function(data) {
+              if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudieron cargar las actividades ARCA.');
+              return data;
+            });
+          })
+          .then(function(data) {
+            select.replaceChildren(new Option('Seleccione una actividad...', ''));
+            data.actividades.forEach(function(actividad) {
+              var label = String(actividad.codigo) + ' — ' + actividad.descripcion;
+              var option = new Option(label, String(actividad.codigo));
+              if (seleccionPrevia && String(actividad.codigo) === String(seleccionPrevia)) {
+                option.selected = true;
+              }
+              select.appendChild(option);
+            });
+            $(select).trigger('change');
+          })
+          .catch(function(error) {
+            select.replaceChildren(new Option('No se pudieron cargar las actividades', ''));
+            if (status) {
+              status.className = 'form-text text-danger';
+              status.textContent = error.message;
+            }
+          });
+      }
       $('#id_empresa').on('change', cargarPuntosVentaEmpresa);
+      $('#id_empresa').on('change', function() { cargarActividadesEmpresa(false); });
       $('#punto_venta').on('change', filtrarTiposPorPunto);
       cargarPuntosVentaEmpresa();
+      cargarActividadesEmpresa(true);
 
       // Moneda precargada desde el certificado: dispara los efectos de símbolo, tipo de dólar y cotización
       <?php if ($vista === 'venta' && empty($editMode) && !empty($idMoneda)): ?>
@@ -1907,6 +2195,10 @@ $fv = function($key, $default = '') use ($facturaData) {
         var v = $(this).val().replace(/\D/g, '');
         if (v !== '') { $(this).val(v.padStart(8, '0')); }
       });
+      <?php endif; ?>
+
+      <?php if ($vista === 'venta'): ?>
+      actualizarGranTotal();
       <?php endif; ?>
 
     });

@@ -140,7 +140,7 @@ if (!empty($_POST)) {
         }
       }
 
-    }elseif($_POST["cantidad_componente"]!="" and $_POST["observaciones_componente"]!=""){
+    }elseif(isset($id_packing_list_seccion) && ($id_packing_list_seccion>0) && ($_POST["cantidad_componente"]!="" and $_POST["observaciones_componente"]!="")){
       //INSERTAMOS LA POSICION DEL CONJUNTO
       $idComputoDetalle = 0;
 
@@ -208,10 +208,6 @@ if (!empty($_POST)) {
       echo "<br><br>";
     }
 	
-	$sql = "update packing_lists_revisiones set id_estado_packing_list = 7 where id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id_packing_list]);
-
     $sql = "SELECT plr.id, plr.id_packing_list, plr.id_proyecto, plr.fecha, plr.id_usuario, plr.id_estado_packing_list, plr.anulado, plr.id_cuenta_realizo, plr.id_cuenta_reviso, plr.id_cuenta_valido, plr.numero FROM packing_lists_revisiones plr WHERE plr.id_packing_list = ? AND plr.nro_revision = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id_packing_list,$ultimo_nro_revision]);
@@ -222,6 +218,11 @@ if (!empty($_POST)) {
       echo "<br><br>Afe: ".$q->rowCount();
       echo "<br><br>";
     }
+
+    //la revision anterior queda como Superada (usamos el id real de la revision previa)
+    $sql = "update packing_lists_revisiones set id_estado_packing_list = 7 where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$data["id"]]);
 
     $sql = "INSERT INTO packing_lists_revisiones (id_packing_list, id_proyecto, fecha, id_usuario, id_estado_packing_list, nro_revision, anulado, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido,numero) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
     $q = $pdo->prepare($sql);
@@ -356,7 +357,7 @@ if (!empty($_POST)) {
       }
     }
 
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Nueva Revision de Lista de Corte','Listas de Corte')";
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Nueva Revision de Packing List','Packing List')";
     $q = $pdo->prepare($sql);
     $q->execute(array($_SESSION['user']['id']));
 
@@ -369,6 +370,7 @@ if (!empty($_POST)) {
   } else {
     Database::disconnect();
     header("Location: ".$redirect);
+    exit;
   }
 
 }
@@ -649,7 +651,7 @@ Database::disconnect();?>
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
+                            $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (4) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (4))) and activo = 1 and anulado = 0";
                             $q = $pdo->prepare($sqlZon);
                             $q->execute();
                             while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
@@ -670,7 +672,7 @@ Database::disconnect();?>
                             <option value="">Seleccione...</option><?php
                             $pdo = Database::connect();
                             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta in (4) and activo = 1 and anulado = 0";
+                            $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (4) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (4))) and activo = 1 and anulado = 0";
                             $q = $pdo->prepare($sqlZon);
                             $q->execute();
                             while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {

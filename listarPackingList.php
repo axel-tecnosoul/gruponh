@@ -123,6 +123,14 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 						echo '<a href="#" id="link_nueva_despacho" class="d-none"><i style="width: 24px; height: 20px;color: midnightblue;" class="fa fa-lg fa-truck" aria-hidden="true"></i></a>';
 						echo '&nbsp;&nbsp;';
 					}
+					if (!empty(tienePermiso(349))) {
+						echo '<a href="#" id="link_aprobar" title="Aprobar"><img src="img/aprobar.png" width="24" height="25" border="0" alt="Aprobar" title="Aprobar"></a>';
+						echo '&nbsp;&nbsp;';
+						echo '<a href="#" id="link_rechazar" title="Rechazar"><img src="img/neg.png" width="24" height="25" border="0" alt="Rechazar" title="Rechazar"></a>';
+						echo '&nbsp;&nbsp;';
+						echo '<a href="#" id="link_terminar" class="js_accion_estado d-none" title="Terminar"><i style="width: 24px; height: 20px;color: midnightblue;" class="fa fa-lg fa-flag-checkered" aria-hidden="true"></i></a>';
+						echo '&nbsp;&nbsp;';
+					}
 					?>
 					</h5>
                   </div>
@@ -622,8 +630,73 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 			  alert("Por favor seleccione un packing list para realizar un despacho")
 			}
     })
-		
-		
+
+    // Acciones de estado contextual: Aprobar / Rechazar / Terminar
+    function jsAccionEstado(idPosicionAccion, idEstadoAccion) {
+      $.ajax({
+        type: "POST",
+        url: "modificarEstadoPackingList.php",
+        data: "idPosicion="+idPosicionAccion+"&idEstado="+idEstadoAccion,
+        success: function(data){
+          // actualizamos la celda de estado de la fila seleccionada y las acciones contextuales
+          let fila = $("#dataTables-example666 tbody tr.selected");
+          if (fila.length) {
+            let celda = fila.find("td:nth-child(10)");
+            let label = $("#select_estado_base option[value='"+idEstadoAccion+"']").text();
+            celda.html(label);
+            celda.data("idEstado", idEstadoAccion);
+          }
+          $(".js_accion_estado").addClass("d-none");
+          $(".js_accion_estado").data("id",null);
+          $("#link_aprobar").data("id", null).data("estado", null);
+          $("#link_rechazar").data("id", null).data("estado", null);
+          if (idEstadoAccion == 4) {
+            $("#link_terminar").removeClass("d-none").data("id", idPosicionAccion);
+          }
+        }
+      });
+    }
+    $("#link_aprobar").on("click",function(){
+      let id = $(this).data("id");
+      let estado = $(this).data("estado");
+      if (!id) {
+        alert("Por favor seleccione un packing list");
+        return;
+      }
+      if (estado !== "Enviado") {
+        alert("Solo se puede aprobar un Packing List en estado Enviado");
+        return;
+      }
+      if (confirm("¿Aprobar el packing list seleccionado?")) {
+        jsAccionEstado(id, 3);
+      }
+    })
+    $("#link_rechazar").on("click",function(){
+      let id = $(this).data("id");
+      let estado = $(this).data("estado");
+      if (!id) {
+        alert("Por favor seleccione un packing list");
+        return;
+      }
+      if (estado !== "Enviado") {
+        alert("Solo se puede rechazar un Packing List en estado Enviado");
+        return;
+      }
+      if (confirm("¿Rechazar el packing list seleccionado? (quedará como Cancelado)")) {
+        jsAccionEstado(id, 6);
+      }
+    })
+    $("#link_terminar").on("click",function(){
+      let id = $(this).data("id");
+      if (!id) {
+        alert("Por favor seleccione un packing list");
+        return;
+      }
+      if (confirm("¿Terminar el packing list seleccionado?")) {
+        jsAccionEstado(id, 5);
+      }
+	})
+
 		//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
     $(document).on("click","#dataTables-example666 tbody tr td", function(){
         var t=$(this).parent();
@@ -644,6 +717,9 @@ $prodParam = $prod ? '&prod=' . $prod : '';
           $("#link_modificar_pl").attr("href","#");
           $("#link_nueva_seccion").attr("href","#");
           $("#link_nueva_despacho").attr("href","#");
+          $(".js_accion_estado").addClass("d-none");
+          $("#link_aprobar").data("id", null).data("estado", null);
+          $("#link_rechazar").data("id", null).data("estado", null);
         }else{
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
@@ -663,10 +739,19 @@ $prodParam = $prod ? '&prod=' . $prod : '';
 		  }
 		  
 		  
-          $("#link_nueva_seccion").attr("href","nuevaSeccionPackingList.php?id="+id_pl_revision+prodParam);
+          $("#link_nueva_seccion").attr("href","nuevaPackingListSecciones.php?id_packing_list_revision="+id_pl_revision+prodParam);
           //$("#link_modificar_pl").attr("href","modificarPackingList.php?id="+id_pl_revision+"&revision="+nro_revision);
           $("#link_modificar_pl").attr("href","modificarPackingList.php?id_packing_list_revision="+id_pl_revision+prodParam);
           $("#link_nueva_despacho").attr("href","nuevoDespacho.php?id_packing_list="+id_pl_revision+prodParam);
+
+          // Acciones contextuales según el estado de la revisión seleccionada
+          $(".js_accion_estado").addClass("d-none");
+          $(".js_accion_estado").data("id",null);
+          $("#link_aprobar").data("id", id_pl_revision).data("estado", estado);
+          $("#link_rechazar").data("id", id_pl_revision).data("estado", estado);
+          if (estado == "En Proceso") {
+            $("#link_terminar").removeClass("d-none").data("id", id_pl_revision);
+          }
         }
       });
 	  
@@ -674,6 +759,7 @@ $prodParam = $prod ? '&prod=' . $prod : '';
           var t=$(this);
           
           let old_padding=t.css("padding");
+          let old_estado=t.text();
           t.css({padding: '0'});
           t.find('input[type="hidden"]');
           
@@ -705,7 +791,14 @@ $prodParam = $prod ? '&prod=' . $prod : '';
                   t.css({padding: old_padding});
                   t.html(textoSeleccionado)
 					
-				} 
+                }
+                $("#link_aprobar").data("id", idPosicion).data("estado", textoSeleccionado);
+                $("#link_rechazar").data("id", idPosicion).data("estado", textoSeleccionado);
+              },
+              error: function(xhr) {
+                t.css({padding: old_padding});
+                t.html(old_estado);
+                alert(xhr.responseText || "No se pudo actualizar el estado del Packing List.");
               }
             });
           });

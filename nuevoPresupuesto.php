@@ -18,8 +18,12 @@ if (!empty($_POST)) {
 		$sql = "INSERT INTO `cuentas`(`id_tipo_cuenta`, `nombre`, `razon_social`, `cuit`, `contacto`, `email`, `telefono`, `id_puesto`, `codigo_postal`, `id_pais`, `id_provincia`, `id_localidad`, `observaciones`, `activo`, `es_recurso`, `anulado`, `cuenta_gestion`, `codigo_externo`, `id_condicion_iva`, `direccion`, `id_usuario`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,0,?,?,?,?,?)";
 		$q = $pdo->prepare($sql);
 		$q->execute([1,$_POST['nuevo_cliente'],$_POST['nuevo_cliente'],'11-11111111-1',$_POST['nuevo_cliente'],'','',null,'',12,61,99999,'',0,null,null,null,null,null]);
-		
-		$_POST['id_cuenta'] = $pdo->lastInsertId();
+
+		$idNuevaCuenta = $pdo->lastInsertId();
+		// Alta rápida desde presupuestos: la cuenta se registra como Cliente (tipo 1)
+		$pdo->prepare("INSERT IGNORE INTO cuentas_x_tipos_cuenta (id_cuenta, id_tipo_cuenta) VALUES (?,1)")->execute([$idNuevaCuenta]);
+
+		$_POST['id_cuenta'] = $idNuevaCuenta;
   }
 
   $sql = "INSERT INTO presupuestos (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`) VALUES (0,?,0,?,?,?,?,?,?,?,?,?,?,0,?,?,now())";
@@ -188,7 +192,7 @@ if (!empty($_POST)) {
 								<?php
 								$pdo = Database::connect();
 								$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-								$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta = 1 and activo = 1 and anulado = 0 order by nombre";
+								$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE (id_tipo_cuenta = 1 or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = 1)) and activo = 1 and anulado = 0 order by nombre";
 								$q = $pdo->prepare($sqlZon);
 								$q->execute();
 								while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {

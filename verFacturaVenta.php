@@ -186,8 +186,6 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                   <div class="form-group row mt-1">
                     <label class="col-sm-2 font-weight-bold">Fecha Emitida</label>
                     <div class="col-sm-4"><?= date('d/m/Y', strtotime($data['fecha_emitida'])) ?></div>
-                    <label class="col-sm-2 font-weight-bold">Fecha Enviada</label>
-                    <div class="col-sm-4"><?= date('d/m/Y', strtotime($data['fecha_enviada'])) ?></div>
                   </div>
                   <div class="form-group row mt-1">
                     <label class="col-sm-2 font-weight-bold">Moneda</label>
@@ -219,8 +217,34 @@ if (empty($_SESSION['csrf_factura_arca'])) {
 
                   <?php if (!empty($data['observaciones'])): ?>
                   <div class="form-group row mt-1">
-                    <label class="col-sm-2 font-weight-bold">Observaciones</label>
+                    <label class="col-sm-2 font-weight-bold">Datos pie de factura</label>
                     <div class="col-sm-10"><?= nl2br(htmlspecialchars($data['observaciones'])) ?></div>
+                  </div>
+                  <?php endif; ?>
+                  <?php if (!empty($data['leyenda_impositiva'])): ?>
+                  <div class="form-group row mt-1">
+                    <label class="col-sm-2 font-weight-bold">Leyenda impositiva</label>
+                    <div class="col-sm-10"><?= nl2br(htmlspecialchars($data['leyenda_impositiva'])) ?></div>
+                  </div>
+                  <?php endif; ?>
+                  <?php if (!empty($data['remito_punto_venta']) && !empty($data['remito_numero'])): ?>
+                  <div class="form-group row mt-1">
+                    <label class="col-sm-2 font-weight-bold">Remito R relacionado</label>
+                    <div class="col-sm-10"><?= str_pad((string)$data['remito_punto_venta'], 4, '0', STR_PAD_LEFT) ?>-<?= str_pad((string)$data['remito_numero'], 8, '0', STR_PAD_LEFT) ?></div>
+                  </div>
+                  <?php endif; ?>
+                  <?php if (in_array(codigoArcaDesdeTipo($data['id_tipo_comprobante']), [201, 206, 211], true)): ?>
+                  <div class="form-group row mt-1">
+                    <label class="col-sm-2 font-weight-bold">Vencimiento FCE</label>
+                    <div class="col-sm-4"><?= !empty($data['fce_fecha_vencimiento']) ? date('d/m/Y', strtotime($data['fce_fecha_vencimiento'])) : '—' ?></div>
+                    <label class="col-sm-2 font-weight-bold">Transferencia</label>
+                    <div class="col-sm-4"><?= ($data['fce_transferencia'] ?? '') === 'SCA' ? 'Sistema de Circulación Abierta' : (($data['fce_transferencia'] ?? '') === 'ADC' ? 'Agente de Depósito Colectivo' : '—') ?></div>
+                  </div>
+                  <div class="form-group row mt-1">
+                    <label class="col-sm-2 font-weight-bold">CBU emisor</label>
+                    <div class="col-sm-4"><?= htmlspecialchars($data['fce_cbu'] ?: '—') ?></div>
+                    <label class="col-sm-2 font-weight-bold">Alias CBU</label>
+                    <div class="col-sm-4"><?= htmlspecialchars($data['fce_alias_cbu'] ?: '—') ?></div>
                   </div>
                   <?php endif; ?>
 
@@ -237,6 +261,7 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                             <th>#</th>
                             <th>Concepto</th>
                             <th>Descripción</th>
+                            <th>N.C.M.</th>
                             <th>Imputaciones</th>
                             <th class="text-right">Subtotal</th>
                           </tr>
@@ -274,6 +299,7 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                               <td><?= $i + 1 ?></td>
                               <td><?= htmlspecialchars($det['concepto_text']) ?></td>
                               <td><?= $proyectoPrefijo ? htmlspecialchars($proyectoPrefijo) . ' ' : '' ?><?= htmlspecialchars($det['descripcion'] ?? '') ?></td>
+                              <td><?= htmlspecialchars($det['ncm'] ?? '') ?></td>
                               <td><?= $impsHtml ?></td>
                               <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($subtotalDet) ?></td>
                             </tr>
@@ -287,8 +313,8 @@ if (empty($_SESSION['csrf_factura_arca'])) {
 
                   <hr class="mt-4 mb-4">
 
-                  <!-- RETENCIONES -->
-                  <h6 class="mb-3 font-weight-bold">Retenciones</h6>
+                  <!-- PERCEPCIONES -->
+                  <h6 class="mb-3 font-weight-bold">Percepciones</h6>
                   <?php if (!empty($retenciones)): ?>
                     <div class="table-responsive">
                           <table class="table table-sm table-bordered mb-0 w-100" style="font-size:13px;background:#fff;">
@@ -329,7 +355,7 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                   <div class="form-group row mt-1">
                     <label class="col-sm-3 font-weight-bold">Subtotal</label>
                     <div class="col-sm-3"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($data['subtotal_no_gravado']) ?></div>
-                    <label class="col-sm-3 font-weight-bold">Retenciones</label>
+                    <label class="col-sm-3 font-weight-bold">Percepciones</label>
                     <div class="col-sm-3"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($data['otros']) ?></div>
                   </div>
                   <div class="form-group row mt-1">
@@ -386,7 +412,7 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                         <button type="submit" class="btn btn-primary">Continuar emisión ARCA</button>
                       </form>
                     <?php elseif ((int)$data['id_estado'] === 3): ?>
-                      <a href="imprimirFacturaVentaARCA.php?id=<?= $id ?>" target="_blank" class="btn btn-success">Descargar copia PDF</a>
+                      <p class="text-muted mb-0">El PDF estará disponible cuando ARCA autorice el comprobante.</p>
                     <?php endif; ?>
                     <?php if ($data['id_estado'] != 3 && $data['pagada'] != 1 && $data['exportada'] != 1): ?>
                       <a href="nuevaFacturaVenta.php?id=<?= $id ?>" class="btn btn-primary">Modificar</a>

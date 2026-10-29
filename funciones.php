@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");
 
@@ -657,6 +657,46 @@ function crearNotificacion(PDO $pdo, int $idTipoNotificacion, int $idEntidad, st
   
   error_log("Total destinatarios encontrados para tipo $idTipoNotificacion: $countRows");
   error_log("=== FIN DEBUG ===");
+}
+
+// Notifica a un usuario puntual (independiente de las suscripciones por tipo)
+function notificarUsuarioDirecto(PDO $pdo, int $idTipoNotificacion, int $idEntidad, int $idUsuario, string $detalle, string $asunto, string $cuerpo): void {
+  $sql = "SELECT email FROM usuarios WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$idUsuario]);
+  $usuario = $q->fetch(PDO::FETCH_ASSOC);
+  if (empty($usuario) || empty($usuario['email'])) {
+    return;
+  }
+
+  $smtp = getSmtpConfig($pdo);
+  list($smtpHost, $smtpUsuario, $smtpClave, $smtpFrom, $smtpFromName, $smtpPort, $smtpSecure) = $smtp;
+
+  $stmt = $pdo->prepare("INSERT INTO notificaciones (id_tipo_notificacion, id_usuario, fecha_hora, leida, detalle, id_entidad) VALUES (?, ?, NOW(), 0, ?, ?)");
+  $stmt->execute([$idTipoNotificacion, $idUsuario, $detalle, $idEntidad]);
+
+  $mail = new PHPMailer();
+  $mail->SMTPDebug = 0;
+  $mail->IsSMTP();
+  $mail->Host       = $smtpHost;
+  $mail->Username   = $smtpUsuario;
+  $mail->Password   = $smtpClave;
+  $mail->Port       = $smtpPort;
+  $mail->SMTPSecure = $smtpSecure;
+  $mail->From       = $smtpFrom;
+  $mail->FromName   = $_SESSION['user']['usuario'];
+  $mail->CharSet    = "utf-8";
+  $mail->IsHTML(true);
+  $mail->clearAddresses();
+  $mail->AddAddress($usuario['email']);
+  $mail->Subject    = "ERP Notificaciones - " . $asunto;
+  $mail->Body       = nl2br($cuerpo) . "<br><br>";
+  $mail->AltBody    = $cuerpo;
+
+  $envio = $mail->Send();
+  if (!$envio) {
+    error_log("ERROR PHPMailer (notificarUsuarioDirecto): " . $mail->ErrorInfo);
+  }
 }
 
 // Verifica si la funciÃ³n str_starts_with ya existe (PHP 8.0+)
@@ -1613,4 +1653,40 @@ function obtenerImpactoModificacionConceptoEnListasCorte(PDO $pdo, int $idMateri
 			return $lc;
 		}, $listasCorte))
 	];
+}
+
+/**
+ * Determina si un régimen de facturación corresponde a una Percepción o a una Retención.
+ *
+ * @param string|array $regimen Nombre del régimen o fila con claves 'regimen' y 'codigo'.
+ * @param string|null $codigo Código opcional si el primer argumento es solo el texto.
+ * @return string 'PERCEPCION', 'RETENCION' u 'OTRO'
+ */
+function clasificarTipoRegimenFacturacion($regimen, ?string $codigo = null): string {
+	if (is_array($regimen)) {
+		$codigo = $regimen['codigo'] ?? '';
+		$regimen = $regimen['regimen'] ?? '';
+	}
+	$text = strtoupper(trim((string)$regimen));
+	$cod  = strtoupper(trim((string)$codigo));
+
+	if (strpos($text, 'PERC') !== false || strpos($text, 'PERCEP') !== false) {
+		return 'PERCEPCION';
+	}
+	if (strpos($text, 'RET') !== false || strpos($text, 'RETEN') !== false) {
+		return 'RETENCION';
+	}
+	if (in_array($cod, ['830', '2784', '2793', '3125', '3273', '3311', '4052'], true)) {
+		return 'RETENCION';
+	}
+	if (in_array($cod, ['3337', '3431', '3543', 'D672', 'DN38', 'DNME', 'DNRI', 'PEER', 'PIBM', 'PNQN', 'PSAL', 'PSCR', 'PSFE', 'PTUC', 'ICTU'], true)) {
+		return 'PERCEPCION';
+	}
+	if (strpos($cod, 'IB') === 0) {
+		return 'RETENCION';
+	}
+	if (strpos($cod, 'S') === 0 && strlen($cod) === 4) {
+		return 'RETENCION';
+	}
+	return 'OTRO';
 }

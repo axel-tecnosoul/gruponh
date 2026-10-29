@@ -188,8 +188,12 @@ $id_estado = $filters['id_estado'] ?? [];
                         if ($hasSearched):
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sql = "SELECT fv.id, fv.observaciones, tc.descripcion AS tipo, '' AS letra, fv.numero,
-                                         c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'), fp.forma_pago,
+                           $sql = "SELECT fv.id, fv.observaciones, tc.descripcion AS tipo, '' AS letra, fv.numero,
+                                          c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'),
+                                          COALESCE((SELECT GROUP_CONCAT(fpv.forma_pago ORDER BY fpv.forma_pago SEPARATOR ', ')
+                                                    FROM facturas_venta_condiciones_pago fvcp
+                                                    INNER JOIN formas_pago fpv ON fpv.id = fvcp.id_forma_pago
+                                                    WHERE fvcp.id_factura_venta = fv.id), fp.forma_pago) AS forma_pago,
                                           fv.subtotal_no_gravado, m.moneda,
                                           ef.estado,
                                           fv.iva, fv.otros, fv.total,
@@ -228,14 +232,26 @@ $id_estado = $filters['id_estado'] ?? [];
                             $sql .= " AND ef.id IN ($placeholders)";
                             $params = array_merge($params, $id_estado);
                           }
-                          $q = $pdo->prepare($sql);
-                          $q->execute($params);
-                          while ($row = $q->fetch(PDO::FETCH_NUM)) {
-                            echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '">';
-                            echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
-                            echo '<td class="d-none">' . $row[0] . '</td>';
-                            echo '<td>' . htmlspecialchars(trim($row[2] . ' ' . $row[3])) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[4]) . '</td>';
+                           $q = $pdo->prepare($sql);
+                           $q->execute($params);
+                           while ($row = $q->fetch(PDO::FETCH_NUM)) {
+                             $estadoFacturaId = (int)$row[15];
+                             $numeroFacturaMostrar = trim((string)$row[4]);
+                             if ($estadoFacturaId === 2 && preg_match('/-0+$/D', $numeroFacturaMostrar)) {
+                               $numeroFacturaMostrar = '—';
+                             }
+                             $clasesEstadoFactura = [
+                               1 => 'badge-warning',
+                               2 => 'badge-secondary',
+                               3 => 'badge-success',
+                               4 => 'badge-primary',
+                             ];
+                             $claseEstadoFactura = $clasesEstadoFactura[$estadoFacturaId] ?? 'badge-light';
+                             echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '">';
+                             echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
+                             echo '<td class="d-none">' . $row[0] . '</td>';
+                             echo '<td>' . htmlspecialchars(trim($row[2] . ' ' . $row[3])) . '</td>';
+                             echo '<td>' . htmlspecialchars($numeroFacturaMostrar) . '</td>';
                             echo '<td>' . htmlspecialchars($row[5]) . '</td>';
                             echo '<td><span style="display:none;">' . $row[14] . '</span>' . htmlspecialchars($row[6]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[7]) . '</td>';
@@ -244,7 +260,7 @@ $id_estado = $filters['id_estado'] ?? [];
                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[12] ?? 0, 2) . '</td>';
                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[13] ?? 0, 2) . '</td>';
                             echo '<td>' . htmlspecialchars($row[18]) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[10]) . '</td>';
+                             echo '<td><span class="badge ' . $claseEstadoFactura . '">' . htmlspecialchars($row[10]) . '</span></td>';
                             echo '<td class="text-center">' . ($row[17] ? 'Sí' : 'No') . '</td>';
                             echo '<td class="text-center">' . ((int)$row[16] ? 'Sí' : 'No') . '</td>';
                             echo '</tr>';

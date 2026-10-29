@@ -35,7 +35,6 @@ if (!empty($_POST)) {
   try {
     $idEstado = !empty($_POST['btn_definitivo']) ? 3 : 2;
 
-    $_POST['id_condicion_pago'] = empty($_POST['id_condicion_pago']) ? 0 : $_POST['id_condicion_pago'];
     $qMoneda = $pdo->prepare('SELECT moneda FROM monedas WHERE id = ?');
     $qMoneda->execute([(int)($_POST['id_moneda'] ?? 0)]);
     $monedaFactura = $qMoneda->fetchColumn();
@@ -60,6 +59,26 @@ if (!empty($_POST)) {
       throw new RuntimeException('Seleccione un punto de venta válido.');
     }
 
+    $remitoPuntoVenta = trim((string)($_POST['remito_punto_venta'] ?? ''));
+    $remitoNumero = trim((string)($_POST['remito_numero'] ?? ''));
+    if (($remitoPuntoVenta === '') !== ($remitoNumero === '')) {
+      throw new RuntimeException('Para asociar un remito, complete tanto el punto de venta como el número de comprobante.');
+    }
+    if ($remitoPuntoVenta !== '') {
+      $remitoPuntoVenta = filter_var($remitoPuntoVenta, FILTER_VALIDATE_INT);
+      $remitoNumero = filter_var($remitoNumero, FILTER_VALIDATE_INT);
+      if ($remitoPuntoVenta === false || $remitoPuntoVenta < 1 || $remitoPuntoVenta > 99998
+          || $remitoNumero === false || $remitoNumero < 1 || $remitoNumero > 99999999) {
+        throw new RuntimeException('El punto de venta o el número del Remito R no son válidos.');
+      }
+    } else {
+      $remitoPuntoVenta = $remitoNumero = null;
+    }
+    $leyendaImpositiva = trim((string)($_POST['leyenda_impositiva'] ?? ''));
+    if (mb_strlen($leyendaImpositiva) > 1000) {
+      throw new RuntimeException('La leyenda impositiva no puede superar los 1000 caracteres.');
+    }
+
     // Tipo de comprobante: codigo del padrón ARCA (con mapeo dual para
     // históricos que guardaban el id de la vieja tabla tipos_comprobante).
     $idTipoComprobante = (int)($_POST['id_tipo_comprobante'] ?? 0);
@@ -72,7 +91,35 @@ if (!empty($_POST)) {
     if (!$tipoRow) {
       throw new RuntimeException('Seleccione un tipo de comprobante válido.');
     }
+    $codigoTipoArca = (int)$tipoRow['codigo'];
+    $esFacturaCreditoElectronica = in_array($codigoTipoArca, [201, 206, 211], true);
     $idLetraComprobante = derivarIdLetraComprobante($pdo, $idTipoComprobante);
+
+    $fceFechaVencimiento = null;
+    $fceCbu = null;
+    $fceAliasCbu = null;
+    $fceTransferencia = null;
+    if ($esFacturaCreditoElectronica) {
+      $fceDateRaw = trim((string)($_POST['fecha_vencimiento_pago'] ?? ''));
+      $fceDate = DateTime::createFromFormat('!Y-m-d', $fceDateRaw);
+      if ($fceDate && $fceDate->format('Y-m-d') === $fceDateRaw) $fceFechaVencimiento = $fceDateRaw;
+      $fceTransferencia = strtoupper(trim((string)($_POST['fce_transferencia'] ?? ''))) ?: null;
+      $emisorFacturaId = (int)($_POST['id_empresa'] ?? 0);
+      $qFceCompany = $pdo->prepare('SELECT cbu_emisor, alias_cbu FROM empresas WHERE id = ?');
+      $qFceCompany->execute([$emisorFacturaId]);
+      $fceCompany = $qFceCompany->fetch(PDO::FETCH_ASSOC) ?: [];
+      $fceCbu = preg_replace('/\D+/', '', (string)($fceCompany['cbu_emisor'] ?? '')) ?: null;
+      $fceAliasCbu = trim((string)($fceCompany['alias_cbu'] ?? '')) ?: null;
+      if ($isEditing) {
+        $qFceExisting = $pdo->prepare('SELECT id_empresa, fce_cbu, fce_alias_cbu FROM facturas_venta WHERE id = ?');
+        $qFceExisting->execute([(int)$_POST['id_factura']]);
+        $existingFce = $qFceExisting->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ((int)($existingFce['id_empresa'] ?? 0) === $emisorFacturaId) {
+          if (!empty($existingFce['fce_cbu'])) $fceCbu = (string)$existingFce['fce_cbu'];
+          if (!empty($existingFce['fce_alias_cbu'])) $fceAliasCbu = (string)$existingFce['fce_alias_cbu'];
+        }
+      }
+    }
 
     // El tipo debe estar habilitado para el punto de venta de la empresa.
     $idEmpresaVal = !empty($_POST['id_empresa']) ? (int)$_POST['id_empresa'] : 0;
@@ -104,10 +151,48 @@ if (!empty($_POST)) {
       $_POST['numero'] = str_pad($puntoVenta, 4, '0', STR_PAD_LEFT) . '-00000000';
     }
 
-    if (empty($_POST['id_condicion_pago'])) {
-      $qFallback = $pdo->query("SELECT id FROM formas_pago LIMIT 1");
-      $_POST['id_condicion_pago'] = (int)$qFallback->fetchColumn();
+    $rawConditions = $_POST['condiciones_venta'] ?? [];
+    if (!is_array($rawConditions)) {
+      throw new RuntimeException('Seleccione una o más condiciones de venta válidas.');
     }
+    $conditionIds = [];
+    foreach ($rawConditions as $rawConditionId) {
+      $conditionId = filter_var($rawConditionId, FILTER_VALIDATE_INT);
+      if ($conditionId === false || $conditionId < 1) {
+        throw new RuntimeException('Una de las condiciones de venta seleccionadas no es válida.');
+      }
+      $conditionIds[(int)$conditionId] = (int)$conditionId;
+    }
+    // Compatibilidad con formularios antiguos que todavía envían una sola forma de pago.
+    if (!$conditionIds && !empty($_POST['id_condicion_pago'])) {
+      $legacyConditionId = filter_var($_POST['id_condicion_pago'], FILTER_VALIDATE_INT);
+      if ($legacyConditionId !== false && $legacyConditionId > 0) {
+        $conditionIds[(int)$legacyConditionId] = (int)$legacyConditionId;
+      }
+    }
+    if (!$conditionIds) {
+      throw new RuntimeException('Seleccione al menos una condición de venta.');
+    }
+    $conditionIds = array_values($conditionIds);
+    $conditionPlaceholders = implode(',', array_fill(0, count($conditionIds), '?'));
+    $qValidConditions = $pdo->prepare("SELECT COUNT(*) FROM formas_pago WHERE id IN ($conditionPlaceholders)");
+    $qValidConditions->execute($conditionIds);
+    if ((int)$qValidConditions->fetchColumn() !== count($conditionIds)) {
+      throw new RuntimeException('Una de las condiciones de venta ya no está disponible.');
+    }
+    $_POST['id_condicion_pago'] = $conditionIds[0];
+
+    $idEmpresaActividad = filter_var($_POST['id_empresa'] ?? null, FILTER_VALIDATE_INT);
+    $actividadArcaId = filter_var($_POST['actividad_arca_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($idEmpresaActividad === false || $idEmpresaActividad < 1 || $actividadArcaId === false || $actividadArcaId < 1) {
+      throw new RuntimeException('Seleccione una actividad ARCA válida para la empresa emisora.');
+    }
+    $qActividad = $pdo->prepare('SELECT COUNT(*) FROM arca_actividades_empresa WHERE id_empresa = ? AND codigo = ?');
+    $qActividad->execute([$idEmpresaActividad, $actividadArcaId]);
+    if ((int)$qActividad->fetchColumn() === 0) {
+      throw new RuntimeException('La actividad seleccionada no está configurada para la empresa emisora. Sincronice las actividades desde Administración de Empresas.');
+    }
+    $_POST['actividad_arca_id'] = (int)$actividadArcaId;
 
     if ($isEditing) {
       $idFactura = (int)$_POST['id_factura'];
@@ -121,12 +206,12 @@ if (!empty($_POST)) {
         throw new Exception("Esta factura ya fue " . $motivo . " y no puede editarse.");
       }
 
-      $idCondicionPago = !empty($_POST['id_condicion_pago']) ? intval($_POST['id_condicion_pago']) : null;
+      $idCondicionPago = (int)$_POST['id_condicion_pago'];
       $idProyecto      = !empty($_POST['id_proyecto'])       ? intval($_POST['id_proyecto'])       : null;
       $idEmpresa       = !empty($_POST['id_empresa'])        ? intval($_POST['id_empresa'])        : null;
       $idCuentaDest    = !empty($_POST['id_cuenta_destino']) ? intval($_POST['id_cuenta_destino']) : null;
 
-      $q = $pdo->prepare("UPDATE facturas_venta SET id_tipo_comprobante=?, id_letra_comprobante=?, id_proyecto=?, numero=?, id_cuenta_destino=?, id_empresa=?, fecha_emitida=?, fecha_enviada=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, id_estado=? WHERE id=?");
+      $q = $pdo->prepare("UPDATE facturas_venta SET id_tipo_comprobante=?, id_letra_comprobante=?, id_proyecto=?, numero=?, id_cuenta_destino=?, id_empresa=?, actividad_arca_id=?, fecha_emitida=?, id_condicion_pago=?, id_moneda=?, cotizacion=?, observaciones=?, leyenda_impositiva=?, remito_punto_venta=?, remito_numero=?, fce_fecha_vencimiento=?, fce_cbu=?, fce_alias_cbu=?, fce_transferencia=?, id_estado=? WHERE id=?");
       $q->execute([
         $idTipoComprobante,
         $idLetraComprobante,
@@ -134,12 +219,19 @@ if (!empty($_POST)) {
         $_POST['numero'],
         $idCuentaDest,
         $idEmpresa,
+        $_POST['actividad_arca_id'],
         $_POST['fecha_emitida'],
-        $_POST['fecha_enviada'],
         $idCondicionPago,
         intval($_POST['id_moneda']),
         $_POST['cotizacion'],
         $_POST['observaciones'],
+        $leyendaImpositiva,
+        $remitoPuntoVenta,
+        $remitoNumero,
+        $fceFechaVencimiento,
+        $fceCbu,
+        $fceAliasCbu,
+        $fceTransferencia,
         $idEstado,
         $idFactura
       ]);
@@ -151,16 +243,18 @@ if (!empty($_POST)) {
       $pdo->prepare("UPDATE certificados_avances_detalle SET id_comprobante = NULL WHERE id_comprobante = ?")->execute([$idFactura]);
 
     } else {
-      $idCondicionPago = !empty($_POST['id_condicion_pago']) ? intval($_POST['id_condicion_pago']) : null;
+      $idCondicionPago = (int)$_POST['id_condicion_pago'];
       $idProyecto      = !empty($_POST['id_proyecto'])       ? intval($_POST['id_proyecto'])       : null;
       $idEmpresa       = !empty($_POST['id_empresa'])        ? intval($_POST['id_empresa'])        : null;
       $idCuentaDest    = !empty($_POST['id_cuenta_destino']) ? intval($_POST['id_cuenta_destino']) : null;
 
       $q = $pdo->prepare("INSERT INTO facturas_venta
-                    (id_tipo_comprobante, id_letra_comprobante, id_proyecto,
-                     numero, id_cuenta_destino, id_empresa, fecha_emitida, fecha_enviada,
-                     id_condicion_pago, id_moneda, cotizacion, observaciones, id_usuario, id_estado)
-                  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                     (id_tipo_comprobante, id_letra_comprobante, id_proyecto,
+                      numero, id_cuenta_destino, id_empresa, actividad_arca_id, fecha_emitida, fecha_enviada,
+                       id_condicion_pago, id_moneda, cotizacion, observaciones, leyenda_impositiva,
+                       remito_punto_venta, remito_numero, fce_fecha_vencimiento, fce_cbu, fce_alias_cbu,
+                       fce_transferencia, id_usuario, id_estado)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
       $q->execute([
         $idTipoComprobante,
         $idLetraComprobante,
@@ -168,16 +262,30 @@ if (!empty($_POST)) {
         $_POST['numero'],
         $idCuentaDest,
         $idEmpresa,
+        $_POST['actividad_arca_id'],
         $_POST['fecha_emitida'],
-        $_POST['fecha_enviada'],
+        $_POST['fecha_emitida'], // fecha_enviada: la columna sigue siendo NOT NULL; se iguala a la fecha emitida
         $idCondicionPago,
         intval($_POST['id_moneda']),
         $_POST['cotizacion'],
         $_POST['observaciones'],
+        $leyendaImpositiva,
+        $remitoPuntoVenta,
+        $remitoNumero,
+        $fceFechaVencimiento,
+        $fceCbu,
+        $fceAliasCbu,
+        $fceTransferencia,
         $_SESSION['user']['id'],
         $idEstado
       ]);
       $idFactura = $pdo->lastInsertId();
+    }
+
+    $pdo->prepare('DELETE FROM facturas_venta_condiciones_pago WHERE id_factura_venta = ?')->execute([$idFactura]);
+    $qCondicionFactura = $pdo->prepare('INSERT INTO facturas_venta_condiciones_pago (id_factura_venta, id_forma_pago) VALUES (?, ?)');
+    foreach ($conditionIds as $conditionId) {
+      $qCondicionFactura->execute([$idFactura, $conditionId]);
     }
 
     // Detalles
@@ -198,8 +306,8 @@ if (!empty($_POST)) {
 
     if (is_array($detalles)) {
       $qDet = $pdo->prepare("INSERT INTO facturas_venta_detalle
-                                     (id_factura_venta, id_concepto_contable, descripcion, cantidad, precio, subtotal, porcentaje_descuento)
-                                     VALUES (?,?,?,?,?,?,?)");
+                                     (id_factura_venta, id_concepto_contable, descripcion, ncm, cantidad, precio, subtotal, porcentaje_descuento)
+                                     VALUES (?,?,?,?,?,?,?,?)");
       $hasMontoCols = false;
       try {
         $colCheck = $pdo->query("SHOW COLUMNS FROM facturas_venta_detalle_x_certificados_avance LIKE 'cantidad'")->fetch();
@@ -220,6 +328,7 @@ if (!empty($_POST)) {
                                 WHERE cc.id = ?");
 
       foreach ($detalles as $det) {
+        $ncmDetalle = isset($det['ncm']) && trim((string)$det['ncm']) !== '' ? trim((string)$det['ncm']) : null;
         $porcDescuento = isset($det['porcentaje_descuento']) ? (float)$det['porcentaje_descuento'] : 0;
         if ($porcDescuento < 0 || $porcDescuento > 100) {
           throw new RuntimeException("El descuento del detalle debe estar entre 0 y 100%.");
@@ -256,7 +365,7 @@ if (!empty($_POST)) {
           $subtotal = round($subtotal * (1 - $porcDescuento / 100), 2);
           $precio = 0;
 
-          $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal, $porcDescuento]);
+          $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $ncmDetalle, $cant, $precio, $subtotal, $porcDescuento]);
           $idDetalle = $pdo->lastInsertId();
 
           foreach ($validos as $vImp) {
@@ -272,7 +381,7 @@ if (!empty($_POST)) {
           $precio   = floatval($det['precio']);
           $subtotal = round($cant * $precio * (1 - $porcDescuento / 100), 2);
 
-          $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $cant, $precio, $subtotal, $porcDescuento]);
+          $qDet->execute([$idFactura, intval($det['id_concepto']), $det['descripcion'] ?? '', $ncmDetalle, $cant, $precio, $subtotal, $porcDescuento]);
           $idDetalle = $pdo->lastInsertId();
         }
 
@@ -339,6 +448,19 @@ if (!empty($_POST)) {
                               WHERE id=?");
     $qu->execute([$gravado, $noGravado, $iva, $totalOtros, $totalFv + $totalOtros, $idFactura]);
 
+    if ($leyendaImpositiva === '') {
+      $cotizacionLeyenda = (float)$_POST['cotizacion'];
+      $qMonedaLeyenda = $pdo->prepare('SELECT moneda FROM monedas WHERE id = ?');
+      $qMonedaLeyenda->execute([(int)$_POST['id_moneda']]);
+      if (!esMonedaDolar((string)$qMonedaLeyenda->fetchColumn())) $cotizacionLeyenda = 1;
+      $dineroLeyenda = static fn(float $monto): string => number_format($monto, 2, ',', '.');
+      $leyendaImpositiva = 'A los fines impositivos Importe Neto $ '
+        . $dineroLeyenda(($gravado + $noGravado) * $cotizacionLeyenda)
+        . ', IVA $ ' . $dineroLeyenda($iva * $cotizacionLeyenda)
+        . ' y el Total $ ' . $dineroLeyenda(($gravado + $noGravado + $iva) * $cotizacionLeyenda) . '.';
+    }
+    $pdo->prepare('UPDATE facturas_venta SET leyenda_impositiva = ? WHERE id = ?')->execute([$leyendaImpositiva, $idFactura]);
+
     // Regímenes
     if (!empty($_POST['regimenes'])) {
       $qp = $pdo->prepare("SELECT regimen, codigo, articulo, porcentaje FROM regimenes_facturacion WHERE id = ?");
@@ -395,7 +517,7 @@ if (!empty($_POST)) {
       }
       header("Location: verFacturaVenta.php?id=" . (int)$idFactura);
     } elseif ($idEstado === 3) {
-      header("Location: imprimirFacturaVentaARCA.php?id=" . (int)$idFactura);
+      header("Location: verFacturaVenta.php?id=" . (int)$idFactura);
     } else {
       header("Location: listarFacturasVenta.php");
     }
@@ -418,6 +540,7 @@ $detallesExistentes = [];
 $retencionesExistentes = [];
 $certIds = [];
 $regimenesSeleccionados = [];
+$condicionesVentaSeleccionadas = array_values(array_unique(array_map('intval', (array)($_POST['condiciones_venta'] ?? []))));
 $monedaLabel = '';
 $idMoneda = 0;
 
@@ -437,6 +560,17 @@ if ($editMode && $editId) {
   }
 
   if ($facturaData) {
+    $qCondicionesVenta = $pdo->prepare('SELECT id_forma_pago FROM facturas_venta_condiciones_pago WHERE id_factura_venta = ? ORDER BY id_forma_pago');
+    $qCondicionesVenta->execute([$editId]);
+    $condicionesGuardadas = array_map('intval', $qCondicionesVenta->fetchAll(PDO::FETCH_COLUMN));
+    if (empty($_POST)) {
+      if ($condicionesGuardadas) {
+        $condicionesVentaSeleccionadas = $condicionesGuardadas;
+      } elseif (!empty($facturaData['id_condicion_pago'])) {
+        $condicionesVentaSeleccionadas = [(int)$facturaData['id_condicion_pago']];
+      }
+    }
+
     $idEmpresaVal = (int)$facturaData['id_empresa'];
     $idClienteVal = (int)$facturaData['id_cuenta_destino'];
     $idProyectoVal = (int)$facturaData['id_proyecto'];
@@ -528,6 +662,7 @@ if ($editMode && $editId) {
         'id_concepto' => $row['id_concepto_contable'],
         'concepto_text' => $row['concepto_text'],
         'descripcion' => $row['descripcion'] ?? '',
+        'ncm' => $row['ncm'] ?? '',
         'cantidad' => (float)$row['cantidad'],
         'precio' => (float)$row['precio'],
         'subtotal' => (float)$row['subtotal'],
@@ -634,5 +769,13 @@ $claveOperacion = preg_match('/^[a-f0-9]{32}$/D', (string)$claveOperacion)
   ? $claveOperacion
   : bin2hex(random_bytes(16));
 $errorMsg = $errorMsg ?? '';
+$ncmDefault = '73.08.20.00';
+$pdoNcm = Database::connect();
+$qNcm = $pdoNcm->query("SELECT valor FROM parametros WHERE id = 13");
+if ($qNcm && ($valNcm = $qNcm->fetchColumn()) !== false && trim((string)$valNcm) !== '') {
+  $ncmDefault = trim((string)$valNcm);
+}
+Database::disconnect();
+
 $vista = 'venta';
 include 'nuevaFactura.php';

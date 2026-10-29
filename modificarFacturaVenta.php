@@ -137,8 +137,8 @@
 							$sqlZon = "SELECT `id`, `empresa` FROM `empresas` WHERE 1";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
+			while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+				echo "<option value='".$fila['id']."'";
 								if ($fila['id'] == $data['id_empresa']) {
                                         echo " selected ";
 								}
@@ -286,7 +286,8 @@
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
+								$esDolar = esMonedaDolar($fila['moneda']) ? 'true' : 'false';
+								echo "<option value='".$fila['id']."' data-esusd='".$esDolar."'";
 								if ($fila['id'] == $data['id_moneda']) {
                                         echo " selected ";
 								}
@@ -298,8 +299,15 @@
 							</div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Cotización(*)</label>
-							<div class="col-sm-9"><input name="cotizacion" type="number" step="0.01" class="form-control" value="<?php echo $data['cotizacion']; ?>" required="required"></div>
+							<label class="col-sm-3 col-form-label" id="labelCotizacion">Cotización<span id="cotizacionRequiredStar" class="text-danger d-none">(*)</span></label>
+							<div class="col-sm-9">
+								<select id="tipo_dolar" class="form-control mb-2" style="display:none;"></select>
+								<div class="input-group">
+									<input name="cotizacion" id="cotizacion" type="number" step="0.01" class="form-control" placeholder="Seleccione una moneda..." value="<?php echo $data['cotizacion']; ?>">
+									<div class="input-group-append"><span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;">Esperando moneda...</span></div>
+								</div>
+								<small id="infoCotizacion" class="text-muted"></small>
+							</div>
 							</div>
 							<div class="form-group row">
                             <label class="col-sm-3 col-form-label">Otros Regimenes</label>
@@ -374,8 +382,42 @@
     <script src="assets/js/script.js"></script>
     <!-- Plugin used-->
 	<script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
+	<script src="assets/js/select2/select2-custom.js"></script>
+	<script src="assets/js/cotizacion-dolar.js?v=<?=filemtime(__DIR__ . '/assets/js/cotizacion-dolar.js')?>"></script>
 	<script>
+		var cotizacionDolar = CotizacionDolar.montar({
+			input: '#cotizacion',
+			badge: '#estadoDolar',
+			info: '#infoCotizacion',
+			selectTipo: '#tipo_dolar',
+			tipoInicial: 'mayorista'
+		});
+
+		$('#id_moneda').on('change', function () {
+			var opcion = $(this).find('option:selected');
+			var input = $('#cotizacion');
+			var esDolar = opcion.data('esusd') === true || opcion.data('esusd') === 'true';
+
+			if (esDolar) {
+				$('#cotizacionRequiredStar').removeClass('d-none');
+				input.prop('required', true).prop('readonly', false);
+				cotizacionDolar.mostrar(true);
+				cotizacionDolar.cargar();
+			} else if (opcion.val() === '') {
+				$('#cotizacionRequiredStar').addClass('d-none');
+				input.val('').prop('required', false).prop('readonly', false);
+				cotizacionDolar.mostrar(false);
+				$('#estadoDolar').text('Esperando moneda...').removeClass('text-danger text-success').addClass('text-secondary');
+				$('#infoCotizacion').empty();
+			} else {
+				$('#cotizacionRequiredStar').addClass('d-none');
+				input.val(1).prop('required', false).prop('readonly', true);
+				cotizacionDolar.mostrar(false);
+				$('#estadoDolar').text('No aplica (moneda local)').removeClass('text-danger text-success').addClass('text-secondary');
+				$('#infoCotizacion').html('<span class="text-muted">Se informa cotización 1.</span>');
+			}
+		}).trigger('change');
+
 		$("#fecha_enviada").change(function () {
 			var startDate = document.getElementById("fecha_emitida").value;
 			var endDate = document.getElementById("fecha_enviada").value;

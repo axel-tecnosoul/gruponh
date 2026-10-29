@@ -46,7 +46,7 @@ if (!empty($_POST)) {
 
     if (!empty($dataNum)) {
       if ($dataNum['id_material'] != $id_material || $dataNum['ancho'] != $ancho || $dataNum['largo'] != $largo || floatval($dataNum['diametro']) != floatval($diametro)) {
-        echo json_encode(['ok' => false, 'error' => 'El número de Posición ya existe con otro material o medidas en el proyecto']);
+        echo json_encode(['ok' => false, 'error' => "El número de Posición $posicion ya existe con otro material o medidas en el proyecto"]);
         exit;
       }
     }
@@ -199,7 +199,7 @@ if (!empty($_POST)) {
         floatval($dataNum['diametro']) != floatval($diametro)
       ) {
         Database::disconnect();
-        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
+        header("Location: nuevaListaCortePosiciones.php?error_numero=".urlencode($nombre_posicion)."&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
       }
     }
@@ -347,7 +347,7 @@ if (!empty($_POST)) {
         floatval($dataNum['diametro']) != floatval($diametro)
       ) {
         Database::disconnect();
-        header("Location: nuevaListaCortePosiciones.php?error_numero=1&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
+        header("Location: nuevaListaCortePosiciones.php?error_numero=".urlencode($nombre_posicion)."&id_lista_corte_conjunto=".$id_lista_corte_conjunto.$prodParam);
         exit;
       }
     }
@@ -585,7 +585,8 @@ Database::disconnect();?>
                             echo "<font color='red'><b>El nombre de Posición utilizado ya está en uso</b></font>";
                           }
                           if (!empty($_GET['error_numero'])) {
-                            echo "<font color='red'><b>El número de Posición ya existe con otro material o medidas en el proyecto</b></font>";
+                            $posError = ($_GET['error_numero'] !== '1') ? ' ' . htmlspecialchars($_GET['error_numero']) : '';
+                            echo "<font color='red'><b>El número de Posición{$posError} ya existe con otro material o medidas en el proyecto</b></font>";
                           }?>
                           <span id="error_posicion" style="color:red;font-weight:bold;display:none;"></span>
                         </div>

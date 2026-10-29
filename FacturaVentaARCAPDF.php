@@ -28,6 +28,7 @@ final class FacturaVentaARCAPDF extends FPDF
     private bool $dolares;
     private bool $localOnly;
     private bool $homologacion;
+    private bool $vistaPrevia;
     private bool $mostrarIVAItem;
     private bool $copiasMultiples;
     private string $pie;
@@ -50,6 +51,7 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->dolares = $data['dolares'];
         $this->localOnly = $data['local_only'];
         $this->homologacion = $data['homologacion'];
+        $this->vistaPrevia = !empty($data['vista_previa']);
         $this->mostrarIVAItem = $data['mostrar_iva_item'];
         $this->copiasMultiples = $data['copias_multiples'];
         $this->pie = $data['pie'];
@@ -69,10 +71,16 @@ final class FacturaVentaARCAPDF extends FPDF
             $this->copyPageStart = $this->PageNo() + 1;
             $this->AddPage();
             $y = $this->dibujarEncabezado();
-            if (!$this->localOnly && (int)($this->comprobante['concepto'] ?? 1) !== 1 && !empty($this->comprobante['fecha_servicio_desde'])) {
+            $esFce = !empty($this->detalle['fce']);
+            if ((!$this->localOnly || $this->vistaPrevia)
+                && ((int)($this->comprobante['concepto'] ?? 1) !== 1 || $esFce)
+                && (!empty($this->comprobante['fecha_servicio_desde']) || $esFce)) {
                 $y = $this->dibujarPeriodo($y);
             }
             $y = $this->dibujarDatosCliente($y);
+            if ($esFce) {
+                $y = $this->dibujarDatosFce($y);
+            }
             $reference = trim((string)($this->detalle['proyecto'] ?? ''));
             if ($reference !== '') {
                 $y = $this->dibujarReferencia($y, $reference);
@@ -94,12 +102,60 @@ final class FacturaVentaARCAPDF extends FPDF
         return $converted;
     }
 
+    public function AddPage($orientation = '', $format = '', $rotation = 0)
+    {
+        parent::AddPage($orientation, $format, $rotation);
+        $this->dibujarMarcaAgua();
+    }
+
     public function Footer(): void
     {
     }
 
     public function Header(): void
     {
+    }
+
+    /**
+     * Marca de agua diagonal para los comprobantes emitidos en homologación:
+     * deja claro de un vistazo que no tienen validez fiscal.
+     */
+    private function dibujarMarcaAgua(): void
+    {
+        if (!$this->homologacion && !$this->vistaPrevia) {
+            return;
+        }
+        $angle = 45 * M_PI / 180;
+        $c = cos($angle);
+        $s = sin($angle);
+        $pivotX = 105.0;
+        $pivotY = 168.0;
+        $cx = $pivotX * $this->k;
+        $cy = ($this->h - $pivotY) * $this->k;
+        $this->_out(sprintf(
+            'q %.5F %.5F %.5F %.5F %.2F %.2F cm 1 0 0 1 %.2F %.2F cm',
+            $c,
+            $s,
+            -$s,
+            $c,
+            $cx,
+            $cy,
+            -$cx,
+            -$cy
+        ));
+        $this->SetTextColor(125, 125, 125);
+        $labels = $this->vistaPrevia
+            ? [['VISTA PREVIA', 58.0, -6.0], ['SIN VALIDEZ FISCAL', 34.0, 15.0]]
+            : [['HOMOLOGACIÓN', 64.0, -6.0], ['SIN VALIDEZ FISCAL', 34.0, 15.0]];
+        foreach ($labels as [$label, $size, $offsetY]) {
+            $this->SetFont('Arial', 'B', $size);
+            $text = $this->texto($label);
+            $width = $this->GetStringWidth($text);
+            $this->SetXY($pivotX - $width / 2, $pivotY + $offsetY);
+            $this->Cell($width, $size / 2.8, $text, 0, 0, 'C');
+        }
+        $this->_out('Q');
+        $this->SetTextColor(0, 0, 0);
     }
 
     /**
@@ -251,15 +307,31 @@ final class FacturaVentaARCAPDF extends FPDF
     private function dibujarDatosCliente(float $y): float
     {
         $this->SetDrawColor(0, 0, 0);
-        $boxHeight = 24.0;
-        $this->Rect(self::CONTENT_LEFT, $y, self::CONTENT_WIDTH, $boxHeight);
-
         $document = ($this->receptor['cuit'] ?? '') ?: ($this->receptor['numero_documento'] ?? '');
         $condicionReceptor = $this->normalizarCondicionIva((string)($this->receptor['condicion_iva'] ?? ''));
         $razonSocialReceptor = (string)($this->receptor['razon_social'] ?? '');
         $domicilioReceptor = (string)($this->receptor['domicilio'] ?? '');
         $condicionVenta = (string)($this->detalle['condicion_venta'] ?? '');
         $remito = trim((string)($this->detalle['remito'] ?? ''));
+        if ($remito === '' && is_array($this->detalle['comprobante_asociado'] ?? null)) {
+            $relatedRemito = $this->detalle['comprobante_asociado'];
+            if ((int)($relatedRemito['tipo'] ?? 0) === 91
+                && (int)($relatedRemito['punto_venta'] ?? 0) > 0
+                && (int)($relatedRemito['numero'] ?? 0) > 0) {
+                $remito = str_pad((string)(int)$relatedRemito['punto_venta'], 4, '0', STR_PAD_LEFT)
+                    . '-' . str_pad((string)(int)$relatedRemito['numero'], 8, '0', STR_PAD_LEFT);
+            }
+        }
+        $conditionItems = $this->detalle['condiciones_venta'] ?? [];
+        if (!is_array($conditionItems) || !$conditionItems) {
+            $conditionItems = $condicionVenta !== '' ? preg_split('/,\s*/', $condicionVenta) : [];
+        }
+        $conditionItems = array_values(array_filter(array_map('trim', $conditionItems), static fn($value) => $value !== ''));
+        $conditionLines = [];
+        foreach (array_chunk($conditionItems, 2) as $conditionPair) {
+            $conditionLines[] = implode(', ', $conditionPair);
+        }
+        $conditionText = $conditionLines ? implode("\n", $conditionLines) : '-';
 
         // Fila 1: CUIT | Apellido y Nombre / Razón Social
         $this->SetXY(self::CONTENT_LEFT + 2, $y + 2.5);
@@ -287,38 +359,50 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->SetFont('Arial', '', 8);
         $this->MultiCell(self::CONTENT_LEFT + self::CONTENT_WIDTH - 121, 3.6, $this->texto($domicilioReceptor), 0, 'L');
 
-        // Fila 3: Condición de venta | Remito
-        $this->SetXY(self::CONTENT_LEFT + 2, $y + 17.5);
+        // Condiciones: dos por línea para evitar superposición con el remito.
+        $conditionY = $y + 17.5;
+        $this->SetXY(self::CONTENT_LEFT + 2, $conditionY);
         $this->SetFont('Arial', 'B', 8);
-        $this->Write(4, $this->texto('Condición de venta:  '));
+        $this->Cell(34, 4, $this->texto('Condición de venta:'), 0, 0, 'L');
+        $this->SetXY(self::CONTENT_LEFT + 37, $conditionY);
         $this->SetFont('Arial', '', 8);
-        $this->Write(4, $this->texto($condicionVenta ?: '-'));
+        $this->MultiCell(self::CONTENT_WIDTH - 39, 4, $this->texto($conditionText), 0, 'L');
+        $contentBottom = max($conditionY + 4, $this->GetY());
 
-        $this->SetXY(98, $y + 17.5);
+        $remitoY = $contentBottom + 1.0;
+        $this->SetXY(self::CONTENT_LEFT + 2, $remitoY);
         $this->SetFont('Arial', 'B', 8);
-        $this->Write(4, $this->texto('Remito: '));
+        $this->Cell(34, 4, $this->texto('Remito:'), 0, 0, 'L');
         $this->SetFont('Arial', '', 8);
-        $this->Write(4, $this->texto($remito ?: '-'));
+        $this->Cell(self::CONTENT_WIDTH - 38, 4, $this->texto($remito ?: '-'), 0, 0, 'L');
+        $contentBottom = $remitoY + 4;
 
+        $boxHeight = max(24.0, $contentBottom - $y + 2.0);
+        $this->Rect(self::CONTENT_LEFT, $y, self::CONTENT_WIDTH, $boxHeight);
         return $y + $boxHeight + 2.0;
     }
 
     private function dibujarPeriodo(float $y): float
     {
+        $esFce = !empty($this->detalle['fce']);
+        $soloVencimiento = (int)($this->comprobante['concepto'] ?? 1) === 1;
+        if ($soloVencimiento && !$esFce) return $y;
         $this->SetDrawColor(0, 0, 0);
-        $this->Rect(self::CONTENT_LEFT, $y, self::CONTENT_WIDTH, 8);
+        $this->Rect(self::CONTENT_LEFT, $y, self::CONTENT_WIDTH, $soloVencimiento ? 8 : 8);
         $this->SetXY(self::CONTENT_LEFT + 2, $y + 2);
-        $this->SetFont('Arial', 'B', 8);
-        $this->Write(4, $this->texto('Período facturado desde: '));
-        $this->SetFont('Arial', '', 8);
-        $fechaDesde = $this->fecha($this->comprobante['fecha_servicio_desde'] ?? $this->comprobante['fecha_comprobante']);
-        $this->Write(4, $this->texto($fechaDesde . '   '));
+        if (!$soloVencimiento) {
+            $this->SetFont('Arial', 'B', 8);
+            $this->Write(4, $this->texto('Período facturado desde: '));
+            $this->SetFont('Arial', '', 8);
+            $fechaDesde = $this->fecha($this->comprobante['fecha_servicio_desde'] ?? $this->comprobante['fecha_comprobante']);
+            $this->Write(4, $this->texto($fechaDesde . '   '));
 
-        $this->SetFont('Arial', 'B', 8);
-        $this->Write(4, $this->texto('Hasta: '));
-        $this->SetFont('Arial', '', 8);
-        $fechaHasta = $this->fecha($this->comprobante['fecha_servicio_hasta'] ?? $this->comprobante['fecha_comprobante']);
-        $this->Write(4, $this->texto($fechaHasta . '   '));
+            $this->SetFont('Arial', 'B', 8);
+            $this->Write(4, $this->texto('Hasta: '));
+            $this->SetFont('Arial', '', 8);
+            $fechaHasta = $this->fecha($this->comprobante['fecha_servicio_hasta'] ?? $this->comprobante['fecha_comprobante']);
+            $this->Write(4, $this->texto($fechaHasta . '   '));
+        }
 
         $this->SetFont('Arial', 'B', 8);
         $this->Write(4, $this->texto('Fecha de Vto. para el pago: '));
@@ -327,6 +411,30 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->Write(4, $this->texto($fechaVto));
 
         return $y + 10.0;
+    }
+
+    private function dibujarDatosFce(float $y): float
+    {
+        $fce = $this->detalle['fce'];
+        $this->SetFont('Arial', 'B', 7.5);
+        $this->SetXY(self::CONTENT_LEFT, $y);
+        $this->Cell(self::CONTENT_WIDTH, 5, $this->texto('Datos para el pago de Factura de Crédito Electrónica MiPyME'), 1, 0, 'L');
+        $this->SetFont('Arial', '', 7.5);
+        $line = 'CBU: ' . ((string)($fce['cbu'] ?? '') ?: '—')
+            . '    Alias CBU: ' . ((string)($fce['alias_cbu'] ?? '') ?: '—')
+            . '    Transferencia: ' . ((($fce['transferencia'] ?? '') === 'SCA') ? 'Sistema de Circulación Abierta' : 'Agente de Depósito Colectivo');
+        $this->SetXY(self::CONTENT_LEFT, $y + 5);
+        $this->MultiCell(self::CONTENT_WIDTH, 4, $this->texto($line), 1, 'L');
+        $nextY = $this->GetY();
+        $legend = trim((string)($fce['leyenda_sca'] ?? ''));
+        if ($legend !== '') {
+            $fontSize = $this->ajustarFuenteEnLineas($this->texto($legend), self::CONTENT_WIDTH - 4, 6.5, 5);
+            $this->SetFont('Arial', '', $fontSize);
+            $this->SetXY(self::CONTENT_LEFT, $nextY);
+            $this->MultiCell(self::CONTENT_WIDTH, 3.7, $this->texto($legend), 1, 'L');
+            $nextY = $this->GetY();
+        }
+        return $nextY + 2;
     }
 
     private function dibujarReferencia(float $y, string $reference): float
@@ -401,7 +509,7 @@ final class FacturaVentaARCAPDF extends FPDF
                 number_format($quantity, 2, ',', ''),
                 'unidades',
                 $this->dineroPlano($unitPrice),
-                $this->dineroPlano($discount),
+                number_format($discount, 2, ',', ''),
             ];
             if ($this->mostrarIVAItem) {
                 $values[] = $this->dineroPlano($base);
@@ -657,13 +765,16 @@ final class FacturaVentaARCAPDF extends FPDF
                 'R'
             );
         }
-        if (!$this->localOnly || $this->dolares) {
+        if (!$this->localOnly || $this->vistaPrevia || $this->dolares) {
             $this->SetFont('Arial', 'I', 7);
-            $totalPesos = (float)$this->comprobante['importe_total'] * (float)$this->comprobante['cotizacion'];
-            $taxText = '"A los fines impositivos Importe Neto $ '
-                . $this->dinero((float)$this->comprobante['importe_neto'] * (float)$this->comprobante['cotizacion'])
-                . ', IVA $ ' . $this->dinero((float)$this->comprobante['importe_iva'] * (float)$this->comprobante['cotizacion'])
-                . ' y el Total $ ' . $this->dinero($totalPesos) . '."';
+            $taxText = trim((string)($this->detalle['leyenda_impositiva'] ?? ''));
+            if ($taxText === '') {
+                $totalPesos = (float)$this->comprobante['importe_total'] * (float)$this->comprobante['cotizacion'];
+                $taxText = '"A los fines impositivos Importe Neto $ '
+                    . $this->dinero((float)$this->comprobante['importe_neto'] * (float)$this->comprobante['cotizacion'])
+                    . ', IVA $ ' . $this->dinero((float)$this->comprobante['importe_iva'] * (float)$this->comprobante['cotizacion'])
+                    . ' y el Total $ ' . $this->dinero($totalPesos) . '."';
+            }
             $taxY = $this->dolares ? 226 : 216;
             $this->SetXY(self::CONTENT_LEFT, $taxY);
             $this->Cell(self::CONTENT_WIDTH, 9, $this->texto($taxText), 1, 0, 'C');
@@ -705,7 +816,7 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->MultiCell(48, 2.6, $this->texto('AGENCIA DE RECAUDACIÓN Y CONTROL ADUANERO'), 0, 'L');
         $this->SetFont('Arial', 'BI', 7.5);
         $this->SetXY(38, 264);
-        $this->Cell(55, 4, $this->texto('Comprobante Autorizado'), 0, 0, 'L');
+        $this->Cell(55, 4, $this->texto($this->homologacion ? 'Comprobante de Homologación' : 'Comprobante Autorizado'), 0, 0, 'L');
         $this->SetFont('Arial', 'I', 5.5);
         $this->SetXY(38, 269);
         $this->Cell(58, 2.8, $this->texto('Esta Agencia no se responsabiliza por los'), 0, 2, 'L');
@@ -806,7 +917,7 @@ final class FacturaVentaARCAPDF extends FPDF
 
     private function dineroPlano($value): string
     {
-        return number_format((float)$value, 2, ',', '');
+        return number_format((float)$value, 2, ',', '.');
     }
 
     private function NbLines(float $width, string $text): int

@@ -985,3 +985,183 @@ UPDATE `empresas` SET `empresa` = 'NH Net SA' WHERE `empresas`.`id` = 2
 -- ---------------------------------------------------------------------------
 ALTER TABLE `lista_corte_posiciones`
   ADD COLUMN `observaciones` TEXT NULL DEFAULT NULL AFTER `calidad`;
+-- =====================================================================
+-- consultas.sql
+-- Cambios de BD aplicados para el módulo de Packing List (29/10/2026)
+-- =====================================================================
+
+-- ---------------------------------------------------------------------
+-- 1) Nuevos tipos de notificación para el módulo de Packing List
+--    23: Aprobación de Packing List
+--    24: Cancelación de Packing List
+--    Ambos redirigen a la vista de la packing list correspondiente.
+-- ---------------------------------------------------------------------
+INSERT INTO tipos_notificacion (id, tipo, mensaje, redirect)
+SELECT 23, 'Aprobación de Packing List', 'La packing list ha sido aprobada en el sistema', 'verPackingList.php?id='
+WHERE NOT EXISTS (SELECT 1 FROM tipos_notificacion WHERE id = 23 OR tipo = 'Aprobación de Packing List');
+
+INSERT INTO tipos_notificacion (id, tipo, mensaje, redirect)
+SELECT 24, 'Cancelación de Packing List', 'La packing list ha sido cancelada en el sistema', 'verPackingList.php?id='
+WHERE NOT EXISTS (SELECT 1 FROM tipos_notificacion WHERE id = 24 OR tipo = 'Cancelación de Packing List');
+
+-- ---------------------------------------------------------------------
+-- 2) Suscripciones a los nuevos tipos de notificación
+--    Se copian los mismos usuarios que ya estaban suscriptos al tipo 7
+--    ("Packing List para aprobar") para que reciban también los avisos
+--    de aprobación y cancelación.
+--    (Las consultas son idempotentes: no duplican si ya existen.)
+-- ---------------------------------------------------------------------
+INSERT INTO usuarios_tipos_notificacion (id_usuario, id_tipo_notificacion)
+  SELECT DISTINCT t.id_usuario, 23 FROM usuarios_tipos_notificacion t
+  WHERE t.id_tipo_notificacion = 7
+    AND NOT EXISTS (
+      SELECT 1 FROM usuarios_tipos_notificacion x
+      WHERE x.id_usuario = t.id_usuario AND x.id_tipo_notificacion = 23
+    );
+
+INSERT INTO usuarios_tipos_notificacion (id_usuario, id_tipo_notificacion)
+  SELECT DISTINCT t.id_usuario, 24 FROM usuarios_tipos_notificacion t
+  WHERE t.id_tipo_notificacion = 7
+    AND NOT EXISTS (
+      SELECT 1 FROM usuarios_tipos_notificacion x
+      WHERE x.id_usuario = t.id_usuario AND x.id_tipo_notificacion = 24
+    );
+
+-- ---------------------------------------------------------------------
+-- CONSULTAS DE VERIFICACIÓN (sin cambios): correr para validar después
+-- ---------------------------------------------------------------------
+-- Tipos nuevos creados:
+SELECT id, tipo, mensaje, redirect FROM tipos_notificacion WHERE id IN (23, 24);
+
+-- Suscripciones activas a los tipos nuevos:
+SELECT id_usuario, id_tipo_notificacion
+  FROM usuarios_tipos_notificacion
+  WHERE id_tipo_notificacion IN (23, 24)
+  ORDER BY id_tipo_notificacion, id_usuario;
+
+-- ---------------------------------------------------------------------
+-- PENDIENTE DE REVISIÓN CON EL NEGOCIO (no se aplicó nada)
+-- La tabla estados_packing_list tiene dos estados con nombre "Superado"
+-- (ids 7 y 8). Evaluar si corresponde eliminar uno y cómo afecta a los
+-- datos históricos de packing_lists_revisiones.id_estado_packing_list.
+-- ---------------------------------------------------------------------
+-- SELECT id, estado, COUNT(*) FROM estados_packing_list GROUP BY id, estado HAVING COUNT(*) > 1;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 31: Actividad ARCA y múltiples condiciones de venta en facturas.
+-- La actividad seleccionada se envía en WSFE como Actividades.Actividad.Id.
+-- Las condiciones de venta reutilizan formas_pago; WSFE no tiene un campo
+-- estructurado para enviarlas, por lo que se conservan como datos internos.
+-- ---------------------------------------------------------------------------
+SET @actividad_factura_column_exists := (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'facturas_venta'
+    AND COLUMN_NAME = 'actividad_arca_id'
+);
+SET @actividad_factura_column_sql := IF(
+  @actividad_factura_column_exists = 0,
+  'ALTER TABLE `facturas_venta` ADD COLUMN `actividad_arca_id` BIGINT NULL AFTER `id_empresa`',
+  'SELECT 1'
+);
+PREPARE actividad_factura_column_statement FROM @actividad_factura_column_sql;
+EXECUTE actividad_factura_column_statement;
+DEALLOCATE PREPARE actividad_factura_column_statement;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 32: Leyenda fiscal editable y remito R relacionado en ventas.
+-- ---------------------------------------------------------------------------
+SET @leyenda_factura_exists := (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta'
+    AND COLUMN_NAME = 'leyenda_impositiva'
+);
+SET @leyenda_factura_sql := IF(
+  @leyenda_factura_exists = 0,
+  'ALTER TABLE `facturas_venta` ADD COLUMN `leyenda_impositiva` TEXT NULL AFTER `observaciones`',
+  'SELECT 1'
+);
+PREPARE leyenda_factura_statement FROM @leyenda_factura_sql;
+EXECUTE leyenda_factura_statement;
+DEALLOCATE PREPARE leyenda_factura_statement;
+
+SET @remito_pv_factura_exists := (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta'
+    AND COLUMN_NAME = 'remito_punto_venta'
+);
+SET @remito_pv_factura_sql := IF(
+  @remito_pv_factura_exists = 0,
+  'ALTER TABLE `facturas_venta` ADD COLUMN `remito_punto_venta` INT NULL AFTER `leyenda_impositiva`',
+  'SELECT 1'
+);
+PREPARE remito_pv_factura_statement FROM @remito_pv_factura_sql;
+EXECUTE remito_pv_factura_statement;
+DEALLOCATE PREPARE remito_pv_factura_statement;
+
+SET @remito_num_factura_exists := (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta'
+    AND COLUMN_NAME = 'remito_numero'
+);
+SET @remito_num_factura_sql := IF(
+  @remito_num_factura_exists = 0,
+  'ALTER TABLE `facturas_venta` ADD COLUMN `remito_numero` INT NULL AFTER `remito_punto_venta`',
+  'SELECT 1'
+);
+PREPARE remito_num_factura_statement FROM @remito_num_factura_sql;
+EXECUTE remito_num_factura_statement;
+DEALLOCATE PREPARE remito_num_factura_statement;
+
+CREATE TABLE IF NOT EXISTS `facturas_venta_condiciones_pago` (
+  `id_factura_venta` INT NOT NULL,
+  `id_forma_pago` INT NOT NULL,
+  PRIMARY KEY (`id_factura_venta`, `id_forma_pago`),
+  CONSTRAINT `fk_factura_venta_condiciones_pago_factura`
+    FOREIGN KEY (`id_factura_venta`) REFERENCES `facturas_venta` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_factura_venta_condiciones_pago_forma`
+    FOREIGN KEY (`id_forma_pago`) REFERENCES `formas_pago` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Registro ficticio solo para probar el selector de actividades en desarrollo.
+-- El código 999999 no corresponde al padrón ARCA y la emisión se bloquea desde el código.
+INSERT INTO `arca_actividades_empresa`
+  (`id_empresa`, `regimen`, `codigo`, `descripcion`, `nomenclador`, `orden`, `periodo`)
+SELECT e.id, 'prueba', 999999, 'Actividad de prueba (no válida para emisión ARCA)', 0, 0, NULL
+FROM `empresas` e
+WHERE e.empresa = 'NH Construcciones' AND e.cuit = '30680640919'
+  AND NOT EXISTS (
+    SELECT 1 FROM `arca_actividades_empresa` a
+    WHERE a.id_empresa = e.id AND a.regimen = 'prueba' AND a.codigo = 999999
+  );
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 33: Datos y plazos para Factura de Crédito Electrónica MiPyME.
+-- ---------------------------------------------------------------------------
+SET @fce_company_cbu_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'empresas' AND COLUMN_NAME = 'cbu_emisor');
+SET @fce_company_cbu_sql := IF(@fce_company_cbu_exists = 0, 'ALTER TABLE `empresas` ADD COLUMN `cbu_emisor` VARCHAR(22) NULL', 'SELECT 1');
+PREPARE fce_company_cbu_statement FROM @fce_company_cbu_sql; EXECUTE fce_company_cbu_statement; DEALLOCATE PREPARE fce_company_cbu_statement;
+
+SET @fce_company_alias_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'empresas' AND COLUMN_NAME = 'alias_cbu');
+SET @fce_company_alias_sql := IF(@fce_company_alias_exists = 0, 'ALTER TABLE `empresas` ADD COLUMN `alias_cbu` VARCHAR(20) NULL', 'SELECT 1');
+PREPARE fce_company_alias_statement FROM @fce_company_alias_sql; EXECUTE fce_company_alias_statement; DEALLOCATE PREPARE fce_company_alias_statement;
+
+SET @fce_payment_days_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'formas_pago' AND COLUMN_NAME = 'dias_vencimiento');
+SET @fce_payment_days_sql := IF(@fce_payment_days_exists = 0, 'ALTER TABLE `formas_pago` ADD COLUMN `dias_vencimiento` INT NULL', 'SELECT 1');
+PREPARE fce_payment_days_statement FROM @fce_payment_days_sql; EXECUTE fce_payment_days_statement; DEALLOCATE PREPARE fce_payment_days_statement;
+
+SET @fce_invoice_date_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta' AND COLUMN_NAME = 'fce_fecha_vencimiento');
+SET @fce_invoice_date_sql := IF(@fce_invoice_date_exists = 0, 'ALTER TABLE `facturas_venta` ADD COLUMN `fce_fecha_vencimiento` DATE NULL', 'SELECT 1');
+PREPARE fce_invoice_date_statement FROM @fce_invoice_date_sql; EXECUTE fce_invoice_date_statement; DEALLOCATE PREPARE fce_invoice_date_statement;
+
+SET @fce_invoice_cbu_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta' AND COLUMN_NAME = 'fce_cbu');
+SET @fce_invoice_cbu_sql := IF(@fce_invoice_cbu_exists = 0, 'ALTER TABLE `facturas_venta` ADD COLUMN `fce_cbu` VARCHAR(22) NULL', 'SELECT 1');
+PREPARE fce_invoice_cbu_statement FROM @fce_invoice_cbu_sql; EXECUTE fce_invoice_cbu_statement; DEALLOCATE PREPARE fce_invoice_cbu_statement;
+
+SET @fce_invoice_alias_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta' AND COLUMN_NAME = 'fce_alias_cbu');
+SET @fce_invoice_alias_sql := IF(@fce_invoice_alias_exists = 0, 'ALTER TABLE `facturas_venta` ADD COLUMN `fce_alias_cbu` VARCHAR(20) NULL', 'SELECT 1');
+PREPARE fce_invoice_alias_statement FROM @fce_invoice_alias_sql; EXECUTE fce_invoice_alias_statement; DEALLOCATE PREPARE fce_invoice_alias_statement;
+
+SET @fce_invoice_transfer_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta' AND COLUMN_NAME = 'fce_transferencia');
+SET @fce_invoice_transfer_sql := IF(@fce_invoice_transfer_exists = 0, 'ALTER TABLE `facturas_venta` ADD COLUMN `fce_transferencia` VARCHAR(3) NULL', 'SELECT 1');
+PREPARE fce_invoice_transfer_statement FROM @fce_invoice_transfer_sql; EXECUTE fce_invoice_transfer_statement; DEALLOCATE PREPARE fce_invoice_transfer_statement;

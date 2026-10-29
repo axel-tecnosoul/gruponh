@@ -15,19 +15,19 @@ $orderBy = substr($orderBy, 0, -2);
 
 $columns = $_GET['columns'];
 
-$fields = [ 
-	"c.`id`", 
-	"tc.`tipo_cuenta`", 
-	"c.`nombre`", 
-	"c.`razon_social`", 
-	"c.`email`", 
-	"c.`telefono`", 
-	"c.`es_recurso`", 
+$fields = [
+	"c.`id`",
+	"(SELECT GROUP_CONCAT(t2.`tipo_cuenta` ORDER BY t2.`id` SEPARATOR ', ') FROM cuentas_x_tipos_cuenta cxt INNER JOIN tipos_cuenta t2 ON t2.`id` = cxt.`id_tipo_cuenta` WHERE cxt.`id_cuenta` = c.`id`)",
+	"c.`nombre`",
+	"c.`razon_social`",
+	"c.`email`",
+	"c.`telefono`",
+	"c.`es_recurso`",
 	"c.`activo`"
 ];
 
 $where = ' 1 ';
-if (!empty($_GET['id_tipo_cuenta'])) $where .= ' and c.id_tipo_cuenta = '.$_GET['id_tipo_cuenta'];
+if (!empty($_GET['id_tipo_cuenta'])) $where .= ' and (c.id_tipo_cuenta = '.$_GET['id_tipo_cuenta'].' or c.id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = '.$_GET['id_tipo_cuenta'].'))';
 if (!empty($_GET['es_recurso'])) $where .= ' and c.es_recurso = '.$_GET['es_recurso'];
 if (!empty($_GET['es_recurso']) && ($_GET['es_recurso'])==1) {
 	$where .= " AND c.es_recurso = 1 ";
@@ -43,7 +43,7 @@ $adicionales = false;
 $length = $_GET['length'];
 $start = $_GET['start'];
 
-$from=" FROM `cuentas` c inner join tipos_cuenta tc on tc.id = c.`id_tipo_cuenta` ";
+$from=" FROM `cuentas` c ";
 
 $countSql = "SELECT count($fields[0]) as Total $from";
 $countSt = $pdo->query($countSql);

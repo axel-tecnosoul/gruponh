@@ -324,7 +324,7 @@ if (!empty($_POST)) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$proveedores = $pdo->query("SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta IN (5) AND activo = 1 AND anulado = 0 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
+$proveedores = $pdo->query("SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (5) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (5))) AND activo = 1 AND anulado = 0 ORDER BY nombre")->fetchAll(PDO::FETCH_ASSOC);
 $monedas     = $pdo->query("SELECT id, moneda FROM monedas")->fetchAll(PDO::FETCH_ASSOC);
 $formasPago  = $pdo->query("SELECT id, forma_pago FROM formas_pago")->fetchAll(PDO::FETCH_ASSOC);
 $tiposIva    = $pdo->query("SELECT id, tasa FROM tipos_iva ORDER BY tasa")->fetchAll(PDO::FETCH_ASSOC);
@@ -617,16 +617,22 @@ Database::disconnect();
 
                         <!-- Tipo de Cambio -->
                         <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">
-                            Tipo de Cambio
+                          <label class="col-sm-4 col-form-label" id="labelCotizacion">
+                            Cotización
                             <span id="tc_required_star" style="color:red; display:none;">(*)</span>
                           </label>
                           <div class="col-sm-8">
                             <select id="tipo_dolar" class="form-control mb-2" style="display:none;"></select>
-                            <input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number"
-                                  step="0.01" class="form-control" value="<?= $form['tc'] ?>">
-                            <small id="estadoDolar" class="text-secondary"></small>
-                            <div id="infoCotizacion" style="font-size:11px; margin-top:3px;"></div>
+                            <div class="input-group">
+                              <input name="tipo_cambio_dia" id="tipo_cambio_dia" type="number" step="0.01"
+                                     class="form-control" placeholder="Seleccione una moneda..." value="<?= $form['tc'] ?>">
+                              <div class="input-group-append">
+                                <span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;">
+                                  Esperando moneda...
+                                </span>
+                              </div>
+                            </div>
+                            <small id="infoCotizacion" class="text-muted"></small>
                           </div>
                         </div>
 
@@ -1033,7 +1039,7 @@ Database::disconnect();
   <script src="assets/js/chat-menu.js"></script>
   <script src="assets/js/tooltip-init.js"></script>
   <script src="assets/js/script.js"></script>
-<script src="assets/js/cotizacion-dolar.js"></script>
+<script src="assets/js/cotizacion-dolar.js?v=<?=filemtime(__DIR__ . '/assets/js/cotizacion-dolar.js')?>"></script>
   <script src="assets/js/select2/select2.full.min.js"></script>
   <script src="assets/js/select2/select2-custom.js"></script>
   <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
@@ -1229,7 +1235,7 @@ Database::disconnect();
       badge: '#estadoDolar',
       info: '#infoCotizacion',
       selectTipo: '#tipo_dolar',
-      tipoInicial: 'oficial'
+      tipoInicial: 'mayorista'
     });
 
     $('#id_moneda').on('change', function () {
@@ -1240,6 +1246,7 @@ Database::disconnect();
       if (esDolar) {
         input.prop('required', true);
         $('#tc_required_star').show();
+        $('#labelCotizacion').contents().first()[0].textContent = 'Cotización';
         cotDolar.mostrar(true);
         cotDolar.cargar();
 
@@ -1247,17 +1254,19 @@ Database::disconnect();
         cotDolar.mostrar(false);
         input.val('').prop('readonly', false).prop('required', false);
         $('#tc_required_star').hide();
-        $('#estadoDolar').text('').removeClass('text-danger text-success text-secondary');
+        $('#labelCotizacion').contents().first()[0].textContent = 'Cotización';
+        $('#estadoDolar').text('Esperando moneda...').removeClass('text-danger text-success').addClass('text-secondary');
         $('#infoCotizacion').html('');
 
       } else {
         cotDolar.mostrar(false);
-        input.val(1).prop('readonly', false).prop('required', false);
+        input.val(1).prop('readonly', true).prop('required', false);
         $('#tc_required_star').hide();
-        $('#estadoDolar').text('Ingreso manual')
+        $('#labelCotizacion').contents().first()[0].textContent = 'Cotización';
+        $('#estadoDolar').text('No aplica (moneda local)')
             .removeClass('text-danger text-success')
             .addClass('text-secondary');
-        $('#infoCotizacion').html('<span class="text-muted"></span>');
+        $('#infoCotizacion').html('<span class="text-muted">Se informa cotización 1.</span>');
       }
     }).trigger('change');
 

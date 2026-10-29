@@ -57,7 +57,7 @@ include 'database.php';
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE id_tipo_cuenta = 1 and activo = 1 and anulado = 0 order by nombre";
+							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE (id_tipo_cuenta = 1 or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = 1)) and activo = 1 and anulado = 0 order by nombre";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
@@ -68,6 +68,25 @@ include 'database.php';
 							Database::disconnect();
 							?>
 							</select>
+					  </div>
+					  <div class="form-group mb-0">
+						Empresa:&nbsp;
+						<select name="id_empresa" id="id_empresa" class="js-example-basic-single">
+							<option value="">Seleccione...</option>
+							<?php
+							$pdo = Database::connect();
+							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+							$sqlEmp = "SELECT `id`, `empresa` FROM `empresas` ORDER BY empresa";
+							$qEmp = $pdo->prepare($sqlEmp);
+							$qEmp->execute();
+							while ($filaEmp = $qEmp->fetch(PDO::FETCH_ASSOC)) {
+								echo "<option value='".$filaEmp['id']."'";
+								if (isset($_POST['id_empresa']) && $filaEmp['id']==$_POST['id_empresa']) echo " selected ";
+								echo ">".$filaEmp['empresa']."</option>";
+							}
+							Database::disconnect();
+							?>
+						</select>
 					  </div>
 					  <div class="form-group mb-0">
 						Solicitante:&nbsp;<input class="form-control" size="20" type="text" value="<?php if (isset($_POST['solicitante'])) echo $_POST['solicitante'] ?>" name="solicitante">
@@ -127,6 +146,7 @@ include 'database.php';
                             <th class="d-none">Id</th>
                             <th>Nro.</th>
                             <th>Rev.</th>
+                            <th>Empresa</th>
                             <th>Fecha</th>
                             <th>Cliente</th>
                             <th>Solicitante</th>
@@ -141,6 +161,7 @@ include 'database.php';
                               <th class="d-none">Id</th>
                               <th>Nro.</th>
                               <th>Rev.</th>
+                              <th>Empresa</th>
                               <th>Fecha</th>
                               <th>Cliente</th>
                               <th>Solicitante</th>
@@ -153,7 +174,7 @@ include 'database.php';
                         <tbody>
 						<?php
 								$pdo = Database::connect();
-								$sql = " SELECT p.id, p.nro, p.nro_revision, date_format(p.fecha,'%d/%m/%y') AS fecha, c.nombre, p.solicitante, p.referencia, p.descripcion, m.moneda, p.monto, p.adjudicado, date_format(p.fecha,'%Y%m%d') FROM presupuestos p inner join cuentas c on c.id = p.id_cuenta inner join monedas m on m.id = p.id_moneda WHERE p.anulado = 0 ";
+								$sql = " SELECT p.id, p.nro, p.nro_revision, e.empresa, date_format(p.fecha,'%d/%m/%y') AS fecha, c.nombre, p.solicitante, p.referencia, p.descripcion, m.moneda, p.monto, p.adjudicado, date_format(p.fecha,'%Y%m%d') FROM presupuestos p inner join cuentas c on c.id = p.id_cuenta inner join monedas m on m.id = p.id_moneda inner join empresas e on e.id = p.id_empresa WHERE p.anulado = 0 ";
 								if (!empty($_POST)) {
 									if (!empty($_POST['nro'])) {
 										$sql .= " AND p.nro = ".$_POST['nro']." ";
@@ -166,6 +187,9 @@ include 'database.php';
 									}
 									if (!empty($_POST['cliente'])) {
 										$sql .= " AND c.nombre like '%".$_POST['cliente']."%' ";
+									}
+									if (!empty($_POST['id_empresa'])) {
+										$sql .= " AND p.id_empresa = ".intval($_POST['id_empresa'])." ";
 									}
 									if (!empty($_POST['solicitante'])) {
 										$sql .= " AND p.solicitante like '%".$_POST['solicitante']."%' ";
@@ -183,13 +207,14 @@ include 'database.php';
 								  echo '<td class="d-none">'. $row[0] . '</td>';
 								  echo '<td>'. $row[1] . '</td>';
 								  echo '<td>'. $row[2] . '</td>';
-								  echo '<td><span style="display: none;">'. $row[11] . '</span>'. $row[3] . '</td>';
-								  echo '<td>'. $row[4] . '</td>';
+								  echo '<td>'. $row[3] . '</td>';
+								  echo '<td><span style="display: none;">'. $row[12] . '</span>'. $row[4] . '</td>';
 								  echo '<td>'. $row[5] . '</td>';
 								  echo '<td>'. $row[6] . '</td>';
 								  echo '<td>'. $row[7] . '</td>';
-								  echo '<td>'. $row[8] . ' ' . number_format($row[9],2). '</td>';
-								  if ($row[10] == 1) {
+								  echo '<td>'. $row[8] . '</td>';
+								  echo '<td>'. $row[9] . ' ' . number_format($row[10],2). '</td>';
+								  if ($row[11] == 1) {
 									  echo '<td>Si</td>';
 								  } else {
 									  echo '<td>No</td>';
@@ -318,7 +343,14 @@ include 'database.php';
 		  "createdRow": function(row, data, dataIndex) {
             // Limitar el texto de la columna 0 (Name)
             var maxLength = 20; // Número máximo de caracteres
-            var cell = $('td', row).eq(7); // Obtener la celda de la primera columna
+            var cell = $('td', row).eq(8); // Obtener la celda de la primera columna
+            var cellText = cell.text();
+
+            if (cellText.length > maxLength) {
+                var truncatedText = cellText.substring(0, maxLength) + '...';
+                cell.html('<span title="' + cellText + '">' + truncatedText + '</span>');
+            }
+			var cell = $('td', row).eq(7); // Obtener la celda de la primera columna
             var cellText = cell.text();
 
             if (cellText.length > maxLength) {
@@ -333,13 +365,6 @@ include 'database.php';
                 cell.html('<span title="' + cellText + '">' + truncatedText + '</span>');
             }
 			var cell = $('td', row).eq(5); // Obtener la celda de la primera columna
-            var cellText = cell.text();
-
-            if (cellText.length > maxLength) {
-                var truncatedText = cellText.substring(0, maxLength) + '...';
-                cell.html('<span title="' + cellText + '">' + truncatedText + '</span>');
-            }
-			var cell = $('td', row).eq(4); // Obtener la celda de la primera columna
             var cellText = cell.text();
 
             if (cellText.length > maxLength) {
@@ -441,7 +466,7 @@ include 'database.php';
 
           let id_presupuesto=t.find("td:first-child").html();
           let nro_revision = t.find("td:nth-child(3)").html();
-		  let adj = t.find("td:nth-child(10)").html();
+		  let adj = t.find("td:nth-child(11)").html();
 		  
           if(t.hasClass('selected')){
             deselectRow(t);

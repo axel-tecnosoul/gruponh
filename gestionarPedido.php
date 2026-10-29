@@ -727,7 +727,7 @@ if (isset($id_compra)) {
                                 <?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT id, nombre FROM cuentas WHERE id_tipo_cuenta in (5) and activo = 1 and anulado = 0";
+                                $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta in (5) or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta in (5))) and activo = 1 and anulado = 0";
                                 $q = $pdo->prepare($sqlZon);
                                 $q->execute();
                                 while ($fila = $q->fetch(PDO::FETCH_ASSOC)) { ?>
@@ -1042,7 +1042,7 @@ if (isset($id_compra)) {
   <script src="assets/js/tooltip-init.js"></script>
   <!-- Theme js-->
   <script src="assets/js/script.js"></script>
-  <script src="assets/js/cotizacion-dolar.js"></script>
+  <script src="assets/js/cotizacion-dolar.js?v=<?=filemtime(__DIR__ . '/assets/js/cotizacion-dolar.js')?>"></script>
   <!-- Plugin used-->
   <script src="assets/js/select2/select2.full.min.js"></script>
   <script src="assets/js/select2/select2-custom.js"></script>
@@ -1245,7 +1245,7 @@ if (isset($id_compra)) {
         badge: '#estadoDolar',
         info: '#infoCotizacion',
         selectTipo: '#tipo_dolar',
-        tipoInicial: 'oficial'
+        tipoInicial: 'mayorista'
       });
 
       $('#id_moneda').on('change', function() {

@@ -21,7 +21,7 @@ if (!$companyId || $companyId < 1) {
     header('Location: listarEmpresas.php');
     exit;
 }
-$companyQuery = $pdo->prepare('SELECT id, empresa, cuit, direccion, email, id_condicion_iva, iibb, fecha_inicio_actividades, es_agente_retencion FROM empresas WHERE id = ?');
+$companyQuery = $pdo->prepare('SELECT id, empresa, cuit, direccion, email, id_condicion_iva, iibb, fecha_inicio_actividades, es_agente_retencion, cbu_emisor, alias_cbu FROM empresas WHERE id = ?');
 $companyQuery->execute([$companyId]);
 $company = $companyQuery->fetch(PDO::FETCH_ASSOC);
 if (!$company) {
@@ -140,6 +140,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $empEmail = trim((string)($_POST['email'] ?? ''));
             $empIibb = trim((string)($_POST['iibb'] ?? ''));
             $empFechaInicio = trim((string)($_POST['fecha_inicio_actividades'] ?? ''));
+            $empCbu = trim((string)($_POST['cbu_emisor'] ?? ''));
+            $empAliasCbu = trim((string)($_POST['alias_cbu'] ?? ''));
             $empCondicionIva = filter_var($_POST['id_condicion_iva'] ?? null, FILTER_VALIDATE_INT);
             if ($errorMessage === '') {
                 if ($cuitEditable && $empCuit === '') {
@@ -148,6 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errorMessage = 'Complete dirección, ingresos brutos y fecha de inicio de actividades.';
                 } elseif ($empEmail !== '' && filter_var($empEmail, FILTER_VALIDATE_EMAIL) === false) {
                     $errorMessage = 'El email de la empresa no es válido.';
+                } elseif ($empCbu !== '' && !preg_match('/^\d{22}$/D', $empCbu)) {
+                    $errorMessage = 'El CBU debe tener exactamente 22 dígitos.';
+                } elseif ($empAliasCbu !== '' && !preg_match('/^[A-Za-z0-9.-]{6,20}$/D', $empAliasCbu)) {
+                    $errorMessage = 'El alias CBU debe tener entre 6 y 20 caracteres (letras, números, punto o guion).';
                 } elseif ($empCondicionIva === false || $empCondicionIva < 1) {
                     $errorMessage = 'Seleccione la condición frente al IVA.';
                 } else {
@@ -164,8 +170,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($errorMessage === '') {
                 try {
                     $pdo->beginTransaction();
-                    $update = $pdo->prepare('UPDATE empresas SET es_agente_retencion = ?, cuit = ?, direccion = ?, email = ?, id_condicion_iva = ?, iibb = ?, fecha_inicio_actividades = ? WHERE id = ?');
-                    $update->execute([$agent, $empCuit, $empDireccion, $empEmail, $empCondicionIva, $empIibb, $empFechaInicio, $companyId]);
+                    $update = $pdo->prepare('UPDATE empresas SET es_agente_retencion = ?, cuit = ?, direccion = ?, email = ?, id_condicion_iva = ?, iibb = ?, fecha_inicio_actividades = ?, cbu_emisor = ?, alias_cbu = ? WHERE id = ?');
+                    $update->execute([$agent, $empCuit, $empDireccion, $empEmail, $empCondicionIva, $empIibb, $empFechaInicio, $empCbu ?: null, $empAliasCbu ?: null, $companyId]);
                     $pdo->prepare('DELETE FROM arca_puntos_venta WHERE id_empresa = ?')->execute([$companyId]);
                     $insertPoint = $pdo->prepare(
                         'INSERT INTO arca_puntos_venta (id_empresa, numero, emision_tipo, bloqueado, fecha_baja)
@@ -227,6 +233,8 @@ $formEmpresa = [
     'id_condicion_iva' => $isPostback ? (int)($_POST['id_condicion_iva'] ?? 0) : (int)($company['id_condicion_iva'] ?? 0),
     'iibb' => $isPostback ? trim((string)($_POST['iibb'] ?? '')) : (string)($company['iibb'] ?? ''),
     'fecha_inicio_actividades' => $isPostback ? trim((string)($_POST['fecha_inicio_actividades'] ?? '')) : (string)($company['fecha_inicio_actividades'] ?? ''),
+    'cbu_emisor' => $isPostback ? trim((string)($_POST['cbu_emisor'] ?? '')) : (string)($company['cbu_emisor'] ?? ''),
+    'alias_cbu' => $isPostback ? trim((string)($_POST['alias_cbu'] ?? '')) : (string)($company['alias_cbu'] ?? ''),
 ];
 $condicionesIva = $pdo->query('SELECT id, condicion_iva FROM condiciones_iva ORDER BY condicion_iva')->fetchAll(PDO::FETCH_ASSOC);
 $types = $pdo->query('SELECT codigo, descripcion FROM arca_tipos_comprobante ORDER BY codigo')->fetchAll(PDO::FETCH_ASSOC);
@@ -362,6 +370,20 @@ $escape = static function ($value): string {
                     <div class="form-group row">
                       <label class="col-sm-4 col-form-label">Fecha inicio de actividades(*)</label>
                       <div class="col-sm-8"><input name="fecha_inicio_actividades" type="date" class="form-control" required="required" value="<?= $escape($formEmpresa['fecha_inicio_actividades']) ?>"></div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">CBU emisor FCE</label>
+                      <div class="col-sm-8">
+                        <input name="cbu_emisor" type="text" inputmode="numeric" maxlength="22" pattern="[0-9]{22}" class="form-control" placeholder="22 dígitos numéricos" value="<?= $escape($formEmpresa['cbu_emisor']) ?>">
+                        <small class="form-text text-muted">Formato: exactamente 22 dígitos numéricos, sin espacios ni guiones. Se usará como valor predeterminado en facturas de crédito electrónicas.</small>
+                      </div>
+                    </div>
+                    <div class="form-group row">
+                      <label class="col-sm-4 col-form-label">Alias CBU emisor</label>
+                      <div class="col-sm-8">
+                        <input name="alias_cbu" type="text" maxlength="20" pattern="[A-Za-z0-9.-]{6,20}" class="form-control" placeholder="Ej.: mi.alias-cbu" value="<?= $escape($formEmpresa['alias_cbu']) ?>">
+                        <small class="form-text text-muted">Formato: entre 6 y 20 caracteres; letras, números, punto o guion.</small>
+                      </div>
                     </div>
                   </div>
                 </div>

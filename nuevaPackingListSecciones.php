@@ -62,7 +62,7 @@ if (!empty($_POST)) {
 $id_packing_list_revision=$_GET['id_packing_list_revision'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT id_packing_list,numero FROM packing_lists_revisiones WHERE id = ? ";
+$sql = "SELECT id_packing_list, numero FROM packing_lists_revisiones WHERE id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$id_packing_list_revision]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
