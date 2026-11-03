@@ -1205,7 +1205,7 @@ DEALLOCATE PREPARE ncm_column_statement;
 
 -- Parámetro 13: NCM por defecto para nuevas líneas de factura de venta.
 INSERT INTO parametros (id, parametro, valor)
-SELECT 13, 'NCM por defecto Factura Venta', '73.08.20.01' FROM DUAL
+SELECT 13, 'NCM por defecto Factura Venta', '73.08.20.00' FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM parametros WHERE id = 13);
 
 -- ---------------------------------------------------------------------------
