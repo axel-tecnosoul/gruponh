@@ -369,13 +369,26 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->MultiCell(self::CONTENT_WIDTH - 39, 4, $this->texto($conditionText), 0, 'L');
         $contentBottom = max($conditionY + 4, $this->GetY());
 
+        $relatedLabel = 'Remito:';
+        $relatedText = $remito ?: '-';
+        $associated = $this->detalle['comprobantes_asociados'] ?? [];
+        if (is_array($associated) && $associated) {
+            $relatedLabel = 'Comprobantes asociados:';
+            $references = [];
+            foreach ($associated as $voucher) {
+                $references[] = str_pad((string)(int)($voucher['punto_venta'] ?? 0), 5, '0', STR_PAD_LEFT)
+                    . '-' . str_pad((string)(int)($voucher['numero'] ?? 0), 8, '0', STR_PAD_LEFT);
+            }
+            $relatedText = implode(', ', $references);
+        }
         $remitoY = $contentBottom + 1.0;
         $this->SetXY(self::CONTENT_LEFT + 2, $remitoY);
         $this->SetFont('Arial', 'B', 8);
-        $this->Cell(34, 4, $this->texto('Remito:'), 0, 0, 'L');
+        $this->Cell(39, 4, $this->texto($relatedLabel), 0, 0, 'L');
         $this->SetFont('Arial', '', 8);
-        $this->Cell(self::CONTENT_WIDTH - 38, 4, $this->texto($remito ?: '-'), 0, 0, 'L');
-        $contentBottom = $remitoY + 4;
+        $this->SetXY(self::CONTENT_LEFT + 41, $remitoY);
+        $this->MultiCell(self::CONTENT_WIDTH - 43, 4, $this->texto($relatedText), 0, 'L');
+        $contentBottom = max($remitoY + 4, $this->GetY());
 
         $boxHeight = max(24.0, $contentBottom - $y + 2.0);
         $this->Rect(self::CONTENT_LEFT, $y, self::CONTENT_WIDTH, $boxHeight);

@@ -26,7 +26,8 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   $fecha      = $_POST['fecha'];
-  $id_tarea   = $_POST['id_tarea'] ?? null;
+  $id_tarea   = trim((string)($_POST['id_tarea'] ?? ''));
+  $id_tarea   = $id_tarea === '' ? null : filter_var($id_tarea, FILTER_VALIDATE_INT);
   $nombre     = $_POST['nombre'];
   $adjunto    = $_POST['adjunto'];
 
@@ -35,6 +36,25 @@ if (!empty($_POST)) {
   //if(empty($advertencia) && $modo == "update" && isset($_GET["id_lista_corte"])) {
   if($modo == "update" && isset($_GET["id_lista_corte"])) {
     $id_lista_corte = $_GET["id_lista_corte"];
+
+    // La tarea es opcional. Los campos ocultos envían "" cuando la LC no
+    // tiene tarea; guardar esa cadena viola la FK, por lo que debe ser NULL.
+    // Si la tarea ya no existe o pertenece a otro proyecto, desvincularla de
+    // forma explícita para permitir reparar la lista en lugar de lanzar un
+    // error fatal de PDO.
+    if ($id_tarea !== null) {
+      $sqlTarea = "SELECT id FROM tareas WHERE id = ? AND id_proyecto = ?";
+      $stmtTarea = $pdo->prepare($sqlTarea);
+      $stmtTarea->execute([$id_tarea, $id_proyecto]);
+      if (!$stmtTarea->fetchColumn()) {
+        $id_tarea = null;
+        $_SESSION['flash_message'] = [
+          'type' => 'warning',
+          'message' => 'La tarea asociada ya no existe o no pertenece al proyecto. La lista se guardó sin tarea; puede continuar con los conjuntos.'
+        ];
+      }
+    }
+
     $sql = "UPDATE listas_corte SET fecha=?, id_tarea=?, id_proyecto=?, nombre=?, adjunto=? WHERE id=?";
     $params = [$fecha, $id_tarea, $id_proyecto, $nombre, $adjunto, $id_lista_corte];
     $stmt = $pdo->prepare($sql);

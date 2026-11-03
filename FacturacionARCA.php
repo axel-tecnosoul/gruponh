@@ -288,6 +288,15 @@ final class FacturacionARCA
                     self::money($montos['importe']),
                 ]);
             }
+            if (!empty($model['comprobantes_asociados'])) {
+                $insertAsociado = $pdo->prepare(
+                    'INSERT INTO comprobantes_arca_asociados
+                     (id_comprobante_arca, id_comprobante_asociado) VALUES (?, ?)'
+                );
+                foreach ($model['comprobantes_asociados'] as $idAsociado) {
+                    $insertAsociado->execute([$idComprobante, $idAsociado]);
+                }
+            }
             $pdo->commit();
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
@@ -628,7 +637,7 @@ final class FacturacionARCA
         }
 
         $number = $lastVoucher + 1;
-        $payload = self::payload($record, $number);
+        $payload = self::payload($pdo, $record, $number);
         $pdo->beginTransaction();
         try {
             $q = $pdo->prepare(
@@ -718,7 +727,7 @@ final class FacturacionARCA
                 self::dateValue(self::field($detail, 'CAEFchVto', '')),
                 $summary
             );
-            return ['estado' => 'autorizado', 'mensaje' => 'La factura fue autorizada por ARCA.', 'id' => (int)$record['id']];
+            return ['estado' => 'autorizado', 'mensaje' => 'El comprobante fue autorizado por ARCA.', 'id' => (int)$record['id']];
         }
 
         $message = self::responseMessage($summary);
@@ -740,12 +749,28 @@ final class FacturacionARCA
         $voucherTypeCode = (int)$invoice['id_tipo_comprobante'];
         if ($voucherTypeCode >= 1001) $voucherTypeCode -= 1000;
         $isFceInvoice = in_array($voucherTypeCode, [201, 206, 211], true);
+        $isDebitNote = in_array($voucherTypeCode, [2, 7, 12], true);
+        $isCreditNote = in_array($voucherTypeCode, [3, 8, 13], true);
+        $isNote = $isDebitNote || $isCreditNote;
         $unsupportedType = (strpos($typeName, 'credito') !== false && !$isFceInvoice)
             || (strpos($typeName, 'mipyme') !== false && !$isFceInvoice)
             || strpos($typeName, 'export') !== false;
-        if (strpos($typeName, 'factura') !== 0 || $unsupportedType
-            || (!$isFceInvoice && !isset(['A' => 1, 'B' => 6, 'C' => 11][$letter]))) {
-            throw new RuntimeException('Solo se emiten facturas locales A, B y C comunes y Facturas de Crédito Electrónicas MiPyME A, B y C. Exportación y notas requieren su circuito fiscal propio.');
+        $noteCodesByLetter = [
+            'A' => ['debito' => 2, 'credito' => 3],
+            'B' => ['debito' => 7, 'credito' => 8],
+            'C' => ['debito' => 12, 'credito' => 13],
+        ];
+        $noteKind = $isDebitNote ? 'debito' : ($isCreditNote ? 'credito' : '');
+        if ($isNote && (!isset($noteCodesByLetter[$letter])
+            || $noteCodesByLetter[$letter][$noteKind] !== $voucherTypeCode)) {
+            throw new RuntimeException('El tipo de nota no coincide con la letra de la factura seleccionada.');
+        }
+        if ((!$isNote && (strpos($typeName, 'factura') !== 0 || $unsupportedType))
+            || (!$isNote && !$isFceInvoice && !isset(['A' => 1, 'B' => 6, 'C' => 11][$letter]))) {
+            throw new RuntimeException('Solo se emiten facturas locales A, B y C comunes y Facturas de Crédito Electrónicas MiPyME A, B y C.');
+        }
+        if ($isNote && $isFceInvoice) {
+            throw new RuntimeException('Las notas sobre Factura de Crédito Electrónica MiPyME requieren un circuito fiscal específico no habilitado.');
         }
 
         $issuerConditionId = (int)$invoice['emisor_condicion_iva_id'];
@@ -774,11 +799,11 @@ final class FacturacionARCA
         if ($pointOfSale < 1 || $pointOfSale > 99998) {
             throw new RuntimeException('El punto de venta de la factura debe estar entre 1 y 99998.');
         }
-        if (!$isFceInvoice) {
+        if (!$isNote && !$isFceInvoice) {
             $voucherTypeCode = ['A' => 1, 'B' => 6, 'C' => 11][$letter];
-        } elseif (($letter === 'A' && $voucherTypeCode !== 201)
+        } elseif (!$isNote && (($letter === 'A' && $voucherTypeCode !== 201)
             || ($letter === 'B' && $voucherTypeCode !== 206)
-            || ($letter === 'C' && $voucherTypeCode !== 211)) {
+            || ($letter === 'C' && $voucherTypeCode !== 211))) {
             throw new RuntimeException('El tipo ARCA de Factura de Crédito Electrónica no coincide con la letra del comprobante.');
         }
         $configuredType = $pdo->prepare(
@@ -870,6 +895,69 @@ final class FacturacionARCA
             }
         if ($letter === 'A' && ($receiverVat !== 1 || $receiverDocumentType !== 80)) {
             throw new RuntimeException('Una factura A requiere un receptor Responsable Inscripto.');
+        }
+
+        $associatedIds = [];
+        $associatedDetails = [];
+        if ($isNote) {
+            foreach ((array)($input['comprobantes_asociados'] ?? []) as $rawId) {
+                $associatedId = filter_var($rawId, FILTER_VALIDATE_INT);
+                if ($associatedId === false || $associatedId < 1) {
+                    throw new RuntimeException('La selección de comprobantes asociados no es válida.');
+                }
+                $associatedIds[] = (int)$associatedId;
+            }
+            $associatedIds = array_values(array_unique($associatedIds));
+            if (!$associatedIds) {
+                throw new RuntimeException('Seleccione al menos una factura autorizada para asociar a la nota.');
+            }
+            $marks = implode(',', array_fill(0, count($associatedIds), '?'));
+            $qAssociated = $pdo->prepare(
+                "SELECT id, tipo_comprobante, estado, homologacion, emisor_cuit,
+                        receptor_numero_documento, punto_venta, numero_comprobante, fecha_comprobante
+                 FROM comprobantes_arca WHERE id IN ($marks)"
+            );
+            $qAssociated->execute($associatedIds);
+            $associatedRows = $qAssociated->fetchAll(PDO::FETCH_ASSOC);
+            if (count($associatedRows) !== count($associatedIds)) {
+                throw new RuntimeException('Una factura asociada ya no está disponible.');
+            }
+            $associatedLetters = [
+                1 => 'A', 2 => 'A', 3 => 'A', 6 => 'B', 7 => 'B', 8 => 'B',
+                11 => 'C', 12 => 'C', 13 => 'C',
+            ];
+            foreach ($associatedRows as $associatedRow) {
+                $associatedType = (int)$associatedRow['tipo_comprobante'];
+                if ($associatedRow['estado'] !== 'autorizado'
+                    || (int)$associatedRow['homologacion'] !== self::homologacion()
+                    || (string)$associatedRow['emisor_cuit'] !== $cuitArca
+                    || self::digits((string)$associatedRow['receptor_numero_documento']) !== $number
+                    || ($associatedLetters[$associatedType] ?? '') !== $letter
+                    || empty($associatedRow['numero_comprobante'])) {
+                    throw new RuntimeException('Las facturas asociadas deben estar autorizadas y tener la misma letra y CUIT receptor que la nota.');
+                }
+                $associatedDetails[] = [
+                    'id' => (int)$associatedRow['id'],
+                    'tipo' => $associatedType,
+                    'punto_venta' => (int)$associatedRow['punto_venta'],
+                    'numero' => (int)$associatedRow['numero_comprobante'],
+                    'fecha' => (string)$associatedRow['fecha_comprobante'],
+                ];
+            }
+            $sourceId = filter_var($input['comprobante_origen'] ?? null, FILTER_VALIDATE_INT);
+            $sourceMatch = null;
+            foreach ($associatedDetails as $associatedDetail) {
+                if ($sourceId !== false && $sourceId !== null && $associatedDetail['id'] === (int)$sourceId) {
+                    $sourceMatch = $associatedDetail;
+                    break;
+                }
+            }
+            if (!$sourceMatch || !in_array((int)$sourceMatch['tipo'], [1, 6, 11], true)
+                || $sourceMatch['punto_venta'] !== $pointOfSale) {
+                throw new RuntimeException('La factura de origen debe estar asociada y la nota debe conservar su punto de venta.');
+            }
+        } elseif (!empty($input['comprobantes_asociados'])) {
+            throw new RuntimeException('Solo las notas de crédito/débito pueden asociar otras facturas.');
         }
 
         $activityId = (int)($invoice['actividad_arca_id'] ?? 0);
@@ -1061,6 +1149,8 @@ final class FacturacionARCA
             ],
             'punto_venta' => $pointOfSale,
             'tipo_comprobante' => $voucherTypeCode,
+            'es_nota' => $isNote,
+            'comprobantes_asociados' => $associatedIds,
             'letra' => $letter,
             'fecha_comprobante' => $date,
             'concepto' => $concept,
@@ -1088,6 +1178,7 @@ final class FacturacionARCA
                 'observaciones' => (string)($invoice['observaciones'] ?? ''),
                 'leyenda_impositiva' => (string)($invoice['leyenda_impositiva'] ?? ''),
                 'comprobante_asociado' => $relatedRemito,
+                'comprobantes_asociados' => $associatedDetails,
                 'remito' => $remitoText,
                 'moneda_texto' => (string)$invoice['moneda'],
                 'condicion_venta' => (string)($invoice['condicion_venta'] ?? ''),
@@ -1099,7 +1190,7 @@ final class FacturacionARCA
         ];
     }
 
-    private static function payload(array $record, int $number): array
+    private static function payload(PDO $pdo, array $record, int $number): array
     {
         $issuer = json_decode((string)$record['datos_emisor'], true);
         $receiver = json_decode((string)$record['datos_receptor'], true);
@@ -1139,6 +1230,27 @@ final class FacturacionARCA
             ];
         }
 
+        $qAssociated = $pdo->prepare(
+            'SELECT original.tipo_comprobante, original.punto_venta, original.numero_comprobante,
+                    original.emisor_cuit, original.fecha_comprobante
+             FROM comprobantes_arca_asociados rel
+             INNER JOIN comprobantes_arca original ON original.id = rel.id_comprobante_asociado
+             WHERE rel.id_comprobante_arca = ? ORDER BY original.id'
+        );
+        $qAssociated->execute([(int)$record['id']]);
+        $associatedVouchers = $qAssociated->fetchAll(PDO::FETCH_ASSOC);
+        if ($associatedVouchers) {
+            $request['CbtesAsoc'] = ['CbteAsoc' => array_map(static function (array $associated): array {
+                return [
+                    'Tipo' => (int)$associated['tipo_comprobante'],
+                    'PtoVta' => (int)$associated['punto_venta'],
+                    'Nro' => (int)$associated['numero_comprobante'],
+                    'Cuit' => (string)$associated['emisor_cuit'],
+                    'CbteFch' => date('Ymd', strtotime((string)$associated['fecha_comprobante'])),
+                ];
+            }, $associatedVouchers)];
+        }
+
         $relatedVoucher = $detail['comprobante_asociado'] ?? null;
         if (is_array($relatedVoucher)
             && (int)($relatedVoucher['tipo'] ?? 0) === 91
@@ -1171,7 +1283,7 @@ final class FacturacionARCA
         }
 
         $ivaRows = self::ivaRowsFromSnapshot($detail);
-        if ($ivaRows && !in_array((int)$record['tipo_comprobante'], [11, 211], true)) {
+        if ($ivaRows && !in_array((int)$record['tipo_comprobante'], [11, 12, 13, 211, 212, 213], true)) {
             $request['Iva'] = $ivaRows;
         }
         if (isset($issuer['cuit'], $receiver['numero_documento'])) {

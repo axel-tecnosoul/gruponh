@@ -1,12 +1,10 @@
 <?php
-session_start();
-if (empty($_SESSION['user'])) {
-  header("Location: index.php");
-  die("Redirecting to index.php");
-}
+require_once __DIR__ . '/config.php';
 include 'database.php';
+require_once __DIR__ . '/FacturacionARCA.php';
 require_once 'manejarFiltros.php';
 $filters = gestionarFiltros('listarFacturasVenta');
+$arcaHabilitada = FacturacionARCA::habilitada();
 $nro = $filters['nro'] ?? '';
 $fecha = $filters['fecha'] ?? '';
 $fechah = $filters['fechah'] ?? '';
@@ -121,8 +119,8 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
             <div class="col-sm-12">
               <div class="card">
                 <div class="card-header">
-                  <h5>
-                    <?= $ubicacion ?>
+                  <div class="d-flex align-items-center flex-wrap">
+                    <h5 class="mb-0 mr-2"><?= $ubicacion ?></h5>
                     <?php if (!empty(tienePermiso(337))): ?>
                       &nbsp;<a href="#" id="btn_nueva_factura" title="Nueva Factura">
                         <img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">
@@ -160,7 +158,18 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                         <img src="img/import.png" width="24" height="25" border="0" alt="Bejerman TXT">
                       </a>&nbsp;
                     <?php endif; ?>
-                  </h5>
+                    <?php if (!empty(tienePermiso(337))): ?>
+                      <div class="btn-group ml-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                          Nota de crédito/débito
+                        </button>
+                        <div class="dropdown-menu">
+                          <a class="dropdown-item js-nueva-nota-fv" href="#" data-tipo="credito">Nota de crédito</a>
+                          <a class="dropdown-item js-nueva-nota-fv" href="#" data-tipo="debito">Nota de débito</a>
+                        </div>
+                      </div>
+                    <?php endif; ?>
+                  </div>
                 </div>
                 <div class="card-body">
                   <div class="dt-ext table-responsive">
@@ -190,8 +199,12 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                         if ($hasSearched):
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                           $sql = "SELECT fv.id, fv.observaciones, tc.descripcion AS tipo, '' AS letra, fv.numero,
-                                          c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'),
+                            $arcaSelect = $arcaHabilitada
+                              ? "COALESCE(ca.estado, '') AS estado_arca, COALESCE(ca.tipo_comprobante, 0) AS tipo_arca"
+                              : "'' AS estado_arca, 0 AS tipo_arca";
+                            $arcaJoin = $arcaHabilitada ? ' LEFT JOIN comprobantes_arca ca ON ca.id_factura_venta = fv.id ' : '';
+                            $sql = "SELECT fv.id, fv.observaciones, tc.descripcion AS tipo, '' AS letra, fv.numero,
+                                           c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'),
                                           COALESCE((SELECT GROUP_CONCAT(fpv.forma_pago ORDER BY fpv.forma_pago SEPARATOR ', ')
                                                     FROM facturas_venta_condiciones_pago fvcp
                                                     INNER JOIN formas_pago fpv ON fpv.id = fvcp.id_forma_pago
@@ -200,13 +213,14 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                                           ef.estado,
                                           fv.iva, fv.otros, fv.total,
                                           DATE_FORMAT(fv.fecha_emitida,'%y%m%d'),
-                                          ef.id, fv.pagada, fv.exportada, fv.observaciones
+                                           ef.id, fv.pagada, fv.exportada, fv.observaciones, $arcaSelect
                                   FROM facturas_venta fv
                                   INNER JOIN arca_tipos_comprobante   tc  ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
                                   INNER JOIN cuentas             c   ON c.id   = fv.id_cuenta_destino
                                   INNER JOIN formas_pago         fp  ON fp.id  = fv.id_condicion_pago
                                   INNER JOIN monedas             m   ON m.id   = fv.id_moneda
-                                  INNER JOIN estados_factura     ef  ON ef.id  = fv.id_estado
+                                   INNER JOIN estados_factura     ef  ON ef.id  = fv.id_estado
+                                   $arcaJoin
                                   WHERE 1=1";
                           $params = [];
                           if (!empty($nro)) {
@@ -249,7 +263,7 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                                4 => 'badge-primary',
                              ];
                              $claseEstadoFactura = $clasesEstadoFactura[$estadoFacturaId] ?? 'badge-light';
-                             echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '">';
+                              echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '" data-arca-estado="' . htmlspecialchars((string)$row[19], ENT_QUOTES, 'UTF-8') . '" data-arca-tipo="' . (int)$row[20] . '">';
                              echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
                              echo '<td class="d-none">' . $row[0] . '</td>';
                              echo '<td>' . htmlspecialchars(trim($row[2] . ' ' . $row[3])) . '</td>';
@@ -773,6 +787,30 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
       function resetLinks() {
         $('#link_modificar_fv, #link_nuevo_detalle_fv, #link_nuevo_retencion_fv, #link_pagar_fv, #link_ver_fv').attr('href', '#');
       }
+
+      $(document).on('click', '.js-nueva-nota-fv', function(e) {
+        e.preventDefault();
+        if (!<?= $arcaHabilitada ? 'true' : 'false' ?>) {
+          alert('La emisión de notas por ARCA está deshabilitada.');
+          return;
+        }
+        var selected = $('#dataTables-example666 tbody tr.selected');
+        if (selected.length !== 1) {
+          alert('Seleccione una factura de venta autorizada por ARCA.');
+          return;
+        }
+        var tipoOriginal = parseInt(selected.data('arca-tipo'), 10);
+        if (selected.data('arca-estado') !== 'autorizado'
+            || parseInt(selected.data('id-estado'), 10) !== 3
+            || [1, 6, 11].indexOf(tipoOriginal) === -1) {
+          alert('Solo se pueden generar notas desde una factura A, B o C definitiva y autorizada por ARCA.');
+          return;
+        }
+        var idFactura = selected.find('td:nth-child(2)').text().trim();
+        var tipoNota = $(this).data('tipo') === 'debito' ? 'debito' : 'credito';
+        window.location.href = 'nuevaNotaFacturaVenta.php?id=' + encodeURIComponent(idFactura)
+          + '&tipo=' + encodeURIComponent(tipoNota);
+      });
 
       $("#link_modificar_fv").on("click", function(e) {
         var l = document.location.href;

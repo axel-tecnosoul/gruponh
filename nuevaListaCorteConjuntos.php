@@ -131,6 +131,16 @@ Database::disconnect();?>
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
+            <?php if (!empty($_SESSION['flash_message'])) {
+              $flashMessage = $_SESSION['flash_message'];
+              unset($_SESSION['flash_message']);
+              $flashType = in_array($flashMessage['type'] ?? '', ['success', 'warning', 'danger', 'info'], true)
+                ? $flashMessage['type']
+                : 'info'; ?>
+              <div class="alert alert-<?=$flashType?>" role="alert">
+                <?=htmlspecialchars($flashMessage['message'] ?? '', ENT_QUOTES, 'UTF-8')?>
+              </div>
+            <?php } ?>
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
