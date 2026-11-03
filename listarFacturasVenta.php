@@ -159,15 +159,8 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                       </a>&nbsp;
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(337))): ?>
-                      <div class="btn-group ml-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                          Nota de crédito/débito
-                        </button>
-                        <div class="dropdown-menu">
-                          <a class="dropdown-item js-nueva-nota-fv" href="#" data-tipo="credito">Nota de crédito</a>
-                          <a class="dropdown-item js-nueva-nota-fv" href="#" data-tipo="debito">Nota de débito</a>
-                        </div>
-                      </div>
+                      <a href="#" class="js-nueva-nota-fv fa fa-lg ml-2" data-tipo="credito" title="Nota de crédito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">NC</a>&nbsp;
+                      <a href="#" class="js-nueva-nota-fv fa fa-lg" data-tipo="debito" title="Nota de débito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">ND</a>
                     <?php endif; ?>
                   </div>
                 </div>

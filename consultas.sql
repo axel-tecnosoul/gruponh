@@ -1165,3 +1165,21 @@ PREPARE fce_invoice_alias_statement FROM @fce_invoice_alias_sql; EXECUTE fce_inv
 SET @fce_invoice_transfer_exists := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'facturas_venta' AND COLUMN_NAME = 'fce_transferencia');
 SET @fce_invoice_transfer_sql := IF(@fce_invoice_transfer_exists = 0, 'ALTER TABLE `facturas_venta` ADD COLUMN `fce_transferencia` VARCHAR(3) NULL', 'SELECT 1');
 PREPARE fce_invoice_transfer_statement FROM @fce_invoice_transfer_sql; EXECUTE fce_invoice_transfer_statement; DEALLOCATE PREPARE fce_invoice_transfer_statement;
+
+// Tablas que faltaban
+
+
+CREATE TABLE IF NOT EXISTS `tipos_cuenta` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tipo_cuenta` varchar(99) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `cuentas_x_tipos_cuenta` (
+  `id_cuenta` int NOT NULL,
+  `id_tipo_cuenta` int NOT NULL,
+  PRIMARY KEY (`id_cuenta`,`id_tipo_cuenta`),
+  KEY `fk_cxt_tipo` (`id_tipo_cuenta`),
+  CONSTRAINT `fk_cxt_cuenta` FOREIGN KEY (`id_cuenta`) REFERENCES `cuentas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_cxt_tipo` FOREIGN KEY (`id_tipo_cuenta`) REFERENCES `tipos_cuenta` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
