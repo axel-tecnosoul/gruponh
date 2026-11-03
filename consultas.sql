@@ -939,7 +939,7 @@ WHERE fvxca.`precio` IS NULL OR fvxca.`precio` = 0;
 ALTER TABLE `facturas_compra_detalle` CHANGE `porc_descuento` `porcentaje_descuento` DOUBLE NOT NULL DEFAULT '0';
 
 ALTER TABLE `facturas_venta_otros`
-| ADD COLUMN `regimen_text` VARCHAR(99) NULL DEFAULT NULL AFTER `id_regimen`,
+  ADD COLUMN `regimen_text` VARCHAR(99) NULL DEFAULT NULL AFTER `id_regimen`,
   ADD COLUMN `codigo` VARCHAR(99) NULL DEFAULT NULL AFTER `regimen_text`,
   ADD COLUMN `articulo` VARCHAR(99) NULL DEFAULT NULL AFTER `codigo`;
 
@@ -1183,3 +1183,57 @@ CREATE TABLE IF NOT EXISTS `cuentas_x_tipos_cuenta` (
   CONSTRAINT `fk_cxt_cuenta` FOREIGN KEY (`id_cuenta`) REFERENCES `cuentas` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_cxt_tipo` FOREIGN KEY (`id_tipo_cuenta`) REFERENCES `tipos_cuenta` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
+-- CORRECCIÓN 34: NCM por renglón en facturas de venta (exportaciones ARCA).
+-- Se envía en WSFE como Items.Item[].Ncm y se imprime en el PDF.
+-- ---------------------------------------------------------------------------
+SET @ncm_column_exists := (
+  SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'facturas_venta_detalle'
+    AND COLUMN_NAME = 'ncm'
+);
+SET @ncm_column_sql := IF(
+  @ncm_column_exists = 0,
+  'ALTER TABLE `facturas_venta_detalle` ADD COLUMN `ncm` VARCHAR(20) NULL AFTER `descripcion`',
+  'SELECT 1'
+);
+PREPARE ncm_column_statement FROM @ncm_column_sql;
+EXECUTE ncm_column_statement;
+DEALLOCATE PREPARE ncm_column_statement;
+
+-- Parámetro 13: NCM por defecto para nuevas líneas de factura de venta.
+INSERT INTO parametros (id, parametro, valor)
+SELECT 13, 'NCM por defecto Factura Venta', '73.08.20.01' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM parametros WHERE id = 13);
+
+-- ---------------------------------------------------------------------------
+-- tipos_iva: tasas de IVA por concepto contable (relación lógica con
+-- conceptos_contables.id_alicuota_iva, sin FK). Usado por gestionarPedido,
+-- listarConceptosContables, importConceptosContables y FacturacionARCA.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tipos_iva` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tasa` decimal(5,2) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `tipos_iva` (`id`, `tasa`) SELECT 1, 0.00 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `tipos_iva` WHERE `id` = 1);
+INSERT INTO `tipos_iva` (`id`, `tasa`) SELECT 2, 10.50 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `tipos_iva` WHERE `id` = 2);
+INSERT INTO `tipos_iva` (`id`, `tasa`) SELECT 3, 21.00 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM `tipos_iva` WHERE `id` = 3);
+
+-- ---------------------------------------------------------------------------
+-- Backfill de cuentas_x_tipos_cuenta a partir de la columna legada
+-- cuentas.id_tipo_cuenta. Solo útil para bases restauradas del dump viejo
+-- (donde la pivote no existía). Idempotente.
+-- ---------------------------------------------------------------------------
+INSERT IGNORE INTO `cuentas_x_tipos_cuenta` (`id_cuenta`, `id_tipo_cuenta`)
+SELECT `id`, `id_tipo_cuenta`
+FROM `cuentas`
+WHERE `id_tipo_cuenta` IS NOT NULL
+  AND `id_tipo_cuenta` > 0
+  AND `id_tipo_cuenta` IN (SELECT `id` FROM `tipos_cuenta`);
