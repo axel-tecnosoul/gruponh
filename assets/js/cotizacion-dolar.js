@@ -2,8 +2,7 @@
 
 /**
  * Cotización del dólar: permite elegir el tipo de dólar y toma siempre el valor
- * del día anterior. Si ese día no hay dato (argentinadatos solo publica en días
- * hábiles) retrocede varios días hacia atrás.
+ * del día anterior. Si ese día no hay dato, retrocede varios días hacia atrás.
  *
  * Opciones de montar():
  *   input, badge, info      selectores jQuery del input y de los textos de estado
@@ -31,7 +30,8 @@ var CotizacionDolar = (function () {
         blue: 'Dólar Blue',
         bolsa: 'Dólar Bolsa (MEP)',
         contadoconliqui: 'Dólar CCL',
-        mayorista: 'Dólar Mayorista'
+        mayorista: 'Dólar Mayorista',
+        divisa: 'Dólar Divisa'
     };
 
     // Días hábiles hacia atrás que se prueban antes de rendirse.
@@ -56,6 +56,10 @@ var CotizacionDolar = (function () {
         });
     }
 
+    function fechaISO(fecha) {
+        return fecha.getFullYear() + '-' + pad(fecha.getMonth() + 1) + '-' + pad(fecha.getDate());
+    }
+
     function fechasHaciaAtras(base, dias) {
         var out = [];
         for (var i = 1; i <= dias; i++) {
@@ -65,6 +69,27 @@ var CotizacionDolar = (function () {
     }
 
     function cotizar(tipo, fecha) {
+        if (tipo === 'divisa') {
+            var fechaConsulta = fechaISO(fecha);
+            return fetch('obtenerCotizacionDolarDivisa.php?fecha=' + encodeURIComponent(fechaConsulta), {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            }).then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(function (cotizacion) {
+                var valor = cotizacion ? parseFloat(cotizacion.cotizacion) : NaN;
+                if (!cotizacion || isNaN(valor) || valor <= 0 || !cotizacion.fecha) {
+                    throw new Error('Sin cotización USD del BCRA');
+                }
+                return {
+                    fecha: cotizacion.fecha,
+                    cotizacion: valor
+                };
+            });
+        }
+
         var url = API + tipo + '/' + fecha.getFullYear() + '/' + pad(fecha.getMonth() + 1) + '/' + pad(fecha.getDate());
         return fetch(url, {
             headers: {
@@ -140,15 +165,23 @@ var CotizacionDolar = (function () {
 
                 cotizar(tipo, fechas[idx])
                     .then(function (d) {
+                        var valorCotizacion = typeof d.cotizacion === 'number' ? d.cotizacion : parseFloat(d.venta);
                         if (escribir) {
-                            input.val(parseFloat(d.venta).toFixed(2));
+                            input.val(valorCotizacion.toFixed(2));
                         }
                         badge.html(nombreTipo(tipo)).removeClass('text-secondary text-danger').addClass('text-success');
-                        info.html(
-                            'Compra: <strong>$' + (formatear(d.compra, 2) || '-') + '</strong>' +
-                            ' | Venta: <strong>$' + formatear(d.venta, 2) + '</strong>' +
-                            ' | Fecha: <strong>' + d.fecha + '</strong>'
-                        );
+                        if (typeof d.cotizacion === 'number') {
+                            info.html(
+                                'Cotización BCRA: <strong>$' + formatear(d.cotizacion, 2) + '</strong>' +
+                                ' | Fecha: <strong>' + d.fecha + '</strong>'
+                            );
+                        } else {
+                            info.html(
+                                'Compra: <strong>$' + (formatear(d.compra, 2) || '-') + '</strong>' +
+                                ' | Venta: <strong>$' + formatear(d.venta, 2) + '</strong>' +
+                                ' | Fecha: <strong>' + d.fecha + '</strong>'
+                            );
+                        }
                         if (escribir) {
                             input.prop('readonly', false);
                         }

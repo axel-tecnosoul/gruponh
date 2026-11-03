@@ -389,20 +389,17 @@ $escape = static function ($value): string {
                 </div>
 
                 <hr>
-                <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
-                  <h5 class="mb-0">Puntos de venta y tipos de comprobante</h5>
-                  <div class="d-flex align-items-center">
-                    <button type="button" class="btn btn-link p-0 arca-icon-button mr-2" id="consultarCatalogosArca"
-                      title="Consultar puntos y tipos en ARCA" aria-label="Consultar puntos y tipos en ARCA"
-                      <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
-                      <img src="img/import.png" width="24" height="25" border="0" alt="Consultar puntos y tipos en ARCA">
-                    </button>
-                    <button type="button" class="btn btn-link p-0 arca-icon-button" id="agregarPuntoVentaManual"
-                      title="Agregar punto manual" aria-label="Agregar punto manual">
-                      <img src="img/icon_alta.png" width="24" height="25" border="0" alt="Agregar punto manual">
-                    </button>
-                  </div>
-                </div>
+                <h5 class="mb-0">Puntos de venta y tipos de comprobante
+                  <button type="button" class="btn btn-link p-0 arca-icon-button mr-2" id="consultarCatalogosArca"
+                          title="Consultar puntos y tipos en ARCA" aria-label="Consultar puntos y tipos en ARCA"
+                          <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
+                    <img src="img/import.png" width="24" height="25" border="0" alt="Consultar puntos y tipos en ARCA">
+                  </button>
+                  <button type="button" class="btn btn-link p-0 arca-icon-button" id="agregarPuntoVentaManual"
+                          title="Agregar punto manual" aria-label="Agregar punto manual">
+                    <img src="img/icon_alta.png" width="24" height="25" border="0" alt="Agregar punto manual">
+                  </button>
+                </h5>
                 <div class="mb-3">
                   <div id="estadoConsultaArca" role="status"></div>
                   <ul id="puntosVentaImportados" class="arca-import-list list-unstyled"></ul>
@@ -436,17 +433,16 @@ $escape = static function ($value): string {
                 </div>
 
                 <hr>
-                <div class="d-flex justify-content-between align-items-center flex-wrap mb-3">
-                  <h5 class="mb-0">Actividades económicas registradas en ARCA</h5>
+                <h5 class="mb-0">Actividades económicas registradas en ARCA
                   <button type="button" class="btn btn-link p-0 arca-icon-button" id="consultarActividadesArca"
-                    title="Consultar actividades en ARCA" aria-label="Consultar actividades en ARCA"
-                    <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
+                          title="Consultar actividades en ARCA" aria-label="Consultar actividades en ARCA"
+                          <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
                     <img src="img/import.png" width="24" height="25" border="0" alt="Consultar actividades en ARCA">
                   </button>
-                </div>
+                </h5>
                 <div id="estadoConsultaActividadesArca" class="mb-2" role="status"></div>
                 <div class="dt-ext table-responsive">
-                  <table class="table table-bordered table-sm" id="tablaActividadesArca">
+                  <table class="display table table-bordered table-sm dynamic-grid-table" id="tablaActividadesArca">
                     <thead>
                       <tr>
                         <th>Régimen</th>
@@ -460,8 +456,16 @@ $escape = static function ($value): string {
                     </thead>
                     <tbody id="actividadesArca">
                       <?php foreach ($activityRows as $activity): ?>
+                        <?php
+                        $regimenLabelsPhp = [
+                          'regimen_general' => 'Régimen general',
+                          'monotributo' => 'Monotributo',
+                          'actividad_monotributista' => 'Actividad monotributista'
+                        ];
+                        $regimenTexto = $regimenLabelsPhp[$activity['regimen']] ?? $activity['regimen'];
+                        ?>
                         <tr>
-                          <td><?= $escape($activity['regimen']) ?></td>
+                          <td><?= $escape($regimenTexto) ?></td>
                           <td><?= (int)$activity['codigo'] ?></td>
                           <td><?= $escape($activity['descripcion']) ?></td>
                           <td><?= (int)$activity['nomenclador'] ?: '—' ?></td>
@@ -588,6 +592,11 @@ $escape = static function ($value): string {
       });
       const tablaPadrones = $('#tablaPadrones').DataTable({
         paging: false, info: false, order: [[0, 'asc']], language: txtEspanol
+      });
+      const tablaActividades = $('#tablaActividadesArca').DataTable({
+        // Sin paginado ni búsqueda: la tabla se recarga entera al sincronizar.
+        paging: false, searching: false, info: false, ordering: false, language: txtEspanol,
+        columnDefs: [{className: 'text-nowrap', targets: [0, 1]}]
       });
 
       function initializeTypeSelect(select) {
@@ -745,7 +754,6 @@ $escape = static function ($value): string {
 
       document.getElementById('consultarActividadesArca').addEventListener('click', async function () {
         const status = document.getElementById('estadoConsultaActividadesArca');
-        const body = document.getElementById('actividadesArca');
         const button = this;
         button.disabled = true;
         status.className = 'text-muted mb-2';
@@ -765,38 +773,32 @@ $escape = static function ($value): string {
             throw new Error(data.error || 'No se pudieron consultar las actividades de ARCA.');
           }
 
-          body.replaceChildren();
           const regimenLabels = {
             regimen_general: 'Régimen general',
             monotributo: 'Monotributo',
             actividad_monotributista: 'Actividad monotributista'
           };
+          const filas = [];
           data.actividades.forEach(function (activity) {
-            const row = document.createElement('tr');
-            [
+            filas.push([
               regimenLabels[activity.regimen] || activity.regimen,
-              activity.codigo,
+              String(activity.codigo),
               activity.descripcion,
-              Number(activity.nomenclador) || '—',
-              Number(activity.orden) || '—',
-              activity.periodo || '—',
-              data.sincronizada_en
-            ].forEach(function (value) {
-              const cell = document.createElement('td');
-              cell.textContent = String(value);
-              row.appendChild(cell);
-            });
-            body.appendChild(row);
+              Number(activity.nomenclador) ? String(activity.nomenclador) : '—',
+              Number(activity.orden) ? String(activity.orden) : '—',
+              activity.periodo ? String(activity.periodo) : '—',
+              String(data.sincronizada_en)
+            ]);
           });
 
           if (data.actividades.length === 0) {
-            const row = document.createElement('tr');
-            const cell = document.createElement('td');
-            cell.colSpan = 7;
-            cell.className = 'text-muted';
-            cell.textContent = 'ARCA no informó actividades para esta empresa.';
-            row.appendChild(cell);
-            body.appendChild(row);
+            tablaActividades.clear().rows.add([['ARCA no informó actividades para esta empresa.', '', '', '', '', '', '']]).draw();
+            const filaVacia = $('#tablaActividadesArca tbody tr:last');
+            filaVacia.find('td:first').addClass('text-muted');
+            filaVacia.find('td').slice(1).remove();
+            filaVacia.find('td:first').attr('colspan', 7);
+          } else {
+            tablaActividades.clear().rows.add(filas).draw();
           }
 
           status.className = 'text-success mb-2';

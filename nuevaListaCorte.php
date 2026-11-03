@@ -26,8 +26,8 @@ if (!empty($_POST)) {
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
   $fecha      = $_POST['fecha'];
-  $id_tarea   = trim((string)($_POST['id_tarea'] ?? ''));
-  $id_tarea   = $id_tarea === '' ? null : filter_var($id_tarea, FILTER_VALIDATE_INT);
+  $idTareaPost = trim((string)($_POST['id_tarea'] ?? ''));
+  $id_tarea   = $idTareaPost === '' || $idTareaPost === '__crear__' ? null : filter_var($idTareaPost, FILTER_VALIDATE_INT);
   $nombre     = $_POST['nombre'];
   $adjunto    = $_POST['adjunto'];
 
@@ -36,30 +36,64 @@ if (!empty($_POST)) {
   //if(empty($advertencia) && $modo == "update" && isset($_GET["id_lista_corte"])) {
   if($modo == "update" && isset($_GET["id_lista_corte"])) {
     $id_lista_corte = $_GET["id_lista_corte"];
-
-    // La tarea es opcional. Los campos ocultos envían "" cuando la LC no
-    // tiene tarea; guardar esa cadena viola la FK, por lo que debe ser NULL.
-    // Si la tarea ya no existe o pertenece a otro proyecto, desvincularla de
-    // forma explícita para permitir reparar la lista en lugar de lanzar un
-    // error fatal de PDO.
-    if ($id_tarea !== null) {
-      $sqlTarea = "SELECT id FROM tareas WHERE id = ? AND id_proyecto = ?";
-      $stmtTarea = $pdo->prepare($sqlTarea);
-      $stmtTarea->execute([$id_tarea, $id_proyecto]);
-      if (!$stmtTarea->fetchColumn()) {
-        $id_tarea = null;
-        $_SESSION['flash_message'] = [
-          'type' => 'warning',
-          'message' => 'La tarea asociada ya no existe o no pertenece al proyecto. La lista se guardó sin tarea; puede continuar con los conjuntos.'
-        ];
+    $pdo->beginTransaction();
+    try {
+      if ($idTareaPost === '__crear__') {
+        $estructura = trim((string)($_POST['nueva_tarea_estructura'] ?? ''));
+        $idSector = filter_var($_POST['nueva_tarea_sector'] ?? null, FILTER_VALIDATE_INT);
+        if ($estructura === '' || mb_strlen($estructura) > 199 || !$idSector) {
+          throw new RuntimeException('Para crear la tarea Planos y LC, complete la estructura y el sector.');
+        }
+        $qTipo = $pdo->prepare("SELECT id FROM tipos_tarea WHERE LOWER(TRIM(tipo)) = 'planos y lc' LIMIT 1");
+        $qTipo->execute();
+        $idTipoPacking = $qTipo->fetchColumn();
+        if (!$idTipoPacking) {
+          throw new RuntimeException('No está configurado el tipo de tarea Planos y LC.');
+        }
+        $qSector = $pdo->prepare('SELECT COUNT(*) FROM sectores WHERE id = ?');
+        $qSector->execute([$idSector]);
+        if ((int)$qSector->fetchColumn() === 0) {
+          throw new RuntimeException('Seleccione un sector válido para la nueva tarea.');
+        }
+        $qTarea = $pdo->prepare(
+          'INSERT INTO tareas (id_proyecto, estructura, id_sector, id_tipo_tarea, id_recurso,
+             observaciones, id_coordinador, fecha_inicio_estimada, fecha_fin_estimada,
+             fecha_inicio_real, fecha_fin_real, anulado)
+           VALUES (?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0)'
+        );
+        $qTarea->execute([$id_proyecto, $estructura, $idSector, $idTipoPacking]);
+        $id_tarea = (int)$pdo->lastInsertId();
+      } else {
+        if ($id_tarea === false || $id_tarea === null || $id_tarea < 1) {
+          throw new RuntimeException('Seleccione una tarea Planos y LC o elija crear una.');
+        }
+        $qTarea = $pdo->prepare(
+          "SELECT t.id FROM tareas t
+           INNER JOIN tipos_tarea tt ON tt.id = t.id_tipo_tarea
+           WHERE t.id = ? AND t.id_proyecto = ? AND t.anulado = 0
+             AND (LOWER(TRIM(tt.tipo)) = 'planos y lc' OR t.id = (
+               SELECT lc_actual.id_tarea FROM listas_corte lc_actual WHERE lc_actual.id = ?
+             ))
+             AND NOT EXISTS (
+               SELECT 1 FROM listas_corte lc_otras
+               WHERE lc_otras.id_tarea = t.id AND lc_otras.id <> ?
+             )"
+        );
+        $qTarea->execute([$id_tarea, $id_proyecto, $id_lista_corte, $id_lista_corte]);
+        if (!$qTarea->fetchColumn()) {
+          throw new RuntimeException('La tarea debe pertenecer al proyecto, ser Planos y LC y no estar vinculada a otra lista de corte.');
+        }
       }
-    }
 
-    $sql = "UPDATE listas_corte SET fecha=?, id_tarea=?, id_proyecto=?, nombre=?, adjunto=? WHERE id=?";
-    $params = [$fecha, $id_tarea, $id_proyecto, $nombre, $adjunto, $id_lista_corte];
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte.$prodParam;
+      $sql = "UPDATE listas_corte SET fecha=?, id_tarea=?, id_proyecto=?, nombre=?, adjunto=? WHERE id=?";
+      $stmt = $pdo->prepare($sql);
+      $stmt->execute([$fecha, $id_tarea, $id_proyecto, $nombre, $adjunto, $id_lista_corte]);
+      $pdo->commit();
+      $redirect="nuevaListaCorteConjuntos.php?modo=update&id_lista_corte=".$id_lista_corte.$prodParam;
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) $pdo->rollBack();
+      $advertencia = $e->getMessage();
+    }
   //}elseif(empty($advertencia)){
   }else{
   
@@ -87,16 +121,16 @@ if (!empty($_POST)) {
     }
 
     $sql = "INSERT INTO listas_corte (id_proyecto, id_tarea, fecha, id_usuario, id_estado_lista_corte, nro_revision, anulado, nombre, numero, adjunto, descripcion, id_cuenta_realizo, id_cuenta_reviso, id_cuenta_valido) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
-    $params = [$id_proyecto, $idTarea, $fecha, $_SESSION['user']['id'], $id_estado_lista_corte, $nro_revision, $anulado, $nombre, $numero_lc, $adjunto, $descripcion_lc, $idCuentaRealizo, $idCuentaReviso, $idCuentaValido];
+    $params = [$id_proyecto, $id_tarea, $fecha, $_SESSION['user']['id'], $id_estado_lista_corte, $nro_revision, $anulado, $nombre, $numero_lc, $adjunto, $descripcion_lc, $idCuentaRealizo, $idCuentaReviso, $idCuentaValido];
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     
     $id_lista_corte = (int)$pdo->lastInsertId();
 
-    if($id_lista_corte>0 and $idTarea>0){
+    if($id_lista_corte>0 and $id_tarea>0){
       $sql = "UPDATE tareas set fecha_inicio_real=now(), fecha_fin_real=now() where id = ?";
       $q = $pdo->prepare($sql);
-      $q->execute([$idTarea]);
+      $q->execute([$id_tarea]);
     }
     
     /*$sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link) VALUES (now(),?,'Nueva Lista de Corte','Listas de Corte','imprimirListaCorte.php?id=$id_lista_corte')";
@@ -208,12 +242,11 @@ if (!empty($_POST)) {
     $redirect="nuevaListaCorteConjuntos.php?id_lista_corte=".$id_lista_corte.$prodParam;
   }
 
-  //if(empty($advertencia)){
+  if ($advertencia === '') {
     Database::disconnect();
-    //header("Location: listarListasCorte.php");
     header("Location: $redirect");
     exit();
-  //}
+  }
   Database::disconnect();
 }
   $fecha=$hoy;
@@ -240,6 +273,8 @@ if (!empty($_POST)) {
 
   $nombre="";
   $adjunto="";
+  $tareasPackingList = [];
+  $sectoresTarea = [];
   $titulo="Nueva";
   $accion="Crear";
   $formAction="nuevaListaCorte.php$prodQuery";
@@ -263,6 +298,21 @@ if (!empty($_POST)) {
       $nro_revision=$data["nro_revision"];
       $id_estado_lista_corte = $data["id_estado_lista_corte"];
     }
+
+    $qTareasPacking = $pdo->prepare(
+      "SELECT t.id, t.estructura, tt.tipo
+       FROM tareas t INNER JOIN tipos_tarea tt ON tt.id = t.id_tipo_tarea
+       WHERE t.id_proyecto = ? AND t.anulado = 0
+         AND (LOWER(TRIM(tt.tipo)) = 'planos y lc' OR t.id = ?)
+         AND NOT EXISTS (
+           SELECT 1 FROM listas_corte lc2
+           WHERE lc2.id_tarea = t.id AND lc2.id <> ?
+         )
+       ORDER BY t.estructura"
+    );
+    $qTareasPacking->execute([$id_proyecto, $id_tarea ?: 0, $id_lista_corte]);
+    $tareasPackingList = $qTareasPacking->fetchAll(PDO::FETCH_ASSOC);
+    $sectoresTarea = $pdo->query('SELECT id, sector FROM sectores ORDER BY sector')->fetchAll(PDO::FETCH_ASSOC);
   }
 
   // Verifico existencia de cómputos asociados al proyecto
@@ -411,7 +461,36 @@ if (!empty($_POST)) {
                             <div class="col-sm-9"><input name="adjunto" type="text" value="<?=$adjunto?>" class="form-control"></div>
                             <input type="hidden" name="hId" value="1" />
                           </div>
-						              <input type="hidden" name="id_tarea" value="<?=$id_tarea?>" />
+                          <?php if ($modo === 'update') { ?>
+                            <div class="form-group row">
+                              <label class="col-sm-3 col-form-label">Tarea Planos y LC(*)</label>
+                              <div class="col-sm-9">
+                                <select name="id_tarea" id="id_tarea" class="form-control" required>
+                                  <option value="">Seleccione una tarea...</option>
+                                  <?php foreach ($tareasPackingList as $tarea): ?>
+                                    <option value="<?=$tarea['id']?>" <?=((string)$id_tarea === (string)$tarea['id']) ? 'selected' : ''?>>
+                                      #<?=$tarea['id']?> — <?=htmlspecialchars($tarea['estructura'], ENT_QUOTES, 'UTF-8')?> (<?=htmlspecialchars($tarea['tipo'], ENT_QUOTES, 'UTF-8')?>)
+                                    </option>
+                                  <?php endforeach; ?>
+                                  <option value="__crear__">Crear nueva tarea Planos y LC…</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div class="form-group row d-none" id="nuevaTareaPackingFields">
+                              <label class="col-sm-3 col-form-label">Nueva tarea</label>
+                              <div class="col-sm-9">
+                                <input type="text" name="nueva_tarea_estructura" maxlength="199" class="form-control mb-2" placeholder="Estructura / nombre">
+                                <select name="nueva_tarea_sector" class="form-control">
+                                  <option value="">Seleccione sector...</option>
+                                  <?php foreach ($sectoresTarea as $sector): ?>
+                                    <option value="<?=$sector['id']?>"><?=htmlspecialchars($sector['sector'], ENT_QUOTES, 'UTF-8')?></option>
+                                  <?php endforeach; ?>
+                                </select>
+                              </div>
+                            </div>
+                          <?php } else { ?>
+                            <input type="hidden" name="id_tarea" value="<?=htmlspecialchars((string)$id_tarea, ENT_QUOTES, 'UTF-8')?>" />
+                          <?php } ?>
                         </div>
                       </div>
                     </div>
@@ -501,6 +580,13 @@ if (!empty($_POST)) {
     <!-- Plugins JS Ends-->
     <script>
       $(document).ready(function() {
+        function actualizarCamposNuevaTarea() {
+          var crear = $('#id_tarea').val() === '__crear__';
+          $('#nuevaTareaPackingFields').toggleClass('d-none', !crear);
+          $('#nuevaTareaPackingFields input, #nuevaTareaPackingFields select').prop('required', crear);
+        }
+        $('#id_tarea').on('change', actualizarCamposNuevaTarea);
+        actualizarCamposNuevaTarea();
         $('#btnEnviarAprobacion').on('click', function(){
           $('#modalEnviarAprobacion').modal('show');
         });
