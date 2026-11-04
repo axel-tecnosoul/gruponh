@@ -2,6 +2,10 @@
 require_once("PHPMailer/class.phpmailer.php");
 require_once("PHPMailer/class.smtp.php");
 
+function escaparHtml(?string $valor): string {
+  return htmlspecialchars($valor ?? '', ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
 /**
  * Obtiene la configuraciÃ³n SMTP.
  * Si APP_ENV=development y existe un archivo config.dev.php en la raÃ­z,
