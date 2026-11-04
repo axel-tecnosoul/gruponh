@@ -540,7 +540,7 @@ if ($vista === 'venta' && $empresaFceId > 0) {
                     <h5>Datos para ARCA</h5>
                   </div>
                   <div class="card-body">
-                    <div class="form-group row">
+                    <div class="form-group row mb-3">
                       <label class="col-sm-3 col-form-label" for="concepto_arca">Concepto(*)</label>
                       <div class="col-sm-9">
                         <?php $conceptoArca = (int)($_POST['concepto_arca'] ?? 2); ?>
