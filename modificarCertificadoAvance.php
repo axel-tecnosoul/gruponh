@@ -269,7 +269,6 @@ if (!empty($_POST)) {
       badge: '#estadoDolar',
       info: '#infoCotizacion',
       selectTipo: '#tipo_dolar',
-      tipoInicial: 'mayorista',
       noSobrescribir: true
     });
 

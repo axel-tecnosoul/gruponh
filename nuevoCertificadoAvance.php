@@ -274,8 +274,7 @@ if (!empty($_POST)) {
 			input: '#cotizacion_dolar',
 			badge: '#estadoDolar',
 			info: '#infoCotizacion',
-			selectTipo: '#tipo_dolar',
-			tipoInicial: 'mayorista'
+			selectTipo: '#tipo_dolar'
 		});
 		cotDolar.cargar();
 		<?php endif; ?>
