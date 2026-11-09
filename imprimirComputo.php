@@ -21,7 +21,8 @@ if (!empty($_POST)) {
 } else {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT c.id, c.nro_computo nro_computo, c.nro_revision, c.id_tarea, date_format(c.fecha,'%d/%m/%Y') fecha, c.id_cuenta_solicitante, c.id_estado, p.nombre, p.nro nro_proyecto, s.nro_sitio, s.nro_subsitio, cu.nombre cliente, cu2.nombre cuenta_solicitante, c.nro nro_solo FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio INNER JOIN cuentas cu ON cu.id = p.id_cliente INNER JOIN cuentas cu2 ON cu2.id = c.id_cuenta_solicitante WHERE c.id = ?";
+  //$sql = "SELECT c.id, c.nro_computo nro_computo, c.nro_revision, c.id_tarea, date_format(c.fecha,'%d/%m/%Y') fecha, c.id_cuenta_solicitante, c.id_estado, p.nombre, p.nro nro_proyecto, s.nro_sitio, s.nro_subsitio, cu.nombre cliente, cu2.nombre cuenta_solicitante, c.nro nro_solo FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio INNER JOIN cuentas cu ON cu.id = p.id_cliente INNER JOIN cuentas cu2 ON cu2.id = c.id_cuenta_solicitante WHERE c.id = ?";
+  $sql = "SELECT c.id, c.nro AS nro_computo, c.nro_revision, c.id_tarea, date_format(c.fecha,'%d/%m/%Y') fecha, c.id_cuenta_solicitante, c.id_estado, p.nombre, p.nro nro_proyecto, s.nro_sitio, s.nro_subsitio, cu.nombre cliente, cu2.nombre cuenta_solicitante FROM computos c INNER JOIN tareas t ON t.id = c.id_tarea INNER JOIN proyectos p ON p.id = t.id_proyecto INNER JOIN sitios s ON s.id = p.id_sitio INNER JOIN cuentas cu ON cu.id = p.id_cliente INNER JOIN cuentas cu2 ON cu2.id = c.id_cuenta_solicitante WHERE c.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -69,7 +70,7 @@ if (!empty($_POST)) {
                       <div class="form-group row">
                         <div class="col-sm-2 bordered-div"><img src="assets/images/logo.jpg"></div>
                         <div class="col-sm-6 bordered-div text-center"><h3><b>COMPUTO DE MATERIALES</b></h3></div>
-                        <div class="col-sm-3 bordered-div"><h6><b>Nº <?php echo $data['nro_solo']; ?> - Rev <?php echo $data['nro_revision']; ?></b></h6></div>
+                        <div class="col-sm-3 bordered-div"><h6><b>Nº <?php echo $data['nro_computo']; ?> - Rev <?php echo $data['nro_revision']; ?></b></h6></div>
                       </div>
 
                       <div class="form-group row">
