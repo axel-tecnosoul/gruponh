@@ -14,6 +14,19 @@ $errorDuplicado = '';
 $errorNotificacion = '';
 $id_orden_compra_cliente = null;
 
+$fechasFormulario = [
+  'fecha_emision' => FECHA_HOY,
+  'fecha_recepcion' => FECHA_HOY,
+  'fecha_vencimiento' => FECHA_HOY,
+  'fecha_entrega' => FECHA_HOY,
+];
+
+foreach ($fechasFormulario as $campoFecha => $valorFecha) {
+  if (isset($_POST[$campoFecha]) && is_string($_POST[$campoFecha])) {
+    $fechasFormulario[$campoFecha] = $_POST[$campoFecha];
+  }
+}
+
 // Tipos de cobertura seleccionados. Con POST se conserva lo elegido por el usuario,
 // sin POST arranca vacío.
 $tiposCobertura = array();
@@ -211,12 +224,16 @@ if (!empty($_POST)) {
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-9"><input name="fecha_emision" id="fecha_emision" autofocus type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?php echo htmlspecialchars($_POST['fecha_emision'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"></div>
+                            <label for="fecha_emision" class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
+                            <div class="col-sm-9">
+                              <input name="fecha_emision" id="fecha_emision" autofocus type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=escaparHtml($fechasFormulario['fecha_emision'])?>">
+                            </div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Recepción(*)</label>
-                            <div class="col-sm-9"><input name="fecha_recepcion" id="fecha_recepcion" type="date"  onfocus="this.showPicker()" class="form-control" required="required" value="<?php echo htmlspecialchars($_POST['fecha_recepcion'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"></div>
+                            <label for="fecha_recepcion" class="col-sm-3 col-form-label">Fecha Recepción(*)</label>
+                            <div class="col-sm-9">
+                              <input name="fecha_recepcion" id="fecha_recepcion" type="date" onfocus="this.showPicker()" class="form-control" required="required" value="<?=escaparHtml($fechasFormulario['fecha_recepcion'])?>">
+                            </div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Número(*)</label>
@@ -361,12 +378,16 @@ if (!empty($_POST)) {
                             </div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Vencimiento</label>
-                            <div class="col-sm-9"><input name="fecha_vencimiento" id="fecha_vencimiento" type="date" onfocus="this.showPicker()" class="form-control" value="<?php echo htmlspecialchars($_POST['fecha_vencimiento'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"></div>
+                            <label for="fecha_vencimiento" class="col-sm-3 col-form-label">Fecha Vencimiento</label>
+                            <div class="col-sm-9">
+                              <input name="fecha_vencimiento" id="fecha_vencimiento" type="date" onfocus="this.showPicker()" class="form-control" value="<?=escaparHtml($fechasFormulario['fecha_vencimiento'])?>">
+                            </div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Entrega(*)</label>
-                            <div class="col-sm-9"><input name="fecha_entrega" id="fecha_entrega" type="date" onfocus="this.showPicker()" required class="form-control" value="<?php echo htmlspecialchars($_POST['fecha_entrega'] ?? '', ENT_QUOTES, 'UTF-8'); ?>"></div>
+                            <label for="fecha_entrega" class="col-sm-3 col-form-label">Fecha Entrega(*)</label>
+                            <div class="col-sm-9">
+                              <input name="fecha_entrega" id="fecha_entrega" type="date" onfocus="this.showPicker()" required class="form-control" value="<?=escaparHtml($fechasFormulario['fecha_entrega'])?>">
+                            </div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Lugar de Entrega(*)</label>

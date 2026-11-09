@@ -79,8 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 }
 
-$hoy = date('Y-m-d');
-?>
+$fechaFormulario = FECHA_HOY;
+if (isset($_POST['fecha']) && is_string($_POST['fecha'])) {
+  $fechaFormulario = $_POST['fecha'];
+} ?>
 <!DOCTYPE html>
 <html lang="es">
   <head>
@@ -105,8 +107,10 @@ $hoy = date('Y-m-d');
                     <div class="card-body">
                       <?php if (!empty($error)): ?><div class="alert alert-danger"><?=htmlspecialchars($error, ENT_QUOTES, 'UTF-8')?></div><?php endif; ?>
                       <div class="form-group row">
-                        <label class="col-sm-3 col-form-label">Fecha(*)</label>
-                        <div class="col-sm-9"><input name="fecha" type="date" class="form-control" required value="<?=htmlspecialchars($_POST['fecha'] ?? $hoy, ENT_QUOTES, 'UTF-8')?>"></div>
+                        <label for="fecha" class="col-sm-3 col-form-label">Fecha(*)</label>
+                        <div class="col-sm-9">
+                          <input name="fecha" id="fecha" type="date" class="form-control" required value="<?=escaparHtml($fechaFormulario)?>">
+                        </div>
                       </div>
                       <div class="form-group row">
                         <label class="col-sm-3 col-form-label">Tipo de ajuste(*)</label>
