@@ -135,7 +135,7 @@ if (!empty($_POST)) {
             cd.comprado, 
             COALESCE(SUM(pd.cantidad), 0) AS pedido_total
           FROM computos_detalle cd
-          LEFT JOIN pedidos p ON p.id_computo = cd.id_computo AND p.anulado = 0
+          LEFT JOIN pedidos p ON p.id_computo = cd.id_computo AND p.id_estado <> 7
           LEFT JOIN pedidos_detalle pd ON pd.id_pedido = p.id AND pd.id_material = cd.id_material
           WHERE cd.id_computo = ? AND cd.cancelado = 0
           GROUP BY cd.id";

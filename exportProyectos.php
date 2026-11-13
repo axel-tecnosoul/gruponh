@@ -44,6 +44,9 @@ include 'database.php';
 						if (!empty($_GET['cliente'])) {
 							$sql .= " and c.`nombre` like '%".$_GET['cliente']."%'";
 						}
+						if (!empty($_GET['empresa'])) {
+							$sql .= " and s.id_empresa = ".(int)$_GET['empresa'];
+						}
 						if (!empty($_GET['linea'])) {
 							$sql .= " and p.`id_linea_negocio` = ".$_GET['linea'];
 						}

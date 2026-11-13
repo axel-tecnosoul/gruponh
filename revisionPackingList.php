@@ -5,6 +5,11 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 require 'database.php';
+if (isset($_GET['id_packing_list_revision']) && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+  $prod = !empty($_GET['prod']) ? (int)$_GET['prod'] : 0;
+  header('Location: listarPackingList.php' . ($prod ? '?prod=' . $prod : ''));
+  exit;
+}
 if (!empty($_POST)) {
     
   // insert data
@@ -22,10 +27,23 @@ if (!empty($_POST)) {
   $nuevo_nro_revision=$_POST["revision"];
   $id_packing_list_revision=$_GET["id_packing_list_revision"];
 
-  $sql = "SELECT id_packing_list,nro_revision FROM packing_lists_revisiones WHERE id = ?";
+  $sql = "SELECT plr.id_packing_list, plr.nro_revision, plr.id_estado_packing_list, pl.ultimo_nro_revision
+          FROM packing_lists_revisiones plr
+          INNER JOIN packing_lists pl ON pl.id = plr.id_packing_list
+          WHERE plr.id = ?";
   $q = $pdo->prepare($sql);
   $q->execute([$id_packing_list_revision]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
+
+  if (empty($data)
+      || (int)$data['id_estado_packing_list'] !== 1
+      || (int)$data['nro_revision'] !== (int)$data['ultimo_nro_revision']
+      || (int)$data['nro_revision'] !== (int)$nuevo_nro_revision) {
+    Database::disconnect();
+    $prod = !empty($_GET['prod']) ? (int)$_GET['prod'] : 0;
+    header('Location: listarPackingList.php' . ($prod ? '?prod=' . $prod : ''));
+    exit;
+  }
 
   if ($modoDebug==1) {
     $q->debugDumpParams();

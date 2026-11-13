@@ -19,6 +19,10 @@ $claveOperacion = $_POST['clave_operacion'] ?? bin2hex(random_bytes(16));
 if (!empty($_GET['id'])) {
   $editId = (int)$_GET['id'];
   $editMode = true;
+} elseif (!empty($_POST['id_factura'])) {
+  // Compatibilidad con formularios enviados antes de que el id quedara en la URL.
+  $editId = (int)$_POST['id_factura'];
+  $editMode = true;
 }
 
 if (!empty($_POST)) {
@@ -544,6 +548,19 @@ $condicionesVentaSeleccionadas = array_values(array_unique(array_map('intval', (
 $monedaLabel = '';
 $idMoneda = 0;
 
+// Si el guardado falla, volver a mostrar exactamente las imputaciones enviadas,
+// incluso si la URL original no incluía certificados[].
+$detallesPost = null;
+$retencionesPost = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $detallesDecodificados = json_decode((string)($_POST['detalles_json'] ?? '[]'), true);
+  $retencionesDecodificadas = json_decode((string)($_POST['retenciones_json'] ?? '[]'), true);
+  $detallesPost = is_array($detallesDecodificados) ? $detallesDecodificados : [];
+  $retencionesPost = is_array($retencionesDecodificadas) ? $retencionesDecodificadas : [];
+  $certIds = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['certificados'] ?? [])), static fn($id) => $id > 0)));
+  $regimenesSeleccionados = array_values(array_unique(array_map('intval', (array)($_POST['regimenes'] ?? []))));
+}
+
 if ($editMode && $editId) {
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -610,6 +627,9 @@ if ($editMode && $editId) {
     $qCert = $pdo->prepare("SELECT DISTINCT id_certificado_avance FROM certificados_avances_detalle WHERE id_comprobante = ?");
     $qCert->execute([$editId]);
     $certIds = $qCert->fetchAll(PDO::FETCH_COLUMN);
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+      $certIds = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['certificados'] ?? [])), static fn($id) => $id > 0)));
+    }
 
     $qDet = $pdo->prepare("SELECT d.*, cc.descripcion AS concepto_text
                              FROM facturas_venta_detalle d
@@ -761,6 +781,20 @@ if ($editMode && $editId) {
       $idMoneda = (int)($filaMon['id_moneda'] ?? 0);
       $monedaLabel = $filaMon['moneda'] ?: '';
     }
+    Database::disconnect();
+  }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  // El POST es la fuente de verdad al volver a mostrar el formulario tras un error.
+  $certIds = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['certificados'] ?? [])), static fn($id) => $id > 0)));
+  $regimenesSeleccionados = array_values(array_unique(array_map('intval', (array)($_POST['regimenes'] ?? []))));
+  if (array_key_exists('id_moneda', $_POST) && (int)$_POST['id_moneda'] > 0) {
+    $idMoneda = (int)$_POST['id_moneda'];
+    $pdoMonedaPost = Database::connect();
+    $qMonedaPost = $pdoMonedaPost->prepare('SELECT moneda FROM monedas WHERE id = ?');
+    $qMonedaPost->execute([$idMoneda]);
+    $monedaLabel = (string)($qMonedaPost->fetchColumn() ?: $monedaLabel);
     Database::disconnect();
   }
 }

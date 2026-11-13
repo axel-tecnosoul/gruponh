@@ -34,6 +34,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
 
         // Aprobar todos los conceptos relacionados con el cómputo (independientemente del estado cancelado)
         $pdo->prepare("UPDATE computos_detalle SET aprobado = 1, cancelado = 0 WHERE id_computo = ?")->execute([$id_computo]);
+        $pdo->prepare("UPDATE tareas SET fecha_fin_real = IF(fecha_fin_real IS NULL OR fecha_fin_real = '0000-00-00', NOW(), fecha_fin_real) WHERE id = (SELECT id_tarea FROM computos WHERE id = ?)")->execute([$id_computo]);
         break;
 
       case "aprobar_parcial":
@@ -45,6 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
 
         // Cambiar el estado del cómputo a aprobado
         $pdo->prepare("UPDATE computos SET id_estado = 3 WHERE id = ?")->execute([$id_computo]);
+        $pdo->prepare("UPDATE tareas SET fecha_fin_real = IF(fecha_fin_real IS NULL OR fecha_fin_real = '0000-00-00', NOW(), fecha_fin_real) WHERE id = (SELECT id_tarea FROM computos WHERE id = ?)")->execute([$id_computo]);
         break;
 
       case "cancelar_computo":

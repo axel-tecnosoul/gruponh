@@ -286,11 +286,11 @@ $esOpCM = esOperacionesSinEconomico();?>
                   </div>
                   <div class="card-body">
                     <div class="dt-ext table-responsive">
-                      <table class="table table-sm table-bordered mb-0" id="tablaDetalleOCC">
+                      <table class="display table table-sm table-bordered mb-0" id="tablaDetalleOCC">
                         <thead>
                           <tr>
-                             <th>Posición</th>
-                             <th>Descripcion</th>
+                            <th>Posición</th>
+                            <th>Descripcion</th>
                             <th class="text-right">Cantidad</th>
                             <?php if (!$esOpCM) { ?><th class="text-right">Precio Unitario</th>
                             <th class="text-right">Descuento</th>
@@ -299,15 +299,15 @@ $esOpCM = esOperacionesSinEconomico();?>
                           </tr>
                         </thead>
                         <tbody></tbody>
-                         <tfoot>
-                           <tr>
-                             <th>Posición</th>
-                             <th>Descripcion</th>
+                        <tfoot>
+                          <tr>
+                            <th>Posición</th>
+                            <th>Descripcion</th>
                             <th class="text-right">Cantidad</th>
                             <?php if (!$esOpCM) { ?><th class="text-right">Precio Unitario</th>
                             <th class="text-right">Descuento</th>
                             <th class="text-right">Subtotal</th><?php } ?>
-                            <th class="text-center">Acciones</th>
+                            <th class="text-center occ-desglose-col" style="width:130px;">Acciones</th>
                           </tr>
                         </tfoot>
                       </table>

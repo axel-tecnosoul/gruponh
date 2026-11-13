@@ -34,6 +34,11 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
       color: midnightblue;
     }
 
+    .factura-venta-toolbar {
+      column-gap: 1rem;
+      row-gap: .5rem;
+    }
+
   </style>
 </head>
 
@@ -119,28 +124,27 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
             <div class="col-sm-12">
               <div class="card">
                 <div class="card-header">
-                  <div class="d-flex align-items-center flex-wrap">
-                    <h5 class="mb-0 mr-2"><?= $ubicacion ?></h5>
+                  <div class="d-flex align-items-center flex-wrap factura-venta-toolbar">
+                    <h5 class="mb-0"><?= $ubicacion ?></h5>
                     <?php if (!empty(tienePermiso(337))): ?>
-                      &nbsp;<a href="#" id="btn_nueva_factura" title="Nueva Factura">
+                      <a href="#" id="btn_nueva_factura" title="Nueva Factura">
                         <img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">
                       </a>
                     <?php endif; ?>
-                    &nbsp;
                     <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_modificar_fv" title="Modificar/Anular">
                         <img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular">
-                      </a>&nbsp;
+                      </a>
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_pagar_fv" title="Marcar Pagada">
                         <img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada">
-                      </a>&nbsp;
+                      </a>
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_ver_fv" title="Ver Factura">
                         <img src="img/eye.png" width="24" height="15" border="0" alt="Ver Factura">
-                      </a>&nbsp;
+                      </a>
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(337))): ?>
                       <?php /* <a href="#" id="link_nuevo_detalle_fv" title="Añadir ítem Detalle">
@@ -153,13 +157,13 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                     <?php if (!empty(tienePermiso(343))): ?>
                       <a href="#" id="link_exportar_fv" title="Exportar">
                         <img src="img/xls.png" width="24" height="25" border="0" alt="Exportar">
-                      </a>&nbsp;
+                      </a>
                       <a href="#" id="link_exportar_bejerman_fv" title="Bejerman TXT">
                         <img src="img/import.png" width="24" height="25" border="0" alt="Bejerman TXT">
-                      </a>&nbsp;
+                      </a>
                     <?php endif; ?>
                     <?php if (!empty(tienePermiso(337))): ?>
-                      <a href="#" class="js-nueva-nota-fv fa fa-lg ml-2" data-tipo="credito" title="Nota de crédito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">NC</a>&nbsp;
+                      <a href="#" class="js-nueva-nota-fv fa fa-lg" data-tipo="credito" title="Nota de crédito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">NC</a>
                       <a href="#" class="js-nueva-nota-fv fa fa-lg" data-tipo="debito" title="Nota de débito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">ND</a>
                     <?php endif; ?>
                   </div>
@@ -180,10 +184,10 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                           <th>IVA</th>
                           <th>Otros</th>
                           <th>Total Neto</th>
-                          <th>Observación</th>
                           <th>Estado</th>
                           <th>Exportada</th>
                           <th>Pagada</th>
+                          <th>Observación</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -246,8 +250,8 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                            while ($row = $q->fetch(PDO::FETCH_NUM)) {
                              $estadoFacturaId = (int)$row[15];
                              $numeroFacturaMostrar = trim((string)$row[4]);
-                             if ($estadoFacturaId === 2 && preg_match('/-0+$/D', $numeroFacturaMostrar)) {
-                               $numeroFacturaMostrar = '—';
+                             if ($estadoFacturaId === 2 && preg_match('/^(\d+)-0+$/D', $numeroFacturaMostrar, $partesNumero)) {
+                               $numeroFacturaMostrar = str_pad($partesNumero[1], 4, '0', STR_PAD_LEFT);
                              }
                              $clasesEstadoFactura = [
                                1 => 'badge-warning',
@@ -265,13 +269,13 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                             echo '<td><span style="display:none;">' . $row[14] . '</span>' . htmlspecialchars($row[6]) . '</td>';
                             echo '<td>' . htmlspecialchars($row[7]) . '</td>';
                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[8]  ?? 0, 2) . '</td>';
-                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[11] ?? 0, 2) . '</td>';
-                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[12] ?? 0, 2) . '</td>';
-                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[13] ?? 0, 2) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[18]) . '</td>';
-                             echo '<td><span class="badge ' . $claseEstadoFactura . '">' . htmlspecialchars($row[10]) . '</span></td>';
-                            echo '<td class="text-center">' . ($row[17] ? 'Sí' : 'No') . '</td>';
-                            echo '<td class="text-center">' . ((int)$row[16] ? 'Sí' : 'No') . '</td>';
+                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[11] ?? 0, 2) . '</td>';
+                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[12] ?? 0, 2) . '</td>';
+                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[13] ?? 0, 2) . '</td>';
+                              echo '<td><span class="badge ' . $claseEstadoFactura . '">' . htmlspecialchars($row[10]) . '</span></td>';
+                             echo '<td class="text-center">' . ($row[17] ? 'Sí' : 'No') . '</td>';
+                             echo '<td class="text-center">' . ((int)$row[16] ? 'Sí' : 'No') . '</td>';
+                             echo '<td>' . htmlspecialchars($row[18]) . '</td>';
                             echo '</tr>';
                           }
                           Database::disconnect();
@@ -291,10 +295,10 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                           <th>IVA</th>
                           <th>Otros</th>
                           <th>Total Neto</th>
-                          <th>Observación</th>
                           <th>Estado</th>
                           <th>Exportada</th>
                           <th>Pagada</th>
+                          <th>Observación</th>
                         </tr>
                       </tfoot>
                     </table>

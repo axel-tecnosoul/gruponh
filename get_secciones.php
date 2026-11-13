@@ -1,59 +1,73 @@
 <?php
-require("config.php");
-require 'database.php';
+require_once 'config.php';
+require_once 'database.php';
 
-$id_pl = $_POST['id_pl'];
+$idPackingListRevision = filter_var($_POST['id_pl'] ?? null, FILTER_VALIDATE_INT);
+if (!$idPackingListRevision || $idPackingListRevision < 1) {
+  http_response_code(400);
+  header('Content-Type: application/json; charset=utf-8');
+  echo json_encode(['error' => 'No se recibió un ID válido de Packing List.']);
+  exit;
+}
 
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sql = "SELECT pls.id AS id_seccion, pls.cantidad AS cantidad_seccion, pls.observaciones AS seccion,
+               plc.id AS id_componente, plc.cantidad AS cantidad_componente,
+               plc.observaciones AS observaciones_componente, ecpl.estado AS estado_componente,
+               m.concepto, m.largo, m.peso_metro,
+               lcc.id AS id_conjunto, lcc.nombre AS conjunto
+        FROM packing_lists_secciones pls
+        LEFT JOIN packing_lists_componentes plc ON plc.id_packing_list_seccion = pls.id
+        LEFT JOIN listas_corte_conjuntos lcc ON lcc.id = plc.id_conjunto_lista_corte
+        LEFT JOIN materiales m ON m.id = plc.id_concepto
+        LEFT JOIN estados_componentes_packing_list ecpl ON ecpl.id = plc.id_estado_componente_packing_list
+        WHERE pls.id_packing_list_revision = ?
+        ORDER BY pls.id, plc.id";
+$q = $pdo->prepare($sql);
+$q->execute([$idPackingListRevision]);
+$filas = $q->fetchAll(PDO::FETCH_ASSOC);
 
-$sql = " SELECT pls.id, pls.cantidad, pls.observaciones,m.concepto,lcc.nombre,plc.cantidad,plc.observaciones,ecpl.estado,m.peso_metro, lcc.id FROM packing_lists_secciones pls left JOIN packing_lists_componentes plc ON plc.id_packing_list_seccion=pls.id left JOIN listas_corte_conjuntos lcc ON plc.id_conjunto_lista_corte=lcc.id left JOIN materiales m ON plc.id_concepto=m.id left JOIN estados_componentes_packing_list ecpl ON plc.id_estado_componente_packing_list=ecpl.id WHERE pls.id_packing_list_revision = ".$id_pl;
+$pesosSecciones = [];
+$pesosComponentes = [];
+foreach ($filas as $fila) {
+  $idSeccion = (int)$fila['id_seccion'];
+  $idComponente = (int)($fila['id_componente'] ?? 0);
+  $cantidadComponente = numeroListaCorte($fila['cantidad_componente'] ?? 0);
+  $pesoComponente = 0.0;
 
-$aSecciones=[];
-foreach ($pdo->query($sql) as $row) {
-  $componente = $row[3].' '.$row[4];
-  
-  $pesoComponente = 0;
-  if (!empty($row[8])) {
-	$pesoComponente = $row[8]*$row[5];
-  } 
-  if (!empty($row[9])) {
-	  $pesoComponente = 0;
-	  $sql2 = " SELECT peso from lista_corte_posiciones where id_lista_corte_conjunto = ".$row[9];
-	  foreach ($pdo->query($sql2) as $row2) {
-		  $pesoComponente += $row2[0];
-	  }
-	  $pesoComponente *= $row[5];
+  if (!empty($fila['id_conjunto'])) {
+    $pesoComponente = round(calcularPesoConjunto($pdo, (int)$fila['id_conjunto']) * $cantidadComponente, 2);
+  } elseif (!empty($fila['concepto'])) {
+    $largo = numeroListaCorte($fila['largo'] ?? 0);
+    $pesoMetro = numeroListaCorte($fila['peso_metro'] ?? 0);
+    $pesoComponente = round(($largo * $pesoMetro / 1000) * $cantidadComponente, 2);
   }
-  
-  $pesoSeccion = 0;
-  $sql3 = " SELECT plc.`id_conjunto_lista_corte`, plc.`id_concepto`, plc.cantidad, m.peso_metro from packing_lists_componentes plc left join materiales m on m.id = plc.id_concepto where plc.id_packing_list_seccion = ".$row[0];
-  foreach ($pdo->query($sql3) as $row3) {
-	  if (!empty($row3[0])) {
-		  $sql4 = " SELECT peso from lista_corte_posiciones where id_lista_corte_conjunto = ".$row3[0];
-		  foreach ($pdo->query($sql4) as $row4) {
-			  $pesoSeccion += $row4[0];
-		  }
-		  $pesoSeccion *= $row3[2];
-	  }
-	  if (!empty($row3[1])) {
-		$pesoSeccion += $row3[3];
-		$pesoSeccion *= $row3[2];
-	  }
+
+  if ($idComponente > 0) {
+    $pesosComponentes[$idComponente] = $pesoComponente;
   }
-  
-  
-  $aSecciones[]=[
-    0 => $row[2],
-    1 => $row[1],
-	2 => $pesoSeccion,
-	3 => $componente,
-    4 => $row[5],
-    5 => $pesoComponente,
-    6 => $row[6],
-    7 => $row[7],
+  $pesosSecciones[$idSeccion] = ($pesosSecciones[$idSeccion] ?? 0.0) + $pesoComponente;
+}
+
+$aSecciones = [];
+foreach ($filas as $fila) {
+  $idSeccion = (int)$fila['id_seccion'];
+  $idComponente = (int)($fila['id_componente'] ?? 0);
+  $nombreComponente = trim((string)($fila['concepto'] ?? '') . ' ' . (string)($fila['conjunto'] ?? ''));
+
+  $aSecciones[] = [
+    0 => $fila['seccion'],
+    1 => $fila['cantidad_seccion'],
+    2 => round($pesosSecciones[$idSeccion] ?? 0.0, 2),
+    3 => $nombreComponente,
+    4 => $fila['cantidad_componente'],
+    5 => $pesosComponentes[$idComponente] ?? 0.0,
+    6 => $fila['observaciones_componente'],
+    7 => $fila['estado_componente'],
   ];
 }
+
 Database::disconnect();
-echo json_encode($aSecciones);
-?>
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode($aSecciones, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);

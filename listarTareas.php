@@ -160,10 +160,8 @@ $submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
                           <th>FIR</th>
                           <th>FFR</th>
                           <th>Completada</th>
-                          <th>Cómputo</th>
-                          <th>Cómputo ID</th>
-                          <th>LC</th>
-                          <th>PL</th>
+                          <th>Iniciada</th>
+                          <th style="width: 80px;">Nro</th>
                         </tr>
                       </thead>
                       <tbody></tbody>
@@ -185,10 +183,8 @@ $submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
                           <th>FIR</th>
                           <th>FFR</th>
                           <th>Completada</th>
-                          <th>Cómputo</th>
-                          <th>Cómputo ID</th>
-                          <th>LC</th>
-                          <th>PL</th>
+                          <th>Iniciada</th>
+                          <th style="width: 80px;">Nro</th>
                         </tr>
                       </tfoot>
                     </table>
@@ -385,10 +381,10 @@ $submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
 
         var rowData = table.row(fila).data();
         var id_tarea = rowData ? rowData[0] : fila.find("td:first-child").html();
-        var tt = fila.find("td:eq(6)").html()?.trim();
-        var tiene_computo = fila.find("td:eq(15)").html()?.trim();
-        var tiene_lc = fila.find("td:eq(17)").html()?.trim();
-        var tiene_packing = fila.find("td:eq(18)").html()?.trim();
+        var tt = rowData ? String(rowData[7]).trim() : fila.find("td:eq(7)").text().trim();
+        var tiene_entregable = rowData
+          ? $('<div>').html(rowData[17] || '').find('a').length > 0
+          : fila.find("td:eq(17) a").length > 0;
 
         if (fila.hasClass('selected')) {
           deselectRow(fila);
@@ -409,13 +405,13 @@ $submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
 
           if (tt === 'Computos') {
             $("#link_nuevo_computo").attr("href",
-              tiene_computo === 'No' ? "nuevoComputo.php?id=" + id_tarea : "#");
+              !tiene_entregable ? "nuevoComputo.php?id=" + id_tarea : "#");
           } else if (tt === 'Planos y LC') {
             $("#link_nuevo_computo").attr("href",
-              tiene_lc === 'No' ? "nuevaListaCorte.php?idTarea=" + id_tarea : "#");
+              !tiene_entregable ? "nuevaListaCorte.php?idTarea=" + id_tarea : "#");
           } else if (tt === 'Packing List') {
             $("#link_nuevo_computo").attr("href",
-              tiene_packing === 'No' ? "nuevaPackingList.php?idTarea=" + id_tarea : "#");
+              !tiene_entregable ? "nuevaPackingList.php?idTarea=" + id_tarea : "#");
           } else {
             $("#link_nuevo_computo").attr("href", "#");
           }

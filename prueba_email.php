@@ -61,7 +61,7 @@
 	$mail->Username = $smtpUsuario; 
 	$mail->Password = $smtpClave;
 	$mail->AddAddress($address);
-	$mail->AddAddress("pruebaerp@gruponh.com.ar");
+	$mail->AddAddress("juanaugustohaser@gmail.com");
 	$mail->Subject = $titulo; 
 	$mensajeHtml = nl2br($mensaje);
 	$mail->Body = "{$mensajeHtml} <br /><br />"; 

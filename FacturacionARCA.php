@@ -889,9 +889,9 @@ final class FacturacionARCA
             $receiverDocument = '0';
             $receiverDocumentType = 99;
         } else {
-            $receiverDocumentType = 99;
-            $receiverDocument = '0'; /* ESTO DESCOMENTAR PARA GENERAR SIN PROBLEMAS FACTURAS TIPO B */
-            //throw new RuntimeException('El documento del cliente debe ser un CUIT válido o, para consumidor final, un DNI válido.');        
+/*             $receiverDocumentType = 99;
+            $receiverDocument = '0'; */
+            throw new RuntimeException('El documento del cliente debe ser un CUIT válido o, para consumidor final, un DNI válido.');        
             }
         if ($letter === 'A' && ($receiverVat !== 1 || $receiverDocumentType !== 80)) {
             throw new RuntimeException('Una factura A requiere un receptor Responsable Inscripto.');

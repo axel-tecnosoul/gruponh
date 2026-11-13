@@ -3,11 +3,75 @@ session_start();
 if (empty($_SESSION['user'])) {
   header("Location: index.php");
   die("Redirecting to index.php");
-}?>
+}
+include 'database.php';
+require_once 'manejarFiltros.php';
+$filtros = gestionarFiltros('listarDespachos');
+$nroFiltro = trim((string)($filtros['nro'] ?? ''));
+$fechaDesde = trim((string)($filtros['fecha'] ?? ''));
+$fechaHasta = trim((string)($filtros['fechah'] ?? ''));
+$estadosSeleccionados = array_values(array_filter(array_map('intval', (array)($filtros['id_estado'] ?? [])), function ($id) { return $id > 0; }));
+$idClienteSeleccionado = filter_var($filtros['id_cliente'] ?? '', FILTER_VALIDATE_INT);
+if ($idClienteSeleccionado === false || $idClienteSeleccionado < 1) $idClienteSeleccionado = '';
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$estadosDespacho = $pdo->query("SELECT id, estado FROM estados_despacho ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+$clientesDespacho = $pdo->query(
+  "SELECT DISTINCT c.id, c.nombre
+   FROM despachos des
+   INNER JOIN proyectos p ON p.id = des.id_proyecto
+   INNER JOIN cuentas c ON c.id = p.id_cliente
+   WHERE c.anulado = 0
+   ORDER BY c.nombre"
+)->fetchAll(PDO::FETCH_ASSOC);
+
+$whereDespachos = ['1 = 1'];
+$paramsDespachos = [];
+if ($nroFiltro !== '' && ctype_digit($nroFiltro)) {
+  $whereDespachos[] = '(p.nro = ? OR s.nro_sitio = ?)';
+  $paramsDespachos[] = (int)$nroFiltro;
+  $paramsDespachos[] = (int)$nroFiltro;
+}
+if ($fechaDesde !== '') {
+  $whereDespachos[] = 'des.fecha >= ?';
+  $paramsDespachos[] = $fechaDesde;
+}
+if ($fechaHasta !== '') {
+  $whereDespachos[] = 'des.fecha <= ?';
+  $paramsDespachos[] = $fechaHasta;
+}
+if ($estadosSeleccionados) {
+  $whereDespachos[] = 'e.id IN (' . implode(',', array_fill(0, count($estadosSeleccionados), '?')) . ')';
+  array_push($paramsDespachos, ...$estadosSeleccionados);
+}
+if ($idClienteSeleccionado !== '') {
+  $whereDespachos[] = 'p.id_cliente = ?';
+  $paramsDespachos[] = (int)$idClienteSeleccionado;
+}
+
+$sqlDespachos = "SELECT des.id, DATE_FORMAT(des.fecha,'%d/%m/%y') AS fecha,
+                        c.nombre AS operario, des.nro_remito, des.transporte, des.chofer,
+                        e.estado, s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto,
+                        c2.nombre AS cliente
+                 FROM despachos des
+                 INNER JOIN cuentas c ON c.id = des.id_cuenta_operario
+                 INNER JOIN estados_despacho e ON e.id = des.id_estado_despacho
+                 INNER JOIN proyectos p ON p.id = des.id_proyecto
+                 INNER JOIN sitios s ON s.id = p.id_sitio
+                 INNER JOIN cuentas c2 ON c2.id = p.id_cliente
+                 WHERE " . implode(' AND ', $whereDespachos) . "
+                 ORDER BY des.fecha DESC, des.id DESC";
+$qDespachos = $pdo->prepare($sqlDespachos);
+$qDespachos->execute($paramsDespachos);
+$despachos = $qDespachos->fetchAll(PDO::FETCH_ASSOC);
+Database::disconnect();
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
    <?php include('head_tables.php');?>
+   <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
    <style>
 	.truncate {
 	  max-width:50px;
@@ -36,6 +100,48 @@ if (empty($_SESSION['user'])) {
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <form class="form-inline theme-form mt-3" name="formFiltrosDespacho" method="post" action="listarDespachos.php">
+                      <div class="form-group mb-2 mr-2">
+                        N.Sitio/N.Proy:&nbsp;
+                        <input class="form-control" size="8" type="text" name="nro" value="<?=htmlspecialchars($nroFiltro, ENT_QUOTES, 'UTF-8')?>">
+                      </div>
+                      <div class="form-group mb-2 mr-2">
+                        Rango:&nbsp;
+                        <input class="form-control" type="date" name="fecha" value="<?=htmlspecialchars($fechaDesde, ENT_QUOTES, 'UTF-8')?>">
+                        <span class="mx-1">-</span>
+                        <input class="form-control" type="date" name="fechah" value="<?=htmlspecialchars($fechaHasta, ENT_QUOTES, 'UTF-8')?>">
+                      </div>
+                      <div class="form-group mb-2 mr-2 filter-state-group">
+                        Estado:&nbsp;
+                        <select name="id_estado[]" class="js-example-basic-multiple filter-state-multiple" multiple="multiple" style="min-width: 220px">
+                          <option value="" <?=empty($estadosSeleccionados) ? 'selected' : ''?>>Todos</option>
+                          <?php foreach ($estadosDespacho as $estado): ?>
+                            <option value="<?=(int)$estado['id']?>" <?=in_array((int)$estado['id'], $estadosSeleccionados, true) ? 'selected' : ''?>><?=htmlspecialchars($estado['estado'], ENT_QUOTES, 'UTF-8')?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </div>
+                      <div class="form-group mb-2 mr-2">
+                        Cliente:&nbsp;
+                        <select name="id_cliente" class="js-example-basic-single" style="min-width: 240px">
+                          <option value="">Todos</option>
+                          <?php foreach ($clientesDespacho as $cliente): ?>
+                            <option value="<?=(int)$cliente['id']?>" <?=(string)$idClienteSeleccionado === (string)$cliente['id'] ? 'selected' : ''?>><?=htmlspecialchars($cliente['nombre'], ENT_QUOTES, 'UTF-8')?></option>
+                          <?php endforeach; ?>
+                        </select>
+                      </div>
+                      <div class="form-group mb-2 filter-form-actions">
+                        <button type="submit" class="btn btn-primary">Buscar</button>
+                        <a href="listarDespachos.php?clear_filters=1" class="btn btn-secondary ml-2">Limpiar</a>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="row">
               <!-- Zero Configuration  Starts-->
               <div class="col-sm-12">
@@ -80,27 +186,22 @@ if (empty($_SESSION['user'])) {
                           </tr>
                         </thead>
                         <tbody>
-                          <?php 
-                            include 'database.php'; 
-                            $pdo = Database::connect();
-                            $sql = "SELECT des.`id`, date_format(des.`fecha`,'%d/%m/%y'), c.`nombre`, des.`nro_remito`, des.`transporte`, des.`chofer`, e.estado,s.nro_sitio,s.nro_subsitio,p.nro,c2.nombre FROM `despachos` des inner join cuentas c on c.id = des.`id_cuenta_operario` inner join estados_despacho e on e.id = des.`id_estado_despacho` inner join proyectos p on p.id = des.id_proyecto inner join sitios s on s.id = p.id_sitio inner join cuentas c2 on c2.id = p.id_cliente WHERE 1 "; 
-									 
-                            foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
-                                echo '<td class="d-none">'. $row[0] . '</td>';
-                                echo '<td>'. $row[7] . '</td>';
-								echo '<td>'. $row[8] . '</td>';
-								echo '<td>'. $row[9] . '</td>';
-								echo '<td>'. $row[10] . '</td>';
-								echo '<td>'. $row[1] . '</td>';
-                                echo '<td>'. $row[3] . '</td>';
-                                echo '<td>'. $row[4] . '</td>';
-                                echo '<td>'. $row[5] . '</td>';
-                                echo '<td>'. $row[6] . '</td>';
-								echo '<td>'. $row[2] . '</td>';
-                                echo '</tr>';?>
+                          <?php foreach ($despachos as $row): ?>
+                            <tr>
+                              <td class="d-none"><?=(int)$row['id']?></td>
+                              <td><?=htmlspecialchars((string)$row['nro_sitio'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['nro_subsitio'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['nro_proyecto'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['cliente'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['fecha'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['nro_remito'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['transporte'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['chofer'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['estado'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['operario'], ENT_QUOTES, 'UTF-8')?></td>
+                            </tr>
 
-                                <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                <div class="modal fade" id="eliminarModal_<?=(int)$row['id']?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                   <div class="modal-dialog" role="document">
                                     <div class="modal-content">
                                       <div class="modal-header">
@@ -109,14 +210,13 @@ if (empty($_SESSION['user'])) {
                                       </div>
                                       <div class="modal-body">¿Está seguro que desea eliminar el Despacho?</div>
                                       <div class="modal-footer">
-                                        <a href="eliminarDespacho.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
+                                        <a href="eliminarDespacho.php?id=<?=(int)$row['id']?>" class="btn btn-primary">Eliminar</a>
                                         <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
                                       </div>
                                     </div>
                                   </div>
-                                </div><?php
-                            }
-                           Database::disconnect();?>
+                                </div>
+                          <?php endforeach; ?>
                         </tbody>
 						            <tfoot>
                           <tr>
@@ -348,6 +448,8 @@ if (empty($_SESSION['user'])) {
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/select2/select2.full.min.js"></script>
+    <script src="assets/js/select2/select2-custom.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>

@@ -13,16 +13,17 @@ $camposOrden = [
     1  => ['p.`id`'],                              // Proy (oculta: ID)
     2  => ['p.`nro`'],                             // Proy
     3  => ['p.`nombre`'],                          // Nombre
-    4  => ['p.`descripcion`'],                     // Descripción
-    5  => ['c.`nombre`'],                          // Cliente
-    6  => ['ep.`estado`'],                         // Estado
-    7  => ['c2.`nombre`'],                         // Responsable
-    8  => ['p.`fecha_pedido`'],                    // F Adjudicado (fecha real, no el texto dd/mm/yy)
-    9  => ['p.`fecha_entrega`'],                   // F Entrega (fecha real)
-    10 => [], 11 => [], 12 => [], 13 => [],        // Presup$/Cert$/Facturado$/Pagado$ (PHP)
-    14 => [], 15 => [], 16 => [], 17 => [],        // USD (PHP)
-    18 => ['ln.`linea_negocio`'],                  // Línea de Negocio
-    19 => ['p.`tags`'],                            // Claves
+    4  => ['emp.`empresa`'],                       // Empresa
+    5  => ['p.`descripcion`'],                     // Descripción
+    6  => ['c.`nombre`'],                          // Cliente
+    7  => ['ep.`estado`'],                         // Estado
+    8  => ['c2.`nombre`'],                         // Responsable
+    9  => ['p.`fecha_pedido`'],                    // F Adjudicado (fecha real, no el texto dd/mm/yy)
+    10 => ['p.`fecha_entrega`'],                   // F Entrega (fecha real)
+    11 => [], 12 => [], 13 => [], 14 => [],        // Presup$/Cert$/Facturado$/Pagado$ (PHP)
+    15 => [], 16 => [], 17 => [], 18 => [],        // USD (PHP)
+    19 => ['ln.`linea_negocio`'],                  // Línea de Negocio
+    20 => ['p.`tags`'],                            // Claves
 ];
 
 $orderBy = " ORDER BY ";
@@ -65,7 +66,8 @@ $fields = [
 	"p.`tags`", 
 	"date_format(p.`fecha_pedido`,'%Y%m%d')", 
 	"date_format(p.`fecha_entrega`,'%Y%m%d')",
-	"p.nro"
+	"p.nro",
+	"emp.`empresa`"
 ];
 
 $where = ' 1 and p.anulado = 0 ';
@@ -76,6 +78,7 @@ if (!empty($_GET['estado'])) {
 if (!empty($_GET['nro'])) $where .= ' and (p.nro = '.$_GET['nro'].' or s.nro_sitio = '.$_GET['nro'].') ';
 if (!empty($_GET['nombre'])) $where .= " and p.nombre like '%".$_GET['nombre']."%' ";
 if (!empty($_GET['cliente'])) $where .= " and c.nombre like '%".$_GET['cliente']."%' ";
+if (!empty($_GET['empresa'])) $where .= ' and s.id_empresa = '.(int)$_GET['empresa'].' ';
 
 // Buscadores del pie de la tabla: búsqueda global y por columna (serverSide).
 // El índice es el de la columna visible; los montos se calculan en PHP y no son filtrables por SQL.
@@ -84,16 +87,17 @@ $columnasBusqueda = [
 	"p.`id`",                                   // 1 Proy (oculta)
 	"p.nro",                                    // 2 Proy
 	"p.nombre",                                 // 3 Nombre
-	"p.`descripcion`",                          // 4 Descripción
-	"c.nombre",                                 // 5 Cliente
-	"ep.`estado`",                              // 6 Estado
-	"c2.nombre",                                // 7 Responsable
-	"date_format(p.`fecha_pedido`,'%d/%m/%y')", // 8 F Adjudicado
-	"date_format(p.`fecha_entrega`,'%d/%m/%y')",// 9 F Entrega
-	null, null, null, null,                     // 10-13 Presup$/Certificado$/Facturado$/Pagado$
-	null, null, null, null,                     // 14-17 PresupUSD/CertificadoUSD/FacturadoUSD/PagadoUSD
-	"ln.`linea_negocio`",                       // 18 Línea de Negocio
-	"p.`tags`",                                 // 19 Claves
+	"emp.`empresa`",                            // 4 Empresa
+	"p.`descripcion`",                          // 5 Descripción
+	"c.nombre",                                 // 6 Cliente
+	"ep.`estado`",                              // 7 Estado
+	"c2.nombre",                                // 8 Responsable
+	"date_format(p.`fecha_pedido`,'%d/%m/%y')", // 9 F Adjudicado
+	"date_format(p.`fecha_entrega`,'%d/%m/%y')",// 10 F Entrega
+	null, null, null, null,                     // 11-14 Presup$/Certificado$/Facturado$/Pagado$
+	null, null, null, null,                     // 15-18 PresupUSD/CertificadoUSD/FacturadoUSD/PagadoUSD
+	"ln.`linea_negocio`",                       // 19 Línea de Negocio
+	"p.`tags`",                                 // 20 Claves
 ];
 
 // Buscador global del DataTable.
@@ -131,7 +135,7 @@ $adicionales = false;
 $length = $_GET['length'];
 $start = $_GET['start'];
 
-$from=" FROM `proyectos` p inner join lineas_negocio ln on ln.id = p.`id_linea_negocio` inner join tipos_proyecto tp on tp.id = p.`id_tipo_proyecto` inner join estados_proyecto ep on ep.id = p.`id_estado_proyecto` inner join sitios s on s.id = p.id_sitio inner join cuentas c on c.id = p.id_cliente inner join cuentas c2 on c2.id = p.id_gerente ";
+$from=" FROM `proyectos` p inner join lineas_negocio ln on ln.id = p.`id_linea_negocio` inner join tipos_proyecto tp on tp.id = p.`id_tipo_proyecto` inner join estados_proyecto ep on ep.id = p.`id_estado_proyecto` inner join sitios s on s.id = p.id_sitio inner join cuentas c on c.id = p.id_cliente inner join cuentas c2 on c2.id = p.id_gerente left join empresas emp on emp.id = s.id_empresa ";
 
 $countSql = "SELECT count($fields[0]) as Total $from";
 $countSt = $pdo->query($countSql);
@@ -209,6 +213,7 @@ if ($st) {
       $row[0],
 	  $row[14],
 	  $row[3],
+	  $row[15],
 	  $row[4],
 	  $row[5],
 	  $row[6],

@@ -128,7 +128,7 @@ if (!empty($_POST)) {
     $id_lista_corte = (int)$pdo->lastInsertId();
 
     if($id_lista_corte>0 and $id_tarea>0){
-      $sql = "UPDATE tareas set fecha_inicio_real=now(), fecha_fin_real=now() where id = ?";
+      $sql = "UPDATE tareas SET fecha_inicio_real = IF(fecha_inicio_real IS NULL OR fecha_inicio_real = '0000-00-00', NOW(), fecha_inicio_real) WHERE id = ?";
       $q = $pdo->prepare($sql);
       $q->execute([$id_tarea]);
     }

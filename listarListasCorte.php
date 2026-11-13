@@ -6,7 +6,32 @@ if (empty($_SESSION['user'])) {
 }*/
 include 'config.php';
 include 'database.php';
-$prodQuery = isset($_GET['prod']) ? '?prod='.(int)$_GET['prod'] : '';
+$prod = isset($_GET['prod']) ? (int)$_GET['prod'] : 0;
+$prodQuery = $prod ? '?prod='.$prod : '';
+$filtrosSessionKey = 'filtros_listarListasCorte' . ($prod ? '_prod' : '');
+$urlListado = 'listarListasCorte.php' . $prodQuery;
+$urlLimpiarFiltros = $urlListado . ($prodQuery ? '&' : '?') . 'clear_filters=1';
+
+if (isset($_GET['clear_filters'])) {
+  unset($_SESSION[$filtrosSessionKey]);
+  header('Location: ' . $urlListado);
+  exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $_SESSION[$filtrosSessionKey] = [
+    'nro' => trim((string)($_POST['nro'] ?? '')),
+    'fecha' => trim((string)($_POST['fecha'] ?? '')),
+    'fechah' => trim((string)($_POST['fechah'] ?? '')),
+    'id_estado' => array_values(array_filter((array)($_POST['id_estado'] ?? []), static function ($estado) {
+      return $estado !== '';
+    })),
+  ];
+  header('Location: ' . $urlListado);
+  exit;
+}
+
+$_POST = $_SESSION[$filtrosSessionKey] ?? [];
 $estadosProd = '';
 if($prodQuery){
   $estadosProd = '3,4'; //Aprobada y Gestionando
@@ -107,7 +132,7 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
                       </div>
                       <div class="form-group mb-0 filter-form-actions">
                         <button class="btn btn-primary" id="btnFiltrar" onclick="document.form1.target='_self';document.form1.action='listarListasCorte.php<?= $prodQuery ?>'">Buscar</button>
-                        <button type="button" class="btn btn-secondary ml-2" id="btnLimpiarFiltros">Limpiar</button>
+                        <a class="btn btn-secondary ml-2" href="<?= htmlspecialchars($urlLimpiarFiltros, ENT_QUOTES, 'UTF-8') ?>">Limpiar</a>
                       </div>
                     </form>
                   </div>
@@ -130,6 +155,8 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
                         <a href="#" id="link_modificar_lc"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>
                         &nbsp;&nbsp;<?php
                       }?>
+                      <a href="#" id="link_ver_detalle_lc" title="Ver detalle"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver detalle" title="Ver detalle"></a>
+                      &nbsp;&nbsp;
                       <a href="#" id="link_imprimir_lc"><img src="img/print.png" width="25" height="20" border="0" alt="Imprimir" title="Imprimir"></a>
                       &nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(317))) {?>
@@ -551,6 +578,7 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
           if(t.hasClass('selected')){
             deselectRow(t);
             get_detalle_lista_corte(0)
+            $("#link_ver_detalle_lc").attr("href", "#");
             $("#link_ot_lc").attr("href","#");
             $("#link_imprimir_lc").attr("href","#");
             $("#link_modificar_lc").attr("href","#");
@@ -561,6 +589,7 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
             //t.parent().find("tr").removeClass("selected");
             selectRow(t);
             get_detalle_lista_corte(id_lc)
+            $("#link_ver_detalle_lc").attr("href", "verListaCorte.php?id=" + id_lc + prodParam);
             $("#link_imprimir_lc").attr("target","_blank").attr("href","imprimirListaCorte.php?id="+id_lc+prodParam);
             if (estado != "Cancelada") {
               //$("#link_modificar_lc").attr("href","modificarListaCorte.php?id_lista_corte_revision="+id_lc);//old version
@@ -571,6 +600,16 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
               $("#link_ot_lc").attr("href","#");
             }
           }
+        });
+
+        $("#link_ver_detalle_lc").on("click", function(e) {
+          e.preventDefault();
+          const href = $(this).attr("href");
+          if (!href || href === "#") {
+            alert("Por favor seleccione una Lista de Corte para ver su detalle");
+            return;
+          }
+          window.open(href, "_blank", "noopener");
         });
 
         // Setup - add a text input to each footer cell
@@ -821,69 +860,6 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-    <script>
-      // Mantener los filtros del listado al volver (sessionStorage), igual que listarProyectos.php.
-      // Se usa una clave distinta para el modo producción (prod=1) para no mezclar estados.
-      $(function() {
-        var KEY_BASE = 'listarListasCorteFiltros';
-        var prodActual = new URLSearchParams(window.location.search).get('prod')
-          || (document.getElementById('prod') ? document.getElementById('prod').value : '')
-          || '';
-        var KEY = KEY_BASE + (prodActual ? '_prod' : '');
-        var btnLimpiar = document.getElementById('btnLimpiarFiltros');
-        if (btnLimpiar) {
-          btnLimpiar.addEventListener('click', function() {
-            try {
-              sessionStorage.removeItem(KEY_BASE);
-              sessionStorage.removeItem(KEY_BASE + '_prod');
-            } catch (e) {}
-            window.location.replace('listarListasCorte.php<?= $prodQuery ?>');
-          });
-        }
-        var form = document.forms['form1'];
-        if (!form || !window.sessionStorage) { return; }
-
-        // 1) Al hacer Buscar, guardo el valor actual de cada filtro
-        form.addEventListener('submit', function() {
-          try {
-            sessionStorage.setItem(KEY, JSON.stringify({
-              nro: $('#nro').val() || '',
-              fecha: $('#fecha').val() || '',
-              fechah: $('#fechah').val() || '',
-              estados: ($('#id_estado').val() || [])
-            }));
-          } catch (e) {}
-        });
-
-        // 2) Si llego sin POST y hay filtros guardados, los repinto y reenvío la búsqueda
-        <?php if (empty($_POST)): ?>
-        var guardado = null;
-        try {
-          guardado = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-        } catch (e) {
-          guardado = null;
-        }
-        if (guardado) {
-          $('#nro').val(guardado.nro || '');
-          $('#fecha').val(guardado.fecha || '');
-          $('#fechah').val(guardado.fechah || '');
-          // Si el usuario limpió los estados, envío la opción "Todos" ("") y no el default del servidor
-          var estadosRest = (guardado.estados && guardado.estados.length) ? guardado.estados : [''];
-          $('#id_estado').val(estadosRest).trigger('change');
-
-          // Conservar mensajes de error de la URL (por ejemplo, LC no aprobada para OT)
-          var errorActual = new URLSearchParams(window.location.search).get('error');
-          if (errorActual) {
-            var separador = form.action.indexOf('?') === -1 ? '?' : '&';
-            form.action += separador + 'error=' + encodeURIComponent(errorActual);
-          }
-
-          // form.submit() nativo no dispara el listener de guardado: no sobreescribe el storage
-          setTimeout(function() { form.submit(); }, 100);
-        }
-        <?php endif; ?>
-      });
-    </script>
     <!-- Plugin used-->
   </body>
 </html>

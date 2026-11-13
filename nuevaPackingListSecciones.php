@@ -62,11 +62,12 @@ if (!empty($_POST)) {
 $id_packing_list_revision=$_GET['id_packing_list_revision'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT id_packing_list, numero FROM packing_lists_revisiones WHERE id = ? ";
+$sql = "SELECT plr.id_packing_list, plr.numero, plr.id_estado_packing_list, plr.nro_revision, pl.ultimo_nro_revision FROM packing_lists_revisiones plr INNER JOIN packing_lists pl ON pl.id = plr.id_packing_list WHERE plr.id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$id_packing_list_revision]);
 $data = $q->fetch(PDO::FETCH_ASSOC);
 Database::disconnect();
+$puedeEnviarAprobacion = !empty($data) && (int)$data['id_estado_packing_list'] === 1 && (int)$data['nro_revision'] === (int)$data['ultimo_nro_revision'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -95,7 +96,7 @@ Database::disconnect();
                 <div class="card">
                   <div class="card-header">
                     <h5>Secciones del Packing List #<?=$data['numero']?>
-                      &nbsp;&nbsp;<?php
+                      &nbsp;&nbsp;<a href="#" id="link_ver_componentes" title="Ver componentes de la sección"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver componentes"></a>&nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(329))) {?>
                         <img src="img/icon_modificar.png" id="link_modificar_seccion" style="cursor: pointer;" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp;<?php
                       }
@@ -167,6 +168,9 @@ Database::disconnect();
 						            <a href="listarPackingList.php" class="btn btn-light">Volver</a> -->
 
                         <button type="submit" value="1" name="btn1" id="addComponente" class="btn btn-success">Crear y Agregar Componentes</button>
+                        <?php if ($puedeEnviarAprobacion) { ?>
+                          <button type="button" id="btnEnviarAprobacionPK" data-id="<?= (int)$id_packing_list_revision ?>" class="btn btn-primary">Enviar a aprobación</button>
+                        <?php } ?>
                         <button type="submit" value="2" name="btn2" id="editSeccion" class="btn btn-success d-none">Modificar</button>
                         <button type="submit" value="3" name="btn3" id="editSeccionGoComponentes" class="btn btn-primary d-none">Modificar e ir a Componentes</button>
                         <button type="button" id="cancelEditSeccion" class="btn btn-light d-none">Cancelar Modificar</button>
@@ -244,6 +248,21 @@ Database::disconnect();
       const prod = <?= $prod ?? 0 ?>;
       const prodQuery = prod ? '?prod=' + prod : '';
       const prodParam = prod ? '&prod=' + prod : '';
+      $('#btnEnviarAprobacionPK').on('click', function () {
+        const idRevision = Number($(this).data('id'));
+        if (!idRevision || !confirm('¿Enviar este Packing List a aprobación?')) return;
+
+        $.ajax({
+          type: 'POST',
+          url: 'modificarEstadoPackingList.php',
+          data: {idPosicion: idRevision, idEstado: 2}
+        }).done(function () {
+          window.location.href = 'listarPackingList.php' + prodQuery;
+        }).fail(function (xhr) {
+          alert(xhr.responseText || 'No se pudo enviar el Packing List a aprobación.');
+        });
+      });
+
       $(document).ready(function () {
         // Setup - add a text input to each footer cell
         $('#dataTables-example667 tfoot th').each( function () {
@@ -294,7 +313,7 @@ Database::disconnect();
           let id_seccion=t.find("td:first-child").html();
           if(t.hasClass('selected')){
             deselectRow(t);
-            $("#link_ver_seccion_pl").attr("href","#");
+            $("#link_ver_componentes").attr("href","#");
             $("#link_modificar_seccion").attr("href","#");
             //$("#link_eliminar_seccion").attr("href","#");
             $("#link_eliminar_seccion").data("id","");
@@ -304,7 +323,7 @@ Database::disconnect();
               $(rowNode).removeClass("selected");
             });
             selectRow(t);
-            $("#link_ver_seccion_pl").attr("href","verSeccionPackingList.php?id="+id_seccion+prodParam);
+            $("#link_ver_componentes").attr("href","nuevaPackingListComponentes.php?id_packing_list_seccion="+id_seccion+prodParam);
             //$("#link_modificar_seccion").attr("href","modificarPackingListSeccion.php?id="+id_seccion);
             $("#link_modificar_seccion").on("click",function(){
               let cantidad = t.find("td:nth-child(3)").html();
@@ -350,6 +369,13 @@ Database::disconnect();
         $("#cancelEditSeccion").toggleClass("d-none")
         $("#volverPackingList").toggleClass("d-none")
       })
+
+      $("#link_ver_componentes").on("click", function(event) {
+        if (!$(this).attr("href") || $(this).attr("href") === "#") {
+          event.preventDefault();
+          alert("Seleccione una sección para ver sus componentes.");
+        }
+      });
 
       function selectRow(t){
         t.addClass('selected');
