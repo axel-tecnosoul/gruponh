@@ -1244,8 +1244,7 @@ if (isset($id_compra)) {
         input: '#tipo_cambio_dia',
         badge: '#estadoDolar',
         info: '#infoCotizacion',
-        selectTipo: '#tipo_dolar',
-        tipoInicial: 'mayorista'
+        selectTipo: '#tipo_dolar'
       });
 
       $('#id_moneda').on('change', function() {

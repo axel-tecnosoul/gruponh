@@ -9,11 +9,10 @@ require 'database.php';
 
 $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 $isEdit = $id > 0;
-$hoy = date("Y-m-d");
 
 $formData = [
   'id_occ' => isset($_GET['id_occ']) ? (int) $_GET['id_occ'] : 0,
-  'fecha_emision' => $hoy,
+  'fecha_emision' => FECHA_HOY,
   'porcentaje_anticipo' => '0',
   'observaciones' => '',
   'id_moneda' => '',
@@ -35,7 +34,7 @@ if ($isEdit) {
   }
 
   $formData['id_occ'] = (int) ($data['id_occ'] ?? 0);
-  $formData['fecha_emision'] = (string) ($data['fecha_emision'] ?? $hoy);
+  $formData['fecha_emision'] = (string) ($data['fecha_emision'] ?? FECHA_HOY);
   $formData['porcentaje_anticipo'] = (string) ($data['porcentaje_anticipo'] ?? '0');
   $formData['observaciones'] = (string) ($data['observaciones'] ?? '');
   $formData['id_moneda'] = (string) ($data['id_moneda'] ?? '');

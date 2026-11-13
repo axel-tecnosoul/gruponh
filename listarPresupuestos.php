@@ -5,7 +5,92 @@ if (empty($_SESSION['user'])) {
   die("Redirecting to index.php");
 }
 include 'database.php';
-?>
+require_once __DIR__ . '/funciones.php';
+
+$filtrosPresupuesto = [
+  'nro' => '',
+  'fecha' => '',
+  'fechah' => '',
+  'cliente' => '',
+  'id_empresa' => '',
+  'solicitante' => '',
+  'referencia' => '',
+];
+$mensajeErrorFiltros = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  foreach ($filtrosPresupuesto as $campo => $valor) {
+    if (isset($_POST[$campo])) {
+      if (is_string($_POST[$campo])) {
+        $filtrosPresupuesto[$campo] = trim($_POST[$campo]);
+      } else {
+        $mensajeErrorFiltros = 'Los filtros deben contener valores de texto válidos.';
+      }
+    }
+  }
+} else {
+  $hoy = new DateTimeImmutable('today', new DateTimeZone('America/Argentina/Buenos_Aires'));
+  $filtrosPresupuesto['fecha'] = $hoy->modify('-7 days')->format('Y-m-d');
+  $filtrosPresupuesto['fechah'] = $hoy->format('Y-m-d');
+}
+
+foreach (['fecha', 'fechah'] as $campoFecha) {
+  if ($filtrosPresupuesto[$campoFecha] !== '') {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $filtrosPresupuesto[$campoFecha])) {
+      $mensajeErrorFiltros = 'Ingrese un rango de fechas válido.';
+      continue;
+    }
+    $fechaValidada = DateTimeImmutable::createFromFormat('!Y-m-d', $filtrosPresupuesto[$campoFecha]);
+    if (!$fechaValidada || $fechaValidada->format('Y-m-d') !== $filtrosPresupuesto[$campoFecha]) {
+      $mensajeErrorFiltros = 'Ingrese un rango de fechas válido.';
+    }
+  }
+}
+if ($filtrosPresupuesto['fecha'] !== '' && $filtrosPresupuesto['fechah'] !== '' && $filtrosPresupuesto['fecha'] > $filtrosPresupuesto['fechah']) {
+  $mensajeErrorFiltros = 'La fecha desde no puede ser posterior a la fecha hasta.';
+}
+
+$sql = " SELECT p.id, p.nro, p.nro_revision, e.empresa, date_format(p.fecha,'%d/%m/%y') AS fecha, c.nombre, p.solicitante, p.referencia, p.descripcion, m.moneda, p.monto, p.adjudicado, date_format(p.fecha,'%Y%m%d') FROM presupuestos p inner join cuentas c on c.id = p.id_cuenta inner join monedas m on m.id = p.id_moneda inner join empresas e on e.id = p.id_empresa WHERE p.anulado = 0 ";
+$params = [];
+if ($filtrosPresupuesto['nro'] !== '') {
+  $sql .= ' AND p.nro = ?';
+  $params[] = $filtrosPresupuesto['nro'];
+}
+if ($filtrosPresupuesto['fecha'] !== '') {
+  $sql .= ' AND p.fecha >= ?';
+  $params[] = $filtrosPresupuesto['fecha'];
+}
+if ($filtrosPresupuesto['fechah'] !== '') {
+  $sql .= ' AND p.fecha <= ?';
+  $params[] = $filtrosPresupuesto['fechah'];
+}
+if ($filtrosPresupuesto['cliente'] !== '') {
+  $sql .= ' AND c.nombre LIKE ?';
+  $params[] = '%' . $filtrosPresupuesto['cliente'] . '%';
+}
+if ($filtrosPresupuesto['id_empresa'] !== '') {
+  $sql .= ' AND p.id_empresa = ?';
+  $params[] = $filtrosPresupuesto['id_empresa'];
+}
+if ($filtrosPresupuesto['solicitante'] !== '') {
+  $sql .= ' AND p.solicitante LIKE ?';
+  $params[] = '%' . $filtrosPresupuesto['solicitante'] . '%';
+}
+if ($filtrosPresupuesto['referencia'] !== '') {
+  $sql .= ' AND (p.referencia LIKE ? OR p.descripcion LIKE ?)';
+  $params[] = '%' . $filtrosPresupuesto['referencia'] . '%';
+  $params[] = '%' . $filtrosPresupuesto['referencia'] . '%';
+}
+
+$presupuestos = [];
+if ($mensajeErrorFiltros === '') {
+  $pdo = Database::connect();
+  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+  $q = $pdo->prepare($sql);
+  $q->execute($params);
+  $presupuestos = $q->fetchAll(PDO::FETCH_BOTH);
+  Database::disconnect();
+} ?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -38,20 +123,27 @@ include 'database.php';
           $ubicacion="Presupuestos ";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
-          <div class="container-fluid">
+          <div class="container-fluid"><?php
+            if ($mensajeErrorFiltros !== '') { ?>
+              <div class="alert alert-danger" role="alert"><?=escaparHtml($mensajeErrorFiltros)?></div><?php
+            } ?>
             <div class="row">
 			<div class="col-md-12">
 				<div class="card">
 				  <div class="card-body">
 					<form class="form-inline theme-form mt-3" name="form1" method="post" action="listarPresupuestos.php">
 					  <div class="form-group mb-0">
-						Nro:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
+						<label for="nro">Nro.</label>
+						<input class="form-control" size="3" type="text" value="<?=escaparHtml($filtrosPresupuesto['nro'])?>" name="nro" id="nro">
 					  </div>
 					  <div class="form-group mb-0">
-						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
+						<label for="fecha">Desde</label>
+						<input class="form-control" size="20" type="date" id="fecha" name="fecha" value="<?=escaparHtml($filtrosPresupuesto['fecha'])?>">
+						<label for="fechah">Hasta</label>
+						<input class="form-control" size="20" type="date" id="fechah" name="fechah" value="<?=escaparHtml($filtrosPresupuesto['fechah'])?>">
 					  </div>
 					  <div class="form-group mb-0">
-						Cliente:&nbsp;
+						<label for="cliente">Cliente</label>
 						<select name="cliente" id="cliente" class="js-example-basic-single">
 							<option value="">Seleccione...</option>
 							<?php
@@ -61,16 +153,18 @@ include 'database.php';
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['nombre']."'";
-								if ((isset($_POST['cliente']) && $fila['nombre']==$_POST['cliente'])) echo " selected ";
-								echo ">".$fila['nombre']."</option>";
+								echo "<option value='".escaparHtml($fila['nombre'])."'";
+								if ($fila['nombre'] === $filtrosPresupuesto['cliente']) {
+									echo " selected ";
+								}
+								echo ">".escaparHtml($fila['nombre'])."</option>";
 							}
 							Database::disconnect();
 							?>
 							</select>
 					  </div>
 					  <div class="form-group mb-0">
-						Empresa:&nbsp;
+						<label for="id_empresa">Empresa</label>
 						<select name="id_empresa" id="id_empresa" class="js-example-basic-single">
 							<option value="">Seleccione...</option>
 							<?php
@@ -80,19 +174,23 @@ include 'database.php';
 							$qEmp = $pdo->prepare($sqlEmp);
 							$qEmp->execute();
 							while ($filaEmp = $qEmp->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$filaEmp['id']."'";
-								if (isset($_POST['id_empresa']) && $filaEmp['id']==$_POST['id_empresa']) echo " selected ";
-								echo ">".$filaEmp['empresa']."</option>";
+								echo "<option value='".(int)$filaEmp['id']."'";
+								if ((string)$filaEmp['id'] === $filtrosPresupuesto['id_empresa']) {
+									echo " selected ";
+								}
+								echo ">".escaparHtml($filaEmp['empresa'])."</option>";
 							}
 							Database::disconnect();
 							?>
 						</select>
 					  </div>
 					  <div class="form-group mb-0">
-						Solicitante:&nbsp;<input class="form-control" size="20" type="text" value="<?php if (isset($_POST['solicitante'])) echo $_POST['solicitante'] ?>" name="solicitante">
+						<label for="solicitante">Solicitante</label>
+						<input class="form-control" size="20" type="text" value="<?=escaparHtml($filtrosPresupuesto['solicitante'])?>" name="solicitante" id="solicitante">
 					  </div>
 					  <div class="form-group mb-0">
-						Referencia:&nbsp;<input class="form-control" size="20" type="text" value="<?php if (isset($_POST['referencia'])) echo $_POST['referencia'] ?>" name="referencia">
+						<label for="referencia">Referencia</label>
+						<input class="form-control" size="20" type="text" value="<?=escaparHtml($filtrosPresupuesto['referencia'])?>" name="referencia" id="referencia">
 					  </div>
 					  <div class="form-group mb-0">
 						<button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarPresupuestos.php'">Buscar</button>
@@ -173,36 +271,7 @@ include 'database.php';
                           </tfoot>
                         <tbody>
 						<?php
-								$pdo = Database::connect();
-								$sql = " SELECT p.id, p.nro, p.nro_revision, e.empresa, date_format(p.fecha,'%d/%m/%y') AS fecha, c.nombre, p.solicitante, p.referencia, p.descripcion, m.moneda, p.monto, p.adjudicado, date_format(p.fecha,'%Y%m%d') FROM presupuestos p inner join cuentas c on c.id = p.id_cuenta inner join monedas m on m.id = p.id_moneda inner join empresas e on e.id = p.id_empresa WHERE p.anulado = 0 ";
-								if (!empty($_POST)) {
-									if (!empty($_POST['nro'])) {
-										$sql .= " AND p.nro = ".$_POST['nro']." ";
-									}
-									if (!empty($_POST['fecha'])) {
-										$sql .= " AND p.fecha >= '".$_POST['fecha']."' ";
-									}
-									if (!empty($_POST['fechah'])) {
-										$sql .= " AND p.fecha <= '".$_POST['fechah']."' ";
-									}
-									if (!empty($_POST['cliente'])) {
-										$sql .= " AND c.nombre like '%".$_POST['cliente']."%' ";
-									}
-									if (!empty($_POST['id_empresa'])) {
-										$sql .= " AND p.id_empresa = ".intval($_POST['id_empresa'])." ";
-									}
-									if (!empty($_POST['solicitante'])) {
-										$sql .= " AND p.solicitante like '%".$_POST['solicitante']."%' ";
-									}
-									if (!empty($_POST['referencia'])) {
-										$sql .= " AND (p.referencia like '%".$_POST['referencia']."%' or p.descripcion like '%".$_POST['referencia']."%') ";
-									}
-								} else {
-									$sql .= " AND p.fecha >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) ";
-								}
-								
-								
-								foreach ($pdo->query($sql) as $row) {
+								foreach ($presupuestos as $row) {
 								  echo '<tr>';
 								  echo '<td class="d-none">'. $row[0] . '</td>';
 								  echo '<td>'. $row[1] . '</td>';
@@ -268,10 +337,7 @@ include 'database.php';
 									  </div>
 									</div>
 								  </div><?php
-								}
-								Database::disconnect();
-							
-							?>
+								} ?>
                           </tbody>
                         </table>
                       </div>

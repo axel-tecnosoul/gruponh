@@ -6,44 +6,139 @@ if (empty($_SESSION['user'])) {
 }*/
 include 'config.php';
 include 'database.php';
-$prod = isset($_GET['prod']) ? (int)$_GET['prod'] : 0;
-$prodQuery = $prod ? '?prod='.$prod : '';
-$filtrosSessionKey = 'filtros_listarListasCorte' . ($prod ? '_prod' : '');
-$urlListado = 'listarListasCorte.php' . $prodQuery;
-$urlLimpiarFiltros = $urlListado . ($prodQuery ? '&' : '?') . 'clear_filters=1';
+require_once 'manejarFiltros.php';
 
-if (isset($_GET['clear_filters'])) {
-  unset($_SESSION[$filtrosSessionKey]);
-  header('Location: ' . $urlListado);
-  exit;
+$prod = null;
+$prodQuery = '';
+$parametrosUrl = [];
+$nombreFiltros = 'listarListasCorte';
+if (isset($_GET['prod']) && is_string($_GET['prod'])) {
+  $prodValidado = filter_var($_GET['prod'], FILTER_VALIDATE_INT);
+  if ($prodValidado !== false) {
+    $prod = $prodValidado;
+    $prodQuery = '?prod=' . $prod;
+    $parametrosUrl['prod'] = $prod;
+    $nombreFiltros .= '_prod';
+  }
+}
+$filters = gestionarFiltros($nombreFiltros, $parametrosUrl);
+$urlLimpiarFiltros = 'listarListasCorte.php?' . http_build_query(['clear_filters' => 1] + $parametrosUrl, '', '&', PHP_QUERY_RFC3986);
+$mensajeErrorFiltros = '';
+
+foreach (['nro', 'fecha', 'fechah'] as $campoFiltro) {
+  if (!isset($filters[$campoFiltro])) {
+    $filters[$campoFiltro] = '';
+  } elseif (is_string($filters[$campoFiltro])) {
+    $filters[$campoFiltro] = trim($filters[$campoFiltro]);
+  } else {
+    $filters[$campoFiltro] = '';
+    $mensajeErrorFiltros = 'Los filtros deben contener valores de texto válidos.';
+  }
+}
+$nro = $filters['nro'];
+$fecha = $filters['fecha'];
+$fechah = $filters['fechah'];
+if ($nro !== '' && !preg_match('/^\d+(?:\/\d+)?$/D', $nro)) {
+  $mensajeErrorFiltros = 'Ingrese un número de sitio o proyecto, o el formato sitio/proyecto.';
+}
+foreach (['fecha', 'fechah'] as $campoFecha) {
+  if ($filters[$campoFecha] !== '') {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $filters[$campoFecha])) {
+      $mensajeErrorFiltros = 'Ingrese un rango de fechas válido.';
+      continue;
+    }
+    $fechaValidada = DateTimeImmutable::createFromFormat('!Y-m-d', $filters[$campoFecha]);
+    if (!$fechaValidada || $fechaValidada->format('Y-m-d') !== $filters[$campoFecha]) {
+      $mensajeErrorFiltros = 'Ingrese un rango de fechas válido.';
+    }
+  }
+}
+if ($fecha !== '' && $fechah !== '' && $fecha > $fechah) {
+  $mensajeErrorFiltros = 'La fecha desde no puede ser posterior a la fecha hasta.';
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $_SESSION[$filtrosSessionKey] = [
-    'nro' => trim((string)($_POST['nro'] ?? '')),
-    'fecha' => trim((string)($_POST['fecha'] ?? '')),
-    'fechah' => trim((string)($_POST['fechah'] ?? '')),
-    'id_estado' => array_values(array_filter((array)($_POST['id_estado'] ?? []), static function ($estado) {
-      return $estado !== '';
-    })),
-  ];
-  header('Location: ' . $urlListado);
-  exit;
-}
-
-$_POST = $_SESSION[$filtrosSessionKey] ?? [];
 $estadosProd = '';
-if($prodQuery){
-  $estadosProd = '3,4'; //Aprobada y Gestionando
+if ($prod !== null) {
+  $estadosProd = '3,4'; // Aprobada y Gestionando.
 }
-$estadosCortePermitidos = !empty($estadosProd) ? array_map('intval', explode(',', $estadosProd)) : null;
+$estadosCortePermitidos = null;
+if ($estadosProd !== '') {
+  $estadosCortePermitidos = array_map('intval', explode(',', $estadosProd));
+}
 $estadosCorteDefault = $estadosCortePermitidos ?? [1, 2, 3, 4];
-$estadosCortePost = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
-$estadosCorteSeleccionados = $estadosCortePost
-  ? ($estadosCortePermitidos ? array_values(array_intersect($estadosCortePost, $estadosCortePermitidos)) : $estadosCortePost)
-  : $estadosCorteDefault;
-if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefault;
-?>
+$estadosCortePost = [];
+if (isset($filters['id_estado'])) {
+  if (is_array($filters['id_estado'])) {
+    foreach ($filters['id_estado'] as $estadoFiltro) {
+      if ($estadoFiltro === '' || $estadoFiltro === null) {
+        continue;
+      }
+      $estadoValidado = filter_var($estadoFiltro, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+      if ($estadoValidado === false) {
+        $mensajeErrorFiltros = 'Seleccione estados válidos.';
+      } else {
+        $estadosCortePost[] = $estadoValidado;
+      }
+    }
+  } else {
+    $mensajeErrorFiltros = 'Seleccione estados válidos.';
+  }
+}
+$estadosCortePost = array_values(array_unique($estadosCortePost));
+$estadosCorteSeleccionados = $estadosCortePost;
+if (!isset($_SESSION['filtros_' . $nombreFiltros])) {
+  $estadosCorteSeleccionados = $estadosCorteDefault;
+} elseif ($estadosCortePermitidos !== null) {
+  $estadosCorteSeleccionados = array_values(array_intersect($estadosCorteSeleccionados, $estadosCortePermitidos));
+  if (!$estadosCorteSeleccionados) {
+    $estadosCorteSeleccionados = $estadosCortePermitidos;
+  }
+}
+$seleccionarTodosEstados = empty($estadosCorteSeleccionados);
+
+$sql = "SELECT lc.id AS id_lista_corte, lc.numero AS numero_lc, lc.nro_revision, lc.nombre, p.nro AS nro_proyecto, date_format(lc.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lc.adjunto, s.nro_sitio, s.nro_subsitio, date_format(lc.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto, lc.id_estado_lista_corte FROM listas_corte lc inner join estados_lista_corte e on e.id = lc.id_estado_lista_corte inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 ";
+$params = [];
+if ($nro !== '') {
+  $ex = explode('/', $nro);
+  if (count($ex) > 1) {
+    $sitio = $ex[0];
+    $proyecto = $ex[1];
+    $sql .= ' AND (p.nro = ? AND s.nro_sitio = ?)';
+    $params[] = $proyecto;
+    $params[] = $sitio;
+  } else {
+    $sql .= ' AND (p.nro = ? OR s.nro_sitio = ?)';
+    $params[] = $nro;
+    $params[] = $nro;
+  }
+}
+if ($fecha !== '') {
+  $sql .= ' AND lc.fecha >= ?';
+  $params[] = $fecha;
+}
+if ($fechah !== '') {
+  $sql .= ' AND lc.fecha <= ?';
+  $params[] = $fechah;
+}
+if ($estadosCorteSeleccionados) {
+  $placeholders = implode(',', array_fill(0, count($estadosCorteSeleccionados), '?'));
+  $sql .= ' AND e.id IN (' . $placeholders . ')';
+  $params = array_merge($params, $estadosCorteSeleccionados);
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$sqlZon = 'SELECT id, estado FROM estados_lista_corte ORDER BY id ASC';
+$q = $pdo->prepare($sqlZon);
+$q->execute();
+$estadosListaCorte = $q->fetchAll(PDO::FETCH_ASSOC);
+$listasCorte = [];
+if ($mensajeErrorFiltros === '') {
+  $q = $pdo->prepare($sql);
+  $q->execute($params);
+  $listasCorte = $q->fetchAll(PDO::FETCH_ASSOC);
+}
+Database::disconnect(); ?>
 <!DOCTYPE html>
 <html lang="en">
   <head><?php
@@ -68,7 +163,7 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
 	  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
   </head>
   <body>
-    <input type="hidden" id="prod" value="<?= isset($_GET['prod']) ? (int)$_GET['prod'] : '' ?>">
+    <input type="hidden" id="prod" value="<?=$prod?>">
     <!-- page-wrapper Start-->
     <div class="page-wrapper">
       <!-- Page Header Start--><?php
@@ -85,7 +180,10 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
           $ubicacion="Listas de Corte ";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
-          <div class="container-fluid">
+          <div class="container-fluid"><?php
+            if ($mensajeErrorFiltros !== '') { ?>
+              <div class="alert alert-danger" role="alert"><?=escaparHtml($mensajeErrorFiltros)?></div><?php
+            } ?>
             <div class="row">
               <div class="col-sm-12">
                 <?php if(isset($_GET['error']) && $_GET['error']=='lc_no_aprobada'){?>
@@ -101,38 +199,40 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
               <div class="col-md-12">
                 <div class="card">
                   <div class="card-body">
-                    <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarListasCorte.php<?= $prodQuery ?>">
+                    <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarListasCorte.php<?=escaparHtml($prodQuery)?>">
                       <div class="form-group mb-0">
-                        N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" autofocus name="nro" id="nro">
+                        <label for="nro">N.Sitio/N.Proy:</label>
+                        <input class="form-control" size="3" type="text" value="<?=escaparHtml($nro)?>" autofocus name="nro" id="nro">
                       </div>
                       <div class="form-group mb-0">
-                        Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha" id="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah" id="fechah">
+                        <label for="fecha">Desde:</label>
+                        <input class="form-control" size="20" type="date" value="<?=escaparHtml($fecha)?>" name="fecha" id="fecha">
+                        <label for="fechah">Hasta:</label>
+                        <input class="form-control" size="20" type="date" value="<?=escaparHtml($fechah)?>" name="fechah" id="fechah">
                       </div>
                       <div class="form-group mb-0 filter-state-group">
-                        Estado:&nbsp;
+                        <label for="id_estado">Estado:</label>
                         <select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
-                          <option value="">Todos</option><?php
-                          $pdo = Database::connect();
-                          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                          $sqlZon = "SELECT id, estado FROM estados_lista_corte WHERE 1 ORDER BY id ASC";
-                          $q = $pdo->prepare($sqlZon);
-                          $q->execute();
-                          while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                          <option value=""<?php
+                          if ($seleccionarTodosEstados) { ?> selected<?php
+                          } ?>>Todos</option><?php
+                          foreach ($estadosListaCorte as $fila) {
                             $id_estado = (int)$fila['id'];
-                            $inProd = !empty($estadosProd);
+                            $inProd = $estadosCortePermitidos !== null;
                             $permitidos = $estadosCortePermitidos;
-                            // Mostrar opción si no es producción o si el estado está permitido en producción
-                            if (!$inProd || ($permitidos && in_array($id_estado, $permitidos, true))) {
-                              $selected = in_array($id_estado, $estadosCorteSeleccionados, true) ? ' selected' : '';?>
-                              <option value='<?=$id_estado?>'<?=$selected?>><?=$fila['estado']?></option><?php
+                            if (!$inProd || in_array($id_estado, $permitidos, true)) {
+                              $selected = '';
+                              if (in_array($id_estado, $estadosCorteSeleccionados, true)) {
+                                $selected = ' selected';
+                              } ?>
+                              <option value="<?=$id_estado?>"<?=$selected?>><?=escaparHtml($fila['estado'])?></option><?php
                             }
-                          }
-                          Database::disconnect();?>
+                          } ?>
                         </select>
                       </div>
                       <div class="form-group mb-0 filter-form-actions">
-                        <button class="btn btn-primary" id="btnFiltrar" onclick="document.form1.target='_self';document.form1.action='listarListasCorte.php<?= $prodQuery ?>'">Buscar</button>
-                        <a class="btn btn-secondary ml-2" href="<?= htmlspecialchars($urlLimpiarFiltros, ENT_QUOTES, 'UTF-8') ?>">Limpiar</a>
+                        <button type="submit" class="btn btn-primary" id="btnFiltrar">Buscar</button>
+                        <a href="<?=escaparHtml($urlLimpiarFiltros)?>" class="btn btn-secondary ml-2" id="btnLimpiarFiltros">Limpiar</a>
                       </div>
                     </form>
                   </div>
@@ -192,30 +292,7 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
                           </tr>
                         </thead>
                         <tbody><?php 
-                          $pdo = Database::connect();
-                          //$sql = "SELECT lc.id AS id_lista_corte, lcr.numero, lcr.nro_revision, lcr.nombre, p.nro AS nro_proyecto, date_format(lcr.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lcr.adjunto, s.nro_sitio, s.nro_subsitio, lcr.id AS id_lista_corte_revision, date_format(lcr.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto FROM listas_corte lc INNER JOIN listas_corte_revisiones lcr ON lcr.id_lista_corte=lc.id inner join estados_lista_corte e on e.id = lcr.id_estado_lista_corte inner join proyectos p on p.id = lcr.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
-                          $sql = "SELECT lc.id AS id_lista_corte, lc.numero AS numero_lc, lc.nro_revision, lc.nombre, p.nro AS nro_proyecto, date_format(lc.fecha,'%d/%m/%y') AS fecha_lc, e.estado, lc.adjunto, s.nro_sitio, s.nro_subsitio, date_format(lc.fecha,'%y%m%d') AS fecha_lc_numero, p.nombre AS nombre_proyecto, lc.id_estado_lista_corte FROM listas_corte lc inner join estados_lista_corte e on e.id = lc.id_estado_lista_corte inner join proyectos p on p.id = lc.id_proyecto inner join sitios s on s.id = p.id_sitio WHERE lc.anulado = 0 "; 
-                          if (!empty($_POST['nro'])) {
-                            $nro=$_POST['nro'];
-                            $ex=explode("/", $nro);
-                            if(count($ex)>1){
-                              $sitio = $ex[0];
-                              $proyecto = $ex[1];
-                              $sql .= " AND (p.nro = ".$proyecto." AND s.nro_sitio = ".$sitio.") ";
-                            }else{
-                              $sql .= " AND (p.nro = ".$nro." OR s.nro_sitio = ".$nro.") ";
-                            }
-                          }
-                          if (!empty($_POST['fecha'])) {
-                            $sql .= " AND lc.fecha >= '".$_POST['fecha']."' ";
-                          }
-                          if (!empty($_POST['fechah'])) {
-                            $sql .= " AND lc.fecha <= '".$_POST['fechah']."' ";
-                          }
-                          // Los estados que se muestran seleccionados son los mismos que filtran al iniciar.
-                          $sql .= " AND e.id in (".implode(',', $estadosCorteSeleccionados).") ";
-                          //echo $sql;
-                          foreach ($pdo->query($sql) as $row) {?>
+                          foreach ($listasCorte as $row) { ?>
                             <tr data-estado-id="<?=$row["id_estado_lista_corte"]?>" data-estado-nombre="<?=$row["estado"]?>" data-id-lista-corte="<?=$row["id_lista_corte"]?>" data-numero-lc="<?=$row["numero_lc"]?>" data-nro-revision="<?=$row["nro_revision"]?>" data-proyecto="<?=$row["nombre_proyecto"]?>" data-sitio="<?=$row["nro_sitio"]?>" data-subsitio="<?=$row["nro_subsitio"]?>" data-proy="<?=$row["nro_proyecto"]?>">
                               <td class="d-none"><?=$row["id_lista_corte"]?></td>
                               <td><?=$row["nro_sitio"]?></td>
@@ -232,8 +309,7 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
                               </td>
                               <td><?=$row["estado"]?></td>
                             </tr><?php
-                          }
-                          Database::disconnect();?>
+                          } ?>
                         </tbody>
 						            <tfoot>
                           <tr>
@@ -438,9 +514,11 @@ if (!$estadosCorteSeleccionados) $estadosCorteSeleccionados = $estadosCorteDefau
     <!-- Theme js-->
     <script src="assets/js/script.js"></script>
     <script>
-      const params = new URLSearchParams(window.location.search);
-      const prod = params.get('prod') || document.getElementById('prod')?.value || '';
-      const prodParam = prod ? '&prod=' + prod : '';
+      const prod = document.getElementById('prod').value;
+      let prodParam = '';
+      if (prod !== '') {
+        prodParam = '&prod=' + encodeURIComponent(prod);
+      }
       var table;
       let accionPendiente = null;
       let id_lista_corte = null;

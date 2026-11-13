@@ -1,11 +1,14 @@
 <?php
-function gestionarFiltros($page_name) {
+function gestionarFiltros($page_name, array $parametrosUrl = []) {
     if (session_status() == PHP_SESSION_NONE) {
         session_start();
     }
 
     $session_key = 'filtros_' . $page_name;
     $page_url = basename($_SERVER['PHP_SELF']);
+    if ($parametrosUrl) {
+        $page_url .= '?' . http_build_query($parametrosUrl, '', '&', PHP_QUERY_RFC3986);
+    }
 
     if (isset($_GET['clear_filters'])) {
         unset($_SESSION[$session_key]);

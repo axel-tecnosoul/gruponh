@@ -13,7 +13,76 @@ $tipo_letra = $filters['tipo_letra'] ?? '';
 $id_estado = $filters['id_estado'] ?? [];
 $estadosSeleccionados = array_values(array_filter(array_map('intval', (array)$id_estado)));
 $seleccionarTodosEstados = empty($estadosSeleccionados);
-?>
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$arcaSelect = "'' AS estado_arca, 0 AS tipo_arca";
+$arcaJoin = '';
+if ($arcaHabilitada) {
+  $arcaSelect = "COALESCE(ca.estado, '') AS estado_arca, COALESCE(ca.tipo_comprobante, 0) AS tipo_arca";
+  $arcaJoin = ' LEFT JOIN comprobantes_arca ca ON ca.id_factura_venta = fv.id ';
+}
+
+$sql = "SELECT fv.id AS id_factura_venta,
+               tc.descripcion AS tipo,
+               '' AS letra,
+               fv.numero,
+               c.nombre AS nombre_cliente,
+               DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y') AS fecha_emitida_formateada,
+               COALESCE((SELECT GROUP_CONCAT(fpv.forma_pago ORDER BY fpv.forma_pago SEPARATOR ', ')
+                         FROM facturas_venta_condiciones_pago fvcp
+                         INNER JOIN formas_pago fpv ON fpv.id = fvcp.id_forma_pago
+                         WHERE fvcp.id_factura_venta = fv.id), fp.forma_pago) AS forma_pago,
+               fv.subtotal_no_gravado,
+               m.moneda,
+               ef.estado AS estado_factura,
+               fv.iva,
+               fv.otros,
+               fv.total,
+               DATE_FORMAT(fv.fecha_emitida,'%y%m%d') AS fecha_emitida_orden,
+               ef.id AS id_estado_factura,
+               fv.pagada,
+               fv.exportada,
+               fv.observaciones,
+               $arcaSelect
+        FROM facturas_venta fv
+        INNER JOIN arca_tipos_comprobante   tc  ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
+        INNER JOIN cuentas             c   ON c.id   = fv.id_cuenta_destino
+        INNER JOIN formas_pago         fp  ON fp.id  = fv.id_condicion_pago
+        INNER JOIN monedas             m   ON m.id   = fv.id_moneda
+        INNER JOIN estados_factura     ef  ON ef.id  = fv.id_estado
+        $arcaJoin
+        WHERE 1=1";
+$params = [];
+if (!empty($nro)) {
+  $sql .= " AND fv.numero = ?";
+  $params[] = $nro;
+}
+if (!empty($fecha)) {
+  $sql .= " AND fv.fecha_emitida >= ?";
+  $params[] = $fecha;
+}
+if (!empty($fechah)) {
+  $sql .= " AND fv.fecha_emitida <= ?";
+  $params[] = $fechah;
+}
+if (!empty($cliente)) {
+  $sql .= " AND c.nombre LIKE ?";
+  $params[] = '%' . $cliente . '%';
+}
+if (!empty($tipo_letra)) {
+  $sql .= " AND tc.descripcion = ?";
+  $params[] = $tipo_letra;
+}
+if ($estadosSeleccionados) {
+  $placeholders = implode(',', array_fill(0, count($estadosSeleccionados), '?'));
+  $sql .= " AND ef.id IN ($placeholders)";
+  $params = array_merge($params, $estadosSeleccionados);
+}
+$q = $pdo->prepare($sql);
+$q->execute($params);
+$facturas = $q->fetchAll(PDO::FETCH_ASSOC);
+Database::disconnect(); ?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -149,12 +218,12 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                     <?php if (!empty(tienePermiso(337))): ?>
                       <?php /* <a href="#" id="link_nuevo_detalle_fv" title="Añadir ítem Detalle">
                         <img src="img/venc.jpg" width="24" height="25" border="0" alt="Añadir ítem Detalle">
-                      </a>&nbsp;
+                      </a>&nbsp;&nbsp;
                       <a href="#" id="link_nuevo_retencion_fv" title="Añadir Retenciones">
                         <img src="img/edit3.png" width="24" height="25" border="0" alt="Añadir Retenciones">
-                      </a>&nbsp; */ ?>
-                    <?php endif; ?>
-                    <?php if (!empty(tienePermiso(343))): ?>
+                      </a>&nbsp;&nbsp; */
+                    endif;
+                    if (!empty(tienePermiso(343))): ?>
                       <a href="#" id="link_exportar_fv" title="Exportar">
                         <img src="img/xls.png" width="24" height="25" border="0" alt="Exportar">
                       </a>
@@ -190,97 +259,51 @@ $seleccionarTodosEstados = empty($estadosSeleccionados);
                           <th>Observación</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        <?php
-                        $hasSearched = isset($_SESSION['filtros_listarFacturasVenta']);
-                        if ($hasSearched):
-                          $pdo = Database::connect();
-                          $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                            $arcaSelect = $arcaHabilitada
-                              ? "COALESCE(ca.estado, '') AS estado_arca, COALESCE(ca.tipo_comprobante, 0) AS tipo_arca"
-                              : "'' AS estado_arca, 0 AS tipo_arca";
-                            $arcaJoin = $arcaHabilitada ? ' LEFT JOIN comprobantes_arca ca ON ca.id_factura_venta = fv.id ' : '';
-                            $sql = "SELECT fv.id, fv.observaciones, tc.descripcion AS tipo, '' AS letra, fv.numero,
-                                           c.nombre, DATE_FORMAT(fv.fecha_emitida,'%d/%m/%y'),
-                                          COALESCE((SELECT GROUP_CONCAT(fpv.forma_pago ORDER BY fpv.forma_pago SEPARATOR ', ')
-                                                    FROM facturas_venta_condiciones_pago fvcp
-                                                    INNER JOIN formas_pago fpv ON fpv.id = fvcp.id_forma_pago
-                                                    WHERE fvcp.id_factura_venta = fv.id), fp.forma_pago) AS forma_pago,
-                                          fv.subtotal_no_gravado, m.moneda,
-                                          ef.estado,
-                                          fv.iva, fv.otros, fv.total,
-                                          DATE_FORMAT(fv.fecha_emitida,'%y%m%d'),
-                                           ef.id, fv.pagada, fv.exportada, fv.observaciones, $arcaSelect
-                                  FROM facturas_venta fv
-                                  INNER JOIN arca_tipos_comprobante   tc  ON tc.codigo = IF(fv.id_tipo_comprobante >= 1001, fv.id_tipo_comprobante - 1000, fv.id_tipo_comprobante)
-                                  INNER JOIN cuentas             c   ON c.id   = fv.id_cuenta_destino
-                                  INNER JOIN formas_pago         fp  ON fp.id  = fv.id_condicion_pago
-                                  INNER JOIN monedas             m   ON m.id   = fv.id_moneda
-                                   INNER JOIN estados_factura     ef  ON ef.id  = fv.id_estado
-                                   $arcaJoin
-                                  WHERE 1=1";
-                          $params = [];
-                          if (!empty($nro)) {
-                            $sql .= " AND fv.numero = ?";
-                            $params[] = $nro;
+                      <tbody><?php
+                        foreach ($facturas as $row) {
+                          $estadoFacturaId = (int)$row['id_estado_factura'];
+                          $numeroFacturaMostrar = trim((string)$row['numero']);
+                          if ($estadoFacturaId === 2 && preg_match('/-0+$/D', $numeroFacturaMostrar)) {
+                            $numeroFacturaMostrar = '—';
                           }
-                          if (!empty($fecha)) {
-                            $sql .= " AND fv.fecha_emitida >= ?";
-                            $params[] = $fecha;
+                          $clasesEstadoFactura = [
+                            1 => 'badge-warning',
+                            2 => 'badge-secondary',
+                            3 => 'badge-success',
+                            4 => 'badge-primary',
+                          ];
+                          $claseEstadoFactura = $clasesEstadoFactura[$estadoFacturaId] ?? 'badge-light';
+
+                          $exportada="No";
+                          if ($row['exportada']) {
+                            $exportada="Sí";
                           }
-                          if (!empty($fechah)) {
-                            $sql .= " AND fv.fecha_emitida <= ?";
-                            $params[] = $fechah;
-                          }
-                          if (!empty($cliente)) {
-                            $sql .= " AND c.nombre LIKE ?";
-                            $params[] = '%' . $cliente . '%';
-                          }
-                          if (!empty($tipo_letra)) {
-                            $sql .= " AND tc.descripcion = ?";
-                            $params[] = $tipo_letra;
-                          }
-                           if ($estadosSeleccionados) {
-                             $placeholders = implode(',', array_fill(0, count($estadosSeleccionados), '?'));
-                             $sql .= " AND ef.id IN ($placeholders)";
-                             $params = array_merge($params, $estadosSeleccionados);
-                          }
-                           $q = $pdo->prepare($sql);
-                           $q->execute($params);
-                           while ($row = $q->fetch(PDO::FETCH_NUM)) {
-                             $estadoFacturaId = (int)$row[15];
-                             $numeroFacturaMostrar = trim((string)$row[4]);
-                             if ($estadoFacturaId === 2 && preg_match('/^(\d+)-0+$/D', $numeroFacturaMostrar, $partesNumero)) {
-                               $numeroFacturaMostrar = str_pad($partesNumero[1], 4, '0', STR_PAD_LEFT);
-                             }
-                             $clasesEstadoFactura = [
-                               1 => 'badge-warning',
-                               2 => 'badge-secondary',
-                               3 => 'badge-success',
-                               4 => 'badge-primary',
-                             ];
-                             $claseEstadoFactura = $clasesEstadoFactura[$estadoFacturaId] ?? 'badge-light';
-                              echo '<tr data-id-estado="' . (int)$row[15] . '" data-pagada="' . (int)$row[16] . '" data-exportada="' . (int)$row[17] . '" data-arca-estado="' . htmlspecialchars((string)$row[19], ENT_QUOTES, 'UTF-8') . '" data-arca-tipo="' . (int)$row[20] . '">';
-                             echo '<td class="text-center"><input type="checkbox" class="chk-factura" value="' . $row[0] . '"></td>';
-                             echo '<td class="d-none">' . $row[0] . '</td>';
-                             echo '<td>' . htmlspecialchars(trim($row[2] . ' ' . $row[3])) . '</td>';
-                             echo '<td>' . htmlspecialchars($numeroFacturaMostrar) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[5]) . '</td>';
-                            echo '<td><span style="display:none;">' . $row[14] . '</span>' . htmlspecialchars($row[6]) . '</td>';
-                            echo '<td>' . htmlspecialchars($row[7]) . '</td>';
-                            echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[8]  ?? 0, 2) . '</td>';
-                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[11] ?? 0, 2) . '</td>';
-                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[12] ?? 0, 2) . '</td>';
-                             echo '<td class="text-right">' . htmlspecialchars($row[9]) . ' ' . number_format($row[13] ?? 0, 2) . '</td>';
-                              echo '<td><span class="badge ' . $claseEstadoFactura . '">' . htmlspecialchars($row[10]) . '</span></td>';
-                             echo '<td class="text-center">' . ($row[17] ? 'Sí' : 'No') . '</td>';
-                             echo '<td class="text-center">' . ((int)$row[16] ? 'Sí' : 'No') . '</td>';
-                             echo '<td>' . htmlspecialchars($row[18]) . '</td>';
-                            echo '</tr>';
-                          }
-                          Database::disconnect();
-                        endif;
-                        ?>
+                          $pagada="No";
+                          if ((int)$row['pagada']) {
+                            $pagada="Sí";
+                          } ?>
+                          <tr data-id-estado="<?=$estadoFacturaId?>" data-pagada="<?=(int)$row['pagada']?>" data-exportada="<?=(int)$row['exportada']?>" data-arca-estado="<?=escaparHtml($row['estado_arca'])?>" data-arca-tipo="<?=(int)$row['tipo_arca']?>">
+                            <td class="text-center">
+                              <input type="checkbox" class="chk-factura" value="<?=(int)$row['id_factura_venta']?>">
+                            </td>
+                            <td class="d-none"><?=(int)$row['id_factura_venta']?></td>
+                            <td><?=escaparHtml(trim($row['tipo'] . ' ' . $row['letra']))?></td>
+                            <td><?=escaparHtml($numeroFacturaMostrar)?></td>
+                            <td><?=escaparHtml($row['nombre_cliente'])?></td>
+                            <td>
+                              <span style="display:none;"><?=escaparHtml($row['fecha_emitida_orden'])?></span><?=escaparHtml($row['fecha_emitida_formateada'])?>
+                            </td>
+                            <td><?=escaparHtml($row['forma_pago'])?></td>
+                            <td class="text-right"><?=escaparHtml($row['moneda'])?> <?=number_format($row['subtotal_no_gravado'] ?? 0, 2)?></td>
+                            <td class="text-right"><?=escaparHtml($row['moneda'])?> <?=number_format($row['iva'] ?? 0, 2)?></td>
+                            <td class="text-right"><?=escaparHtml($row['moneda'])?> <?=number_format($row['otros'] ?? 0, 2)?></td>
+                            <td class="text-right"><?=escaparHtml($row['moneda'])?> <?=number_format($row['total'] ?? 0, 2)?></td>
+                            <td><span class="badge <?=escaparHtml($claseEstadoFactura)?>"><?=escaparHtml($row['estado_factura'])?></span></td>
+                            <td class="text-center"><?=$exportada;?></td>
+                            <td class="text-center"><?=$pagada;?></td>
+                            <td><?=escaparHtml($row['observaciones'])?></td>
+                          </tr><?php
+                        } ?>
                       </tbody>
                       <tfoot>
                         <tr>

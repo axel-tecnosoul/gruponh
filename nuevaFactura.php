@@ -1674,8 +1674,7 @@ if ($vista === 'venta' && $empresaFceId > 0) {
           input: '#cotizacion',
           badge: '#estadoDolar',
           info: '#infoCotizacion',
-          selectTipo: '#tipo_dolar',
-          tipoInicial: 'mayorista'
+          selectTipo: '#tipo_dolar'
         });
       } catch (e) {
         if (window.console && console.error) { console.error('CotizacionDolar no disponible, sigo sin cotización automática.'); }

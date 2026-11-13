@@ -7,7 +7,7 @@
  * Opciones de montar():
  *   input, badge, info      selectores jQuery del input y de los textos de estado
  *   selectTipo              selector del tipo de dólar (opcional)
- *   tipoInicial             tipo con el que se precarga (default 'mayorista')
+ *   tipoInicial             tipo con el que se precarga (default 'divisa')
  *   fechaBase               fecha de referencia para el "día anterior" (default hoy)
  *   noSobrescribir          no pisa en la carga inicial un valor ya guardado.
  *                           Si el usuario cambia el tipo a mano, igual se aplica.
@@ -18,8 +18,7 @@
  *     input: '#cotizacion',
  *     badge: '#estadoDolar',
  *     info: '#infoCotizacion',
- *     selectTipo: '#tipo_dolar',
- *     tipoInicial: 'mayorista'
+ *     selectTipo: '#tipo_dolar'
  *   });
  *   cot.cargar();
  *   cot.mostrar(true);
@@ -110,7 +109,7 @@ var CotizacionDolar = (function () {
         var badge = $(cfg.badge);
         var info = $(cfg.info);
         var selectTipo = cfg.selectTipo ? $(cfg.selectTipo) : $();
-        var tipoInicial = cfg.tipoInicial || 'mayorista';
+        var tipoInicial = cfg.tipoInicial || 'divisa';
         // fechaBase permite pedir el día anterior respecto de una fecha concreta.
         var fechaBase = cfg.fechaBase ? new Date(cfg.fechaBase) : new Date();
         // noSobrescribir: no pisa el valor ya guardado en la carga inicial.

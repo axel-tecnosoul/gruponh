@@ -7,7 +7,6 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
-$hoy = date("Y-m-d");
 $mesAnterior = (new DateTime('first day of this month'))->modify('-1 month');
 $fechaInicioSugerida = $mesAnterior->format('Y-m-d');
 $fechaFinSugerida = $mesAnterior->format('Y-m-t');
@@ -100,8 +99,10 @@ if (!empty($_POST)) {
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-9"><input name="fecha_emision" type="date" onfocus="this.showPicker()" autofocus class="form-control" required="required" value="<?= $hoy ?>"></div>
+                            <label for="fecha_emision" class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
+                            <div class="col-sm-9">
+                              <input name="fecha_emision" id="fecha_emision" type="date" onfocus="this.showPicker()" autofocus class="form-control" required="required" value="<?=FECHA_HOY?>">
+                            </div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Fecha Inicio(*)</label>
@@ -274,8 +275,7 @@ if (!empty($_POST)) {
 			input: '#cotizacion_dolar',
 			badge: '#estadoDolar',
 			info: '#infoCotizacion',
-			selectTipo: '#tipo_dolar',
-			tipoInicial: 'mayorista'
+			selectTipo: '#tipo_dolar'
 		});
 		cotDolar.cargar();
 		<?php endif; ?>

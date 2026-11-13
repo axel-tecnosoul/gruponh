@@ -12,7 +12,6 @@ $prodQuery = $prod ? '?prod=' . $prod : '';
 $prodParam = $prod ? '&prod=' . $prod : '';
 $numero = null;
 $nro_revision = null;
-$hoy=date("Y-m-d");
 $modo="create";
 if(isset($_GET["modo"])){
   $modo = $_GET["modo"];
@@ -249,7 +248,7 @@ if (!empty($_POST)) {
   }
   Database::disconnect();
 }
-  $fecha=$hoy;
+  $fecha = FECHA_HOY;
   $id_tarea="";
   if (!empty($_GET['idTarea'])) {
     $id_tarea = $_GET['idTarea']; 

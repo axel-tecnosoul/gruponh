@@ -15,10 +15,10 @@ $nro       = $filters['nro']       ?? "";
 $fecha     = $filters['fecha']     ?? "";
 $fechah    = $filters['fechah']    ?? "";
 $id_estado = array_values(array_filter(array_map('intval', (array)($filters['id_estado'] ?? []))));
-if (!$id_estado) {
+if (!isset($_SESSION['filtros_listarOrdenesTrabajo'])) {
   $id_estado = [1, 2, 3, 4];
 }
-?>
+$seleccionarTodosEstados = empty($id_estado); ?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -71,7 +71,9 @@ if (!$id_estado) {
                         <div class="form-group mb-0 filter-state-group">
                           Estado:&nbsp;
                         <select name="id_estado[]" id="id_estado[]" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
-                          <option value="">Todos</option><?php
+                          <option value=""<?php
+                          if ($seleccionarTodosEstados) { ?> selected<?php
+                          } ?>>Todos</option><?php
                           $pdo = Database::connect();
                           $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                           $sqlZon = "SELECT `id`, `estado` FROM `estados_orden_trabajo` WHERE 1 ORDER BY id ASC";
@@ -165,12 +167,10 @@ if (!$id_estado) {
                             $sql .= " AND ot.fecha <= ?";
                             $params[] = $fechah;
                           }
-                          if (!empty($id_estado) && !empty($id_estado[0])) {
+                          if ($id_estado) {
                             $placeholders = implode(',', array_fill(0, count($id_estado), '?'));
                             $sql .= " AND e.id IN (" . $placeholders . ")";
                             $params = array_merge($params, $id_estado);
-                          } else {
-                            $sql .= " AND e.id IN (1,2,3,4)";
                           }
                           $q = $pdo->prepare($sql);
                           $q->execute($params);

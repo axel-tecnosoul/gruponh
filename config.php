@@ -111,6 +111,7 @@ if (empty($_SESSION['user']['id']) or empty($_SESSION['user']['permisos'])) {
 
 // 7. Definir zona horaria
 date_default_timezone_set("America/Argentina/Buenos_Aires");
+define('FECHA_HOY', date('Y-m-d'));
 
 // Preparar variable para el JS
 $expiresAt = $_SESSION['LAST_REQUEST_TIME'] + SESSION_TIMEOUT;
