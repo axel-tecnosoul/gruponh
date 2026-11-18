@@ -1237,3 +1237,40 @@ FROM `cuentas`
 WHERE `id_tipo_cuenta` IS NOT NULL
   AND `id_tipo_cuenta` > 0
   AND `id_tipo_cuenta` IN (SELECT `id` FROM `tipos_cuenta`);
+
+INSERT IGNORE INTO `despachos_occ` (`id_despacho`, `id_occ`)
+SELECT des.`id`, o.`id`
+FROM `despachos` des
+INNER JOIN `proyectos` p
+    ON p.`id` = des.`id_proyecto`
+INNER JOIN (
+    SELECT `id_cuenta_cliente`, `numero`, MIN(`id`) AS `id`
+    FROM `occ`
+    GROUP BY `id_cuenta_cliente`, `numero`
+    HAVING COUNT(*) = 1
+) o
+    ON o.`id_cuenta_cliente` = p.`id_cliente`
+   AND o.`numero` = des.`detalle_oc`
+WHERE des.`detalle_oc` <> '';
+
+-- Ejecutar solo si la columna aún no existe
+ALTER TABLE `despachos`
+    ADD COLUMN `fecha_hora_despachado` DATETIME NULL AFTER `fecha`;
+
+-- Recalcular el total para contar solo despachos confirmados
+UPDATE `packing_lists_componentes` plc
+LEFT JOIN (
+    SELECT bd.`id_detalle_bulto` AS `id_componente`,
+           SUM(bd.`cantidad`) AS `cantidad_despachada`
+    FROM `bultos_detalle` bd
+    INNER JOIN `bultos` b
+        ON b.`id` = bd.`id_bulto`
+    INNER JOIN `despachos` des
+        ON des.`id` = b.`id_despacho`
+    WHERE bd.`id_tipo_bulto` IN (1, 2)
+      AND des.`id_estado_despacho` = 2
+    GROUP BY bd.`id_detalle_bulto`
+) despachados
+    ON despachados.`id_componente` = plc.`id`
+SET plc.`cantidad_despachada` =
+    COALESCE(despachados.`cantidad_despachada`, 0);

@@ -16,6 +16,7 @@ if (!$id || $id < 1) {
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $sql = "SELECT des.id, des.detalle_oc, DATE_FORMAT(des.fecha, '%d/%m/%Y') AS fecha,
+               DATE_FORMAT(des.fecha_hora_despachado, '%d/%m/%Y %H:%i') AS fecha_hora_despachado,
                des.nro_remito, des.transporte, des.chofer, e.estado,
                p.nombre AS proyecto, p.nro AS nro_proyecto,
                s.nro_sitio, s.nro_subsitio,
@@ -37,13 +38,35 @@ if (empty($despacho)) {
   exit;
 }
 
+$qOcc = $pdo->prepare(
+  "SELECT o.numero
+   FROM despachos_occ d_o
+   INNER JOIN occ o ON o.id = d_o.id_occ
+   WHERE d_o.id_despacho = ?
+   ORDER BY o.numero"
+);
+$qOcc->execute([$id]);
+$numerosOcc = $qOcc->fetchAll(PDO::FETCH_COLUMN);
+if (!$numerosOcc && $despacho['detalle_oc'] !== '') {
+  $numerosOcc = [(string)$despacho['detalle_oc']];
+}
+
 $qBultos = $pdo->prepare(
-  "SELECT b.id AS id_bulto, b.numero, b.nombre, b.color, eb.estado AS estado_bulto,
-          bd.id AS id_detalle, tb.tipo, bd.id_origen_bulto, bd.id_detalle_bulto, bd.cantidad
+  "SELECT b.id AS id_bulto, b.numero, b.nombre AS bulto,
+          eb.estado AS estado_bulto, bd.id AS id_detalle, bd.cantidad,
+          plr.numero AS numero_packing, plr.nro_revision,
+          COALESCE(NULLIF(lcc.nombre, ''), NULLIF(m.concepto, ''),
+                   CASE WHEN bd.id_detalle_bulto IS NULL THEN '—'
+                        ELSE CONCAT('Componente #', bd.id_detalle_bulto) END) AS componente,
+          plc.observaciones
    FROM bultos b
    INNER JOIN estados_bulto eb ON eb.id = b.id_estado_bulto
    LEFT JOIN bultos_detalle bd ON bd.id_bulto = b.id
-   LEFT JOIN tipos_bulto tb ON tb.id = bd.id_tipo_bulto
+   LEFT JOIN packing_lists_componentes plc ON plc.id = bd.id_detalle_bulto
+   LEFT JOIN packing_lists_secciones pls ON pls.id = plc.id_packing_list_seccion
+   LEFT JOIN packing_lists_revisiones plr ON plr.id = pls.id_packing_list_revision
+   LEFT JOIN listas_corte_conjuntos lcc ON lcc.id = plc.id_conjunto_lista_corte
+   LEFT JOIN materiales m ON m.id = plc.id_concepto
    WHERE b.id_despacho = ?
    ORDER BY b.numero, b.id, bd.id"
 );
@@ -106,7 +129,7 @@ $escape = static function ($value): string {
                         </div>
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">OCC</label>
-                          <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['detalle_oc'])?></div></div>
+                          <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape(implode(', ', $numerosOcc))?></div></div>
                         </div>
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Fecha</label>
@@ -134,39 +157,39 @@ $escape = static function ($value): string {
                           <label class="col-sm-4 col-form-label">Estado</label>
                           <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['estado'])?></div></div>
                         </div>
+                        <?php if (!empty($despacho['fecha_hora_despachado'])): ?>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Fecha y hora de despacho</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['fecha_hora_despachado'])?></div></div>
+                          </div>
+                        <?php endif; ?>
                       </div>
                     </div>
 
-                    <h5 class="mt-3">Bultos y detalles</h5>
+                        <h5 class="mt-3">Bultos y componentes</h5>
                     <div class="dt-ext table-responsive">
                       <table class="table table-sm table-bordered display" id="dataTables-example666">
                         <thead>
                           <tr>
-                            <th>Número de bulto</th>
-                            <th>Nombre</th>
-                            <th>Color</th>
+                            <th>Bulto</th>
+                            <th>Packing / revisión</th>
+                            <th>Componente</th>
+                            <th>Cantidad despachada</th>
+                            <th>Observaciones</th>
                             <th>Estado</th>
-                            <th>Tipo de detalle</th>
-                            <th>Origen</th>
-                            <th>ID detalle origen</th>
-                            <th>Cantidad</th>
                           </tr>
                         </thead>
                         <tbody>
-                          <?php if (!$detallesBultos): ?>
-                            <tr><td colspan="8" class="text-center text-muted">Este despacho no tiene bultos.</td></tr>
-                          <?php else: foreach ($detallesBultos as $detalle): ?>
+                          <?php foreach ($detallesBultos as $detalle): ?>
                             <tr>
-                              <td><?=$escape($detalle['numero'])?></td>
-                              <td><?=$escape($detalle['nombre'])?></td>
-                              <td><?=$escape($detalle['color'])?></td>
-                              <td><?=$escape($detalle['estado_bulto'])?></td>
-                              <td><?=$escape($detalle['tipo'] ?? '—')?></td>
-                              <td><?=$escape($detalle['id_origen_bulto'] ?? '—')?></td>
-                              <td><?=$escape($detalle['id_detalle_bulto'] ?? '—')?></td>
+                              <td><?=$escape($detalle['bulto'])?></td>
+                              <td><?=$escape($detalle['numero_packing'] !== null ? $detalle['numero_packing'] . ' / Rev. ' . $detalle['nro_revision'] : '—')?></td>
+                              <td><?=$escape($detalle['componente'])?></td>
                               <td><?=$escape($detalle['cantidad'] ?? '—')?></td>
+                              <td><?=$escape($detalle['observaciones'] ?? '—')?></td>
+                              <td><?=$escape($detalle['estado_bulto'])?></td>
                             </tr>
-                          <?php endforeach; endif; ?>
+                          <?php endforeach; ?>
                         </tbody>
                       </table>
                     </div>
@@ -221,7 +244,7 @@ $escape = static function ($value): string {
           lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
           language: {
             "decimal": "",
-            "emptyTable": "No hay información",
+            "emptyTable": "Este despacho no tiene componentes cargados.",
             "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
             "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
             "infoFiltered": "(Filtrado de _MAX_ total registros)",

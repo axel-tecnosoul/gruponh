@@ -10,24 +10,69 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
-if (!empty($_POST)) {
-  // insert data
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $tokenSesion = (string)($_SESSION['token_nuevo_despacho'] ?? '');
+  $tokenFormulario = (string)($_POST['token_creacion'] ?? '');
+  if ($tokenSesion === '' || $tokenFormulario === '' || !hash_equals($tokenSesion, $tokenFormulario)) {
+    $_SESSION['error_despacho'] = 'Este formulario ya fue enviado o venció. Revisa el listado antes de volver a crear el despacho.';
+    header('Location: listarDespachos.php');
+    exit;
+  }
+
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  
+
+  $idProyecto = filter_var($_POST['id_proyecto'] ?? null, FILTER_VALIDATE_INT);
+  $idsOcc = array_values(array_unique(array_filter(
+    array_map('intval', (array)($_POST['id_occ'] ?? [])),
+    static function ($idOcc) { return $idOcc > 0; }
+  )));
+  if (!$idProyecto || $idProyecto < 1 || !$idsOcc) {
+    Database::disconnect();
+    http_response_code(422);
+    exit('Seleccione un proyecto y al menos una OCC válida.');
+  }
+
+  $placeholdersOcc = implode(',', array_fill(0, count($idsOcc), '?'));
+  $qOcc = $pdo->prepare(
+    "SELECT o.id, o.numero
+     FROM occ o
+     INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
+     WHERE p.id = ? AND o.id IN ($placeholdersOcc)"
+  );
+  $qOcc->execute(array_merge([$idProyecto], $idsOcc));
+  $occPorId = [];
+  foreach ($qOcc->fetchAll(PDO::FETCH_ASSOC) as $occ) {
+    $occPorId[(int)$occ['id']] = $occ['numero'];
+  }
+  if (count($occPorId) !== count($idsOcc)) {
+    Database::disconnect();
+    http_response_code(422);
+    exit('Una o más OCC no corresponden al proyecto seleccionado.');
+  }
+
+  unset($_SESSION['token_nuevo_despacho']);
+
 	$sql2 = "SELECT id FROM `cuentas` WHERE id_usuario = ? ";
 	$q2 = $pdo->prepare($sql2);
 	$q2->execute([$_SESSION['user']['id']]);
 	$data2 = $q2->fetch(PDO::FETCH_ASSOC);
 
+  $pdo->beginTransaction();
   $sql = "INSERT INTO despachos(id_cuenta_operario, fecha, nro_remito, transporte, chofer, id_estado_despacho, `id_proyecto`, `detalle_oc`) VALUES (?,?,?,?,?,1,?,?)";
   $q = $pdo->prepare($sql);
-  $q->execute([$data2['id'],$_POST['fecha'],$_POST['nro_remito'],$_POST['transporte'],$_POST['chofer'],$_POST['id_proyecto'],$_POST['detalle_oc']]);
-  $id = $pdo->lastInsertId();
+  // detalle_oc conserva la primera OCC para compatibilidad con registros legados.
+  $q->execute([$data2['id'],$_POST['fecha'],$_POST['nro_remito'],$_POST['transporte'],$_POST['chofer'],$idProyecto,$occPorId[$idsOcc[0]]]);
+  $id = (int)$pdo->lastInsertId();
+  $qRelacion = $pdo->prepare("INSERT INTO despachos_occ (id_despacho, id_occ) VALUES (?, ?)");
+  foreach ($idsOcc as $idOcc) {
+    $qRelacion->execute([$id, $idOcc]);
+  }
+  $pdo->commit();
   
 	$sql = "select s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
 	$q = $pdo->prepare($sql);
-	$q->execute([$_POST['id_proyecto']]);
+  $q->execute([$idProyecto]);
 	$data = $q->fetch(PDO::FETCH_ASSOC);
 	$descripcionProyecto = $data['nro_sitio']." - ".$data['nro_subsitio']." - ".$data['nro']." - ".$data['nombre'];
 	
@@ -113,7 +158,10 @@ if (!empty($_POST)) {
     Database::disconnect();
     header("Location: listarDespachos.php");
   }
-}?>
+} else {
+  $_SESSION['token_nuevo_despacho'] = bin2hex(random_bytes(32));
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -143,7 +191,8 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				<form class="form theme-form" role="form" method="post" action="nuevoDespacho.php">
+					<form class="form theme-form" id="formNuevoDespacho" role="form" method="post" action="nuevoDespacho.php">
+                    <input type="hidden" name="token_creacion" value="<?=htmlspecialchars((string)($_SESSION['token_nuevo_despacho'] ?? ''), ENT_QUOTES, 'UTF-8')?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
@@ -170,7 +219,7 @@ if (!empty($_POST)) {
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">OCC(*)</label>
 							<div class="col-sm-9">
-							<select name="detalle_oc" id="detalle_oc" class="js-example-basic-single col-sm-12" required="required">
+							<select name="id_occ[]" id="detalle_oc" class="js-example-basic-multiple col-sm-12" multiple="multiple" data-placeholder="Seleccione una o más OCC" required="required">
 							</select>
 							</div>
 							</div>
@@ -195,7 +244,7 @@ if (!empty($_POST)) {
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-                        <button class="btn btn-primary" type="submit">Crear</button>
+                        <button class="btn btn-primary" id="btnCrearDespacho" type="submit">Crear</button>
 						<a href="listarDespachos.php" class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -259,13 +308,25 @@ if (!empty($_POST)) {
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
 	<script>
+		$(function() {
+			let envioEnCurso = false;
+			$('#formNuevoDespacho').on('submit', function(event) {
+				if (envioEnCurso) {
+					event.preventDefault();
+					return;
+				}
+				envioEnCurso = true;
+				$('#btnCrearDespacho').prop('disabled', true).text('Creando...');
+			});
+		});
+
 		function jsListarOCs(val) { 
 			$.ajax({
 				type: "GET",
 				url: "ajaxOCC.php",
-				data: "id_proyecto="+val,
+				data: {id_proyecto: val},
 				success: function(resp){
-					$("#detalle_oc").html(resp);
+					$("#detalle_oc").html(resp).trigger('change');
 				}
 			});
 		}

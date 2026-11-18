@@ -1,372 +1,377 @@
 <?php
-require("config.php");
+require 'config.php';
 if (empty($_SESSION['user'])) {
-  header("Location: index.php");
-  die("Redirecting to index.php");
+  header('Location: index.php');
+  exit;
 }
+
 require 'database.php';
-if (!empty($_POST)) {
-    
-  // insert data
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+require_once 'despachos_lib.php';
 
-  /*var_dump($_POST);
-  var_dump($_GET);
-  die();*/
-
-  //btn2 y btn3 son parar modificar
-  if (isset($_POST['btn2']) or isset($_POST['btn3'])) {
-
-    if(isset($_POST['btn2'])){
-      $id_bulto=$_POST['btn2'];
-      $redirect="nuevoBultoDespacho.php?id_despacho=".$_GET["id_despacho"];
-    }
-    if(isset($_POST['btn3'])){
-      $id_bulto=$_POST['btn3'];
-      $redirect="nuevoBultoDetalleDespacho.php?id_bulto=".$id_bulto;
-    }
-
-    $sql = "UPDATE bultos SET nombre = ?, numero = ?, color = ? WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$_POST['nombre'],$_POST['numero'],$_POST['color'],$id_bulto]);
-    
-    $sql = "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Modificacion de Bulto ID #$id_bulto de Despacho','Despachos','')";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
-
-  }else{
-    // insert data
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $sql = "INSERT INTO bultos (id_despacho, numero, nombre, color, id_estado_bulto) VALUES (?,?,?,?,1)";
-    $q = $pdo->prepare($sql);
-    $q->execute([$_GET["id_despacho"],$_POST['numero'],$_POST['nombre'],$_POST['color']]);
-    $id_bulto = $pdo->lastInsertId();
-    
-    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,'Nuevo Bulto en despacho','Despachos','verDespacho.php?id=$_GET[id_despacho]')";
-    $q = $pdo->prepare($sql);
-    $q->execute(array($_SESSION['user']['id']));
-
-    $redirect="nuevoBultoDetalleDespacho.php?id_bulto=".$id_bulto;
-  }
-
-  Database::disconnect();
-  header("Location: ".$redirect);
-
+$idDespacho = filter_input(INPUT_GET, 'id_despacho', FILTER_VALIDATE_INT);
+if (!$idDespacho || $idDespacho < 1) {
+  header('Location: listarDespachos.php');
+  exit;
 }
 
-$id_despacho=$_GET['id_despacho'];
 $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$sql = "SELECT * FROM despachos WHERE id = ? ";
-$q = $pdo->prepare($sql);
-$q->execute([$id_despacho]);
-$data = $q->fetch(PDO::FETCH_ASSOC);
+$qDespacho = $pdo->prepare(
+  "SELECT des.id, des.id_proyecto, des.id_estado_despacho,
+          DATE_FORMAT(des.fecha, '%d/%m/%Y') AS fecha,
+          des.nro_remito, des.transporte, des.chofer,
+          e.estado, p.nombre AS proyecto, p.nro AS nro_proyecto,
+          s.nro_sitio, s.nro_subsitio, cliente.nombre AS cliente,
+          operario.nombre AS operario
+   FROM despachos des
+   INNER JOIN estados_despacho e ON e.id = des.id_estado_despacho
+   LEFT JOIN proyectos p ON p.id = des.id_proyecto
+   LEFT JOIN sitios s ON s.id = p.id_sitio
+   LEFT JOIN cuentas cliente ON cliente.id = p.id_cliente
+   INNER JOIN cuentas operario ON operario.id = des.id_cuenta_operario
+   WHERE des.id = ?"
+);
+$qDespacho->execute([$idDespacho]);
+$despacho = $qDespacho->fetch(PDO::FETCH_ASSOC);
+if (!$despacho) {
+  Database::disconnect();
+  header('Location: listarDespachos.php');
+  exit;
+}
+if ((int)$despacho['id_estado_despacho'] !== 1) {
+  Database::disconnect();
+  header('Location: verDespacho.php?id=' . $idDespacho);
+  exit;
+}
+if (empty($despacho['id_proyecto'])) {
+  Database::disconnect();
+  header('Location: modificarDespacho.php?id=' . $idDespacho);
+  exit;
+}
+
+$qOcc = $pdo->prepare(
+  "SELECT o.numero
+   FROM despachos_occ d_o
+   INNER JOIN occ o ON o.id = d_o.id_occ
+   WHERE d_o.id_despacho = ?
+   ORDER BY o.numero"
+);
+$qOcc->execute([$idDespacho]);
+$numerosOcc = $qOcc->fetchAll(PDO::FETCH_COLUMN);
+if (!$numerosOcc && !empty($despacho['detalle_oc'])) {
+  $numerosOcc = [(string)$despacho['detalle_oc']];
+}
+
+$componentes = despachoObtenerComponentesProyecto($pdo, (int)$despacho['id_proyecto'], $idDespacho);
+$componentesPorId = [];
+foreach ($componentes as $componente) {
+  $componentesPorId[(int)$componente['id']] = $componente;
+}
+$errorFormulario = '';
+$cantidadesFormulario = [];
+$bultosFormulario = [];
+$lineasPendientes = despachoObtenerLineasPendientes($pdo, $idDespacho);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $cantidadesFormulario = is_array($_POST['cantidad'] ?? null) ? $_POST['cantidad'] : [];
+  $bultosFormulario = is_array($_POST['bulto'] ?? null) ? $_POST['bulto'] : [];
+  $entradas = [];
+
+  foreach ($cantidadesFormulario as $idComponentePost => $cantidadPost) {
+    $idComponente = filter_var($idComponentePost, FILTER_VALIDATE_INT);
+    if (!$idComponente || !isset($componentesPorId[$idComponente])) {
+      continue;
+    }
+
+    $cantidadTexto = trim((string)$cantidadPost);
+    if ($cantidadTexto === '') {
+      continue;
+    }
+    if (!ctype_digit($cantidadTexto)) {
+      $errorFormulario = 'Las cantidades a despachar deben ser números enteros iguales o mayores que cero.';
+      break;
+    }
+
+    $cantidad = (int)$cantidadTexto;
+    if ($cantidad === 0) {
+      continue;
+    }
+
+    $componente = $componentesPorId[$idComponente];
+    if ($cantidad > (float)$componente['saldo']) {
+      $errorFormulario = 'La cantidad de un componente supera su saldo disponible. Actualiza la pantalla y vuelve a intentarlo.';
+      break;
+    }
+
+    $etiquetaBulto = trim((string)($bultosFormulario[$idComponente] ?? ''));
+    if ($etiquetaBulto === '') {
+      $errorFormulario = 'Indica el identificador del bulto para cada componente que vas a despachar.';
+      break;
+    }
+    if (strlen($etiquetaBulto) > 99) {
+      $errorFormulario = 'El identificador del bulto no puede superar los 99 caracteres.';
+      break;
+    }
+
+    $entradas[] = [
+      'id_componente' => $idComponente,
+      'cantidad' => $cantidad,
+      'bulto' => $etiquetaBulto,
+      'tipo' => (int)$componente['id_tipo_bulto'],
+    ];
+  }
+
+  if ($errorFormulario === '' && !$entradas) {
+    $errorFormulario = 'No se guardó la carga: indica una cantidad mayor que cero en al menos un componente. Las etiquetas de bulto solo se guardan junto con una cantidad.';
+  }
+
+  if ($errorFormulario === '') {
+    try {
+      $pdo->beginTransaction();
+      $qEstado = $pdo->prepare("SELECT id_proyecto, id_estado_despacho FROM despachos WHERE id = ? FOR UPDATE");
+      $qEstado->execute([$idDespacho]);
+      $estadoActual = $qEstado->fetch(PDO::FETCH_ASSOC);
+      if (!$estadoActual || (int)$estadoActual['id_estado_despacho'] !== 1) {
+        throw new RuntimeException('El despacho dejó de estar pendiente y ya no puede modificarse.');
+      }
+      $pdo->prepare("SELECT id FROM proyectos WHERE id = ? FOR UPDATE")->execute([$estadoActual['id_proyecto']]);
+
+      $componentesActuales = despachoObtenerComponentesProyecto($pdo, (int)$estadoActual['id_proyecto'], $idDespacho);
+      $actualesPorId = [];
+      foreach ($componentesActuales as $componente) {
+        $actualesPorId[(int)$componente['id']] = $componente;
+      }
+      foreach ($entradas as $entrada) {
+        $componenteActual = $actualesPorId[$entrada['id_componente']] ?? null;
+        if (!$componenteActual || $entrada['cantidad'] > (float)$componenteActual['saldo']) {
+          throw new RuntimeException('El saldo cambió mientras editabas. Actualiza la pantalla y revisa las cantidades.');
+        }
+      }
+
+      $pdo->prepare(
+        "DELETE FROM bultos_detalle
+         WHERE id_bulto IN (SELECT id FROM bultos WHERE id_despacho = ?)"
+      )->execute([$idDespacho]);
+      $pdo->prepare("DELETE FROM bultos WHERE id_despacho = ?")->execute([$idDespacho]);
+
+      $gruposBulto = [];
+      foreach ($entradas as $entrada) {
+        $claveBulto = strtolower($entrada['bulto']);
+        if (!isset($gruposBulto[$claveBulto])) {
+          $gruposBulto[$claveBulto] = [
+            'nombre' => $entrada['bulto'],
+            'componentes' => [],
+          ];
+        }
+        $gruposBulto[$claveBulto]['componentes'][] = $entrada;
+      }
+
+      $qBulto = $pdo->prepare(
+        "INSERT INTO bultos (id_despacho, numero, nombre, color, id_estado_bulto)
+         VALUES (?, ?, ?, '', 1)"
+      );
+      $qDetalle = $pdo->prepare(
+        "INSERT INTO bultos_detalle
+           (id_bulto, id_tipo_bulto, id_origen_bulto, id_detalle_bulto, cantidad)
+         VALUES (?, ?, 0, ?, ?)"
+      );
+      $numeroBulto = 1;
+      foreach ($gruposBulto as $grupo) {
+        $qBulto->execute([$idDespacho, (string)$numeroBulto, $grupo['nombre']]);
+        $idBulto = (int)$pdo->lastInsertId();
+        foreach ($grupo['componentes'] as $entrada) {
+          $qDetalle->execute([
+            $idBulto,
+            $entrada['tipo'],
+            $entrada['id_componente'],
+            $entrada['cantidad'],
+          ]);
+        }
+        $numeroBulto++;
+      }
+
+      $qLog = $pdo->prepare(
+        "INSERT INTO logs (fecha_hora, id_usuario, detalle_accion, modulo, link)
+         VALUES (NOW(), ?, ?, 'Despachos', ?)"
+      );
+      $qLog->execute([
+        $_SESSION['user']['id'],
+        'Actualización de carga pendiente del despacho #' . $idDespacho,
+        'nuevoBultoDespacho.php?id_despacho=' . $idDespacho,
+      ]);
+      $pdo->commit();
+      Database::disconnect();
+      header('Location: nuevoBultoDespacho.php?id_despacho=' . $idDespacho . '&guardado=1');
+      exit;
+    } catch (Throwable $e) {
+      if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+      }
+      $errorFormulario = $e->getMessage();
+    }
+  }
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+  foreach ($lineasPendientes as $idComponente => $linea) {
+    $cantidadesFormulario[$idComponente] = $linea['cantidad'];
+    $bultosFormulario[$idComponente] = $linea['bulto'];
+  }
+}
+
+$escape = static function ($valor): string {
+  return htmlspecialchars((string)$valor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+};
 Database::disconnect();
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
-    <?php include('head_forms.php');?>
+    <?php include 'head_forms.php'; ?>
     <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
     <link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      #tablaComponentesDespacho th { white-space: nowrap; }
+      #tablaComponentesDespacho td { vertical-align: middle; }
+      .cantidad-despacho, .bulto-despacho { min-width: 105px; }
+      .observacion-componente { min-width: 170px; white-space: normal; }
+    </style>
   </head>
   <body>
-    <!-- Loader ends-->
-    <!-- page-wrapper Start-->
     <div class="page-wrapper">
-      <?php include('header.php');?>
-      <!-- Page Header Start-->
+      <?php include 'header.php'; ?>
       <div class="page-body-wrapper">
-        <?php include('menu.php');?>
-        <!-- Page Sidebar Start-->
-        <!-- Right sidebar Ends-->
-        <div class="page-body"><?php
-          $ubicacion="Nuevo Conjunto";
-          include_once("head_page.php")?>
-          <!-- Container-fluid starts-->
+        <?php include 'menu.php'; ?>
+        <div class="page-body">
+          <?php $ubicacion = 'Carga del despacho'; include_once 'head_page.php'; ?>
           <div class="container-fluid">
             <div class="row">
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Bultos para el Despacho ID#<?=$id_despacho?>
-                      &nbsp;&nbsp;<?php
-                      if (!empty(tienePermiso(329))) {?>
-                        <img src="img/icon_modificar.png" id="link_modificar_conjunto" style="cursor: pointer;" width="24" height="25" border="0" alt="Modificar" title="Modificar">&nbsp;&nbsp;<?php
-                      }
-                      if (!empty(tienePermiso(330))) {?>
-                        <a href="#" id="link_eliminar_conjunto"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>&nbsp;&nbsp;<?php
-                      }
-                      /*if (!empty(tienePermiso(331))) {?>
-                        <a href="#" id="link_nueva_posicion"><img src="img/edit3.png" width="24" height="25" border="0" alt="Nueva Posición" title="Nueva Posición"></a>&nbsp;&nbsp;<?php
-                      }*/?>
-                    </h5>
+                    <h5>Cabecera del despacho #<?=$escape($despacho['id'])?> — <?=$escape($despacho['estado'])?></h5>
                   </div>
-					        <form class="form theme-form" role="form" method="post" action="nuevoBultoDespacho.php?id_despacho=<?=$id_despacho?>">
-                    <div class="card-body">
-                      <div class="row">
-                        <div class="col">
-                          <div class="form-group row">
-                            <div class="col-12">
-                              <table class="display" id="dataTables-example667">
-                                <thead>
-                                  <tr>
-                                    <th>ID</th>
-                                    <th>Nombre</th>
-                                    <th>Numero</th>
-                                    <th>Color</th>
-                                    <th>Estado</th>
-                                  </tr>
-                                </thead>
-                                <tfoot>
-                                  <tr>
-                                    <th>ID</th>
-                                    <th>Nombre</th>
-                                    <th>Numero</th>
-                                    <th>Color</th>
-                                    <th>Estado</th>
-                                  </tr>
-                                </tfoot>
-                                <tbody><?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  
-                                  $sql = " SELECT b.id, b.numero, b.nombre, b.color, e.estado FROM bultos b inner join estados_bulto e on e.id = b.id_estado_bulto WHERE b.id_despacho = ".$id_despacho;
-                                  foreach ($pdo->query($sql) as $row) {
-                                    echo '<tr>';
-                                    echo '<td>'. $row["id"] . '</td>';
-                                    echo '<td>'. $row["nombre"] . '</td>';
-                                    echo '<td>'. $row["numero"] . '</td>';
-                                    echo '<td>'. $row["color"] . '</td>';
-                                    echo '<td>'. $row["estado"] . '</td>';
-                                    echo '</tr>';
-                                  }
-                                  Database::disconnect();?>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Nombre(*)</label>
-                            <div class="col-sm-9">
-                              <input name="nombre" type="text" maxlength="99" class="form-control" required="required" autofocus>
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Numero(*)</label>
-                            <div class="col-sm-9">
-                              <input name="numero" data-original="" type="number" class="form-control" required="required">
-                            </div>
-                          </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Color(*)</label>
-                            <div class="col-sm-9">
-                              <input name="color" data-original="" type="text" class="form-control" required="required">
-                            </div>
-                          </div>
-                        </div>
+                  <div class="card-body">
+                    <?php if (isset($_GET['guardado'])): ?>
+                      <div class="alert alert-success" role="status">La carga pendiente se guardó correctamente.</div>
+                    <?php endif; ?>
+                    <?php if ($errorFormulario !== ''): ?>
+                      <div class="alert alert-danger" role="alert"><?=$escape($errorFormulario)?></div>
+                    <?php endif; ?>
+                    <?php if (!$componentes): ?>
+                      <div class="alert alert-info" role="status">El proyecto no tiene componentes en packing lists vigentes.</div>
+                    <?php elseif (count(array_filter($componentes, static function ($componente) { return (float)$componente['saldo'] > 0; })) === 0): ?>
+                      <div class="alert alert-warning" role="status">Los componentes cargados no tienen saldo disponible. Revisa si falta liberar producción de lista de corte o reservar material de cómputo.</div>
+                    <?php endif; ?>
+                    <p class="text-muted">Solo se guardan las filas con una cantidad a despachar mayor que cero; el identificador de bulto queda asociado a esa cantidad.</p>
+                    <div class="row">
+                      <div class="col-lg-6">
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">Proyecto</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape(implode('-', array_filter([$despacho['nro_sitio'], $despacho['nro_subsitio'], $despacho['nro_proyecto']])) . ': ' . $despacho['proyecto'])?></div></div></div>
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">Cliente</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['cliente'])?></div></div></div>
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">OCC</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape(implode(', ', $numerosOcc))?></div></div></div>
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">Operario</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['operario'])?></div></div></div>
+                      </div>
+                      <div class="col-lg-6">
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">Fecha</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['fecha'])?></div></div></div>
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">N.º remito</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['nro_remito'])?></div></div></div>
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">Transporte</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['transporte'])?></div></div></div>
+                        <div class="form-group row"><label class="col-sm-4 col-form-label">Chofer</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['chofer'])?></div></div></div>
                       </div>
                     </div>
-                    <div class="card-footer">
-                      <div class="col-12">
-                        <!-- <button class="btn btn-primary" type="submit">Crear</button>
-						            <a href="listarListasCorte.php" class="btn btn-light">Volver</a> -->
 
-                        <button type="submit" value="1" name="btn1" id="addConjunto" class="btn btn-success">Crear y Agregar Detalle</button>
-                        <button type="submit" value="2" name="btn2" id="editConjunto" class="btn btn-success d-none">Modificar</button>
-                        <button type="submit" value="3" name="btn3" id="editConjuntoGoDetalle" class="btn btn-primary d-none">Modificar e ir a Detalle</button>
-                        <button type="button" id="cancelEditConjunto" class="btn btn-light d-none">Cancelar Modificar</button>
-                        <a href='listarDespachos.php' id="volverListaCorte" class="btn btn-light">Volver a Despachos</a>
+                    <form method="post" action="nuevoBultoDespacho.php?id_despacho=<?=(int)$idDespacho?>">
+                      <div class="dt-ext table-responsive">
+                        <table class="table table-sm table-bordered display" id="tablaComponentesDespacho" style="width:100%">
+                          <thead>
+                            <tr>
+                              <th>Packing / revisión</th>
+                              <th>Componente</th>
+                              <th>Cantidad</th>
+                              <th>Observaciones</th>
+                              <th>Cant. disponible</th>
+                              <th>Cant. despachada</th>
+                              <th>Saldo</th>
+                              <th>A despachar</th>
+                              <th>Bulto</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <?php foreach ($componentes as $componente):
+                              $idComponente = (int)$componente['id'];
+                              $cantidadFormulario = $cantidadesFormulario[$idComponente] ?? '';
+                              $bultoFormulario = $bultosFormulario[$idComponente] ?? '';
+                            ?>
+                              <tr>
+                                <td><?= $escape($componente['numero_packing'] . ' / Rev. ' . $componente['nro_revision'] . ($componente['revision_vigente'] ? '' : ' (histórica)')) ?></td>
+                                <td><?= $escape($componente['nombre_componente']) ?></td>
+                                <td class="text-right"><?=number_format((float)$componente['cantidad'], 0, ',', '.')?></td>
+                                <td class="observacion-componente"><?=nl2br($escape($componente['observaciones'] ?? ''))?></td>
+                                <td class="text-right"><?=number_format((float)$componente['cantidad_disponible'], 0, ',', '.')?></td>
+                                <td class="text-right"><?=number_format((float)$componente['cantidad_despachada_calculada'], 0, ',', '.')?></td>
+                                <td class="text-right"><?=number_format((float)$componente['saldo'], 0, ',', '.')?></td>
+                                <td><input name="cantidad[<?=$idComponente?>]" type="number" min="0" max="<?=(int)$componente['saldo']?>" step="1" class="form-control form-control-sm cantidad-despacho" value="<?=$escape($cantidadFormulario)?>" aria-label="Cantidad a despachar" <?=((float)$componente['saldo'] <= 0 && (float)$cantidadFormulario <= 0) ? 'disabled title="Sin saldo disponible"' : ''?>></td>
+                                <td><input name="bulto[<?=$idComponente?>]" type="text" maxlength="99" class="form-control form-control-sm bulto-despacho" value="<?=$escape($bultoFormulario)?>" aria-label="Identificador del bulto"></td>
+                              </tr>
+                            <?php endforeach; ?>
+                          </tbody>
+                        </table>
                       </div>
-                    </div>
-                  </form>
+                      <div class="card-footer px-0 pb-0">
+                        <button class="btn btn-primary" type="submit" <?=!$componentes ? 'disabled' : ''?>>Guardar pendiente</button>
+                        <a href="listarDespachos.php" class="btn btn-light">Volver a despachos</a>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <!-- Container-fluid Ends-->
         </div>
-        <!-- Modal para eliminas conjuntos -->
-        <div class="modal fade" id="eliminarConjunto" tabindex="-1" role="dialog" aria-labelledby="exampleModalConjuntoLabel" aria-hidden="true">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalConjuntoLabel">Confirmación</h5>
-                <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              </div>
-              <div class="modal-body">¿Está seguro que desea eliminar el conjunto?</div>
-              <div class="modal-footer">
-                <a href="#" class="btn btn-primary">Eliminar</a>
-                <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- footer start-->
-        <?php include("footer.php"); ?>
+        <?php include 'footer.php'; ?>
       </div>
     </div>
-    <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
     <script src="assets/js/sidebar-menu.js"></script>
     <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
     <script src="assets/js/chat-menu.js"></script>
     <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-    <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <!-- Theme js-->
     <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
-    <script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
+    <script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
+    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
     <script>
-      $(document).ready(function () {
-        // Setup - add a text input to each footer cell
-        $('#dataTables-example667 tfoot th').each( function () {
-          var title = $(this).text();
-          $(this).html( '<input type="text" size="'+title.length+'" size="'+title.length+'" placeholder="'+title+'" />' );
-        } );
-	      $('#dataTables-example667').DataTable({
+      $(function() {
+        $('#tablaComponentesDespacho').DataTable({
           stateSave: false,
           responsive: false,
+          paging: false,
+          info: false,
+          lengthChange: false,
+          order: [],
           language: {
-          "decimal": "",
-          "emptyTable": "No hay información",
-          "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-          "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-          "infoFiltered": "(Filtrado de _MAX_ total registros)",
-          "infoPostFix": "",
-          "thousands": ",",
-          "lengthMenu": "Mostrar _MENU_ Registros",
-          "loadingRecords": "Cargando...",
-          "processing": "Procesando...",
-          "search": "Buscar:",
-          "zeroRecords": "No hay resultados",
-          "paginate": {
-              "first": "Primero",
-              "last": "Ultimo",
-              "next": "Siguiente",
-              "previous": "Anterior"
-          }}
-        });
- 
-        // DataTable
-        var table = $('#dataTables-example667').DataTable();
-        // Apply the search
-        table.columns().every( function () {
-          var that = this;
-          $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-              that.search( this.value ).draw();
-            }
-          });
-        } );
-
-        //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
-        $(document).on("click","#dataTables-example667 tbody tr td", function(){
-          var t=$(this).parent();
-          //t.parent().find("tr").removeClass("selected");
-
-          let id_conjunto=t.find("td:first-child").html();
-          if(t.hasClass('selected')){
-            deselectRow(t);
-            $("#link_ver_conjunto_lc").attr("href","#");
-            $("#link_modificar_conjunto").attr("href","#");
-            //$("#link_eliminar_conjunto").attr("href","#");
-            $("#link_eliminar_conjunto").data("id","");
-            $("#link_nueva_posicion").attr("href","#");
-          }else{
-            table.rows().nodes().each( function (rowNode, index) {
-              $(rowNode).removeClass("selected");
-            });
-            selectRow(t);
-            $("#link_ver_conjunto_lc").attr("href","verConjuntoListaCorte.php?id="+id_conjunto);
-            //$("#link_modificar_conjunto").attr("href","modificarListaCorteConjunto.php?id="+id_conjunto);
-            $("#link_modificar_conjunto").on("click",function(){
-              let nombre = t.find("td:nth-child(2)").html();
-              let numero = t.find("td:nth-child(3)").html();
-              let color = t.find("td:nth-child(4)").html();
-              console.log(numero);
-              $("input[name='nombre']").val(nombre).focus()
-              $("input[name='numero']").val(numero)
-              $("input[name='color']").val(color)
-              $("#editConjunto").val(id_conjunto)
-              $("#editConjuntoGoDetalle").val(id_conjunto)
-
-              if($("#editConjunto").hasClass("d-none")){
-                $("#addConjunto").toggleClass("d-none")
-                $("#editConjunto").toggleClass("d-none")
-                $("#editConjuntoGoDetalle").toggleClass("d-none")
-                $("#cancelEditConjunto").toggleClass("d-none")
-                $("#volverListaCorte").toggleClass("d-none")
-              }
-            })
-            //$("#link_eliminar_conjunto").attr("href","eliminarConjuntoListaCorte.php?id="+id_conjunto);
-            $("#link_eliminar_conjunto").data("id",id_conjunto);
-            $("#link_nueva_posicion").attr("href","nuevaListaCortePosiciones.php?id_lista_corte_conjunto="+id_conjunto);
+            decimal: '', emptyTable: 'No hay componentes disponibles',
+            info: 'Mostrando _START_ a _END_ de _TOTAL_ Registros',
+            infoEmpty: 'Mostrando 0 a 0 de 0 Registros',
+            infoFiltered: '(Filtrado de _MAX_ total registros)',
+            lengthMenu: 'Mostrar _MENU_ Registros', loadingRecords: 'Cargando...',
+            processing: 'Procesando...', search: 'Buscar:', zeroRecords: 'No hay resultados',
+            paginate: {first: 'Primero', last: 'Último', next: 'Siguiente', previous: 'Anterior'}
           }
         });
-    
+
+        $('.cantidad-despacho').on('input', function() {
+          const maximo = parseInt($(this).attr('max'), 10) || 0;
+          const valor = parseInt($(this).val(), 10) || 0;
+          if (valor > maximo) {
+            $(this).val(maximo);
+          } else if (valor < 0) {
+            $(this).val(0);
+          }
+        });
       });
-
-      $("#link_eliminar_conjunto").on("click",function(){
-        let id_conjunto=$(this).data("id")
-        if(id_conjunto!="" && id_conjunto>0){
-          let modal=$("#eliminarConjunto")
-          modal.modal("show")
-          modal.find(".modal-footer a").attr("href","eliminarConjuntoListaCorte.php?id="+id_conjunto)
-        }
-      });
-
-      $("#cancelEditConjunto").on("click",function(){
-        $("input[name='nombre']").val("")
-        $("input[name='numero']").val("")
-        $("input[name='color']").val("")
-        $("#addConjunto").toggleClass("d-none")
-        $("#editConjunto").toggleClass("d-none")
-        $("#editConjuntoGoDetalle").toggleClass("d-none")
-        $("#editConjunto").val("")
-        $("#editConjuntoGoDetalle").val("")
-        $("#cancelEditConjunto").toggleClass("d-none")
-        $("#volverListaCorte").toggleClass("d-none")
-      })
-
-      function selectRow(t){
-        t.addClass('selected');
-      }
-      function deselectRow(t){
-        t.removeClass('selected');
-      }
     </script>
   </body>
 </html>

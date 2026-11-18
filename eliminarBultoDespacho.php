@@ -1,32 +1,20 @@
 <?php
-    require("config.php");
-    if (empty($_SESSION['user'])) {
-        header("Location: index.php");
-        die("Redirecting to index.php");
-    }
-    
-    require 'database.php';
+require 'config.php';
+if (empty($_SESSION['user'])) {
+  header('Location: index.php');
+  exit;
+}
+require 'database.php';
+require_once 'despachos_lib.php';
 
-    $id = null;
-    if (!empty($_GET['id'])) {
-        $id = $_REQUEST['id'];
-    }
-    
-    if (null==$id) {
-        header("Location: listarDespachos.php");
-    }
-    
-    $pdo = Database::connect();
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-	$sql = "delete from `bultos` WHERE id = ?";
-    $q = $pdo->prepare($sql);
-    $q->execute([$id]);
-	
-	$sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Eliminación de bulto ID #$id en despacho','Despachos','')";
-	$q = $pdo->prepare($sql);
-	$q->execute(array($_SESSION['user']['id']));
+$idBulto = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+if (!$idBulto || $idBulto < 1) {
+  header('Location: listarDespachos.php');
+  exit;
+}
 
-    Database::disconnect();
-        
-    header("Location: listarDespachos.php");
+$pdo = Database::connect();
+$url = despachoUrlDesdeBulto($pdo, $idBulto);
+Database::disconnect();
+header('Location: ' . $url);
+exit;

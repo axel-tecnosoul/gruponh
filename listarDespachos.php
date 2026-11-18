@@ -8,6 +8,8 @@ include 'database.php';
 require_once 'manejarFiltros.php';
 $filtros = gestionarFiltros('listarDespachos');
 $nroFiltro = trim((string)($filtros['nro'] ?? ''));
+$errorAccionDespacho = trim((string)($_SESSION['error_despacho'] ?? ''));
+unset($_SESSION['error_despacho']);
 $fechaDesde = trim((string)($filtros['fecha'] ?? ''));
 $fechaHasta = trim((string)($filtros['fechah'] ?? ''));
 $estadosSeleccionados = array_values(array_filter(array_map('intval', (array)($filtros['id_estado'] ?? [])), function ($id) { return $id > 0; }));
@@ -51,9 +53,12 @@ if ($idClienteSeleccionado !== '') {
 }
 
 $sqlDespachos = "SELECT des.id, DATE_FORMAT(des.fecha,'%d/%m/%y') AS fecha,
+                        DATE_FORMAT(des.fecha_hora_despachado,'%d/%m/%Y %H:%i') AS fecha_hora_despachado,
+                        des.id_estado_despacho,
                         c.nombre AS operario, des.nro_remito, des.transporte, des.chofer,
                         e.estado, s.nro_sitio, s.nro_subsitio, p.nro AS nro_proyecto,
-                        c2.nombre AS cliente
+                        c2.nombre AS cliente,
+                        (SELECT COUNT(*) FROM bultos b WHERE b.id_despacho = des.id) AS cantidad_bultos
                  FROM despachos des
                  INNER JOIN cuentas c ON c.id = des.id_cuenta_operario
                  INNER JOIN estados_despacho e ON e.id = des.id_estado_despacho
@@ -153,21 +158,26 @@ Database::disconnect();
 					echo '<a href="#" id="link_ver_des"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Detalle" title="Ver Detalle"></a>';
 					echo '&nbsp;&nbsp;';
 					if (!empty(tienePermiso(360))) {
-						echo '<a href="#" id="link_eliminar_des"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
+						echo '<a href="#" id="link_eliminar_des" class="d-none"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
 						echo '&nbsp;&nbsp;';
 					}
 					if (!empty(tienePermiso(359))) {
-						echo '<a href="#" id="link_modificar_des"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
+						echo '<a href="#" id="link_modificar_des" class="d-none"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
 						echo '&nbsp;&nbsp;';
 					}
-					/*if (!empty(tienePermiso(361))) {
-						echo '<a href="#" id="link_nuevo_bulto"><img src="img/edit3.png" width="24" height="25" border="0" alt="Nuevo Bulto" title="Nuevo Bulto"></a>';
+					if (!empty(tienePermiso(361))) {
+						echo '<a href="#" id="link_nuevo_bulto" class="d-none" title="Editar carga"><i class="fa fa-lg fa-cubes" aria-hidden="true"></i></a>';
 						echo '&nbsp;&nbsp;';
-					}*/
+						echo '<a href="#" id="link_despachar_des" class="d-none" title="Despachar pendiente"><i class="fa fa-lg fa-truck" aria-hidden="true"></i></a>';
+						echo '&nbsp;&nbsp;';
+					}
 					?>
 					</h5>
                   </div>
                   <div class="card-body">
+                    <?php if ($errorAccionDespacho !== ''): ?>
+                      <div class="alert alert-danger" role="alert"><?=htmlspecialchars($errorAccionDespacho, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')?></div>
+                    <?php endif; ?>
                     <div class="dt-ext table-responsive">
                       <table class="display truncate" id="dataTables-example666">
                         <thead>
@@ -187,7 +197,7 @@ Database::disconnect();
                         </thead>
                         <tbody>
                           <?php foreach ($despachos as $row): ?>
-                            <tr>
+                            <tr data-id-estado-despacho="<?=(int)$row['id_estado_despacho']?>">
                               <td class="d-none"><?=(int)$row['id']?></td>
                               <td><?=htmlspecialchars((string)$row['nro_sitio'], ENT_QUOTES, 'UTF-8')?></td>
 								<td><?=htmlspecialchars((string)$row['nro_subsitio'], ENT_QUOTES, 'UTF-8')?></td>
@@ -197,10 +207,11 @@ Database::disconnect();
 								<td><?=htmlspecialchars((string)$row['nro_remito'], ENT_QUOTES, 'UTF-8')?></td>
 								<td><?=htmlspecialchars((string)$row['transporte'], ENT_QUOTES, 'UTF-8')?></td>
 								<td><?=htmlspecialchars((string)$row['chofer'], ENT_QUOTES, 'UTF-8')?></td>
-								<td><?=htmlspecialchars((string)$row['estado'], ENT_QUOTES, 'UTF-8')?></td>
+								<td><?=htmlspecialchars((string)$row['estado'], ENT_QUOTES, 'UTF-8')?><?php if (!empty($row['fecha_hora_despachado'])): ?><br><small><?=htmlspecialchars((string)$row['fecha_hora_despachado'], ENT_QUOTES, 'UTF-8')?></small><?php endif; ?></td>
 								<td><?=htmlspecialchars((string)$row['operario'], ENT_QUOTES, 'UTF-8')?></td>
                             </tr>
 
+                                <?php if ((int)$row['id_estado_despacho'] === 1): ?>
                                 <div class="modal fade" id="eliminarModal_<?=(int)$row['id']?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                   <div class="modal-dialog" role="document">
                                     <div class="modal-content">
@@ -208,7 +219,13 @@ Database::disconnect();
                                         <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
                                         <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
                                       </div>
-                                      <div class="modal-body">¿Está seguro que desea eliminar el Despacho?</div>
+                                      <div class="modal-body">
+                                        <?php if ((int)$row['cantidad_bultos'] > 0): ?>
+                                          Este despacho tiene <strong><?=(int)$row['cantidad_bultos']?> <?=((int)$row['cantidad_bultos'] === 1 ? 'bulto' : 'bultos')?></strong> asociados. Al eliminarlo, también se borrarán esos bultos y los detalles de su contenido. ¿Desea continuar?
+                                        <?php else: ?>
+                                          Este despacho no tiene bultos asociados. ¿Confirma que desea eliminarlo?
+                                        <?php endif; ?>
+                                      </div>
                                       <div class="modal-footer">
                                         <a href="eliminarDespacho.php?id=<?=(int)$row['id']?>" class="btn btn-primary">Eliminar</a>
                                         <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
@@ -216,6 +233,7 @@ Database::disconnect();
                                     </div>
                                   </div>
                                 </div>
+                                <?php endif; ?>
                           <?php endforeach; ?>
                         </tbody>
 						            <tfoot>
@@ -235,6 +253,24 @@ Database::disconnect();
                         </tfoot>
                       </table>
                     </div>
+                    <div class="modal fade" id="despacharModal" tabindex="-1" role="dialog" aria-labelledby="despacharModalLabel" aria-hidden="true">
+                      <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="despacharModalLabel">Confirmar despacho</h5>
+                            <button class="close" type="button" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">×</span></button>
+                          </div>
+                          <div class="modal-body">Al confirmar, el despacho quedará cerrado y no se podrá editar. Se actualizarán las cantidades despachadas y se registrará la fecha y hora. ¿Deseas continuar?</div>
+                          <div class="modal-footer">
+                            <form method="post" action="despacharDespacho.php">
+                              <input type="hidden" name="id_despacho" id="id_despacho_a_despachar" value="">
+                              <button type="submit" class="btn btn-primary">Confirmar despacho</button>
+                            </form>
+                            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -246,21 +282,9 @@ Database::disconnect();
               <div class="col-sm-12">
                 <div class="card">
                   <div class="card-header">
-                    <h5>Bultos&nbsp;&nbsp;<?php 
+                    <h5>Bultos del despacho&nbsp;&nbsp;<?php
                       echo '<a href="#" id="link_ver_bulto_des"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver" title="Ver"></a>';
-                      echo '&nbsp;&nbsp;';
-                      if (!empty(tienePermiso(362))) {
-                        echo '<a href="#" id="link_modificar_bulto"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
-                        echo '&nbsp;&nbsp;';
-                      }
-                      if (!empty(tienePermiso(363))) {
-                        echo '<a href="#" id="link_eliminar_bulto"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
-                        echo '&nbsp;&nbsp;';
-                      }
-                      if (!empty(tienePermiso(364))) {
-                        echo '<a href="#" id="link_nuevo_detalle_bulto"><img src="img/edit3.png" width="24" height="25" border="0" alt="Nuevo Detalle Bulto" title="Nuevo Detalle Bulto"></a>';
-                        echo '&nbsp;&nbsp;';
-                      }?>
+                      ?>
 					          </h5>
                   </div>
                   <div class="card-body">
@@ -563,6 +587,16 @@ Database::disconnect();
 			  alert("Por favor seleccione un despacho para crear un nuevo bulto")
 			}
 		})
+		$("#link_despachar_des").on("click",function(event){
+			event.preventDefault();
+			let target=this.dataset.target;
+			let idDespacho=$(this).data("id");
+			if(!target || target==="#" || !idDespacho){
+				alert("Seleccione un despacho pendiente para despacharlo");
+			} else {
+				$("#id_despacho_a_despachar").val(idDespacho);
+			}
+		})
 		
 		
 		//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
@@ -574,21 +608,34 @@ Database::disconnect();
         if(t.hasClass('selected')){
           deselectRow(t);
 		      get_bultos(id_des)
+          $("#link_modificar_bulto, #link_eliminar_bulto, #link_nuevo_detalle_bulto").addClass("d-none");
+          $("#link_eliminar_des, #link_modificar_des, #link_nuevo_bulto, #link_despachar_des").addClass("d-none");
           $("#link_ver_des").attr("href","#");
           $("#link_eliminar_des").attr("data-target","#");
           $("#link_modificar_des").attr("href","#");
           $("#link_nuevo_bulto").attr("href","#");
+          $("#link_despachar_des").attr("href","#").attr("data-target","#").removeData("id");
         }else{
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
           });
           selectRow(t);
 		      get_bultos(id_des)
+          const estadoDespacho = parseInt(t.attr("data-id-estado-despacho"), 10);
+          $("#link_eliminar_des, #link_modificar_des, #link_nuevo_bulto, #link_despachar_des").toggleClass("d-none", estadoDespacho !== 1);
+          $("#link_modificar_bulto, #link_eliminar_bulto, #link_nuevo_detalle_bulto").toggleClass("d-none", estadoDespacho !== 1);
           $("#link_ver_des").attr("href","verDespacho.php?id="+id_des);
-          $("#link_nuevo_bulto").attr("href","nuevoBultoDespacho.php?id="+id_des);
-          $("#link_modificar_des").attr("href","modificarDespacho.php?id="+id_des);
-          $("#link_eliminar_des").attr("data-toggle","modal");
-          $("#link_eliminar_des").attr("data-target","#eliminarModal_"+id_des);
+          if (estadoDespacho === 1) {
+            $("#link_nuevo_bulto").attr("href","nuevoBultoDespacho.php?id_despacho="+id_des);
+            $("#link_modificar_des").attr("href","modificarDespacho.php?id="+id_des);
+            $("#link_eliminar_des").attr("data-toggle","modal").attr("data-target","#eliminarModal_"+id_des);
+            $("#link_despachar_des").attr("href","#").attr("data-toggle","modal").attr("data-target","#despacharModal").data("id", id_des);
+          } else {
+            $("#link_nuevo_bulto").attr("href","#");
+            $("#link_modificar_des").attr("href","#");
+            $("#link_eliminar_des").removeAttr("data-toggle").attr("data-target","#");
+            $("#link_despachar_des").removeAttr("data-toggle").attr("data-target","#").attr("href","#").removeData("id");
+          }
         }
       });
 	
