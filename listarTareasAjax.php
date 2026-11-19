@@ -15,6 +15,15 @@ $completada    = isset($_GET['completada'])    ? trim($_GET['completada'])    : 
 $orden         = isset($_GET['orden'])         ? trim($_GET['orden'])         : "t.id asc";
 $submitted     = isset($_GET['submitted']) ? $_GET['submitted'] : "0";
 
+$sqlComputoId = "(SELECT c.id FROM computos c WHERE c.id_tarea = t.id AND c.id_estado NOT IN (6, 7) ORDER BY c.nro_revision DESC, c.id DESC LIMIT 1)";
+$sqlComputoNro = "(SELECT c.nro FROM computos c WHERE c.id_tarea = t.id AND c.id_estado NOT IN (6, 7) ORDER BY c.nro_revision DESC, c.id DESC LIMIT 1)";
+$sqlListaCorteId = "(SELECT lc.id FROM listas_corte lc WHERE lc.id_tarea = t.id AND lc.anulado = 0 AND lc.id_estado_lista_corte NOT IN (6, 7) ORDER BY lc.nro_revision DESC, lc.id DESC LIMIT 1)";
+$sqlListaCorteNro = "(SELECT lc.numero FROM listas_corte lc WHERE lc.id_tarea = t.id AND lc.anulado = 0 AND lc.id_estado_lista_corte NOT IN (6, 7) ORDER BY lc.nro_revision DESC, lc.id DESC LIMIT 1)";
+$sqlPackingListId = "(SELECT plr.id FROM packing_lists pl INNER JOIN packing_lists_revisiones plr ON plr.id_packing_list = pl.id WHERE pl.id_tarea = t.id AND pl.anulado = 0 AND plr.anulado = 0 AND plr.id_estado_packing_list NOT IN (6, 7, 8) ORDER BY plr.nro_revision DESC, plr.id DESC LIMIT 1)";
+$sqlPackingListNro = "(SELECT plr.numero FROM packing_lists pl INNER JOIN packing_lists_revisiones plr ON plr.id_packing_list = pl.id WHERE pl.id_tarea = t.id AND pl.anulado = 0 AND plr.anulado = 0 AND plr.id_estado_packing_list NOT IN (6, 7, 8) ORDER BY plr.nro_revision DESC, plr.id DESC LIMIT 1)";
+$sqlIdEntregable = "CASE tt.id WHEN 5 THEN $sqlComputoId WHEN 12 THEN $sqlListaCorteId WHEN 24 THEN $sqlPackingListId ELSE NULL END";
+$sqlNroEntregable = "CASE tt.id WHEN 5 THEN $sqlComputoNro WHEN 12 THEN $sqlListaCorteNro WHEN 24 THEN $sqlPackingListNro ELSE NULL END";
+
 if ($submitted !== "1") {
     echo json_encode([
         "draw"            => isset($_GET['draw']) ? intval($_GET['draw']) : 1,
@@ -46,7 +55,11 @@ $fields = [
     "date_format(t.`fecha_inicio_estimada`,'%Y%m%d')",
     "date_format(t.`fecha_fin_estimada`,'%Y%m%d')",
     "date_format(t.`fecha_inicio_real`,'%Y%m%d')",
-    "date_format(t.`fecha_fin_real`,'%Y%m%d')"
+    "date_format(t.`fecha_fin_real`,'%Y%m%d')",
+    "tt.id",
+    "CASE WHEN t.fecha_inicio_real IS NOT NULL AND t.fecha_inicio_real <> '0000-00-00' THEN 'Si' ELSE 'No' END",
+    $sqlIdEntregable,
+    $sqlNroEntregable
 ];
 
 $from = " FROM `tareas` t
@@ -104,6 +117,8 @@ $colSearchMap = [
     13 => ["campo" => "date_format(t.`fecha_inicio_real`,'%d/%m/%y')",     "tipo" => "fecha"],
     14 => ["campo" => "date_format(t.`fecha_fin_real`,'%d/%m/%y')",        "tipo" => "fecha"],
     15 => ["campo" => "IF(date_format(t.`fecha_fin_real`,'%d/%m/%y') != '00/00/00','Si','No')", "tipo" => "texto"],
+    16 => ["campo" => "CASE WHEN t.fecha_inicio_real IS NOT NULL AND t.fecha_inicio_real <> '0000-00-00' THEN 'Si' ELSE 'No' END", "tipo" => "texto"],
+    17 => ["campo" => $sqlNroEntregable, "tipo" => "texto"],
 ];
 
 if (isset($_GET['columns']) && is_array($_GET['columns'])) {
@@ -135,7 +150,9 @@ if ($searchValue !== '') {
         date_format(t.`fecha_inicio_estimada`,'%d/%m/%y')   LIKE $s OR
         date_format(t.`fecha_fin_estimada`,'%d/%m/%y')       LIKE $s OR
         date_format(t.`fecha_inicio_real`,'%d/%m/%y')        LIKE $s OR
-        date_format(t.`fecha_fin_real`,'%d/%m/%y')           LIKE $s
+        date_format(t.`fecha_fin_real`,'%d/%m/%y')           LIKE $s OR
+        CASE WHEN t.fecha_inicio_real IS NOT NULL AND t.fecha_inicio_real <> '0000-00-00' THEN 'Si' ELSE 'No' END LIKE $s OR
+        COALESCE($sqlNroEntregable, '') LIKE $s
     )";
 }
 
@@ -154,6 +171,9 @@ $colOrderMap = [
     12 => 't.fecha_fin_estimada',
     13 => 't.fecha_inicio_real',
     14 => 't.fecha_fin_real',
+    15 => 't.fecha_fin_real',
+    16 => 't.fecha_inicio_real',
+    17 => $sqlNroEntregable,
 ];
 
 $ordenesPermitidos = ["t.id asc", "t.id desc", "tt.tipo asc", "tt.tipo desc"];
@@ -184,31 +204,17 @@ $st     = $pdo->query($sql);
 if ($st) {
     while ($row = $st->fetch(PDO::FETCH_NUM)) {
 
-        $tieneComputo = 0;
-        $idComputo    = 0;
-        $q2 = $pdo->prepare("SELECT `id` FROM computos WHERE id_tarea = ? AND id_estado <> 6");
-        $q2->execute([$row[0]]);
-        $data2 = $q2->fetch(PDO::FETCH_ASSOC);
-        if (!empty($data2)) {
-            $tieneComputo = 1;
-            $idComputo    = $data2['id'];
-        }
-
-        $tieneLC = 0;
-        $q2 = $pdo->prepare("SELECT `id` FROM listas_corte WHERE id_tarea = ?");
-        $q2->execute([$row[0]]);
-        if (!empty($q2->fetch(PDO::FETCH_ASSOC))) $tieneLC = 1;
-
-        $tienePL = 0;
-        $q2 = $pdo->prepare("SELECT `id` FROM packing_lists WHERE id_tarea = ?");
-        $q2->execute([$row[0]]);
-        if (!empty($q2->fetch(PDO::FETCH_ASSOC))) $tienePL = 1;
-
         $completadaTexto = ($row[10] != '00/00/00' && $row[10] != null) ? "Si" : "No";
-        $contieneComputo = ($tieneComputo == 1) ? "Si" : "No";
-        $codigoComputo   = ($tieneComputo == 1) ? $idComputo : "";
-        $contieneLC      = ($tieneLC == 1)      ? "Si" : "No";
-        $contienePL      = ($tienePL == 1)      ? "Si" : "No";
+        $iniciadaTexto = $row[22];
+        $idEntregable = (int)($row[23] ?? 0);
+        $nroEntregable = (string)($row[24] ?? '');
+        $tipoTareaId = (int)$row[21];
+        $tituloEntregable = [5 => 'Ver Cómputo', 12 => 'Ver Lista de Corte', 24 => 'Ver Packing List'][$tipoTareaId] ?? 'Ver entregable';
+        $paginaEntregable = [5 => 'verComputo.php', 12 => 'verListaCorte.php', 24 => 'verPackingList.php'][$tipoTareaId] ?? '';
+        $nroEntregableHtml = '';
+        if ($idEntregable > 0 && $nroEntregable !== '' && $paginaEntregable !== '') {
+            $nroEntregableHtml = '<a href="' . $paginaEntregable . '?id=' . $idEntregable . '" target="_blank" title="' . $tituloEntregable . '"><i class="fa fa-file-text-o" style="margin-right: 5px;"></i>' . htmlspecialchars($nroEntregable, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</a>';
+        }
 
         $aContactos[] = [
             $row[0],
@@ -227,10 +233,8 @@ if ($st) {
             '<span style="display:none;">' . $row[19] . '</span>' . $row[9],
             '<span style="display:none;">' . $row[20] . '</span>' . $row[10],
             $completadaTexto,
-            $contieneComputo,
-            $codigoComputo,
-            $contieneLC,
-            $contienePL,
+            $iniciadaTexto,
+            $nroEntregableHtml,
         ];
     }
 

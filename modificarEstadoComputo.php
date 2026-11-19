@@ -27,6 +27,7 @@ if (!empty($data)) {
 $sql = "UPDATE computos SET id_estado = ?,`id_cuenta_reviso`=?, `id_cuenta_valido`=? WHERE id = ? ";
 $q = $pdo->prepare($sql);
 $q->execute([$_POST["idEstado"],$idCuentaReviso,$idCuentaValido,$_POST["idPosicion"]]);
+$afe = $q->rowCount();
 
 if (($_POST["idEstado"] == 1) || ($_POST["idEstado"] == 2) || ($_POST["idEstado"] == 6)) {
 	$sql = "UPDATE computos_detalle SET aprobado = 0 WHERE id_computo = ".$_POST["idPosicion"];
@@ -37,15 +38,13 @@ if (($_POST["idEstado"] == 1) || ($_POST["idEstado"] == 2) || ($_POST["idEstado"
 	$q = $pdo->prepare($sql);
 	$q->execute();	
 	
-	if ($_POST["idEstado"] == 5) {
-		$sql = "UPDATE tareas SET fecha_fin_real = now() WHERE id = (select id_tarea from computos where id = ?)";
+	if (in_array((int)$_POST["idEstado"], [3, 5], true)) {
+		$sql = "UPDATE tareas SET fecha_fin_real = IF(fecha_fin_real IS NULL OR fecha_fin_real = '0000-00-00', NOW(), fecha_fin_real) WHERE id = (SELECT id_tarea FROM computos WHERE id = ?)";
 		$q = $pdo->prepare($sql);
 		$q->execute([$_POST["idPosicion"]]);
 	}
 }
 
-
-$afe = $q->rowCount();
 
 echo $afe;
 $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo) VALUES (now(),?,'Modificacion de Estado de Cómputo','Computos')";

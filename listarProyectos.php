@@ -102,6 +102,24 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
 							?>
 							</select>
 					  </div>
+                      <div class="form-group mb-0">
+						Empresa:&nbsp;
+						<select name="id_empresa" id="id_empresa" class="js-example-basic-single">
+							<option value="">Seleccione...</option>
+							<?php
+							$pdo = Database::connect();
+							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+							$qEmp = $pdo->prepare("SELECT id, empresa FROM empresas ORDER BY empresa");
+							$qEmp->execute();
+							while ($filaEmp = $qEmp->fetch(PDO::FETCH_ASSOC)) {
+								echo "<option value='".$filaEmp['id']."'";
+								if (isset($_POST['id_empresa']) && $filaEmp['id']==$_POST['id_empresa']) echo " selected ";
+								echo ">".htmlspecialchars($filaEmp['empresa'])."</option>";
+							}
+							Database::disconnect();
+							?>
+						</select>
+					  </div>
                       <div class="form-group mb-0 filter-state-group">
 						Estado:&nbsp;
 						<select name="id_estado[]" id="id_estado" class="js-example-basic-multiple filter-state-multiple" multiple="multiple">
@@ -176,6 +194,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
 							  <th class="d-none">Proy</th>
 							  <th>Proy</th>
 							  <th>Nombre</th>
+<th>Empresa</th>
 							  <th>Descripción</th>
 							  <th>Cliente</th>
 							  <th>Estado</th>
@@ -202,6 +221,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
                             <th class="d-none"></th>
                             <th>Proy</th>
                             <th>Nombre</th>
+<th>Empresa</th>
                             <th>Descripción</th>
                             <th>Cliente</th>
                             <th>Estado</th>
@@ -407,6 +427,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
       'nombre' => $_POST['nombre'] ?? '',
       'cliente' => $_POST['cliente'] ?? '',
       'linea' => $_POST['id_linea_negocio'] ?? '',
+      'empresa' => $_POST['id_empresa'] ?? '',
       'estados' => !empty($_POST)
           ? (isset($_POST['id_estado'])
               ? array_values(array_filter((array)$_POST['id_estado'], function ($v) { return $v !== ''; }))
@@ -434,6 +455,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
         nombre: filtros.nombre || '',
         cliente: filtros.cliente || '',
         linea: filtros.linea || '',
+        empresa: filtros.empresa || '',
         estado: estados
       });
     }
@@ -455,7 +477,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
 		    "createdRow": function(row, data, dataIndex) {
             // Limitar el texto de la columna 0 (Name)
             var maxLength = 20; // Número máximo de caracteres
-            var cell = $('td', row).eq(4); // Obtener la celda de la primera columna
+            var cell = $('td', row).eq(5); // Obtener la celda de la primera columna
             var cellText = cell.text();
 
             if (cellText.length > maxLength) {
@@ -871,10 +893,10 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
         }
 		  });
     function jsExportar() {
-		document.location.href="exportProyectos.php?nro="+document.getElementById('nro').value+"&nombre="+document.getElementById('nombre').value+"&cliente="+document.getElementById('cliente').value+"&linea="+document.getElementById('id_linea_negocio').value+"&estado="+document.getElementById('id_estado').value;
+		document.location.href="exportProyectos.php?nro="+document.getElementById('nro').value+"&nombre="+document.getElementById('nombre').value+"&cliente="+document.getElementById('cliente').value+"&linea="+document.getElementById('id_linea_negocio').value+"&empresa="+document.getElementById('id_empresa').value+"&estado="+document.getElementById('id_estado').value;
 	}
 	function jsMapa() {
-		document.location.href="mapaProyectos.php?nro="+document.getElementById('nro').value+"&nombre="+document.getElementById('nombre').value+"&cliente="+document.getElementById('cliente').value+"&linea="+document.getElementById('id_linea_negocio').value+"&estado="+document.getElementById('id_estado').value;
+		document.location.href="mapaProyectos.php?nro="+document.getElementById('nro').value+"&nombre="+document.getElementById('nombre').value+"&cliente="+document.getElementById('cliente').value+"&linea="+document.getElementById('id_linea_negocio').value+"&empresa="+document.getElementById('id_empresa').value+"&estado="+document.getElementById('id_estado').value;
 	}
     
     </script>
@@ -937,6 +959,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
             nombre: $('#nombre').val() || '',
             cliente: $('#cliente').val() || '',
             linea: $('#id_linea_negocio').val() || '',
+            empresa: $('#id_empresa').val() || '',
             estados: ($('#id_estado').val() || [])
           }));
         } catch (e) {}
@@ -955,6 +978,7 @@ $seleccionarTodosEstadosProyecto = !empty($_POST) && empty($estadosProyectoSelec
         $("#nombre").val(guardado.nombre || '').trigger("change");
         $("#cliente").val(guardado.cliente || '').trigger("change");
         $("#id_linea_negocio").val(guardado.linea || '').trigger("change");
+        $("#id_empresa").val(guardado.empresa || '').trigger("change");
         // Si el usuario limpió los estados, envío la opción "Todos" (""), no el default del servidor
         var estadosRest = (guardado.estados && guardado.estados.length) ? guardado.estados : [''];
         $("#id_estado").val(estadosRest).trigger("change");

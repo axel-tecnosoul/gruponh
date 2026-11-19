@@ -119,6 +119,8 @@ $estadosComputoSeleccionados = $estadosComputoPost ?: [1, 2, 3, 4];
                     }*/ ?>
                     <a href="#" onclick="jsExportar();"><img src="img/xls.png" width="24" height="25" border="0" alt="Exportar" title="Exportar"></a>
                     &nbsp;&nbsp;
+                    <a href="#" id="link_detalle_computo"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver detalle" title="Ver detalle"></a>
+                    &nbsp;&nbsp;
                     <a href="#" id="link_ver_computo"><img src="img/medalla-dorada.png" width="24" height="15" border="0" alt="Gestionar" title="Gestionar"></a>
                     &nbsp;&nbsp;
                     <a href="#" id="link_imprimir_computo"><img src="img/print.png" width="20" height="20" border="0" alt="Imprimir" title="Imprimir"></a>
@@ -592,6 +594,16 @@ $estadosComputoSeleccionados = $estadosComputoPost ?: [1, 2, 3, 4];
           window.location.href = href;
         })
 
+        $("#link_detalle_computo").on("click", function(e) {
+          e.preventDefault();
+          const href = $(this).attr("href");
+          if (!href || href === "#") {
+            alert("Por favor seleccione un cómputo para ver su detalle");
+            return;
+          }
+          window.open(href, "_blank", "noopener");
+        });
+
         $("#link_imprimir_computo").on("click", function() {
           let l = document.location.href;
           if (this.href == l || this.href == l + "#") {
@@ -727,6 +739,7 @@ $estadosComputoSeleccionados = $estadosComputoPost ?: [1, 2, 3, 4];
           if (t.hasClass('selected')) {
             deselectRow(t);
             get_conceptos(id_computo)
+            $("#link_detalle_computo").attr("href", "#");
             $("#link_ver_computo").attr("href", "#");
             $("#link_imprimir_computo").attr("href", "#");
             $("#link_items_computo").attr("href", "#");
@@ -739,6 +752,7 @@ $estadosComputoSeleccionados = $estadosComputoPost ?: [1, 2, 3, 4];
             });
             selectRow(t);
             get_conceptos(id_computo)
+            $("#link_detalle_computo").attr("href", "verDetalleComputo.php?id=" + id_computo + prodParam);
             $("#link_ver_computo").attr("href", "verComputo.php?id=" + id_computo + prodParam);
             $("#link_imprimir_computo").attr("target", "_blank");
             $("#link_imprimir_computo").attr("href", "imprimirComputo.php?id=" + id_computo + prodParam);

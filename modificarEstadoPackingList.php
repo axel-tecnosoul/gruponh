@@ -149,9 +149,9 @@ foreach ($pdo->query($sql) as $row) {
 	}
 }
 
-// Finalizamos la tarea asociada solo cuando el Packing List termina.
-if ($idEstado === 5 && !empty($revisionActual['id_tarea'])) {
-	$sql = "UPDATE tareas SET fecha_fin_real = COALESCE(fecha_fin_real, NOW()) WHERE id = ?";
+// La tarea queda completada cuando se aprueba el Packing List o cuando finaliza su proceso.
+if (in_array($idEstado, [3, 5], true) && !empty($revisionActual['id_tarea'])) {
+	$sql = "UPDATE tareas SET fecha_fin_real = IF(fecha_fin_real IS NULL OR fecha_fin_real = '0000-00-00', NOW(), fecha_fin_real) WHERE id = ?";
 	$q = $pdo->prepare($sql);
 	$q->execute([$revisionActual['id_tarea']]);
 }
@@ -162,5 +162,6 @@ $q = $pdo->prepare($sql);
 $q->execute(array($_SESSION['user']['id'], 'Modificacion de Estado de Packing List ( Estado #'.$idEstado.' )'));
 
 Database::disconnect();
+echo 'ok';
 
 ?>

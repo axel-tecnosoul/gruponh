@@ -77,39 +77,45 @@ if (!isset($tiposEncontrados[$codigoNota])) {
     exit('El catálogo ARCA no tiene configurado el tipo de nota correspondiente a esta letra.');
 }
 
-$qAsociables = $pdo->prepare(
-    "SELECT ca.id, ca.tipo_comprobante, ca.punto_venta, ca.numero_comprobante,
-            ca.fecha_comprobante, fv.numero AS numero_local, c.nombre AS cliente
-     FROM comprobantes_arca ca
-     INNER JOIN facturas_venta fv ON fv.id = ca.id_factura_venta
-     INNER JOIN cuentas c ON c.id = fv.id_cuenta_destino
-     WHERE ca.estado = 'autorizado' AND ca.homologacion = ?
-       AND ca.emisor_cuit = ? AND ca.receptor_numero_documento = ?
-       AND ca.tipo_comprobante IN (1, 6, 11)
-     ORDER BY ca.fecha_comprobante DESC, ca.id DESC"
-);
-$qAsociables->execute([
-    (int)$origen['homologacion'],
-    $origen['emisor_cuit'],
-    $origen['receptor_numero_documento'],
-]);
-$asociables = [];
-foreach ($qAsociables->fetchAll(PDO::FETCH_ASSOC) as $comprobante) {
-    if (($letrasPorTipo[(int)$comprobante['tipo_comprobante']] ?? '') === $letra) {
-        $asociables[] = $comprobante;
-    }
+function cargarComprobantesAsociablesNota(PDO $pdo, array $origen, int $tipoFactura): array {
+    $q = $pdo->prepare(
+        "SELECT ca.id, ca.tipo_comprobante, ca.punto_venta, ca.numero_comprobante,
+                ca.fecha_comprobante, fv.numero AS numero_local, c.nombre AS cliente
+         FROM comprobantes_arca ca
+         INNER JOIN facturas_venta fv ON fv.id = ca.id_factura_venta
+         INNER JOIN cuentas c ON c.id = fv.id_cuenta_destino
+         WHERE ca.estado = 'autorizado' AND ca.homologacion = ?
+           AND ca.emisor_cuit = ? AND ca.receptor_numero_documento = ?
+           AND ca.tipo_comprobante = ? AND ca.id <> ?
+         ORDER BY ca.fecha_comprobante DESC, ca.id DESC"
+    );
+    $q->execute([
+        (int)$origen['homologacion'],
+        $origen['emisor_cuit'],
+        $origen['receptor_numero_documento'],
+        $tipoFactura,
+        (int)$origen['id_comprobante_arca'],
+    ]);
+    return $q->fetchAll(PDO::FETCH_ASSOC);
 }
-$asociableIds = array_map(static fn(array $row): int => (int)$row['id'], $asociables);
-if (!in_array((int)$origen['id_comprobante_arca'], $asociableIds, true)) {
-    $asociables[] = [
-        'id' => $origen['id_comprobante_arca'],
-        'tipo_comprobante' => $origen['tipo_comprobante'],
-        'punto_venta' => $origen['punto_venta'],
-        'numero_comprobante' => $origen['numero_comprobante'],
-        'fecha_comprobante' => '',
-        'numero_local' => $origen['numero_local'],
-        'cliente' => $origen['cliente'],
-    ];
+
+$tipoFacturaOrigen = array_search($letra, $letrasPorTipo, true);
+if ($tipoFacturaOrigen === false) {
+    Database::disconnect();
+    http_response_code(422);
+    exit('No se pudo determinar la letra de la factura de origen.');
+}
+
+if (($_GET['ajax'] ?? '') === 'comprobantes_asociables') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        echo json_encode(cargarComprobantesAsociablesNota($pdo, $origen, (int)$tipoFacturaOrigen), JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'No se pudieron buscar los comprobantes asociados.']);
+    }
+    Database::disconnect();
+    exit;
 }
 
 $csrfToken = (string)($_SESSION['csrf_factura_arca'] ?? '');
@@ -123,6 +129,18 @@ if (!preg_match('/^[a-f0-9]{32}$/D', $claveOperacion)) {
     $_SESSION['nota_fv_clave_actual'] = $claveOperacion;
 }
 $error = '';
+$incluirOtrosComprobantes = $_SERVER['REQUEST_METHOD'] === 'POST'
+    && !empty($_POST['incluir_otros_comprobantes']);
+$asociables = $incluirOtrosComprobantes
+    ? cargarComprobantesAsociablesNota($pdo, $origen, (int)$tipoFacturaOrigen)
+    : [];
+$asociableIds = array_merge(
+    [(int)$origen['id_comprobante_arca']],
+    array_map(static fn(array $row): int => (int)$row['id'], $asociables)
+);
+$selectedAssociatedIds = $incluirOtrosComprobantes
+    ? array_values(array_unique(array_map('intval', (array)($_POST['comprobantes_asociados'] ?? []))))
+    : [(int)$origen['id_comprobante_arca']];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
@@ -147,7 +165,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('La emisión ARCA está deshabilitada.');
         }
 
-        $asociados = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['comprobantes_asociados'] ?? [])))));
+        $asociados = $incluirOtrosComprobantes
+            ? array_values(array_unique(array_filter(array_map('intval', (array)($_POST['comprobantes_asociados'] ?? [])))))
+            : [(int)$origen['id_comprobante_arca']];
         if (!in_array((int)$origen['id_comprobante_arca'], $asociados, true)) {
             throw new RuntimeException('La factura seleccionada debe permanecer asociada a la nota.');
         }
@@ -367,26 +387,38 @@ Database::disconnect();
             </div>
 
             <h6>Comprobantes asociados</h6>
-            <p class="text-muted">La factura de origen es obligatoria. Puede asociar otras facturas autorizadas de la misma letra y CUIT receptor.</p>
-            <div class="table-responsive mb-4">
+            <p class="text-muted mb-2">La factura de origen se asociará siempre. La búsqueda de otras facturas es opcional.</p>
+            <div class="alert alert-light py-2">
+              Factura de origen: <strong><?=htmlspecialchars((string)$origen['numero_local'], ENT_QUOTES, 'UTF-8')?></strong>
+              — <?=htmlspecialchars($nombreNota, ENT_QUOTES, 'UTF-8')?>
+            </div>
+            <div class="custom-control custom-checkbox mb-3">
+              <input class="custom-control-input" type="checkbox" id="incluirOtrosComprobantes" name="incluir_otros_comprobantes" value="1" <?=$incluirOtrosComprobantes ? 'checked' : ''?>>
+              <label class="custom-control-label" for="incluirOtrosComprobantes">Agregar otros comprobantes autorizados asociados</label>
+            </div>
+            <div id="comprobantesAsociablesContainer" class="table-responsive mb-4 <?=$incluirOtrosComprobantes ? '' : 'd-none'?>" data-loaded="<?=$incluirOtrosComprobantes ? '1' : '0'?>">
+              <div id="comprobantesAsociablesEstado" class="text-muted mb-2" role="status"></div>
               <table class="table table-sm table-bordered">
                 <thead><tr><th>Asociar</th><th>Factura</th><th>Tipo</th><th>Punto de venta / N.º ARCA</th><th>Fecha</th></tr></thead>
-                <tbody>
+                <tbody id="comprobantesAsociablesBody">
                 <?php foreach ($asociables as $asociable):
-                  $isOrigin = (int)$asociable['id'] === (int)$origen['id_comprobante_arca'];
-                  $tipoOriginal = ['A' => 'Factura A', 'B' => 'Factura B', 'C' => 'Factura C'][$letrasPorTipo[(int)$asociable['tipo_comprobante']] ?? ''] ?? 'Factura'; ?>
+                  $tipoOriginal = ['A' => 'Factura A', 'B' => 'Factura B', 'C' => 'Factura C'][$letrasPorTipo[(int)$asociable['tipo_comprobante']] ?? ''] ?? 'Factura';
+                  $comprobanteSeleccionado = in_array((int)$asociable['id'], $selectedAssociatedIds, true); ?>
                   <tr>
-                    <td class="text-center"><input type="checkbox" name="comprobantes_asociados[]" value="<?=(int)$asociable['id']?>" <?=$isOrigin ? 'checked disabled' : ''?>></td>
-                    <td><?=htmlspecialchars((string)$asociable['numero_local'], ENT_QUOTES, 'UTF-8')?><?=$isOrigin ? ' (origen)' : ''?></td>
+                    <td class="text-center"><input type="checkbox" name="comprobantes_asociados[]" value="<?=(int)$asociable['id']?>" <?=$comprobanteSeleccionado ? 'checked' : ''?>></td>
+                    <td><?=htmlspecialchars((string)$asociable['numero_local'], ENT_QUOTES, 'UTF-8')?></td>
                     <td><?=htmlspecialchars($tipoOriginal, ENT_QUOTES, 'UTF-8')?></td>
                     <td><?=str_pad((string)$asociable['punto_venta'], 5, '0', STR_PAD_LEFT)?> / <?=str_pad((string)$asociable['numero_comprobante'], 8, '0', STR_PAD_LEFT)?></td>
                     <td><?=!empty($asociable['fecha_comprobante']) ? date('d/m/Y', strtotime($asociable['fecha_comprobante'])) : '—'?></td>
                   </tr>
                 <?php endforeach; ?>
+                <?php if ($incluirOtrosComprobantes && !$asociables): ?>
+                  <tr class="js-sin-comprobantes"><td colspan="5" class="text-muted">No se encontraron otras facturas autorizadas de la misma letra y CUIT receptor.</td></tr>
+                <?php endif; ?>
                 </tbody>
               </table>
             </div>
-            <?php // disabled HTML checkboxes do not post; this hidden field guarantees the origin association. ?>
+            <?php // La factura de origen se envía siempre, aunque no se busquen comprobantes adicionales. ?>
             <input type="hidden" name="comprobantes_asociados[]" value="<?=(int)$origen['id_comprobante_arca']?>">
 
             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -422,8 +454,89 @@ Database::disconnect();
 <script src="assets/js/jquery-3.2.1.min.js"></script>
 <script src="assets/js/bootstrap/popper.min.js"></script>
 <script src="assets/js/bootstrap/bootstrap.js"></script>
+<script src="assets/js/icons/feather-icon/feather.min.js"></script>
+<script src="assets/js/icons/feather-icon/feather-icon.js"></script>
+<script src="assets/js/sidebar-menu.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/chat-menu.js"></script>
+<script src="assets/js/tooltip-init.js"></script>
+<script src="assets/js/script.js"></script>
 <script>
   $(function() {
+    const $incluirOtros = $('#incluirOtrosComprobantes');
+    const $comprobantesContainer = $('#comprobantesAsociablesContainer');
+    const $comprobantesBody = $('#comprobantesAsociablesBody');
+    const $comprobantesEstado = $('#comprobantesAsociablesEstado');
+    const tiposFactura = {1: 'Factura A', 6: 'Factura B', 11: 'Factura C'};
+
+    function renderComprobantesAsociables(comprobantes) {
+      $comprobantesBody.empty();
+      if (!comprobantes.length) {
+        $('<tr>').append($('<td>', {
+          colspan: 5,
+          class: 'text-muted',
+          text: 'No se encontraron otras facturas autorizadas de la misma letra y CUIT receptor.'
+        })).appendTo($comprobantesBody);
+        return;
+      }
+
+      comprobantes.forEach(function(comprobante) {
+        const fechaRaw = String(comprobante.fecha_comprobante || '').substring(0, 10);
+        const fechaPartes = fechaRaw.split('-');
+        const fecha = fechaPartes.length === 3 ? fechaPartes[2] + '/' + fechaPartes[1] + '/' + fechaPartes[0] : '—';
+        const tipo = tiposFactura[Number(comprobante.tipo_comprobante)] || 'Factura';
+        const puntoVenta = String(comprobante.punto_venta || '').padStart(5, '0');
+        const numero = String(comprobante.numero_comprobante || '').padStart(8, '0');
+        const $checkbox = $('<input>', {
+          type: 'checkbox',
+          name: 'comprobantes_asociados[]',
+          value: Number(comprobante.id)
+        });
+        const $row = $('<tr>');
+        $('<td>', {class: 'text-center'}).append($checkbox).appendTo($row);
+        $('<td>').text(comprobante.numero_local || '').appendTo($row);
+        $('<td>').text(tipo).appendTo($row);
+        $('<td>').text(puntoVenta + ' / ' + numero).appendTo($row);
+        $('<td>').text(fecha).appendTo($row);
+        $row.appendTo($comprobantesBody);
+      });
+    }
+
+    $incluirOtros.on('change', function() {
+      if (!this.checked) {
+        $comprobantesContainer.addClass('d-none').attr('data-loaded', '0');
+        $comprobantesBody.empty();
+        $comprobantesEstado.text('');
+        return;
+      }
+
+      $comprobantesContainer.removeClass('d-none');
+      if ($comprobantesContainer.attr('data-loaded') === '1') return;
+
+      $comprobantesEstado.text('Buscando comprobantes autorizados…');
+      $.ajax({
+        url: 'nuevaNotaFacturaVenta.php',
+        method: 'GET',
+        data: {
+          id: <?= (int)$idFacturaOrigen ?>,
+          tipo: <?= json_encode($tipoNota) ?>,
+          ajax: 'comprobantes_asociables'
+        },
+        dataType: 'json'
+      }).done(function(data) {
+        if (!Array.isArray(data)) {
+          $comprobantesEstado.text((data && data.error) || 'No se pudieron cargar los comprobantes.');
+          return;
+        }
+        renderComprobantesAsociables(data);
+        $comprobantesContainer.attr('data-loaded', '1');
+        $comprobantesEstado.text('');
+      }).fail(function(xhr) {
+        const respuesta = xhr.responseJSON;
+        $comprobantesEstado.text((respuesta && respuesta.error) || 'No se pudieron cargar los comprobantes. Intente nuevamente.');
+      });
+    });
+
     function agregarLinea() {
       $('#tablaLineas tbody').append(document.importNode($('#plantillaLinea')[0].content, true));
     }

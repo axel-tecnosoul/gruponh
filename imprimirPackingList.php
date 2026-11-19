@@ -1,405 +1,264 @@
 <?php
-require("config.php");
-if (empty($_SESSION['user'])) {
-  header("Location: index.php");
-  die("Redirecting to index.php");
-}
-
+require 'config.php';
 require 'database.php';
+require __DIR__ . '/vendor/autoload.php';
 
-$prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
-$prodQuery = $prod ? '?prod=' . $prod : '';
-$prodParam = $prod ? '&prod=' . $prod : '';
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
-$id = null;
-if (!empty($_GET['id'])) {
-  $id = $_REQUEST['id'];
+if (empty($_SESSION['user'])) {
+  header('Location: index.php');
+  exit;
 }
 
-if (null==$id) {
-  header("Location: listarPackingList.php$prodQuery");
+function packingPdfEscape($value): string {
+  return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-if (!empty($_POST)) {
+function packingPdfNumber($value): string {
+  return number_format((float)$value, 2, ',', '.');
+}
 
-} else {
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT pl.id, plr.id_packing_list, plr.nombre, plr.id_proyecto, p.nombre nombre_proyecto, p.nro nro_proyecto, s.nro_sitio, s.nro_subsitio, date_format(plr.fecha,'%d/%m/%Y') fecha, plr.id_usuario, plr.id_estado_packing_list, plr.nro_revision, plr.anulado, cu1.nombre cuenta_elaboro, cu2.nombre cuenta_verifico, cu3.nombre cuenta_aprobo, plr.numero FROM packing_lists pl INNER JOIN packing_lists_revisiones plr ON plr.id_packing_list=pl.id AND plr.nro_revision=pl.ultimo_nro_revision inner join proyectos p on p.id = plr.id_proyecto inner join sitios s on s.id = p.id_sitio left join cuentas cu1 on cu1.id = plr.id_cuenta_realizo left join cuentas cu2 on cu2.id = plr.id_cuenta_reviso left join cuentas cu3 on cu3.id = plr.id_cuenta_valido WHERE plr.id = ? ";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  
+$idRevision = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+$incluirPeso = isset($_GET['peso']) && (int)$_GET['peso'] === 1;
+if (!$idRevision) {
+  http_response_code(400);
+  exit('Packing List inválida.');
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$sql = "SELECT plr.id, plr.id_packing_list, plr.nombre, plr.id_proyecto, p.nombre AS nombre_proyecto,
+               p.nro AS nro_proyecto, s.nro_sitio, s.nro_subsitio,
+               DATE_FORMAT(plr.fecha, '%d/%m/%Y') AS fecha, plr.id_usuario,
+               plr.id_estado_packing_list, plr.nro_revision, plr.anulado, plr.numero,
+               cu1.nombre AS cuenta_elaboro, cu2.nombre AS cuenta_verifico, cu3.nombre AS cuenta_aprobo
+        FROM packing_lists_revisiones plr
+        INNER JOIN proyectos p ON p.id = plr.id_proyecto
+        INNER JOIN sitios s ON s.id = p.id_sitio
+        LEFT JOIN cuentas cu1 ON cu1.id = plr.id_cuenta_realizo
+        LEFT JOIN cuentas cu2 ON cu2.id = plr.id_cuenta_reviso
+        LEFT JOIN cuentas cu3 ON cu3.id = plr.id_cuenta_valido
+        WHERE plr.id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$idRevision]);
+$packingList = $q->fetch(PDO::FETCH_ASSOC);
+
+if (empty($packingList)) {
   Database::disconnect();
-}?>
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <?php include('head_forms.php');?>
-	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
-	<style>
-	@page {
-		size: landscape;
-	}
-	.bordered-div {
-            border: 2px solid black; /* 2px width, solid style, black color */
-            padding: 10px; /* Optional: add some padding inside the div */
-			margin: 2px;
-        }
-		.bordered-div-thin {
-            border: 1px solid black; /* 2px width, solid style, black color */
-            padding: 10px; /* Optional: add some padding inside the div */
-			margin: 2px;
-        }
-	</style>
-  </head>
-  <body>
-    <!-- Loader ends-->
-    <!-- page-wrapper Start-->
-    <div class="page-wrapper">
-    
-      <!-- Page Header Start-->
-      <div class="page-body-wrapper">
-	  
-        <!-- Page Sidebar Start-->
-        <!-- Right sidebar Ends-->
-        <div class="page-body">
-          <!-- Container-fluid starts-->
-		  <div class="container-fluid">
-            <div class="row">
-              <div class="col-sm-12">
-                <div class="card">
-                    <div class="card-body">
-                      <div class="row">
-                        <div class="col">
-							<div class="form-group row">
-							<div class="col-sm-2 bordered-div"><img src="assets/images/logo.jpg"></div>
-							<div class="col-sm-6 bordered-div" align="center"><h3><b>PACKING LIST</b></h3></div>
-							<div class="col-sm-3 bordered-div"><h6><b><?php echo $data['nombre']; ?><br>Nº <?php echo $data['numero']; ?> - Rev <?php echo $data['nro_revision']; ?></b></h6></div>
-							</div>
-							<div class="form-group row">
-							
-							<div class="col-sm-11 bordered-div">
-							<b>Emisión:</b> <?php echo $data['fecha'];?><br>
-							<b>Proyecto:</b> <?php echo $data['nombre_proyecto'];?><br>
-							<b>Nro:</b> <?php echo $data['nro_sitio']."_".$data['nro_subsitio']."_".$data['nro_proyecto'];?><br>
-							</div>
-							</div>
-							<div class="row">
-                          <div class="col-12">
-                            <table class="table table-bordered mb-3">
-                              <thead>
-                                <th>Rev</th>
-                                <th>Fecha</th>
-                                <th>Modificaciones</th>
-                                <th>Elaboro</th>
-                                <th>Reviso</th>
-                                <th>Aprobo</th>
-                              </thead>
-                              <tbody><?php
-                                $pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                
-                                $sql = " SELECT nro_revision,date_format(fecha,'%d/%m/%y') AS fecha,descripcion, cu1.nombre realizo, cu2.nombre reviso, cu3.nombre valido FROM packing_lists_revisiones plr left join cuentas cu1 on cu1.id = plr.id_cuenta_realizo left join cuentas cu2 on cu2.id = plr.id_cuenta_reviso left join cuentas cu3 on cu3.id = plr.id_cuenta_valido WHERE plr.id_packing_list = ".$data['id_packing_list']." ORDER BY nro_revision ASC";//,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_realizo=c.id) AS realizo,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_reviso=c.id) AS reviso,(SELECT c.nombre FROM cuentas c WHERE lcr.id_cuenta_valido=c.id) AS valido
-                                foreach ($pdo->query($sql) as $row) {
-                                  //$b=1;
-                                  echo '<tr>';
-                                  echo '<td>'. $row["nro_revision"] . '</td>';
-                                  echo '<td>'. $row["fecha"] . '</td>';
-                                  echo '<td>'. $row["descripcion"] . '</td>';
-                                  echo '<td>'. $row["realizo"] . '</td>';
-                                  echo '<td>'. $row["reviso"] . '</td>';
-                                  echo '<td>'. $row["valido"] . '</td>';
-                                  echo '</tr>';
-                                }
-                                Database::disconnect();?>
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-							<div class="form-group row">
-							<div class="col-sm-12">
-							<table class="display" id="dataTables-example669" border="1" cellspacing="10" cellpadding="5">
-							<thead>
-							  <tr>
-								  <th>Sección</th>
-								  <th>Cantidad</th>
-								  <th>Observaciones</th>
-								  <th>Componentes</th>
-							  </tr>
-							</thead>
-							<tbody>
-							  <?php
-								$pesoTotal = 0;
-								$pdo = Database::connect();
-								$sql = " SELECT id, cantidad, observaciones FROM packing_lists_secciones WHERE id_packing_list_revision = ".$id;
-								foreach ($pdo->query($sql) as $row) {
-									echo '<tr>';
-									echo '<td>'. $row[0] . '</td>';
-									echo '<td>'. $row[1] . '</td>';
-									echo '<td>'. $row[2] . '</td>';
-									echo '<td>';
-									?>
-									<table class="display" border="1" cellspacing="10" cellpadding="5">
-									<thead>
-									  <tr>
-										  <th>Conjunto / Concepto</th>
-										  <th>Cantidad</th>
-										  <th>Largo</th>
-										  <?php
-										  if ($_GET['peso']==1) {
-												echo "<th>Peso Kg</th>";
-										  }
-										  ?>
-										  <th>Observaciones</th>
-										  <th>Posiciones</th>
-									  </tr>
-									</thead>
-									<tbody>
-									<?php
-									$sql2 = "SELECT plc.`id`, lcc.nombre, m.concepto, plc.`cantidad`, plc.`observaciones`, e.estado, m.largo, m.peso_metro, lcc.peso, lcc.id FROM `packing_lists_componentes` plc LEFT JOIN listas_corte_conjuntos lcc on lcc.id = plc.`id_conjunto_lista_corte` LEFT JOIN materiales m on m.id = plc.`id_concepto` INNER JOIN estados_componentes_packing_list e on e.id = plc.`id_estado_componente_packing_list` WHERE plc.`id_packing_list_seccion` = ".$row[0];
-									foreach ($pdo->query($sql2) as $row2) {
-										echo '<tr>';
-										echo '<td>'. $row2[1] .' '. $row2[2] .  '</td>';
-										echo '<td>'. $row2[3] . '</td>';
-										if (!empty($row2[2])) {
-											echo '<td>'. $row2[6] . '</td>';
-										} else {
-											echo '<td>&nbsp;</td>';	
-										}
-										if ($_GET['peso']==1) {
-											if (!empty($row2[2])) {
-												echo '<td>'. $row2[6]*$row2[7]/1000 . '</td>';
-												$pesoTotal += $row2[6]*$row2[7]/1000;
-											} else {
-												$pesoComponente = calcularPesoConjunto($pdo, (int)$row2[9]);
-												echo '<td>'. number_format($pesoComponente,2,',','.') . '</td>';
-												$pesoTotal += $pesoComponente;
-											}
-										}
-										
-										echo '<td>'. $row2[4] . '</td>';
-										if (!empty($row2[2])) {
-											echo '<td></td>';
-										} else {
-											echo '<td>';
-											?>
-											<table class="display" border="1" cellspacing="10" cellpadding="5">
-											<thead>
-											  <tr>
-												  <th>P</th>
-												  <th>F</th>
-												  <th>S</th>
-												  <th>R</th>
-												  <th>Concepto</th>
-												  <th>Posición</th>
-												  <th>Cantidad</th>
-												  <th>Largo</th>
-												  <th>Ancho</th>
-												  <th>Marca</th>
-												  <?php
-												  if ($_GET['peso']==1) {
-														echo "<th>Peso Kg</th>";
-												  }
-												  ?>
-												  <th>Colada</th>
-												  <th>Diámetro</th>
-												  <th>Calidad</th>
-												  <th>Procesos</th>
-												  <th>Observaciones</th>
-											  </tr>
-											</thead>
-											<tbody>
-											<?php
-											$sql22 = "SELECT lcp.`id`, m.concepto, lcp.`posicion`, lcp.`cantidad`, lcp.`largo`, lcp.`ancho`, lcp.`marca`, lcp.`peso`, lcp.`finalizado`, c.nro_colada, lcp.`diametro`, lcp.`calidad`, lcp.`peso_calculado_posicion`, lcp.`observaciones` FROM `lista_corte_posiciones` lcp inner join materiales m on m.id = lcp.`id_material` left join coladas c on c.id = lcp.`id_colada`  WHERE lcp.`id_lista_corte_conjunto` = ".$row2[9];
-											foreach ($pdo->query($sql22) as $row22) {
-												$pesoPosicion = calcularPesoPosicion([
-													'peso' => $row22[7],
-													'largo' => $row22[4],
-													'ancho' => $row22[5],
-													'cantidad' => $row22[3],
-													'peso_calculado_posicion' => $row22[12]
-												], (string)$row22[1]);
-												echo '<tr>';
-												echo '<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>';
-												echo '<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>';
-												echo '<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>';
-												echo '<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>';
-												echo '<td>'. $row22[1] . '</td>';
-												echo '<td>'. $row22[2] . '</td>';
-												echo '<td>'. $row22[3] . '</td>';
-												echo '<td>'. $row22[4] . '</td>';
-												echo '<td>'. $row22[5] . '</td>';
-												echo '<td>'. $row22[6] . '</td>';
-												if ($_GET['peso']==1) {
-													echo '<td>'. number_format($pesoPosicion,2,',','.') . '</td>';
-												}
-												echo '<td>'. $row22[9] . '</td>';
-												echo '<td>'. $row22[10] . '</td>';
-												echo '<td>'. $row22[11] . '</td>';
-												echo '<td>';
-												?>
-												<?php
-												$sql33 = "SELECT lcpr.`id`, tp.tipo, ep.`estado`, lcpr.`observaciones` FROM `lista_corte_procesos` lcpr inner join tipos_procesos tp on tp.id = lcpr.`id_tipo_proceso` inner join estados_lista_corte_procesos ep on ep.id = lcpr.id_estado_lista_corte_proceso WHERE lcpr.`id_lista_corte_posicion` = ".$row22[0];
-												foreach ($pdo->query($sql33) as $row33) {
-													echo $row33[1] . ',';
-												}
-												?>
-												
-												<?php
-												echo '</td>';
-												echo '<td>'. htmlspecialchars($row22[13] ?? '') . '</td>';
-												echo '</tr>';
-											}
-											?>
-											</tbody>
-											</table>
-											<?php
-											echo '</td>';
-										}
-										echo '</tr>';
-									}
-									?>
-									</tbody>
-									</table>
-									<?php
-									echo '</td>';
-									echo '</tr>';
-								}
-							   Database::disconnect();
-							  ?>
-							</tbody>
-							</table>
-							</div>
-							</div>
-							<?php
-							if ($_GET['peso']==1) {
-							?>
-								Peso <b>TOTAL</b> de la lista: <?php echo number_format($pesoTotal,2);?>kgs
-							<?php
-							}
-							?>
-							</div>
-							
-                        </div>
-                      </div>
-                    </div>
-                    
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Container-fluid Ends-->
-        </div>
-        <!-- footer start-->
-		
-      </div>
-    </div>
-    <!-- latest jquery-->
-    <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
-    <script src="assets/js/bootstrap/popper.min.js"></script>
-    <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
-    <script src="assets/js/icons/feather-icon/feather.min.js"></script>
-    <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
-    <script src="assets/js/sidebar-menu.js"></script>
-    <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
-    <!-- Plugins JS Ends-->
-    <!-- Theme js-->
-   <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
-	<script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
-	<script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-	<script>
-		$(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example666 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example666').DataTable({
-        stateSave: false,
-		searching: false,
-		
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example666').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
-	
-		
-		</script>
-		
-		<script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-    <!-- Plugin used-->
+  http_response_code(404);
+  exit('No se encontró la Packing List solicitada.');
+}
 
-  </body>
-</html>
-<script>window.print();</script>
+$historialHtml = '';
+$qHistorial = $pdo->prepare("SELECT plr.nro_revision, DATE_FORMAT(plr.fecha, '%d/%m/%Y') AS fecha,
+                                    plr.descripcion, cu1.nombre AS elaboro,
+                                    cu2.nombre AS reviso, cu3.nombre AS aprobo
+                             FROM packing_lists_revisiones plr
+                             LEFT JOIN cuentas cu1 ON cu1.id = plr.id_cuenta_realizo
+                             LEFT JOIN cuentas cu2 ON cu2.id = plr.id_cuenta_reviso
+                             LEFT JOIN cuentas cu3 ON cu3.id = plr.id_cuenta_valido
+                             WHERE plr.id_packing_list = ? ORDER BY plr.nro_revision ASC");
+$qHistorial->execute([$packingList['id_packing_list']]);
+while ($revision = $qHistorial->fetch(PDO::FETCH_ASSOC)) {
+  $historialHtml .= '<tr>'
+    . '<td>' . packingPdfEscape($revision['nro_revision']) . '</td>'
+    . '<td>' . packingPdfEscape($revision['fecha']) . '</td>'
+    . '<td class="concept-cell">' . packingPdfEscape($revision['descripcion']) . '</td>'
+    . '<td>' . packingPdfEscape($revision['elaboro']) . '</td>'
+    . '<td>' . packingPdfEscape($revision['reviso']) . '</td>'
+    . '<td>' . packingPdfEscape($revision['aprobo']) . '</td>'
+    . '</tr>';
+}
+
+$seccionesHtml = '';
+$pesoTotal = 0.0;
+$qSecciones = $pdo->prepare("SELECT id, cantidad, observaciones FROM packing_lists_secciones WHERE id_packing_list_revision = ? ORDER BY id");
+$qSecciones->execute([$idRevision]);
+$qComponentes = $pdo->prepare("SELECT plc.id, plc.id_conjunto_lista_corte, plc.id_concepto, plc.cantidad,
+                                      plc.observaciones, lcc.nombre AS nombre_conjunto, lcc.id AS id_conjunto,
+                                      m.concepto, m.largo, m.peso_metro
+                               FROM packing_lists_componentes plc
+                               LEFT JOIN listas_corte_conjuntos lcc ON lcc.id = plc.id_conjunto_lista_corte
+                               LEFT JOIN materiales m ON m.id = plc.id_concepto
+                               WHERE plc.id_packing_list_seccion = ? ORDER BY plc.id");
+$qPosiciones = $pdo->prepare("SELECT lcp.id, m.concepto, lcp.posicion, lcp.cantidad, lcp.largo, lcp.ancho,
+                                     lcp.marca, lcp.peso, lcp.peso_calculado_posicion, c.nro_colada,
+                                     lcp.diametro, lcp.calidad, lcp.observaciones
+                              FROM lista_corte_posiciones lcp
+                              INNER JOIN materiales m ON m.id = lcp.id_material
+                              LEFT JOIN coladas c ON c.id = lcp.id_colada
+                              WHERE lcp.id_lista_corte_conjunto = ?
+                              ORDER BY lcp.id");
+$qProcesos = $pdo->prepare("SELECT tp.tipo FROM lista_corte_procesos lcpr
+                            INNER JOIN tipos_procesos tp ON tp.id = lcpr.id_tipo_proceso
+                            WHERE lcpr.id_lista_corte_posicion = ? ORDER BY tp.tipo");
+
+while ($seccion = $qSecciones->fetch(PDO::FETCH_ASSOC)) {
+  $seccionesHtml .= '<div class="section-block">'
+    . '<table class="section-heading"><tbody><tr>'
+    . '<th>Sección</th><td class="concept-cell">' . packingPdfEscape($seccion['observaciones']) . '</td>'
+    . '<th class="quantity-heading">Cantidad</th><td class="quantity-cell">' . packingPdfEscape($seccion['cantidad']) . '</td>'
+    . '</tr></tbody></table>';
+
+  $seccionesHtml .= '<table class="component-table"><thead><tr>'
+    . '<th>Conjunto / Concepto</th><th>Cantidad</th><th>Largo</th>'
+    . ($incluirPeso ? '<th>Peso kg</th>' : '')
+    . '<th>Observaciones</th></tr></thead><tbody>';
+
+  $qComponentes->execute([$seccion['id']]);
+  while ($componente = $qComponentes->fetch(PDO::FETCH_ASSOC)) {
+    $esConjunto = !empty($componente['id_conjunto_lista_corte']);
+    $nombreComponente = $esConjunto ? $componente['nombre_conjunto'] : $componente['concepto'];
+    $largo = $esConjunto ? '' : $componente['largo'];
+    $pesoComponente = 0.0;
+
+    if ($incluirPeso) {
+      if ($esConjunto) {
+        $pesoComponente = calcularPesoConjunto($pdo, (int)$componente['id_conjunto']);
+      } elseif ($componente['largo'] !== null && $componente['peso_metro'] !== null) {
+        $pesoComponente = (float)$componente['largo'] * (float)$componente['peso_metro'] / 1000;
+      }
+      $pesoTotal += $pesoComponente;
+    }
+
+    $seccionesHtml .= '<tr>'
+      . '<td class="concept-cell">' . packingPdfEscape($nombreComponente) . '</td>'
+      . '<td class="number-cell">' . packingPdfEscape($componente['cantidad']) . '</td>'
+      . '<td class="number-cell">' . packingPdfEscape($largo) . '</td>'
+      . ($incluirPeso ? '<td class="number-cell">' . packingPdfNumber($pesoComponente) . '</td>' : '')
+      . '<td class="concept-cell">' . packingPdfEscape($componente['observaciones']) . '</td>'
+      . '</tr>';
+
+    if ($esConjunto) {
+      $seccionesHtml .= '<tr class="positions-row"><td colspan="' . ($incluirPeso ? '5' : '4') . '" class="positions-cell">'
+        . '<table class="positions-table"><colgroup>'
+        . '<col class="flag-col"><col class="flag-col"><col class="flag-col"><col class="flag-col">'
+        . '<col class="position-concept-col"><col class="position-col"><col class="small-col"><col class="small-col">'
+        . '<col class="small-col"><col class="mark-col">'
+        . ($incluirPeso ? '<col class="small-col">' : '')
+        . '<col class="colada-col"><col class="small-col"><col class="quality-col"><col class="process-col"><col class="notes-col">'
+        . '</colgroup><thead><tr><th>P</th><th>F</th><th>S</th><th>R</th><th>Concepto</th><th>Posición</th>'
+        . '<th>Cant.</th><th>Largo</th><th>Ancho</th><th>Marca</th>'
+        . ($incluirPeso ? '<th>Peso kg</th>' : '')
+        . '<th>Colada</th><th>Diám.</th><th>Calidad</th><th>Procesos</th><th>Observaciones</th></tr></thead><tbody>';
+
+      $qPosiciones->execute([$componente['id_conjunto']]);
+      while ($posicion = $qPosiciones->fetch(PDO::FETCH_ASSOC)) {
+        $pesoPosicion = $incluirPeso ? calcularPesoPosicion($posicion, (string)$posicion['concepto']) : 0;
+        $qProcesos->execute([$posicion['id']]);
+        $procesos = implode(', ', $qProcesos->fetchAll(PDO::FETCH_COLUMN));
+
+        $seccionesHtml .= '<tr><td></td><td></td><td></td><td></td>'
+          . '<td class="concept-cell">' . packingPdfEscape($posicion['concepto']) . '</td>'
+          . '<td>' . packingPdfEscape($posicion['posicion']) . '</td>'
+          . '<td class="number-cell">' . packingPdfEscape($posicion['cantidad']) . '</td>'
+          . '<td class="number-cell">' . packingPdfEscape($posicion['largo']) . '</td>'
+          . '<td class="number-cell">' . packingPdfEscape($posicion['ancho']) . '</td>'
+          . '<td>' . packingPdfEscape($posicion['marca']) . '</td>'
+          . ($incluirPeso ? '<td class="number-cell">' . packingPdfNumber($pesoPosicion) . '</td>' : '')
+          . '<td>' . packingPdfEscape($posicion['nro_colada']) . '</td>'
+          . '<td class="number-cell">' . packingPdfEscape($posicion['diametro']) . '</td>'
+          . '<td>' . packingPdfEscape($posicion['calidad']) . '</td>'
+          . '<td class="concept-cell">' . packingPdfEscape($procesos) . '</td>'
+          . '<td class="concept-cell">' . packingPdfEscape($posicion['observaciones']) . '</td></tr>';
+      }
+      $seccionesHtml .= '</tbody></table></td></tr>';
+    }
+  }
+
+  $seccionesHtml .= '</tbody></table></div>';
+}
+
+$logoPath = __DIR__ . '/assets/images/logo.jpg';
+$logoHtml = is_file($logoPath)
+  ? '<img class="logo" src="data:image/jpeg;base64,' . base64_encode((string)file_get_contents($logoPath)) . '" alt="Logo">'
+  : '';
+$pesoTotalHtml = $incluirPeso
+  ? '<div class="total-weight">Peso <strong>TOTAL</strong> de la lista: ' . packingPdfNumber($pesoTotal) . ' kg</div>'
+  : '';
+
+$html = '<!doctype html><html lang="es"><head><meta charset="UTF-8"><style>
+  @page { size: A4 landscape; margin: 10mm 9mm 13mm; }
+  body { font-family: "DejaVu Sans", sans-serif; font-size: 7.5pt; color: #111; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  th, td { border: 0.5pt solid #333; padding: 3pt; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+  th { background: #e9edf2; font-weight: bold; text-align: center; }
+  .header-table { margin-bottom: 5pt; }
+  .header-table td { height: 30pt; vertical-align: middle; }
+  .logo { max-width: 115pt; max-height: 36pt; }
+  .title { text-align: center; font-size: 15pt; font-weight: bold; }
+  .identifier { text-align: right; font-size: 9pt; font-weight: bold; }
+  .project-table { margin-bottom: 6pt; }
+  .history-table { margin: 4pt 0 8pt; font-size: 6.7pt; }
+  .history-table th:nth-child(1) { width: 6%; }
+  .history-table th:nth-child(2) { width: 11%; }
+  .history-table th:nth-child(3) { width: 39%; }
+  .history-table th:nth-child(4), .history-table th:nth-child(5), .history-table th:nth-child(6) { width: 14.66%; }
+  .section-block { margin: 7pt 0; page-break-inside: auto; }
+  .section-heading { margin-bottom: 2pt; }
+  .section-heading th { width: 10%; }
+  .section-heading .quantity-heading { width: 12%; }
+  .section-heading .quantity-cell { width: 10%; text-align: right; }
+  .component-table { font-size: 7pt; }
+  .component-table thead { display: table-header-group; }
+  .component-table th:nth-child(1) { width: 27%; }
+  .component-table th:nth-child(2) { width: 8%; }
+  .component-table th:nth-child(3) { width: 8%; }
+  .component-table th:nth-child(4) { width: ' . ($incluirPeso ? '10%' : '57%') . '; }
+  ' . ($incluirPeso ? '.component-table th:nth-child(5) { width: 47%; }' : '') . '
+  .positions-cell { padding: 2pt; }
+  .positions-table { font-size: 5.7pt; }
+  .positions-table thead { display: table-header-group; }
+  .positions-table th, .positions-table td { padding: 2pt; }
+  .flag-col { width: 2.6%; }
+  .position-concept-col { width: 22%; }
+  .position-col { width: 7%; }
+  .small-col { width: 4.8%; }
+  .mark-col { width: 5.5%; }
+  .colada-col { width: 6%; }
+  .quality-col { width: 6%; }
+  .process-col { width: 8.5%; }
+  .notes-col { width: ' . ($incluirPeso ? '7.9%' : '12.7%') . '; }
+  .concept-cell { white-space: normal; overflow-wrap: break-word; word-wrap: break-word; }
+  .number-cell { text-align: right; white-space: nowrap; }
+  .component-table > tbody > tr:not(.positions-row), .positions-table tbody tr { page-break-inside: avoid; }
+  .positions-row { page-break-inside: auto; }
+  .total-weight { margin-top: 7pt; text-align: right; font-size: 9pt; }
+</style></head><body>';
+
+$html .= '<table class="header-table"><tbody><tr><td style="width:22%">' . $logoHtml . '</td>'
+  . '<td class="title" style="width:48%">PACKING LIST</td>'
+  . '<td class="identifier" style="width:30%">' . packingPdfEscape($packingList['nombre'])
+  . '<br>Nº ' . packingPdfEscape($packingList['numero']) . ' - Rev. ' . packingPdfEscape($packingList['nro_revision']) . '</td></tr></tbody></table>';
+
+$html .= '<table class="project-table"><tbody><tr><td>'
+  . '<strong>Emisión:</strong> ' . packingPdfEscape($packingList['fecha']) . '<br>'
+  . '<strong>Proyecto:</strong> ' . packingPdfEscape($packingList['nombre_proyecto']) . '<br>'
+  . '<strong>Nro:</strong> ' . packingPdfEscape($packingList['nro_sitio'] . '_' . $packingList['nro_subsitio'] . '_' . $packingList['nro_proyecto'])
+  . '</td></tr></tbody></table>';
+
+$html .= '<table class="history-table"><thead><tr><th>Rev.</th><th>Fecha</th><th>Modificaciones</th><th>Elaboró</th><th>Revisó</th><th>Aprobó</th></tr></thead><tbody>'
+  . ($historialHtml ?: '<tr><td colspan="6">Sin revisiones registradas.</td></tr>')
+  . '</tbody></table>';
+$html .= $seccionesHtml ?: '<p>No hay secciones cargadas.</p>';
+$html .= $pesoTotalHtml . '</body></html>';
+
+Database::disconnect();
+
+$options = new Options();
+$options->set('isHtml5ParserEnabled', true);
+$options->set('defaultFont', 'DejaVu Sans');
+$options->set('chroot', __DIR__);
+$dompdf = new Dompdf($options);
+$dompdf->loadHtml($html, 'UTF-8');
+$dompdf->setPaper('A4', 'landscape');
+$dompdf->render();
+
+$canvas = $dompdf->getCanvas();
+$font = $dompdf->getFontMetrics()->getFont('DejaVu Sans', 'normal');
+$canvas->page_text(760, 570, '{PAGE_NUM} / {PAGE_COUNT}', $font, 7, [0.35, 0.35, 0.35]);
+
+$sufijoPeso = $incluirPeso ? '_con_peso' : '_sin_peso';
+$dompdf->stream('packing_list_' . (int)$packingList['numero'] . '_rev_' . (int)$packingList['nro_revision'] . $sufijoPeso . '.pdf', ['Attachment' => false]);

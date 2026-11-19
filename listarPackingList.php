@@ -8,7 +8,27 @@ include 'database.php';
 $prod = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
 $prodQuery = $prod ? '?prod=' . $prod : '';
 $prodParam = $prod ? '&prod=' . $prod : '';
-$estadosPackingPost = array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? []))));
+$filtrosSessionKey = 'filtros_listado_packing' . ($prod ? '_prod' : '');
+$urlListado = 'listarPackingList.php' . $prodQuery;
+$urlLimpiarFiltros = $urlListado . ($prodQuery ? '&' : '?') . 'clear_filters=1';
+if (isset($_GET['clear_filters'])) {
+	unset($_SESSION[$filtrosSessionKey]);
+	header('Location: ' . $urlListado);
+	exit;
+}
+$filtrosPacking = $_SESSION[$filtrosSessionKey] ?? ['nro' => '', 'fecha' => '', 'fechah' => '', 'estados' => []];
+$hayFiltrosPacking = isset($_SESSION[$filtrosSessionKey]);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+	$filtrosPacking = [
+		'nro' => trim((string)($_POST['nro'] ?? '')),
+		'fecha' => trim((string)($_POST['fecha'] ?? '')),
+		'fechah' => trim((string)($_POST['fechah'] ?? '')),
+		'estados' => array_values(array_filter(array_map('intval', (array)($_POST['id_estado'] ?? [])), function ($id) { return $id > 0; }))
+	];
+	$_SESSION[$filtrosSessionKey] = $filtrosPacking;
+	$hayFiltrosPacking = true;
+}
+$estadosPackingPost = $filtrosPacking['estados'];
 $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 ?>
 <!DOCTYPE html>
@@ -28,10 +48,6 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
         width: 24px;
         height: 20px;
         color: midnightblue;
-      }
-      .editable {
-        text-decoration: underline;
-        cursor: default;
       }
     </style>
 	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
@@ -62,10 +78,10 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 				  <div class="card-body">
                                         <form class="form-inline theme-form mt-3" name="form1" method="post" action="listarPackingList.php<?= $prodQuery ?>">
 					  <div class="form-group mb-0">
-						N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?php if (isset($_POST['nro'])) echo $_POST['nro'] ?>" name="nro">
+						N.Sitio/N.Proy:&nbsp;<input class="form-control" size="3" type="text" value="<?= htmlspecialchars($filtrosPacking['nro'], ENT_QUOTES) ?>" name="nro">
 					  </div>
 					  <div class="form-group mb-0">
-						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fecha'])) echo $_POST['fecha'] ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?php if (isset($_POST['fechah'])) echo $_POST['fechah'] ?>" name="fechah">
+						Rango:&nbsp;<input class="form-control" size="20" type="date" value="<?= htmlspecialchars($filtrosPacking['fecha'], ENT_QUOTES) ?>" name="fecha">-<input class="form-control" size="20" type="date" value="<?= htmlspecialchars($filtrosPacking['fechah'], ENT_QUOTES) ?>" name="fechah">
 					  </div>
                                         <div class="form-group mb-0 filter-state-group">
 						Estado:&nbsp;
@@ -89,8 +105,9 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 							</select>
 					  </div>
                       <div class="form-group mb-0 filter-form-actions">
-                                                <button class="btn btn-primary" onclick="document.form1.target='_self';document.form1.action='listarPackingList.php<?= $prodQuery ?>'">Buscar</button>
-					  </div>
+                                                <button class="btn btn-primary" id="btnFiltrarPackingList" onclick="document.form1.target='_self';document.form1.action='listarPackingList.php<?= $prodQuery ?>'">Buscar</button>
+						<a class="btn btn-secondary ml-2" href="<?= htmlspecialchars($urlLimpiarFiltros, ENT_QUOTES, 'UTF-8') ?>">Limpiar</a>
+				  </div>
 					</form>
 				</div>
 			  </div>
@@ -152,26 +169,27 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
                           </tr>
                         </thead>
                         <tbody>
-                          <?php 
-                            if (!empty($_POST)) {
+                          <?php
+                            if ($hayFiltrosPacking) {
                             $pdo = Database::connect();
-                            $sql = "SELECT pl.id, plr.nro_revision, p.nombre, date_format(plr.fecha,'%d/%m/%y'), e.estado, plr.id, plr.nombre,p.nro, s.nro_sitio, s.nro_subsitio,u.usuario,plr.numero, date_format(plr.fecha,'%y%m%d') FROM packing_lists pl INNER JOIN packing_lists_revisiones plr ON pl.id=plr.id_packing_list inner join proyectos p on p.id = plr.id_proyecto inner join sitios s on s.id = p.id_sitio inner join estados_packing_list e on e.id = plr.id_estado_packing_list inner join usuarios u on u.id = plr.id_usuario WHERE pl.anulado = 0 "; 
+                            $sql = "SELECT pl.id, plr.nro_revision, p.nombre, date_format(plr.fecha,'%d/%m/%y'), e.estado, plr.id, plr.nombre,p.nro, s.nro_sitio, s.nro_subsitio,u.usuario,plr.numero, date_format(plr.fecha,'%y%m%d'), plr.id_estado_packing_list FROM packing_lists pl INNER JOIN packing_lists_revisiones plr ON pl.id=plr.id_packing_list inner join proyectos p on p.id = plr.id_proyecto inner join sitios s on s.id = p.id_sitio inner join estados_packing_list e on e.id = plr.id_estado_packing_list inner join usuarios u on u.id = plr.id_usuario WHERE pl.anulado = 0 ";
 							
-							if (!empty($_POST['nro'])) {
-								$sql .= " and (p.nro = ".$_POST['nro']." or s.nro_sitio = ".$_POST['nro'].") ";
+							if ($filtrosPacking['nro'] !== '') {
+								$nroFiltro = (int)$filtrosPacking['nro'];
+								$sql .= " and (p.nro = ".$nroFiltro." or s.nro_sitio = ".$nroFiltro.") ";
 							}
-							if (!empty($_POST['fecha'])) {
-								$sql .= " AND plr.fecha >= '".$_POST['fecha']."' ";
+							if ($filtrosPacking['fecha'] !== '') {
+								$sql .= " AND plr.fecha >= '".$filtrosPacking['fecha']."' ";
 							}
-							if (!empty($_POST['fechah'])) {
-								$sql .= " AND plr.fecha <= '".$_POST['fechah']."' ";
+							if ($filtrosPacking['fechah'] !== '') {
+								$sql .= " AND plr.fecha <= '".$filtrosPacking['fechah']."' ";
 							}
 							if ($estadosPackingPost) {
 								$sql .= " AND e.id in (".implode(', ', $estadosPackingPost).") ";
 							}
 									 
                             foreach ($pdo->query($sql) as $row) {
-                                echo '<tr>';
+                                echo '<tr data-estado-id="'.(int)$row[13].'">';
                                 echo '<td class="d-none">'. $row[5] . '</td>';
                                 echo '<td>'. $row[8] .' / '.$row[9] . '</td>';
                                 echo '<td>'. $row[7] . '</td>';
@@ -199,7 +217,6 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
                                     </div>
                                   </div>
                                 </div><?php
-
                             }
 							Database::disconnect();
 							}
@@ -562,9 +579,6 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
             "next": "Siguiente",
             "previous": "Anterior"
         }},
-		"fnRowCallback": function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-                $('td:eq(9)', nRow).addClass("editable").attr('data-id-posicion', aData[0]).attr('data-id-estado', aData[11]).attr("title","Doble click para editar");
-              },
               initComplete: function(){
                 $('[title]').tooltip();
               }
@@ -612,10 +626,22 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
           alert("Por favor seleccione un packing list para cancelar")
         }
       })
-		$("#link_modificar_pl").on("click",function(){
-			let l=document.location.href;
-			if(this.href==l || this.href==l+"#"){
-			  alert("Por favor seleccione un packing list para modificar/revisar")
+		$("#link_modificar_pl").on("click",function(event){
+			event.preventDefault();
+			const idRevision = Number($(this).data('id'));
+			const estadoId = Number($(this).data('estado-id'));
+			if (!idRevision) {
+			  alert("Por favor seleccione un packing list para modificar/revisar");
+			  return;
+			}
+			if (estadoId === 1) {
+			  window.location.href = 'nuevaPackingList.php?id_packing_list_revision=' + idRevision + prodParam;
+			} else if (estadoId === 3 || estadoId === 4) {
+			  $('#idPackingListRevisionMotivo').val(idRevision);
+			  $('#motivoRevisionPackingList').val('');
+			  $('#modalRevisionPackingList').modal('show');
+			} else {
+			  alert('Solo se puede generar una revisión desde una Packing List Aprobada o En Proceso.');
 			}
 		})
 		$("#link_nueva_seccion").on("click",function(){
@@ -636,24 +662,23 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
       $.ajax({
         type: "POST",
         url: "modificarEstadoPackingList.php",
-        data: "idPosicion="+idPosicionAccion+"&idEstado="+idEstadoAccion,
-        success: function(data){
-          // actualizamos la celda de estado de la fila seleccionada y las acciones contextuales
-          let fila = $("#dataTables-example666 tbody tr.selected");
-          if (fila.length) {
-            let celda = fila.find("td:nth-child(10)");
-            let label = $("#select_estado_base option[value='"+idEstadoAccion+"']").text();
-            celda.html(label);
-            celda.data("idEstado", idEstadoAccion);
-          }
-          $(".js_accion_estado").addClass("d-none");
-          $(".js_accion_estado").data("id",null);
-          $("#link_aprobar").data("id", null).data("estado", null);
-          $("#link_rechazar").data("id", null).data("estado", null);
-          if (idEstadoAccion == 4) {
-            $("#link_terminar").removeClass("d-none").data("id", idPosicionAccion);
-          }
+        data: {idPosicion: idPosicionAccion, idEstado: idEstadoAccion},
+        dataType: "text"
+      }).done(function(respuesta) {
+        if ($.trim(respuesta) !== 'ok') {
+          alert('Error: ' + ($.trim(respuesta) || 'No se pudo actualizar el estado del Packing List.'));
+          return;
         }
+
+        const mensajesEstado = {
+          3: 'Packing List aprobada correctamente.',
+          5: 'Packing List terminada correctamente.',
+          6: 'Packing List cancelada correctamente.'
+        };
+        alert(mensajesEstado[idEstadoAccion] || 'Estado del Packing List actualizado correctamente.');
+        $('#btnFiltrarPackingList').trigger('click');
+      }).fail(function(xhr) {
+        alert(xhr.responseText || 'Error del servidor al actualizar el estado del Packing List.');
       });
     }
     $("#link_aprobar").on("click",function(){
@@ -702,10 +727,15 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
         var t=$(this).parent();
         //t.parent().find("tr").removeClass("selected");
 
-        let id_pl_revision=t.find("td:first-child").html();
+        let id_pl_revision=parseInt(t.find("td:first-child").text().trim(), 10);
         let id_pl = t.find("td:nth-child(5)").html();
 		let nro_revision = t.find("td:nth-child(3)").html();
 		let estado = t.find("td:nth-child(10)").html();
+		let estadoId = parseInt(t.data('estado-id'), 10);
+		if (!Number.isInteger(id_pl_revision) || id_pl_revision < 1) {
+		  alert("No se pudo identificar el Packing List seleccionado.");
+		  return;
+		}
 		
         if(t.hasClass('selected')){
           deselectRow(t);
@@ -715,6 +745,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 		  $("#link_imprimir_pl_sin").attr("href","#");
 		  $("#link_eliminar_pl").attr("data-target","#");
           $("#link_modificar_pl").attr("href","#");
+          $("#link_modificar_pl").data("id", null).data("estado-id", null);
           $("#link_nueva_seccion").attr("href","#");
           $("#link_nueva_despacho").attr("href","#");
           $(".js_accion_estado").addClass("d-none");
@@ -741,7 +772,8 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 		  
           $("#link_nueva_seccion").attr("href","nuevaPackingListSecciones.php?id_packing_list_revision="+id_pl_revision+prodParam);
           //$("#link_modificar_pl").attr("href","modificarPackingList.php?id="+id_pl_revision+"&revision="+nro_revision);
-          $("#link_modificar_pl").attr("href","modificarPackingList.php?id_packing_list_revision="+id_pl_revision+prodParam);
+          $("#link_modificar_pl").attr("href","nuevaPackingList.php?id_packing_list_revision="+id_pl_revision+prodParam);
+          $("#link_modificar_pl").data("id", id_pl_revision).data("estado-id", estadoId);
           $("#link_nueva_despacho").attr("href","nuevoDespacho.php?id_packing_list="+id_pl_revision+prodParam);
 
           // Acciones contextuales según el estado de la revisión seleccionada
@@ -755,55 +787,6 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
         }
       });
 	  
-	  $("body").on('dblclick',".editable", function(event) {
-          var t=$(this);
-          
-          let old_padding=t.css("padding");
-          let old_estado=t.text();
-          t.css({padding: '0'});
-          t.find('input[type="hidden"]');
-          
-		  var idPosicion=t.data("idPosicion");
-		  console.log(idPosicion);
-		  var idEstado=t.data("idEstado");
-          dataString="idPosicion="+idPosicion;
-
-          let nuevo_select_estado=$("#select_estado_base").clone()
-          nuevo_select_estado.id="id_estado_nuevo"
-
-          t.html(nuevo_select_estado);
-          nuevo_select_estado.val(idEstado)
-
-          nuevo_select_estado.on('blur', function(event) {
-            nuevaEstado=nuevo_select_estado.val();
-            // Obtener el texto correspondiente al valor seleccionado
-            var textoSeleccionado = nuevo_select_estado.find('option[value="'+nuevaEstado+'"]').text();
-
-            $.ajax({
-              type: "POST",
-              url: "modificarEstadoPackingList.php",
-              data: "idPosicion="+idPosicion+"&idEstado="+nuevaEstado,
-              success: function(data) {
-                if(data){
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
-                }else{
-                  t.css({padding: old_padding});
-                  t.html(textoSeleccionado)
-					
-                }
-                $("#link_aprobar").data("id", idPosicion).data("estado", textoSeleccionado);
-                $("#link_rechazar").data("id", idPosicion).data("estado", textoSeleccionado);
-              },
-              error: function(xhr) {
-                t.css({padding: old_padding});
-                t.html(old_estado);
-                alert(xhr.responseText || "No se pudo actualizar el estado del Packing List.");
-              }
-            });
-          });
-        });
-	
 	} );
 	<?php
 	if (isset($_GET['prod']) && $_GET['prod'] == 1) {
@@ -817,7 +800,52 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
     function deselectRow(t){
       t.removeClass('selected');
     }
-    </script>
+	</script>
+
+	<div class="modal fade" id="modalRevisionPackingList" tabindex="-1" role="dialog" aria-labelledby="modalRevisionPackingListLabel" aria-hidden="true">
+	  <div class="modal-dialog" role="document">
+	    <div class="modal-content">
+	      <form id="formRevisionPackingList" method="post" action="nuevaRevisionPackingList.php">
+	        <input type="hidden" id="idPackingListRevisionMotivo" name="id_packing_list_revision">
+	        <input type="hidden" name="prod" value="<?= (int)($prod ?? 0) ?>">
+	        <div class="modal-header">
+	          <h5 class="modal-title" id="modalRevisionPackingListLabel">Nueva revisión</h5>
+	          <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+	        </div>
+	        <div class="modal-body">
+	          <label for="motivoRevisionPackingList">Motivo de la revisión(*)</label>
+	          <textarea id="motivoRevisionPackingList" name="motivoRevision" class="form-control" required></textarea>
+	        </div>
+	        <div class="modal-footer">
+	          <button type="submit" class="btn btn-primary">Crear revisión</button>
+	          <button type="button" class="btn btn-light" data-dismiss="modal">Cancelar</button>
+	        </div>
+	      </form>
+	    </div>
+	  </div>
+	</div>
+
+	<script>
+	  $('#formRevisionPackingList').on('submit', function(event) {
+	    event.preventDefault();
+	    const $form = $(this);
+	    $.ajax({
+	      type: 'POST',
+	      url: $form.attr('action'),
+	      data: $form.serialize(),
+	      dataType: 'json'
+	    }).done(function(respuesta) {
+	      if (!respuesta || !respuesta.redirect) {
+	        alert('No se pudo crear la revisión de la Packing List.');
+	        return;
+	      }
+	      window.location.href = respuesta.redirect;
+	    }).fail(function(xhr) {
+	      const respuesta = xhr.responseJSON;
+	      alert((respuesta && respuesta.error) || xhr.responseText || 'No se pudo crear la revisión de la Packing List.');
+	    });
+	  });
+	</script>
 	
 	<script>
     $(document).ready(function() {
@@ -829,6 +857,11 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 	$('#dataTables-example667').DataTable({
         stateSave: false,
         responsive: false,
+        columnDefs: [{
+          targets: [2, 5],
+          className: 'text-right',
+          render: $.fn.dataTable.render.number('.', ',', 2)
+        }],
         language: {
          "decimal": "",
         "emptyTable": "No hay información",
@@ -874,19 +907,26 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
         data: datosUpdate,
         url: 'get_secciones.php',
         method: "post",
+        dataType: "json",
         cache: false,
         contentType: false,
         processData: false,
         success: function(data){
-          console.log(data);
-          data = JSON.parse(data);
-          console.log(data);
+          if (!Array.isArray(data)) {
+            alert((data && data.error) || "La respuesta del detalle de secciones no tiene el formato esperado.");
+            return;
+          }
 
           $('#dataTables-example667').DataTable().destroy();
           $('#dataTables-example667').DataTable({
             stateSave: false,
             responsive: false,
             data: data,
+            columnDefs: [{
+              targets: [2, 5],
+              className: 'text-right',
+              render: $.fn.dataTable.render.number('.', ',', 2)
+            }],
             language: {
               "decimal": "",
               "emptyTable": "No hay información",
@@ -971,12 +1011,15 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
           get_componentes(id_sec)
           $("#link_ver_seccion_pl").attr("href","verSeccionPackingList.php?id="+id_sec+prodParam);
           $("#link_modificar_seccion").attr("href","modificarSeccionPackingList.php?id="+id_sec+prodParam);
-          $("#link_nuevo_componente").attr("href","nuevoComponentePackingList.php?id="+id_sec+prodParam);
-          $("#link_eliminar_seccion").attr("data-toggle","modal");
-          $("#link_eliminar_seccion").attr("data-target","#eliminarModalSeccion_"+id_sec);
-        }
+           $("#link_nuevo_componente").attr("href","nuevoComponentePackingList.php?id="+id_sec+prodParam);
+           $("#link_eliminar_seccion").attr("data-toggle","modal");
+           $("#link_eliminar_seccion").attr("data-target","#eliminarModalSeccion_"+id_sec);
+         }
 		  });
-          
+        },
+        error: function(xhr) {
+          const message = xhr.responseJSON && xhr.responseJSON.error;
+          alert(message || "No se pudieron cargar las secciones y componentes del Packing List.");
         }
       });
     }

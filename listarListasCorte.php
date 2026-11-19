@@ -255,6 +255,8 @@ Database::disconnect(); ?>
                         <a href="#" id="link_modificar_lc"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>
                         &nbsp;&nbsp;<?php
                       }?>
+                      <a href="#" id="link_ver_detalle_lc" title="Ver detalle"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver detalle" title="Ver detalle"></a>
+                      &nbsp;&nbsp;
                       <a href="#" id="link_imprimir_lc"><img src="img/print.png" width="25" height="20" border="0" alt="Imprimir" title="Imprimir"></a>
                       &nbsp;&nbsp;<?php
                       if (!empty(tienePermiso(317))) {?>
@@ -654,6 +656,7 @@ Database::disconnect(); ?>
           if(t.hasClass('selected')){
             deselectRow(t);
             get_detalle_lista_corte(0)
+            $("#link_ver_detalle_lc").attr("href", "#");
             $("#link_ot_lc").attr("href","#");
             $("#link_imprimir_lc").attr("href","#");
             $("#link_modificar_lc").attr("href","#");
@@ -664,6 +667,7 @@ Database::disconnect(); ?>
             //t.parent().find("tr").removeClass("selected");
             selectRow(t);
             get_detalle_lista_corte(id_lc)
+            $("#link_ver_detalle_lc").attr("href", "verListaCorte.php?id=" + id_lc + prodParam);
             $("#link_imprimir_lc").attr("target","_blank").attr("href","imprimirListaCorte.php?id="+id_lc+prodParam);
             if (estado != "Cancelada") {
               //$("#link_modificar_lc").attr("href","modificarListaCorte.php?id_lista_corte_revision="+id_lc);//old version
@@ -674,6 +678,16 @@ Database::disconnect(); ?>
               $("#link_ot_lc").attr("href","#");
             }
           }
+        });
+
+        $("#link_ver_detalle_lc").on("click", function(e) {
+          e.preventDefault();
+          const href = $(this).attr("href");
+          if (!href || href === "#") {
+            alert("Por favor seleccione una Lista de Corte para ver su detalle");
+            return;
+          }
+          window.open(href, "_blank", "noopener");
         });
 
         // Setup - add a text input to each footer cell

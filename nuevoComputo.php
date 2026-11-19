@@ -23,10 +23,6 @@ if (!empty($_POST)) {
   $data = $q->fetch(PDO::FETCH_ASSOC);
   $idProyecto = $data['id_proyecto'];
   
-  $sql = "UPDATE tareas set fecha_inicio_real=now(), fecha_fin_real=now() where id = ?";
-  $q = $pdo->prepare($sql);
-  $q->execute([$_POST['id_tarea']]);
-  
   $sql = "SELECT s.nro_sitio, s.nro_subsitio, p.nro, p.nombre from proyectos p inner join sitios s on s.id = p.id_sitio where p.id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$idProyecto]);
@@ -58,6 +54,10 @@ if (!empty($_POST)) {
   $q->execute([$nro_revision,$_POST['id_tarea'],$_POST['fecha'],$idCuentaRealizo,$_POST['id_estado'],$comentarios_revision, $nroComputo,$idCuentaRealizo,$idCuentaReviso,$idCuentaValido]);
   
   $id_computo = $pdo->lastInsertId();
+
+  $sql = "UPDATE tareas SET fecha_inicio_real = IF(fecha_inicio_real IS NULL OR fecha_inicio_real = '0000-00-00', NOW(), fecha_inicio_real) WHERE id = ?";
+  $q = $pdo->prepare($sql);
+  $q->execute([$_POST['id_tarea']]);
   
   /*$sql = "UPDATE computos set nro_computo = ? where id = ?";
   $q = $pdo->prepare($sql);

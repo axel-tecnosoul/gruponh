@@ -34,6 +34,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["ajax"])) {
         $q = $pdo->prepare($sql);
         $q->execute([$id_lista_corte]);
 
+        $sql = "UPDATE tareas
+                SET fecha_fin_real = IF(fecha_fin_real IS NULL OR fecha_fin_real = '0000-00-00', NOW(), fecha_fin_real)
+                WHERE id = (SELECT id_tarea FROM listas_corte WHERE id = ?)";
+        $q = $pdo->prepare($sql);
+        $q->execute([$id_lista_corte]);
+
         if ($modoDebug == 1) {
           echo debugQuery($pdo, $sql, [$id_lista_corte]);
           echo "<br><br>Afe: " . $q->rowCount();

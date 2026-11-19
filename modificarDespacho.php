@@ -18,13 +18,58 @@
     
     if (!empty($_POST)) {
 		
-		 // insert data
         $pdo = Database::connect();
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        
-        $sql = "UPDATE `despachos` set `nro_remito` = ?, `transporte` = ?, `chofer` = ?, `id_estado_despacho` = ?, `id_proyecto` = ?, `detalle_oc` = ? where id = ?";
+
+        $idProyecto = filter_var($_POST['id_proyecto'] ?? null, FILTER_VALIDATE_INT);
+        $idsOcc = array_values(array_unique(array_filter(
+            array_map('intval', (array)($_POST['id_occ'] ?? [])),
+            static function ($idOcc) { return $idOcc > 0; }
+        )));
+        if (!$idProyecto || $idProyecto < 1 || !$idsOcc) {
+            Database::disconnect();
+            http_response_code(422);
+            exit('Seleccione un proyecto y al menos una OCC válida.');
+        }
+
+        $placeholdersOcc = implode(',', array_fill(0, count($idsOcc), '?'));
+        $qOcc = $pdo->prepare(
+            "SELECT o.id, o.numero
+             FROM occ o
+             INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
+             WHERE p.id = ? AND o.id IN ($placeholdersOcc)"
+        );
+        $qOcc->execute(array_merge([$idProyecto], $idsOcc));
+        $occPorId = [];
+        foreach ($qOcc->fetchAll(PDO::FETCH_ASSOC) as $occ) {
+            $occPorId[(int)$occ['id']] = $occ['numero'];
+        }
+        if (count($occPorId) !== count($idsOcc)) {
+            Database::disconnect();
+            http_response_code(422);
+            exit('Una o más OCC no corresponden al proyecto seleccionado.');
+        }
+
+        $pdo->beginTransaction();
+        $qEstadoActual = $pdo->prepare("SELECT id_estado_despacho FROM despachos WHERE id = ? FOR UPDATE");
+        $qEstadoActual->execute([$id]);
+        if ((int)$qEstadoActual->fetchColumn() !== 1) {
+            $pdo->rollBack();
+            Database::disconnect();
+            header("Location: verDespacho.php?id=" . (int)$id);
+            exit;
+        }
+        $sql = "UPDATE `despachos` set `nro_remito` = ?, `transporte` = ?, `chofer` = ?, `id_proyecto` = ?, `detalle_oc` = ? where id = ? AND id_estado_despacho = 1";
         $q = $pdo->prepare($sql);
-        $q->execute([$_POST['nro_remito'],$_POST['transporte'],$_POST['chofer'],$_POST['id_estado_despacho'],$_POST['id_proyecto'],$_POST['detalle_oc'],$_GET['id']]);
+        // detalle_oc conserva la primera OCC para compatibilidad con registros legados.
+        $q->execute([$_POST['nro_remito'],$_POST['transporte'],$_POST['chofer'],$idProyecto,$occPorId[$idsOcc[0]],$id]);
+
+        $pdo->prepare("DELETE FROM despachos_occ WHERE id_despacho = ?")->execute([$id]);
+        $qRelacion = $pdo->prepare("INSERT INTO despachos_occ (id_despacho, id_occ) VALUES (?, ?)");
+        foreach ($idsOcc as $idOcc) {
+            $qRelacion->execute([$id, $idOcc]);
+        }
+        $pdo->commit();
 		
         $sql = "INSERT INTO logs(`fecha_hora`, `id_usuario`, `detalle_accion`,`modulo`,link) VALUES (now(),?,'Modificación de despacho','Despachos','verDespacho.php?id=$id')";
         $q = $pdo->prepare($sql);
@@ -41,6 +86,43 @@
         $q = $pdo->prepare($sql);
         $q->execute([$id]);
         $data = $q->fetch(PDO::FETCH_ASSOC);
+        if (!$data || (int)$data['id_estado_despacho'] !== 1) {
+            Database::disconnect();
+            header("Location: verDespacho.php?id=" . (int)$id);
+            exit;
+        }
+
+        $qOccSeleccionadas = $pdo->prepare("SELECT id_occ FROM despachos_occ WHERE id_despacho = ? ORDER BY id_occ");
+        $qOccSeleccionadas->execute([$id]);
+        $occIdsSeleccionadas = array_map('intval', $qOccSeleccionadas->fetchAll(PDO::FETCH_COLUMN));
+        if (!$occIdsSeleccionadas && !empty($data['detalle_oc'])) {
+            // Compatibilidad mientras los despachos históricos no tengan relación migrada.
+            $qOccLegacy = $pdo->prepare(
+                "SELECT o.id
+                 FROM occ o
+                 INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
+                 WHERE p.id = ? AND o.numero = ?
+                 GROUP BY o.numero
+                 HAVING COUNT(*) = 1"
+            );
+            $qOccLegacy->execute([$data['id_proyecto'], $data['detalle_oc']]);
+            $occIdsSeleccionadas = array_map('intval', $qOccLegacy->fetchAll(PDO::FETCH_COLUMN));
+        }
+
+        $sqlOcc = "SELECT o.id, o.numero, o.monto, o.fecha_entrega, o.abierta, m.moneda
+                   FROM occ o
+                   INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
+                   INNER JOIN monedas m ON m.id = o.id_moneda
+                   WHERE p.id = ? AND (o.activa = 1";
+        $paramsOcc = [$data['id_proyecto']];
+        if ($occIdsSeleccionadas) {
+            $sqlOcc .= " OR o.id IN (" . implode(',', array_fill(0, count($occIdsSeleccionadas), '?')) . ")";
+            array_push($paramsOcc, ...$occIdsSeleccionadas);
+        }
+        $sqlOcc .= ") ORDER BY o.numero";
+        $qOcc = $pdo->prepare($sqlOcc);
+        $qOcc->execute($paramsOcc);
+        $occDisponibles = $qOcc->fetchAll(PDO::FETCH_ASSOC);
         
         Database::disconnect();
     }
@@ -82,7 +164,7 @@
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Proyecto(*)</label>
 							<div class="col-sm-9">
-							<select name="id_proyecto" id="id_proyecto" autofocus class="js-example-basic-single col-sm-12" required="required" onChange="jsListarOCs(this.value);">
+                            <select name="id_proyecto" id="id_proyecto" autofocus class="js-example-basic-single col-sm-12" required="required" onChange="jsListarOCs(this.value);">
 							<option value="">Seleccione...</option>
 							<?php
 							$pdo = Database::connect();
@@ -104,7 +186,22 @@
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">OCC(*)</label>
-							<div class="col-sm-9"><input name="detalle_oc" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['detalle_oc']; ?>"></div>
+							<div class="col-sm-9">
+							<select name="id_occ[]" id="detalle_oc" class="js-example-basic-multiple col-sm-12" multiple="multiple" data-placeholder="Seleccione una o más OCC" required="required">
+							<?php foreach ($occDisponibles as $occ):
+								$fechaEntregaOcc = (string)$occ['fecha_entrega'];
+								$fechaEntregaOcc = $fechaEntregaOcc !== '' && $fechaEntregaOcc !== '0000-00-00'
+									? date('d/m/Y', strtotime($fechaEntregaOcc))
+									: 'sin fecha';
+								$estadoOcc = (int)$occ['abierta'] === 1 ? 'Abierta' : 'Cerrada';
+								$etiquetaOcc = 'OCC ' . $occ['numero']
+									. ' · ' . $occ['moneda'] . ' ' . number_format((float)$occ['monto'], 2, ',', '.')
+									. ' · Entrega: ' . $fechaEntregaOcc . ' · ' . $estadoOcc;
+				?>
+								<option value="<?=(int)$occ['id']?>" <?=in_array((int)$occ['id'], $occIdsSeleccionadas, true) ? 'selected' : ''?>><?=htmlspecialchars($etiquetaOcc, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')?></option>
+							<?php endforeach; ?>
+							</select>
+							</div>
 							</div>
 							<div class="form-group row">
 							<label class="col-sm-3 col-form-label">Nro. Remito(*)</label>
@@ -119,27 +216,8 @@
 							<div class="col-sm-9"><input name="chofer" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['chofer']; ?>"></div>
 							</div>
 							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Estado(*)</label>
-							<div class="col-sm-9">
-							<select name="id_estado_despacho" id="id_estado_despacho" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `estado` FROM `estados_despacho` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==$data['id_estado_despacho']) {
-									echo " selected ";
-								}
-								echo ">".$fila['estado']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
+							<label class="col-sm-3 col-form-label">Estado</label>
+							<div class="col-sm-9"><div class="form-control-plaintext">Pendiente</div></div>
 							</div>
                         </div>
                       </div>
@@ -210,6 +288,17 @@
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
 	<script>
+		function jsListarOCs(val) {
+			$.ajax({
+				type: "GET",
+				url: "ajaxOCC.php",
+				data: {id_proyecto: val},
+				success: function(resp) {
+					$("#detalle_oc").html(resp).trigger('change');
+				}
+			});
+		}
+
 		$(document).ready(function() {
     // Setup - add a text input to each footer cell
     $('#dataTables-example666 tfoot th').each( function () {

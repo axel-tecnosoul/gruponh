@@ -103,6 +103,11 @@ Database::disconnect(); ?>
       color: midnightblue;
     }
 
+    .factura-venta-toolbar {
+      column-gap: 1rem;
+      row-gap: .5rem;
+    }
+
   </style>
 </head>
 
@@ -188,29 +193,29 @@ Database::disconnect(); ?>
             <div class="col-sm-12">
               <div class="card">
                 <div class="card-header">
-                  <div class="d-flex align-items-center flex-wrap">
-                    <h5 class="mb-0 mr-2"><?= $ubicacion ?></h5>&nbsp;&nbsp;<?php
-                    if (!empty(tienePermiso(337))): ?>
+                  <div class="d-flex align-items-center flex-wrap factura-venta-toolbar">
+                    <h5 class="mb-0"><?= $ubicacion ?></h5>
+                    <?php if (!empty(tienePermiso(337))): ?>
                       <a href="#" id="btn_nueva_factura" title="Nueva Factura">
                         <img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">
-                      </a>&nbsp;&nbsp;<?php
-                    endif;
-                    if (!empty(tienePermiso(339))): ?>
+                      </a>
+                    <?php endif; ?>
+                    <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_modificar_fv" title="Modificar/Anular">
                         <img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar/Anular">
-                      </a>&nbsp;&nbsp;<?php
-                    endif;
-                    if (!empty(tienePermiso(339))): ?>
+                      </a>
+                    <?php endif; ?>
+                    <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_pagar_fv" title="Marcar Pagada">
                         <img src="img/tratoHecho.png" width="24" height="25" border="0" alt="Marcar Pagada">
-                      </a>&nbsp;&nbsp;<?php
-                    endif;
-                    if (!empty(tienePermiso(339))): ?>
+                      </a>
+                    <?php endif; ?>
+                    <?php if (!empty(tienePermiso(339))): ?>
                       <a href="#" id="link_ver_fv" title="Ver Factura">
                         <img src="img/eye.png" width="24" height="15" border="0" alt="Ver Factura">
-                      </a>&nbsp;&nbsp;<?php
-                    endif;
-                    if (!empty(tienePermiso(337))): ?>
+                      </a>
+                    <?php endif; ?>
+                    <?php if (!empty(tienePermiso(337))): ?>
                       <?php /* <a href="#" id="link_nuevo_detalle_fv" title="Añadir ítem Detalle">
                         <img src="img/venc.jpg" width="24" height="25" border="0" alt="Añadir ítem Detalle">
                       </a>&nbsp;&nbsp;
@@ -221,15 +226,15 @@ Database::disconnect(); ?>
                     if (!empty(tienePermiso(343))): ?>
                       <a href="#" id="link_exportar_fv" title="Exportar">
                         <img src="img/xls.png" width="24" height="25" border="0" alt="Exportar">
-                      </a>&nbsp;&nbsp;
+                      </a>
                       <a href="#" id="link_exportar_bejerman_fv" title="Bejerman TXT">
                         <img src="img/import.png" width="24" height="25" border="0" alt="Bejerman TXT">
-                      </a>&nbsp;&nbsp;<?php
-                    endif;
-                    if (!empty(tienePermiso(337))): ?>
-                      <a href="#" class="js-nueva-nota-fv fa fa-lg ml-2" data-tipo="credito" title="Nota de crédito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">NC</a>&nbsp;&nbsp;
-                      <a href="#" class="js-nueva-nota-fv fa fa-lg" data-tipo="debito" title="Nota de débito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">ND</a><?php
-                    endif; ?>
+                      </a>
+                    <?php endif; ?>
+                    <?php if (!empty(tienePermiso(337))): ?>
+                      <a href="#" class="js-nueva-nota-fv fa fa-lg" data-tipo="credito" title="Nota de crédito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">NC</a>
+                      <a href="#" class="js-nueva-nota-fv fa fa-lg" data-tipo="debito" title="Nota de débito" style="color: midnightblue; font-size: 1.66667rem;"><img src="img/icon_alta.png" width="24" height="25" border="0" alt="Nueva">ND</a>
+                    <?php endif; ?>
                   </div>
                 </div>
                 <div class="card-body">
@@ -296,7 +301,6 @@ Database::disconnect(); ?>
                             <td><span class="badge <?=escaparHtml($claseEstadoFactura)?>"><?=escaparHtml($row['estado_factura'])?></span></td>
                             <td class="text-center"><?=$exportada;?></td>
                             <td class="text-center"><?=$pagada;?></td>
-                            </td>
                             <td><?=escaparHtml($row['observaciones'])?></td>
                           </tr><?php
                         } ?>
@@ -314,10 +318,10 @@ Database::disconnect(); ?>
                           <th>IVA</th>
                           <th>Otros</th>
                           <th>Total Neto</th>
-                          <th>Observación</th>
                           <th>Estado</th>
                           <th>Exportada</th>
                           <th>Pagada</th>
+                          <th>Observación</th>
                         </tr>
                       </tfoot>
                     </table>

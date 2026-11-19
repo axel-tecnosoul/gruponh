@@ -1,10 +1,25 @@
 <?php if (!isset($vista)) return;
-$fv = function($key, $default = '') use ($facturaData) {
+$fv = function($key, $default = '') use ($facturaData, $vista) {
+  if ($vista === 'venta' && array_key_exists($key, $_POST) && is_scalar($_POST[$key])) {
+    return htmlspecialchars((string)$_POST[$key], ENT_QUOTES, 'UTF-8');
+  }
   if (!empty($facturaData) && isset($facturaData[$key])) {
     return htmlspecialchars($facturaData[$key]);
   }
   return htmlspecialchars($default);
 };
+$formAction = 'nuevaFacturaCompra.php';
+if ($vista === 'venta') {
+  $actionParams = [];
+  $actionId = !empty($_GET['id']) ? $_GET['id'] : ($_POST['id_factura'] ?? null);
+  $actionProyectoId = !empty($_POST['id_proyecto']) ? $_POST['id_proyecto'] : ($_GET['id_proyecto'] ?? null);
+  if ((int)$actionId > 0) $actionParams['id'] = (int)$actionId;
+  if ((int)$actionProyectoId > 0) $actionParams['id_proyecto'] = (int)$actionProyectoId;
+  $actionCertificados = (array)($_POST['certificados'] ?? $_GET['certificados'] ?? ($certIds ?? []));
+  $actionCertificados = array_values(array_unique(array_filter(array_map('intval', $actionCertificados), static fn($id) => $id > 0)));
+  if ($actionCertificados) $actionParams['certificados'] = $actionCertificados;
+  $formAction = 'nuevaFacturaVenta.php' . ($actionParams ? '?' . http_build_query($actionParams) : '');
+}
 $empresaFceId = (int)($_POST['id_empresa'] ?? $facturaData['id_empresa'] ?? $proyectoDatos['id_empresa'] ?? 0);
 $tipoComprobanteFce = $vista === 'venta' ? codigoArcaDesdeTipo($_POST['id_tipo_comprobante'] ?? $facturaData['id_tipo_comprobante'] ?? 0) : 0;
 $esTipoFceInicial = in_array((int)$tipoComprobanteFce, [201, 206, 211], true);
@@ -104,9 +119,7 @@ if ($vista === 'venta') {
           <?php endif; ?>
 
           <form id="formFactura" class="form theme-form" role="form" method="post"
-            action="<?= $vista === 'venta'
-              ? 'nuevaFacturaVenta.php' . (!empty($_GET['id_proyecto']) ? '?id_proyecto=' . intval($_GET['id_proyecto']) : '')
-              : 'nuevaFacturaCompra.php' ?>">
+            action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8') ?>">
             <?php if (!empty($certIds)): ?>
             <?php foreach ($certIds as $cid): ?>
               <input type="hidden" name="certificados[]" value="<?= $cid ?>">
@@ -178,7 +191,7 @@ if ($vista === 'venta') {
                             <?php if (($vista === 'venta' && $preseleccionado) || ($vista === 'compra' && $ocPreseleccionada)): ?>
                               <p class="form-control-plaintext"><?= htmlspecialchars($empresaLabel) ?></p>
                               <?php if ($vista === 'venta'): ?>
-                                <input type="hidden" name="id_empresa" id="id_empresa" value="<?= intval($proyectoDatos['id_empresa']) ?>">
+                                <input type="hidden" name="id_empresa" id="id_empresa" value="<?= (int)($_POST['id_empresa'] ?? $proyectoDatos['id_empresa'] ?? 0) ?>">
                               <?php else: ?>
                                 <input type="hidden" name="id_empresa" id="id_empresa" value="<?= (int)$idEmpresa ?>">
                               <?php endif; ?>
@@ -192,7 +205,8 @@ if ($vista === 'venta') {
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 if ($vista === 'venta') {
-                                  $sel = (!empty($proyectoDatos['id_empresa']) && $proyectoDatos['id_empresa'] == $f['id']) ? ' selected' : '';
+                                  $empresaSeleccionadaId = (int)($_POST['id_empresa'] ?? $proyectoDatos['id_empresa'] ?? $facturaData['id_empresa'] ?? 0);
+                                  $sel = $empresaSeleccionadaId === (int)$f['id'] ? ' selected' : '';
                                 } else {
                                   $sel = ($idEmpresa != 0 && $f['id'] == $idEmpresa) ? ' selected' : '';
                                 }
@@ -213,7 +227,7 @@ if ($vista === 'venta') {
                           <div class="col-sm-8">
                             <?php if ($preseleccionado): ?>
                               <p class="form-control-plaintext"><?= htmlspecialchars($clienteLabel) ?></p>
-                              <input type="hidden" name="id_cuenta_destino" id="id_cuenta_destino" value="<?= intval($proyectoDatos['id_cliente']) ?>" data-exento="<?= (int)($proyectoDatos['id_condicion_iva'] ?? 0) === 5 ? 'true' : 'false' ?>">
+                              <input type="hidden" name="id_cuenta_destino" id="id_cuenta_destino" value="<?= (int)($_POST['id_cuenta_destino'] ?? $proyectoDatos['id_cliente'] ?? 0) ?>" data-exento="<?= (int)($proyectoDatos['id_condicion_iva'] ?? 0) === 5 ? 'true' : 'false' ?>">
                             <?php else: ?>
                             <select name="id_cuenta_destino" id="id_cuenta_destino" class="js-example-basic-single col-sm-12" required>
                               <option value="">Seleccione...</option>
@@ -223,7 +237,8 @@ if ($vista === 'venta') {
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 $esExento = (int)$f['id_condicion_iva'] === 5 ? 'true' : 'false';
-                                echo "<option value='{$f['id']}' data-exento='{$esExento}'>" . htmlspecialchars($f['nombre']) . "</option>";
+                                $clienteSeleccionado = (int)($_POST['id_cuenta_destino'] ?? $facturaData['id_cuenta_destino'] ?? 0) === (int)$f['id'] ? ' selected' : '';
+                                echo "<option value='{$f['id']}' data-exento='{$esExento}'$clienteSeleccionado>" . htmlspecialchars($f['nombre']) . "</option>";
                               }
                               Database::disconnect();
                               ?>
@@ -238,7 +253,7 @@ if ($vista === 'venta') {
                             <?php $idProyectoGet = !empty($_GET['id_proyecto']) ? intval($_GET['id_proyecto']) : 0; ?>
                             <?php if ($preseleccionado): ?>
                               <p class="form-control-plaintext"><?= htmlspecialchars($proyectoLabel) ?></p>
-                              <input type="hidden" name="id_proyecto" value="<?= $idProyectoGet ?>">
+                              <input type="hidden" name="id_proyecto" value="<?= (int)($_POST['id_proyecto'] ?? $idProyectoGet) ?>">
                             <?php else: ?>
                             <select name="id_proyecto" id="id_proyecto" class="js-example-basic-single col-sm-12" required>
                               <option value="">Seleccione...</option>
@@ -251,7 +266,8 @@ if ($vista === 'venta') {
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 $label = $f['nro_sitio'] . '-' . $f['nro_subsitio'] . '-' . $f['nro'] . ': ' . htmlspecialchars($f['nombre']);
-                                echo "<option value='{$f['id']}'>$label</option>";
+                                $proyectoSeleccionado = (int)($_POST['id_proyecto'] ?? $facturaData['id_proyecto'] ?? 0) === (int)$f['id'] ? ' selected' : '';
+                                echo "<option value='{$f['id']}'$proyectoSeleccionado>$label</option>";
                               }
                               Database::disconnect();
                               ?>
@@ -298,6 +314,9 @@ if ($vista === 'venta') {
                           $pvActual = ltrim($partesPv[0], '0');
                           $ncActual = ltrim($partesPv[1], '0');
                         }
+                        if ($vista === 'venta' && !empty($_POST['punto_venta'])) {
+                          $pvActual = (string)(int)$_POST['punto_venta'];
+                        }
                         ?>
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Punto de venta(*)</label>
@@ -336,7 +355,10 @@ if ($vista === 'venta') {
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 $codigoAfip = (int)$f['codigo'];
                                 $letraOpt = letraComprobanteDesdeTipo($f['descripcion'], $codigoAfip);
-                                echo "<option value='{$codigoAfip}' data-codigo='$codigoAfip' data-letra='$letraOpt'>" . str_pad($codigoAfip, 3, '0', STR_PAD_LEFT) . ' - ' . htmlspecialchars($f['descripcion']) . "</option>";
+                                $tipoSeleccionado = (int)($_POST['id_tipo_comprobante'] ?? $facturaData['id_tipo_comprobante'] ?? 0);
+                                if ($tipoSeleccionado >= 1001) $tipoSeleccionado -= 1000;
+                                $selTipo = $tipoSeleccionado === $codigoAfip ? ' selected' : '';
+                                echo "<option value='{$codigoAfip}' data-codigo='$codigoAfip' data-letra='$letraOpt'$selTipo>" . str_pad($codigoAfip, 3, '0', STR_PAD_LEFT) . ' - ' . htmlspecialchars($f['descripcion']) . "</option>";
                               }
                               Database::disconnect();
                               ?>
@@ -430,7 +452,8 @@ if ($vista === 'venta') {
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
                                 $esDolar = esMonedaDolar($f['moneda']) ? 'true' : 'false';
-                                $sel = (!empty($idMoneda) && (int)$f['id'] === (int)$idMoneda) ? ' selected' : '';
+                                $monedaSeleccionadaId = (int)($_POST['id_moneda'] ?? $idMoneda);
+                                $sel = ($monedaSeleccionadaId > 0 && (int)$f['id'] === $monedaSeleccionadaId) ? ' selected' : '';
                                 echo "<option value='{$f['id']}' data-esusd='$esDolar'$sel>" . htmlspecialchars($f['moneda']) . "</option>";
                               }
                               Database::disconnect();
@@ -447,7 +470,7 @@ if ($vista === 'venta') {
                             <select id="tipo_dolar" class="form-control mb-2" style="display:none;"></select>
                             <div class="input-group">
                               <input name="cotizacion" id="cotizacion" type="number" step="0.01"
-                                class="form-control" placeholder="Seleccione una moneda...">
+                                class="form-control" placeholder="Seleccione una moneda..." value="<?= $fv('cotizacion') ?>">
                               <div class="input-group-append">
                                 <span class="input-group-text" id="estadoDolar" style="min-width:160px;font-size:.85rem;">
                                   Esperando moneda...
@@ -468,7 +491,7 @@ if ($vista === 'venta') {
                               $q = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
                               $q->execute();
                               while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                $sel = (!empty($regimenesSeleccionados) && in_array($f['id'], $regimenesSeleccionados)) ? ' selected' : '';
+                                $sel = in_array((int)$f['id'], array_map('intval', $regimenesSeleccionados ?? []), true) ? ' selected' : '';
                                 echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
                               }
                               Database::disconnect();
@@ -545,6 +568,24 @@ if ($vista === 'venta') {
                       </div>
                     <?php endif; ?>
 
+                    <?php if ($vista === 'venta'): ?>
+                    <hr>
+                    <div class="form-group row mb-0">
+                      <label class="col-sm-2 col-form-label">Remito R relacionado (opcional)</label>
+                      <div class="col-sm-10">
+                        <div class="form-row">
+                          <div class="col-md-4 mb-2 mb-md-0">
+                            <input type="number" name="remito_punto_venta" class="form-control" min="1" max="99998" placeholder="Punto de venta" value="<?= htmlspecialchars((string)($_POST['remito_punto_venta'] ?? ($facturaData['remito_punto_venta'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                          </div>
+                          <div class="col-md-8">
+                            <input type="number" name="remito_numero" class="form-control" min="1" max="99999999" placeholder="Número de comprobante" value="<?= htmlspecialchars((string)($_POST['remito_numero'] ?? ($facturaData['remito_numero'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
+                          </div>
+                        </div>
+                        <small class="form-text text-muted">Complete ambos datos para informar el remito como comprobante asociado a ARCA.</small>
+                      </div>
+                    </div>
+                    <?php endif; ?>
+
                   </div>
                 </div>
 
@@ -554,7 +595,7 @@ if ($vista === 'venta') {
                     <h5>Datos para ARCA</h5>
                   </div>
                   <div class="card-body">
-                    <div class="form-group row mb-3">
+                    <div class="form-group row mb-4">
                       <label class="col-sm-3 col-form-label" for="concepto_arca">Concepto(*)</label>
                       <div class="col-sm-9">
                         <?php $conceptoArca = (int)($_POST['concepto_arca'] ?? 2); ?>
@@ -568,20 +609,20 @@ if ($vista === 'venta') {
                     <div id="arcaPeriodoServicio">
                       <div class="form-group row" id="arcaFechasServicio">
                         <label class="col-sm-3 col-form-label" for="fecha_servicio_desde">Período del servicio(*)</label>
-                        <div class="col-sm-4">
+                        <div class="col-sm-4 col-md-3">
                           <input type="date" class="form-control" id="fecha_servicio_desde" name="fecha_servicio_desde"
                             value="<?= htmlspecialchars($_POST['fecha_servicio_desde'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                          <small class="form-text text-muted">Desde</small>
+                          <small class="form-text text-muted mb-2">Desde</small>
                         </div>
-                        <div class="col-sm-4">
+                        <div class="col-sm-4 col-md-3 offset-md-1">
                           <input type="date" class="form-control" id="fecha_servicio_hasta" name="fecha_servicio_hasta"
                             value="<?= htmlspecialchars($_POST['fecha_servicio_hasta'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                          <small class="form-text text-muted">Hasta</small>
+                          <small class="form-text text-muted mb-2">Hasta</small>
                         </div>
                       </div>
                       <div class="form-group row" id="fceVencimientoRow">
                         <label class="col-sm-3 col-form-label" for="fecha_vencimiento_pago">Vencimiento de pago(*)</label>
-                        <div class="col-sm-9">
+                        <div class="col-sm-9 col-md-3">
                           <input type="date" class="form-control" id="fecha_vencimiento_pago" name="fecha_vencimiento_pago"
                             value="<?= htmlspecialchars((string)$fechaVencimientoFceDefault, ENT_QUOTES, 'UTF-8') ?>">
                         </div>
@@ -850,7 +891,7 @@ if ($vista === 'venta') {
 
                 <?php if ($vista === 'venta'): ?>
                 <div class="card">
-                  <div class="card-header"><h5>Leyenda impositiva y remito relacionado</h5></div>
+                  <div class="card-header"><h5>Leyenda impositiva</h5></div>
                   <div class="card-body">
                     <div class="form-group">
                       <label for="leyenda_impositiva">Leyenda impositiva</label>
@@ -858,19 +899,6 @@ if ($vista === 'venta') {
                       <textarea name="leyenda_impositiva" id="leyenda_impositiva" class="form-control" rows="2" maxlength="1000"><?= htmlspecialchars((string)$leyendaValue, ENT_QUOTES, 'UTF-8') ?></textarea>
                       <small class="form-text text-muted">Se completa automáticamente con los importes de la factura. Puede editarla o regenerarla.</small>
                       <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="regenerarLeyenda">Regenerar leyenda</button>
-                    </div>
-                    <hr>
-                    <div class="form-group mb-0">
-                      <label>Remito R relacionado (opcional)</label>
-                      <div class="form-row">
-                        <div class="col-md-4 mb-2 mb-md-0">
-                          <input type="number" name="remito_punto_venta" class="form-control" min="1" max="99998" placeholder="Punto de venta" value="<?= htmlspecialchars((string)($_POST['remito_punto_venta'] ?? ($facturaData['remito_punto_venta'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
-                        </div>
-                        <div class="col-md-8">
-                          <input type="number" name="remito_numero" class="form-control" min="1" max="99999999" placeholder="Número de comprobante" value="<?= htmlspecialchars((string)($_POST['remito_numero'] ?? ($facturaData['remito_numero'] ?? '')), ENT_QUOTES, 'UTF-8') ?>">
-                        </div>
-                      </div>
-                      <small class="form-text text-muted">Complete ambos datos para informar el remito como comprobante asociado a ARCA.</small>
                     </div>
                   </div>
                 </div>
@@ -1496,9 +1524,26 @@ if ($vista === 'venta') {
           if (!response.ok || contentType.indexOf('application/pdf') === -1) {
             var responseText = await response.text();
             var parsedResponse = new DOMParser().parseFromString(responseText, 'text/html');
-            var serverMessage = parsedResponse.querySelector('body')
-              ? parsedResponse.querySelector('body').innerText.trim()
-              : responseText.trim();
+            var responseBody = parsedResponse.querySelector('body');
+            var responseMessages = [];
+            if (responseBody) {
+              var responseHeading = responseBody.querySelector('h1, h2, h3, h4, h5, h6');
+              if (responseHeading && responseHeading.textContent.trim()) {
+                responseMessages.push(responseHeading.textContent.trim());
+              }
+              responseBody.querySelectorAll('p').forEach(function(paragraph) {
+                if (paragraph.textContent.trim()) responseMessages.push(paragraph.textContent.trim());
+              });
+            }
+            var serverMessage = responseMessages
+              .map(function(message) { return message.replace(/\s+/g, ' ').trim().replace(/[.!?]+$/, ''); })
+              .filter(Boolean)
+              .join('. ');
+            if (serverMessage) {
+              serverMessage += '.';
+            } else {
+              serverMessage = (responseBody ? responseBody.innerText : responseText).replace(/\s+/g, ' ').trim();
+            }
             throw new Error(serverMessage || 'No se pudo generar la vista previa.');
           }
 
@@ -1587,6 +1632,7 @@ if ($vista === 'venta') {
       });
 
       var certVinculados = <?= json_encode(array_values(array_map('intval', (array)($certIds ?? [])))) ?>;
+      var facturaEnEdicion = <?= !empty($editMode) ? 'true' : 'false' ?>;
       function cargarImputacionesVenta() {
         var idCliente = $('#id_cuenta_destino').val();
         var select = $('#det_imputaciones');
@@ -1610,7 +1656,9 @@ if ($vista === 'venta') {
               var idMonedaCA = (row.id_moneda === undefined || row.id_moneda === null) ? '' : row.id_moneda;
               var otraMoneda = monedaFv && idMonedaCA !== '' && String(idMonedaCA) !== monedaFv;
               if (otraMoneda) { texto += ' (otra moneda)'; }
-              var seleccionado = certVinculados.indexOf(parseInt(row.id, 10)) !== -1;
+              // En edición, las imputaciones ya aparecen en sus detalles guardados;
+              // solo se preseleccionan automáticamente al crear desde certificados.
+              var seleccionado = !facturaEnEdicion && certVinculados.indexOf(parseInt(row.id, 10)) !== -1;
               var optEl = new Option(texto, row.id, seleccionado, seleccionado);
               optEl.disabled = !!otraMoneda;
               select.append(optEl);
@@ -1687,24 +1735,27 @@ if ($vista === 'venta') {
       aplicarMoneda(<?= json_encode($monedaLabel) ?>, <?= esMonedaDolar($monedaLabel) ? 'true' : 'false' ?>);
       <?php endif; ?>
 
-      <?php if (!empty($editMode) && !empty($detallesExistentes)): ?>
+      <?php if (is_array($detallesPost ?? null)): ?>
+      detalles = <?= json_encode($detallesPost, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+      $('#detalles_json').val(JSON.stringify(detalles));
+      <?php elseif (!empty($editMode) && !empty($detallesExistentes)): ?>
       detalles = <?= json_encode($detallesExistentes) ?>;
       $('#detalles_json').val(JSON.stringify(detalles));
       <?php endif; ?>
-      <?php if (!empty($editMode) && !empty($retencionesExistentes)): ?>
+      <?php if (is_array($retencionesPost ?? null)): ?>
+      retenciones = <?= json_encode($retencionesPost, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+      $('#retenciones_json').val(JSON.stringify(retenciones));
+      <?php elseif (!empty($editMode) && !empty($retencionesExistentes)): ?>
       retenciones = <?= json_encode($retencionesExistentes) ?>;
       $('#retenciones_json').val(JSON.stringify(retenciones));
       <?php endif; ?>
-      <?php if (!empty($editMode)): ?>
       if (detalles.length > 0) renderDetalles();
       if (retenciones.length > 0) renderRetenciones();
+      <?php if (!empty($editMode)): ?>
       // Pre-fill select fields
-      <?php if (!empty($facturaData)): ?>
-      $('#id_tipo_comprobante').val('<?= $fv('id_tipo_comprobante') ?>').trigger('change');
-      <?php if ($vista === 'venta'): ?>
-      var puntoInicial = '<?= htmlspecialchars($pvActual) ?>';
-      <?php endif; ?>
-      $('#id_moneda').val('<?= $fv('id_moneda') ?>').trigger('change');
+       <?php if (!empty($facturaData)): ?>
+       $('#id_tipo_comprobante').val('<?= $fv('id_tipo_comprobante') ?>').trigger('change');
+       $('#id_moneda').val('<?= $fv('id_moneda') ?>').trigger('change');
       $('#id_empresa').val('<?= $fv('id_empresa') ?>').trigger('change');
       <?php if ($vista === 'compra'): ?>
       $('#id_cuenta_origen').val('<?= $fv('id_cuenta_origen') ?>').trigger('change');
@@ -2001,11 +2052,15 @@ if ($vista === 'venta') {
       <?php if ($vista === 'venta'): ?>
       var clienteInicial = $('#id_cuenta_destino').val();
       if (clienteInicial && typeof cargarImputacionesVenta === 'function') {
+        <?php if (empty($editMode)): ?>
         cargarImputacionesVenta();
+        <?php endif; ?>
       } else if (clienteInicial) {
         $('#id_cuenta_destino').trigger('change');
       }
 
+      var puntoInicial = <?= json_encode((string)($_POST['punto_venta'] ?? $pvActual)) ?>;
+      var tipoInicial = <?= (int)codigoArcaDesdeTipo($_POST['id_tipo_comprobante'] ?? ($facturaData['id_tipo_comprobante'] ?? 0)) ?>;
       var puntosPorNumero = {};
 
       var tiposCache = null;
@@ -2105,6 +2160,11 @@ if ($vista === 'venta') {
               try { $(select).trigger('change'); } catch (e) {}
             }
             filtrarTiposPorPunto();
+            if (tipoInicial) {
+              var tipoSelect = $('#id_tipo_comprobante');
+              tipoSelect.val(String(tipoInicial));
+              if (tipoSelect.val()) tipoSelect.trigger('change');
+            }
           })
           .catch(function(error) {
             if (window.console && console.error) { console.error(error); }

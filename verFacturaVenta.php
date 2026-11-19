@@ -258,10 +258,10 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                       <table class="table table-sm table-bordered w-100" style="font-size:13px;background:#fff;">
                         <thead class="thead-light">
                           <tr>
+                            <th>N.C.M.</th>
                             <th>#</th>
                             <th>Concepto</th>
                             <th>Descripción</th>
-                            <th>N.C.M.</th>
                             <th>Imputaciones</th>
                             <th class="text-right">Subtotal</th>
                           </tr>
@@ -296,10 +296,10 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                               }
                             ?>
                             <tr>
+                              <td><?= htmlspecialchars($det['ncm'] ?? '') ?></td>
                               <td><?= $i + 1 ?></td>
                               <td><?= htmlspecialchars($det['concepto_text']) ?></td>
                               <td><?= $proyectoPrefijo ? htmlspecialchars($proyectoPrefijo) . ' ' : '' ?><?= htmlspecialchars($det['descripcion'] ?? '') ?></td>
-                              <td><?= htmlspecialchars($det['ncm'] ?? '') ?></td>
                               <td><?= $impsHtml ?></td>
                               <td class="text-right"><?= htmlspecialchars($data['moneda_text']) ?> <?= fmtV($subtotalDet) ?></td>
                             </tr>

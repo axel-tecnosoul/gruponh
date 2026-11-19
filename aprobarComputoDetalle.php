@@ -100,6 +100,10 @@ try {
       $params = [$idComputo];
       $q->execute($params);
       $textoComputo = " Computo aprobado en su totalidad. (actualice la pagina para ver el nuevo estado)";
+
+      $sql = "UPDATE tareas SET fecha_fin_real = IF(fecha_fin_real IS NULL OR fecha_fin_real = '0000-00-00', NOW(), fecha_fin_real) WHERE id = (SELECT id_tarea FROM computos WHERE id = ?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([$idComputo]);
         
       if ($modoDebug == 1) {
         // Generar y mostrar la consulta “real”

@@ -572,8 +572,10 @@ Database::disconnect();?>
                                 Database::disconnect();?>
                               </tbody>
                             </table>
-                            <b>PESO TOTAL CONJUNTO:&nbsp;<?php echo number_format($pesoTotalConjunto,2,",",".");?>&nbsp;kgs</b>
-                            <small class="text-muted d-block">Incluye la cantidad de posiciones y la cantidad de conjuntos (<?=numeroListaCorte($data["cantidad_conjunto"])?>).</small>
+                            <div class="mt-2 mb-3">
+                              <b class="d-block">PESO TOTAL CONJUNTO:&nbsp;<?= number_format($pesoTotalConjunto, 2, ",", ".") ?>&nbsp;kgs</b>
+                              <small class="text-muted d-block">Incluye la cantidad de posiciones y la cantidad de conjuntos (<?= numeroListaCorte($data["cantidad_conjunto"]) ?>).</small>
+                            </div>
                           </div>
                         </div>
                       </div>
