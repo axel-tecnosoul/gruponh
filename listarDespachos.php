@@ -20,11 +20,16 @@ $pdo = Database::connect();
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $estadosDespacho = $pdo->query("SELECT id, estado FROM estados_despacho ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
 $clientesDespacho = $pdo->query(
-  "SELECT DISTINCT c.id, c.nombre
-   FROM despachos des
-   INNER JOIN proyectos p ON p.id = des.id_proyecto
-   INNER JOIN cuentas c ON c.id = p.id_cliente
-   WHERE c.anulado = 0
+  "SELECT c.id, c.nombre
+   FROM cuentas c
+   WHERE (c.id_tipo_cuenta = 1
+          OR c.id IN (
+            SELECT cxt.id_cuenta
+            FROM cuentas_x_tipos_cuenta cxt
+            WHERE cxt.id_tipo_cuenta = 1
+          ))
+     AND c.activo = 1
+     AND c.anulado = 0
    ORDER BY c.nombre"
 )->fetchAll(PDO::FETCH_ASSOC);
 
@@ -158,17 +163,17 @@ Database::disconnect();
 					echo '<a href="#" id="link_ver_des"><img src="img/eye.png" width="24" height="15" border="0" alt="Ver Detalle" title="Ver Detalle"></a>';
 					echo '&nbsp;&nbsp;';
 					if (!empty(tienePermiso(360))) {
-						echo '<a href="#" id="link_eliminar_des" class="d-none"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
+						echo '<a href="#" id="link_eliminar_des"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
 						echo '&nbsp;&nbsp;';
 					}
 					if (!empty(tienePermiso(359))) {
-						echo '<a href="#" id="link_modificar_des" class="d-none"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
+						echo '<a href="#" id="link_modificar_des"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
 						echo '&nbsp;&nbsp;';
 					}
 					if (!empty(tienePermiso(361))) {
-						echo '<a href="#" id="link_nuevo_bulto" class="d-none" title="Editar carga"><i class="fa fa-lg fa-cubes" aria-hidden="true"></i></a>';
+						echo '<a href="#" id="link_nuevo_bulto" title="Editar carga"><i class="fa fa-lg fa-cubes" aria-hidden="true"></i></a>';
 						echo '&nbsp;&nbsp;';
-						echo '<a href="#" id="link_despachar_des" class="d-none" title="Despachar pendiente"><i class="fa fa-lg fa-truck" aria-hidden="true"></i></a>';
+						echo '<a href="#" id="link_despachar_des" title="Despachar pendiente"><i class="fa fa-lg fa-truck" aria-hidden="true"></i></a>';
 						echo '&nbsp;&nbsp;';
 					}
 					?>
@@ -561,34 +566,45 @@ Database::disconnect();
             }
         } );
 		} );
-		$("#link_ver_des").on("click",function(){
-			let l=document.location.href;
-			if(this.href==l || this.href==l+"#"){
-			  alert("Por favor seleccione un despacho para ver detalle")
+		$("#link_ver_des").on("click",function(event){
+			if ($(this).attr("href") === "#") {
+				event.preventDefault();
+				alert("Por favor seleccione un despacho para ver detalle");
 			}
-		  })
-		$("#link_eliminar_des").on("click",function(){
-			/*let l=document.location.href;
-			if(this.href==l || this.href==l+"#"){*/
-      let target=this.dataset.target;
-      if(target==undefined || target=="#"){
-			  alert("Por favor seleccione un despacho para cancelar")
+		});
+		$("#link_eliminar_des").on("click",function(event){
+			if ($(this).hasClass("disabled")) {
+				event.preventDefault();
+				alert("Un despacho despachado no se puede eliminar.");
+			} else if (!this.dataset.target || this.dataset.target === "#") {
+				event.preventDefault();
+				alert("Por favor seleccione un despacho pendiente para eliminar");
 			}
-		  })
-		$("#link_modificar_des").on("click",function(){
-			let l=document.location.href;
-			if(this.href==l || this.href==l+"#"){
-			  alert("Por favor seleccione un despacho para modificar")
+		});
+		$("#link_modificar_des").on("click",function(event){
+			if ($(this).hasClass("disabled")) {
+				event.preventDefault();
+				alert("Un despacho despachado no se puede modificar.");
+			} else if ($(this).attr("href") === "#") {
+				event.preventDefault();
+				alert("Por favor seleccione un despacho para modificar");
 			}
-		})
-		$("#link_nuevo_bulto").on("click",function(){
-			let l=document.location.href;
-			if(this.href==l || this.href==l+"#"){
-			  alert("Por favor seleccione un despacho para crear un nuevo bulto")
+		});
+		$("#link_nuevo_bulto").on("click",function(event){
+			if ($(this).hasClass("disabled")) {
+				event.preventDefault();
+				alert("La carga de un despacho despachado no se puede modificar.");
+			} else if ($(this).attr("href") === "#") {
+				event.preventDefault();
+				alert("Por favor seleccione un despacho para editar la carga");
 			}
-		})
+		});
 		$("#link_despachar_des").on("click",function(event){
 			event.preventDefault();
+			if ($(this).hasClass("disabled")) {
+				alert("Este despacho ya fue despachado.");
+				return;
+			}
 			let target=this.dataset.target;
 			let idDespacho=$(this).data("id");
 			if(!target || target==="#" || !idDespacho){
@@ -596,7 +612,7 @@ Database::disconnect();
 			} else {
 				$("#id_despacho_a_despachar").val(idDespacho);
 			}
-		})
+		});
 		
 		
 		//$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
@@ -608,13 +624,13 @@ Database::disconnect();
         if(t.hasClass('selected')){
           deselectRow(t);
 		      get_bultos(id_des)
-          $("#link_modificar_bulto, #link_eliminar_bulto, #link_nuevo_detalle_bulto").addClass("d-none");
-          $("#link_eliminar_des, #link_modificar_des, #link_nuevo_bulto, #link_despachar_des").addClass("d-none");
           $("#link_ver_des").attr("href","#");
-          $("#link_eliminar_des").attr("data-target","#");
-          $("#link_modificar_des").attr("href","#");
-          $("#link_nuevo_bulto").attr("href","#");
-          $("#link_despachar_des").attr("href","#").attr("data-target","#").removeData("id");
+          $("#link_eliminar_des").removeClass("disabled").removeAttr("aria-disabled data-toggle").attr("data-target","#").attr("href","#");
+          $("#link_eliminar_des").attr("title","Eliminar despacho pendiente");
+          $("#link_modificar_des").attr("href","#").attr("title","Modificar despacho");
+          $("#link_nuevo_bulto").attr("href","#").attr("title","Editar carga");
+          $("#link_modificar_des, #link_nuevo_bulto, #link_despachar_des").removeClass("disabled").removeAttr("aria-disabled");
+          $("#link_despachar_des").removeAttr("data-toggle").attr("href","#").attr("data-target","#").attr("title","Despachar pendiente").removeData("id");
         }else{
           table.rows().nodes().each( function (rowNode, index) {
             $(rowNode).removeClass("selected");
@@ -622,19 +638,23 @@ Database::disconnect();
           selectRow(t);
 		      get_bultos(id_des)
           const estadoDespacho = parseInt(t.attr("data-id-estado-despacho"), 10);
-          $("#link_eliminar_des, #link_modificar_des, #link_nuevo_bulto, #link_despachar_des").toggleClass("d-none", estadoDespacho !== 1);
-          $("#link_modificar_bulto, #link_eliminar_bulto, #link_nuevo_detalle_bulto").toggleClass("d-none", estadoDespacho !== 1);
           $("#link_ver_des").attr("href","verDespacho.php?id="+id_des);
           if (estadoDespacho === 1) {
             $("#link_nuevo_bulto").attr("href","nuevoBultoDespacho.php?id_despacho="+id_des);
             $("#link_modificar_des").attr("href","modificarDespacho.php?id="+id_des);
-            $("#link_eliminar_des").attr("data-toggle","modal").attr("data-target","#eliminarModal_"+id_des);
+            $("#link_eliminar_des").removeClass("disabled").removeAttr("aria-disabled").attr("title","Eliminar despacho pendiente").attr("href","#").attr("data-toggle","modal").attr("data-target","#eliminarModal_"+id_des);
+            $("#link_modificar_des, #link_nuevo_bulto, #link_despachar_des").removeClass("disabled").removeAttr("aria-disabled");
+            $("#link_modificar_des").attr("title","Modificar despacho");
+            $("#link_nuevo_bulto").attr("title","Editar carga");
+            $("#link_despachar_des").attr("title","Despachar pendiente");
             $("#link_despachar_des").attr("href","#").attr("data-toggle","modal").attr("data-target","#despacharModal").data("id", id_des);
           } else {
-            $("#link_nuevo_bulto").attr("href","#");
-            $("#link_modificar_des").attr("href","#");
-            $("#link_eliminar_des").removeAttr("data-toggle").attr("data-target","#");
-            $("#link_despachar_des").removeAttr("data-toggle").attr("data-target","#").attr("href","#").removeData("id");
+            $("#link_eliminar_des").addClass("disabled").attr("aria-disabled","true").attr("title","Un despacho despachado no se puede eliminar").attr("href","#").removeAttr("data-toggle").attr("data-target","#");
+            $("#link_modificar_des, #link_nuevo_bulto, #link_despachar_des").addClass("disabled").attr("aria-disabled","true").attr("href","#");
+            $("#link_modificar_des").attr("title","Un despacho despachado no se puede modificar");
+            $("#link_nuevo_bulto").attr("title","La carga de un despacho despachado no se puede modificar");
+            $("#link_despachar_des").attr("title","Este despacho ya fue despachado");
+            $("#link_despachar_des").removeAttr("data-toggle").attr("data-target","#").removeData("id");
           }
         }
       });
