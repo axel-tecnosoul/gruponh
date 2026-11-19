@@ -1238,6 +1238,21 @@ WHERE `id_tipo_cuenta` IS NOT NULL
   AND `id_tipo_cuenta` > 0
   AND `id_tipo_cuenta` IN (SELECT `id` FROM `tipos_cuenta`);
 
+CREATE TABLE IF NOT EXISTS `despachos_occ` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_despacho` INT(11) NOT NULL,
+  `id_occ` INT(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_despachos_occ` (`id_despacho`, `id_occ`),
+  KEY `idx_despachos_occ_occ` (`id_occ`),
+  CONSTRAINT `fk_despachos_occ_despacho`
+    FOREIGN KEY (`id_despacho`) REFERENCES `despachos` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_despachos_occ_occ`
+    FOREIGN KEY (`id_occ`) REFERENCES `occ` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 INSERT IGNORE INTO `despachos_occ` (`id_despacho`, `id_occ`)
 SELECT des.`id`, o.`id`
 FROM `despachos` des
@@ -1275,18 +1290,19 @@ LEFT JOIN (
 SET plc.`cantidad_despachada` =
     COALESCE(despachados.`cantidad_despachada`, 0);
 
+-- ---------------------------------------------------------------------------
+-- Presupuestos: datos de cabecera de la oferta
+-- Ejecutar solo si las columnas aǧn no existen.
+-- ---------------------------------------------------------------------------
+ALTER TABLE `presupuestos`
+    ADD COLUMN `certificacion` VARCHAR(199) NOT NULL DEFAULT '' AFTER `observaciones`,
+    ADD COLUMN `forma_pago` VARCHAR(199) NOT NULL DEFAULT '' AFTER `certificacion`,
+    ADD COLUMN `plazo_entrega_dias` INT(11) NULL DEFAULT NULL AFTER `forma_pago`,
+    ADD COLUMN `validez_oferta_dias` INT(11) NULL DEFAULT NULL AFTER `plazo_entrega_dias`;
 
-CREATE TABLE IF NOT EXISTS `despachos_occ` (
-  `id` INT(11) NOT NULL AUTO_INCREMENT,
-  `id_despacho` INT(11) NOT NULL,
-  `id_occ` INT(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_despachos_occ` (`id_despacho`, `id_occ`),
-  KEY `idx_despachos_occ_occ` (`id_occ`),
-  CONSTRAINT `fk_despachos_occ_despacho`
-    FOREIGN KEY (`id_despacho`) REFERENCES `despachos` (`id`)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_despachos_occ_occ`
-    FOREIGN KEY (`id_occ`) REFERENCES `occ` (`id`)
-    ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- ---------------------------------------------------------------------------
+-- Eliminar "Otros Regímenes" de facturas de venta.
+-- La información fiscal de percepciones queda en facturas_venta_retenciones.
+-- EJECUTAR MANUALMENTE Y CON BACKUP PREVIO.
+-- ---------------------------------------------------------------------------
+DROP TABLE IF EXISTS `facturas_venta_otros`;

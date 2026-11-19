@@ -238,7 +238,6 @@ if (!empty($_POST)) {
       $pdo->prepare("DELETE FROM facturas_venta_detalle_x_certificados_avance WHERE id_factura_venta_detalle IN (SELECT id FROM facturas_venta_detalle WHERE id_factura_venta = ?)")->execute([$idFactura]);
       $pdo->prepare("DELETE FROM facturas_venta_detalle WHERE id_factura_venta = ?")->execute([$idFactura]);
       $pdo->prepare("DELETE FROM facturas_venta_retenciones WHERE id_factura_venta = ?")->execute([$idFactura]);
-      $pdo->prepare("DELETE FROM facturas_venta_otros WHERE id_factura_venta = ?")->execute([$idFactura]);
       $pdo->prepare("UPDATE certificados_avances_detalle SET id_comprobante = NULL WHERE id_comprobante = ?")->execute([$idFactura]);
 
     } else {
@@ -460,17 +459,6 @@ if (!empty($_POST)) {
     }
     $pdo->prepare('UPDATE facturas_venta SET leyenda_impositiva = ? WHERE id = ?')->execute([$leyendaImpositiva, $idFactura]);
 
-    // Regímenes
-    if (!empty($_POST['regimenes'])) {
-      $qp = $pdo->prepare("SELECT regimen, codigo, articulo, porcentaje FROM regimenes_facturacion WHERE id = ?");
-      $qi = $pdo->prepare("INSERT INTO facturas_venta_otros (id_factura_venta, id_regimen, regimen_text, codigo, articulo, porcentaje) VALUES (?,?,?,?,?,?)");
-      foreach ($_POST['regimenes'] as $idRegimen) {
-        $qp->execute([$idRegimen]);
-        $reg = $qp->fetch(PDO::FETCH_ASSOC);
-        $qi->execute([$idFactura, $idRegimen, $reg['regimen'] ?? null, $reg['codigo'] ?? null, $reg['articulo'] ?? null, $reg['porcentaje'] ?? 0]);
-      }
-    }
-
     // Certificados
     if (!empty($_POST['certificados'])) {
       foreach ($_POST['certificados'] as $idCert) {
@@ -538,7 +526,6 @@ $facturaData = null;
 $detallesExistentes = [];
 $retencionesExistentes = [];
 $certIds = [];
-$regimenesSeleccionados = [];
 $condicionesVentaSeleccionadas = array_values(array_unique(array_map('intval', (array)($_POST['condiciones_venta'] ?? []))));
 $monedaLabel = '';
 $idMoneda = 0;
@@ -553,7 +540,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $detallesPost = is_array($detallesDecodificados) ? $detallesDecodificados : [];
   $retencionesPost = is_array($retencionesDecodificadas) ? $retencionesDecodificadas : [];
   $certIds = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['certificados'] ?? [])), static fn($id) => $id > 0)));
-  $regimenesSeleccionados = array_values(array_unique(array_map('intval', (array)($_POST['regimenes'] ?? []))));
 }
 
 if ($editMode && $editId) {
@@ -614,10 +600,6 @@ if ($editMode && $editId) {
         $proyectoLabel = $proj['nro_sitio'] . '-' . $proj['nro_subsitio'] . '-' . $proj['nro'] . ': ' . htmlspecialchars($proj['nombre']);
       }
     }
-
-    $qReg = $pdo->prepare("SELECT id_regimen FROM facturas_venta_otros WHERE id_factura_venta = ?");
-    $qReg->execute([$editId]);
-    $regimenesSeleccionados = $qReg->fetchAll(PDO::FETCH_COLUMN);
 
     $qCert = $pdo->prepare("SELECT DISTINCT id_certificado_avance FROM certificados_avances_detalle WHERE id_comprobante = ?");
     $qCert->execute([$editId]);
@@ -783,7 +765,6 @@ if ($editMode && $editId) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // El POST es la fuente de verdad al volver a mostrar el formulario tras un error.
   $certIds = array_values(array_unique(array_filter(array_map('intval', (array)($_POST['certificados'] ?? [])), static fn($id) => $id > 0)));
-  $regimenesSeleccionados = array_values(array_unique(array_map('intval', (array)($_POST['regimenes'] ?? []))));
   if (array_key_exists('id_moneda', $_POST) && (int)$_POST['id_moneda'] > 0) {
     $idMoneda = (int)$_POST['id_moneda'];
     $pdoMonedaPost = Database::connect();

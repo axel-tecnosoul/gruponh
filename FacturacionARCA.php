@@ -1081,24 +1081,6 @@ final class FacturacionARCA
             throw new RuntimeException('Agregue al menos un renglón antes de emitir la factura.');
         }
 
-        $unmappedRegimes = $pdo->prepare(
-            'SELECT COUNT(*)
-             FROM facturas_venta_otros o
-             WHERE o.id_factura_venta = ?
-               AND NOT EXISTS (
-                   SELECT 1
-                   FROM facturas_venta_retenciones r
-                   WHERE r.id_factura_venta = o.id_factura_venta
-                     AND r.regimen_text <=> o.regimen_text
-                     AND r.codigo <=> o.codigo
-                     AND r.articulo <=> o.articulo
-               )'
-        );
-        $unmappedRegimes->execute([(int)$invoice['id']]);
-        if ((int)$unmappedRegimes->fetchColumn() > 0) {
-            throw new RuntimeException('La factura tiene regímenes fiscales sin correspondencia ARCA configurada. No se omitieron ni se enviaron como tributos incorrectos.');
-        }
-
         $defaultNcm = '73.08.20.00';
         try {
             $qNcm = $pdo->query("SELECT valor FROM parametros WHERE id = 13");

@@ -12,6 +12,7 @@ require 'database.php';
 $id = !empty($_GET['id']) ? (int) $_GET['id'] : null;
 $sourceId = ($id === null && !empty($_GET['desde'])) ? (int) $_GET['desde'] : null;
 $isCreate = $id === null;
+$soloLectura = !$isCreate && (($_GET['modo'] ?? '') === 'ver');
 
 if (!$isCreate && $id < 1) {
   header("Location: listarPresupuestos.php");
@@ -22,13 +23,41 @@ if ($isCreate && isset($_GET['desde']) && ($sourceId === null || $sourceId < 1))
   exit;
 }
 
+$tokenCreacion = '';
+if ($isCreate) {
+  if (empty($_SESSION['token_nuevo_presupuesto'])) {
+    $_SESSION['token_nuevo_presupuesto'] = bin2hex(random_bytes(32));
+  }
+  $tokenCreacion = (string) $_SESSION['token_nuevo_presupuesto'];
+}
+
 if (!empty($_POST)) {
+
+  if ($soloLectura) {
+    header("Location: modificarPresupuesto.php?id=" . (int) $id . "&modo=ver");
+    exit;
+  }
 
   // insert data
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+  if ($isCreate) {
+    $tokenSesion = (string) ($_SESSION['token_nuevo_presupuesto'] ?? '');
+    $tokenFormulario = (string) ($_POST['token_creacion'] ?? '');
+    if ($tokenSesion === '' || $tokenFormulario === '' || !hash_equals($tokenSesion, $tokenFormulario)) {
+      Database::disconnect();
+      header("Location: listarPresupuestos.php");
+      exit;
+    }
+  }
+
   $modoDebug=0;
+
+  $certificacion = trim((string) ($_POST['certificacion'] ?? ''));
+  $formaPago = trim((string) ($_POST['forma_pago'] ?? ''));
+  $plazoEntregaDias = (isset($_POST['plazo_entrega_dias']) && $_POST['plazo_entrega_dias'] !== '') ? (int) $_POST['plazo_entrega_dias'] : null;
+  $validezOfertaDias = (isset($_POST['validez_oferta_dias']) && $_POST['validez_oferta_dias'] !== '') ? (int) $_POST['validez_oferta_dias'] : null;
 
   if($modoDebug==1){
     $pdo->beginTransaction();
@@ -49,9 +78,9 @@ if (!empty($_POST)) {
       $_POST['id_cuenta'] = $idNuevaCuenta;
     }
 
-    $sql = "INSERT INTO presupuestos (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`) VALUES (0,?,0,?,?,?,?,?,?,?,?,?,?,0,?,?,now())";
+    $sql = "INSERT INTO presupuestos (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `certificacion`, `forma_pago`, `plazo_entrega_dias`, `validez_oferta_dias`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`) VALUES (0,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,now())";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST['id_empresa'],$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio']]);
+    $q->execute([$_POST['id_empresa'],$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$certificacion,$formaPago,$plazoEntregaDias,$validezOfertaDias,$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio']]);
 
     $id = (int) $pdo->lastInsertId();
     $pdo->prepare("UPDATE presupuestos SET `nro` = ? WHERE id = ?")->execute([$id, $id]);
@@ -66,6 +95,7 @@ if (!empty($_POST)) {
     $pdo->prepare($sql)->execute([$_SESSION['user']['id'], $detalleLog, 'verPresupuesto.php?id='.$id]);
 
     $adjudicado = 0;
+    unset($_SESSION['token_nuevo_presupuesto']);
     $pdo->commit();
   } elseif(isset($_POST["btn1"])){
     //modificamos el presupuesto
@@ -79,9 +109,9 @@ if (!empty($_POST)) {
 	$adjudicado = $dataC['adjudicado'];
 	$fecha_hora_alta = $dataC['fecha_hora_alta'];
   
-    $sql = "UPDATE presupuestos set id_empresa = ?, fecha = ?, id_cuenta = ?, solicitante = ?, referencia = ?, descripcion = ?, id_moneda = ?, monto = ?, adjudicado = ?, observaciones = ?, id_usuario = ?, es_marco = ?, id_linea_negocio = ? where id = ?";
+    $sql = "UPDATE presupuestos set id_empresa = ?, fecha = ?, id_cuenta = ?, solicitante = ?, referencia = ?, descripcion = ?, id_moneda = ?, monto = ?, adjudicado = ?, observaciones = ?, certificacion = ?, forma_pago = ?, plazo_entrega_dias = ?, validez_oferta_dias = ?, id_usuario = ?, es_marco = ?, id_linea_negocio = ? where id = ?";
     $q = $pdo->prepare($sql);
-    $q->execute([$_POST['id_empresa'],$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio'],$_GET['id']]);
+    $q->execute([$_POST['id_empresa'],$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$certificacion,$formaPago,$plazoEntregaDias,$validezOfertaDias,$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio'],$_GET['id']]);
 
     if ($modoDebug==1) {
       $q->debugDumpParams();
@@ -104,7 +134,7 @@ if (!empty($_POST)) {
 	$nro_revision=$_POST["revision"];
     $nuevo_nro_revision=$nro_revision+1;
 	
-	$sql = "select nro, adjudicado,fecha_hora_alta FROM `presupuestos` where id = ?";
+	$sql = "select nro, adjudicado, fecha_hora_alta, certificacion, forma_pago, plazo_entrega_dias, validez_oferta_dias FROM `presupuestos` where id = ?";
 	$q = $pdo->prepare($sql);
 	$q->execute([$id]);
 	$dataC = $q->fetch(PDO::FETCH_ASSOC);
@@ -113,9 +143,22 @@ if (!empty($_POST)) {
 	$adjudicado = $dataC['adjudicado'];
 	$fecha_hora_alta = $dataC['fecha_hora_alta'];
 
-	$sql = "insert into `presupuestos` (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`, `comentarios_revision`, `fecha_hora_revision`) values (?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,now())";
+	if (!array_key_exists('certificacion', $_POST)) {
+		$certificacion = (string) ($dataC['certificacion'] ?? '');
+	}
+	if (!array_key_exists('forma_pago', $_POST)) {
+		$formaPago = (string) ($dataC['forma_pago'] ?? '');
+	}
+	if (!array_key_exists('plazo_entrega_dias', $_POST)) {
+		$plazoEntregaDias = ($dataC['plazo_entrega_dias'] === null) ? null : (int) $dataC['plazo_entrega_dias'];
+	}
+	if (!array_key_exists('validez_oferta_dias', $_POST)) {
+		$validezOfertaDias = ($dataC['validez_oferta_dias'] === null) ? null : (int) $dataC['validez_oferta_dias'];
+	}
+
+	$sql = "insert into `presupuestos` (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `certificacion`, `forma_pago`, `plazo_entrega_dias`, `validez_oferta_dias`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`, `comentarios_revision`, `fecha_hora_revision`) values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,now())";
 	$q = $pdo->prepare($sql);
-	$q->execute([$nro,$_POST['id_empresa'],$nuevo_nro_revision,$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio'],$fecha_hora_alta,$_POST['comentarios_revision']]);
+	$q->execute([$nro,$_POST['id_empresa'],$nuevo_nro_revision,$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$certificacion,$formaPago,$plazoEntregaDias,$validezOfertaDias,$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio'],$fecha_hora_alta,$_POST['comentarios_revision']]);
 	
 	$idNuevoPresupuesto = $pdo->lastInsertId();
 	
@@ -221,11 +264,12 @@ if (!empty($_POST)) {
     'id_empresa' => '', 'nro' => '', 'nro_revision' => 0, 'fecha' => date('Y-m-d'),
     'id_cuenta' => '', 'solicitante' => '', 'referencia' => '', 'descripcion' => '',
     'id_moneda' => '', 'monto' => '', 'adjudicado' => 0, 'observaciones' => '',
+    'certificacion' => '', 'forma_pago' => '', 'plazo_entrega_dias' => '', 'validez_oferta_dias' => '',
     'id_usuario' => '', 'anulado' => 0, 'es_marco' => 0, 'id_linea_negocio' => ''
   ];
 
   if ($id !== null) {
-    $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ?";
+    $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, certificacion, forma_pago, plazo_entrega_dias, validez_oferta_dias, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$id]);
     $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -235,7 +279,7 @@ if (!empty($_POST)) {
       exit;
     }
   } elseif ($sourceId !== null) {
-    $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ?";
+    $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, certificacion, forma_pago, plazo_entrega_dias, validez_oferta_dias, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ?";
     $q = $pdo->prepare($sql);
     $q->execute([$sourceId]);
     $dataOrigen = $q->fetch(PDO::FETCH_ASSOC);
@@ -271,7 +315,7 @@ if (!empty($_POST)) {
         <div class="page-body"><?php
           $ubicacion = $isCreate
             ? ($sourceId !== null ? "Nuevo Presupuesto desde #" . $sourceId : "Nuevo Presupuesto")
-            : "Modificar Presupuesto";
+            : ($soloLectura ? "Ver Presupuesto" : "Modificar Presupuesto");
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -281,12 +325,15 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-					          <form class="form theme-form" role="form" method="post" action="<?= $isCreate ? 'modificarPresupuesto.php' . ($sourceId !== null ? '?desde=' . rawurlencode((string) $sourceId) : '') : 'modificarPresupuesto.php?id=' . rawurlencode((string) $id) ?>">
+					          <form class="form theme-form" role="form" method="post" <?= $soloLectura ? 'onsubmit="return false;"' : '' ?> action="<?= $isCreate ? 'modificarPresupuesto.php' . ($sourceId !== null ? '?desde=' . rawurlencode((string) $sourceId) : '') : 'modificarPresupuesto.php?id=' . rawurlencode((string) $id) ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
                             <input type="hidden" name="revision" value="<?= htmlspecialchars((string) ($_GET['revision'] ?? $data['nro_revision'] ?? 0), ENT_QUOTES, 'UTF-8') ?>">
+                            <?php if ($isCreate): ?>
+                              <input type="hidden" name="token_creacion" value="<?= htmlspecialchars($tokenCreacion, ENT_QUOTES, 'UTF-8') ?>">
+                            <?php endif; ?>
                             <label class="col-sm-3 col-form-label">Empresa(*)</label>
                             <div class="col-sm-9">
                               <select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" autofocus required="required">
@@ -427,6 +474,22 @@ if (!empty($_POST)) {
                             <label class="col-sm-3 col-form-label">Observaciones</label>
                             <div class="col-sm-9"><textarea name="observaciones" class="form-control"><?= htmlspecialchars((string) $data['observaciones'], ENT_QUOTES, 'UTF-8') ?></textarea></div>
                           </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Certificación</label>
+                            <div class="col-sm-9"><input name="certificacion" type="text" maxlength="199" class="form-control" value="<?= htmlspecialchars((string) ($data['certificacion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Forma de pago</label>
+                            <div class="col-sm-9"><input name="forma_pago" type="text" maxlength="199" class="form-control" value="<?= htmlspecialchars((string) ($data['forma_pago'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Plazo de entrega (días)</label>
+                            <div class="col-sm-9"><input name="plazo_entrega_dias" type="number" min="0" step="1" class="form-control" placeholder="Días" value="<?= htmlspecialchars((string) ($data['plazo_entrega_dias'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Validez de la oferta (días)</label>
+                            <div class="col-sm-9"><input name="validez_oferta_dias" type="number" min="0" step="1" class="form-control" placeholder="Días" value="<?= htmlspecialchars((string) ($data['validez_oferta_dias'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -434,7 +497,7 @@ if (!empty($_POST)) {
                       <div class="col-sm-9 offset-sm-3">
                         <?php if ($isCreate): ?>
                           <button type="submit" class="btn btn-primary">Crear</button>
-                        <?php else:
+                        <?php elseif (!$soloLectura):
                           $sql2 = "SELECT max(nro_revision) ultimaRevision FROM presupuestos WHERE nro = ?";
                           $q2 = $pdo->prepare($sql2);
                           $q2->execute([$data['nro']]);
@@ -443,6 +506,9 @@ if (!empty($_POST)) {
                             <button type="submit" value="1" name="btn1" class="btn btn-primary">Modificar</button>
                           <?php endif;
                         endif; ?>
+                        <?php if (!$isCreate): ?>
+                          <a class="btn btn-primary" target="_blank" href="imprimirPresupuesto.php?id=<?= (int) $id ?>">Imprimir</a>
+                        <?php endif; ?>
 						<a href='listarPresupuestos.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>

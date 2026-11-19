@@ -233,7 +233,9 @@ if ($mensajeErrorFiltros === '') {
                       if (!empty(tienePermiso(270))) {
                         echo '<a href="#" id="link_eliminar_presupuesto"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
                         echo '&nbsp;&nbsp;';
-                      }?>
+                      }
+                      echo '<a href="#" id="link_imprimir_presupuesto" target="_blank"><img src="img/print.png" width="25" height="20" border="0" alt="Imprimir" title="Imprimir"></a>';
+                      echo '&nbsp;&nbsp;';?>
                     </h5>
                   </div>
                   <div class="card-body">
@@ -519,6 +521,13 @@ if ($mensajeErrorFiltros === '') {
             alert("Por favor seleccione un presupuesto NO ADJUDICADO para eliminar")
           }
         })	  
+        $("#link_imprimir_presupuesto").on("click",function(event){
+          let l=document.location.href;
+          if(this.href==l || this.href==l+"#"){
+            event.preventDefault();
+            alert("Por favor seleccione un presupuesto para imprimir")
+          }
+        })
 		 $("#link_adjudicar_presupuesto").on("click",function(){
          
           let target=this.dataset.target;
@@ -544,6 +553,7 @@ if ($mensajeErrorFiltros === '') {
             $("#link_items_presupuesto_masivo").attr("href","#");
             $("#link_clonar_presupuesto").attr("data-target","#");
             $("#link_eliminar_presupuesto").attr("data-target","#");
+            $("#link_imprimir_presupuesto").attr("href","#");
           }else{
             table.rows().nodes().each( function (rowNode, index) {
               $(rowNode).removeClass("selected");
@@ -556,6 +566,7 @@ if ($mensajeErrorFiltros === '') {
             $("#link_items_presupuesto_masivo").attr("href","itemsPresupuestoMasivo.php?id="+id_presupuesto);
             $("#link_clonar_presupuesto").attr("data-toggle","modal");
             $("#link_clonar_presupuesto").attr("data-target","#clonarModal_"+id_presupuesto);
+            $("#link_imprimir_presupuesto").attr("href","imprimirPresupuesto.php?id="+id_presupuesto);
 			if (adj == "No") {
 				$("#link_eliminar_presupuesto").attr("data-toggle","modal");
 				$("#link_eliminar_presupuesto").attr("data-target","#eliminarModal_"+id_presupuesto);
