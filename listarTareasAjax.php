@@ -210,7 +210,7 @@ if ($st) {
         $nroEntregable = (string)($row[24] ?? '');
         $tipoTareaId = (int)$row[21];
         $tituloEntregable = [5 => 'Ver Cómputo', 12 => 'Ver Lista de Corte', 24 => 'Ver Packing List'][$tipoTareaId] ?? 'Ver entregable';
-        $paginaEntregable = [5 => 'verComputo.php', 12 => 'verListaCorte.php', 24 => 'verPackingList.php'][$tipoTareaId] ?? '';
+        $paginaEntregable = [5 => 'verDetalleComputo.php', 12 => 'verListaCorte.php', 24 => 'verPackingList.php'][$tipoTareaId] ?? '';
         $nroEntregableHtml = '';
         if ($idEntregable > 0 && $nroEntregable !== '' && $paginaEntregable !== '') {
             $nroEntregableHtml = '<a href="' . $paginaEntregable . '?id=' . $idEntregable . '" target="_blank" title="' . $tituloEntregable . '"><i class="fa fa-file-text-o" style="margin-right: 5px;"></i>' . htmlspecialchars($nroEntregable, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</a>';
