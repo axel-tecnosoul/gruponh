@@ -300,6 +300,12 @@ if (!empty($_POST)) {
   <head>
     <?php include('head_forms.php');?>
 	  <link rel="stylesheet" type="text/css" href="assets/css/select2.css">
+    <style>
+      .input-group {
+        display: flex;
+        align-items: center;
+      }
+    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -358,32 +364,37 @@ if (!empty($_POST)) {
                             <label class="col-sm-3 col-form-label">Fecha(*)</label>
                             <div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" maxlength="99" class="form-control" required="required" value="<?php echo $data['fecha']; ?>"></div>
                           </div>
+                          <hr>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Cliente(*)</label>
                             <div class="col-sm-9">
-                                <select name="id_cuenta" id="id_cuenta" class="js-example-basic-single col-sm-12" <?= $isCreate ? '' : 'required="required"' ?>>
-                                <option value="">Seleccione...</option><?php
-                                $pdo = Database::connect();
-                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta = 1 or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = 1)) and activo = 1 and anulado = 0 order by nombre";
-                                $q = $pdo->prepare($sqlZon);
-                                $q->execute();
-                                while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-                                  echo "<option value='".$fila['id']."'";
-                                  if ($fila['id'] == $data['id_cuenta']) {
-                                    echo " selected ";
+                              <div class="input-group">
+                                <select name="id_cuenta" id="id_cuenta" class="js-example-basic-single" <?= $isCreate ? '' : 'required="required"' ?>>
+                                  <option value="">Buscar Cliente Existente...</option><?php
+                                  $pdo = Database::connect();
+                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                  $sqlZon = "SELECT id, nombre FROM cuentas WHERE (id_tipo_cuenta = 1 or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = 1)) and activo = 1 and anulado = 0 order by nombre";
+                                  $q = $pdo->prepare($sqlZon);
+                                  $q->execute();
+                                  while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
+                                    echo "<option value='".$fila['id']."'";
+                                    if ($fila['id'] == $data['id_cuenta']) {
+                                      echo " selected ";
+                                    }
+                                    echo ">".$fila['nombre']."</option>";
                                   }
-                                  echo ">".$fila['nombre']."</option>";
-                                }
-                                Database::disconnect();?>
-                              </select>
-                              <?php if ($isCreate): ?>
-                                <div class="mt-2">
-                                  <input name="nuevo_cliente" type="text" maxlength="199" class="form-control" placeholder="O crear una nueva cuenta...">
-                                </div>
-                              <?php endif; ?>
+                                  Database::disconnect();?>
+                                </select>
+                                <?php if ($isCreate): ?>
+                                  &nbsp;o&nbsp;
+                                  <!-- <div class="mt-2 col-sm-5"> -->
+                                    <input name="nuevo_cliente" type="text" maxlength="199" class="form-control" placeholder="O crear una nueva cuenta...">
+                                  <!-- </div> -->
+                                <?php endif; ?>
+                              </div>
                             </div>
                           </div>
+                          <hr>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Línea de Negocio(*)</label>
                             <div class="col-sm-9">
