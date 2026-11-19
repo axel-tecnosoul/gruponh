@@ -1,355 +1,211 @@
 <?php
-require("config.php");
-if (empty($_SESSION['user'])) {
-  header("Location: index.php");
-  die("Redirecting to index.php");
-}
+require 'config.php';
 require 'database.php';
+require __DIR__ . '/vendor/autoload.php';
 
-$id = null;
-if (!empty($_GET['id'])) {
-  $id = $_REQUEST['id'];
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+if (empty($_SESSION['user'])) {
+  header('Location: index.php');
+  exit;
 }
 
-if (null==$id) {
-  header("Location: listarPresupuestos.php");
+function presupuestoPdfEscape($value): string {
+  return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 }
 
-if (!empty($_POST)) {
-} else {
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio, date_format(fecha,'%Y') anio,comentarios_revision,fecha_hora_revision FROM presupuestos WHERE id = ? ";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
-  
+function presupuestoPdfNumero($value): string {
+  return number_format((float)$value, 2, ',', '.');
+}
+
+function presupuestoPdfTexto($value): string {
+  $texto = trim((string)$value);
+  return $texto === '' ? '-' : presupuestoPdfEscape($texto);
+}
+
+function presupuestoPdfDias($value): string {
+  $texto = trim((string)$value);
+  return $texto === '' ? '-' : presupuestoPdfEscape($texto) . ' días';
+}
+
+$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+if (!$id) {
+  header('Location: listarPresupuestos.php');
+  exit;
+}
+
+$pdo = Database::connect();
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+$sql = "SELECT p.id, p.nro, p.id_empresa, p.nro_revision, p.fecha, p.id_cuenta, p.solicitante,
+               p.referencia, p.descripcion, p.id_moneda, p.monto, p.adjudicado, p.observaciones,
+               p.es_marco, p.id_linea_negocio, p.certificacion, p.forma_pago,
+               p.plazo_entrega_dias, p.validez_oferta_dias, p.anulado,
+               DATE_FORMAT(p.fecha, '%d/%m/%Y') AS fecha_formateada,
+               e.empresa, c.nombre AS cliente, c.razon_social, c.cuit, c.direccion,
+               c.telefono, c.email, m.moneda, ln.linea_negocio, u.usuario
+        FROM presupuestos p
+        LEFT JOIN empresas e ON e.id = p.id_empresa
+        LEFT JOIN cuentas c ON c.id = p.id_cuenta
+        LEFT JOIN monedas m ON m.id = p.id_moneda
+        LEFT JOIN lineas_negocio ln ON ln.id = p.id_linea_negocio
+        LEFT JOIN usuarios u ON u.id = p.id_usuario
+        WHERE p.id = ?";
+$q = $pdo->prepare($sql);
+$q->execute([$id]);
+$data = $q->fetch(PDO::FETCH_ASSOC);
+
+if (empty($data)) {
   Database::disconnect();
-}?>
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <?php include('head_forms.php');?>
-	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
-	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
-  </head>
-  <body>
-    <!-- Loader ends-->
-    <!-- page-wrapper Start-->
-    <div class="page-wrapper">
-    
-        <!-- Page Sidebar Start-->
-        <!-- Right sidebar Ends-->
-        <div class="page-body"><?php
-          $ubicacion="Presupuesto";
-          ?>
-          <!-- Container-fluid starts-->
-          <div class="container-fluid">
-            <div class="row">
-              <div class="col-sm-12">
-                <div class="card">
-                  <div class="card-header">
-                    <h5><?=$ubicacion?></h5>
-                  </div>
-				  <form class="form theme-form" role="form" method="post" action="#">
-                    <div class="card-body">
-                    
+  http_response_code(404);
+  exit('No se encontró el presupuesto solicitado.');
+}
 
-                      <div class="row">
-                        <div class="col">
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Nro / Revisión</label>
-							<div class="col-sm-9"><input name="nro" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['nro'].' / '.$data['nro_revision']; ?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Empresa</label>
-							<div class="col-sm-9">
-							<select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `empresa` FROM `empresas` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_empresa']) {
-                                        echo " selected ";
-								}
-								echo ">".$fila['empresa']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Fecha</label>
-							<div class="col-sm-9"><input name="fecha" type="date" onfocus="this.showPicker()" maxlength="99" class="form-control" required="required" value="<?php echo $data['fecha']; ?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Cliente</label>
-							<div class="col-sm-9">
-							<select name="id_cuenta" id="id_cuenta" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `cuentas` WHERE (id_tipo_cuenta = 1 or id in (select id_cuenta from cuentas_x_tipos_cuenta where id_tipo_cuenta = 1)) and activo = 1 and anulado = 0 order by nombre";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_cuenta']) {
-                                        echo " selected ";
-								}
-								echo ">".$fila['nombre']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Línea de Negocio</label>
-							<div class="col-sm-9">
-							<select name="id_linea_negocio" id="id_linea_negocio" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `linea_negocio` FROM `lineas_negocio` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_linea_negocio']) {
-                                        echo " selected ";
-								}
-								echo ">".$fila['linea_negocio']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Solicitante</label>
-							<div class="col-sm-9"><input name="solicitante" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['solicitante']; ?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Referencia</label>
-							<div class="col-sm-9"><input name="referencia" type="text" maxlength="199" class="form-control" required="required" value="<?php echo $data['referencia']; ?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Es Marco?</label>
-							<div class="col-sm-9">
-							<select name="es_marco" id="es_marco" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-								<option value="1" <?php if ($data['es_marco']==1) {
-                                    echo " selected ";
-                                }?>>Si</option>
-								<option value="0" <?php if ($data['es_marco']==0) {
-                                    echo " selected ";
-                                }?>>No</option>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Descripción</label>
-							<div class="col-sm-9"><textarea name="descripcion" class="form-control" required="required"><?php echo $data['descripcion']; ?></textarea></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Moneda</label>
-							<div class="col-sm-9">
-							<select name="id_moneda" id="id_moneda" class="js-example-basic-single col-sm-12" required="required">
-							<option value="">Seleccione...</option>
-							<?php
-							$pdo = Database::connect();
-							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `moneda` FROM `monedas` WHERE 1";
-							$q = $pdo->prepare($sqlZon);
-							$q->execute();
-							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
-								echo "<option value='".$fila['id']."'";
-								if ($fila['id'] == $data['id_moneda']) {
-                                        echo " selected ";
-								}
-								echo ">".$fila['moneda']."</option>";
-							}
-							Database::disconnect();
-							?>
-							</select>
-							</div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Monto</label>
-							<div class="col-sm-9"><input name="monto" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['monto']; ?>"></div>
-							</div>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Observaciones</label>
-							<div class="col-sm-9"><textarea name="observaciones" class="form-control"><?php echo $data['observaciones']; ?></textarea></div>
-							</div>
-							<?php if (!empty($data['fecha_hora_revision'])) { ?>
-							<div class="form-group row">
-							<label class="col-sm-3 col-form-label">Comentarios Revisión</label>
-							<div class="col-sm-9"><textarea name="comentarios_revision" class="form-control"><?php echo $data['comentarios_revision']; ?> (<?php echo $data['fecha_hora_revision']; ?>)</textarea></div>
-							</div>
-							<?php } ?>
-							<div class="form-group row">
-							<div class="col-sm-12">
-							<table class="display" id="dataTables-example667">
-								<thead>
-								  <tr>
-									  <th>Detalle</th>
-									  <th>Cantidad</th>
-									  <th>Unidad Medida</th>
-									  <th>Costo</th>
-									  <th>Precio</th>
-								  </tr>
-								</thead>
-								<tbody>
-								  <?php
-									$pdo = Database::connect();
-									$sql = " SELECT pd.`id`, pd.`detalle`, pd.`cantidad`, um.unidad_medida, pd.`costo`, pd.`precio` FROM `presupuestos_detalle` pd inner join unidades_medida um on um.id = pd.`id_unidad_medida` WHERE pd.`id_presupuesto` = ".$_GET['id'];
-									
-									foreach ($pdo->query($sql) as $row) {
-										echo '<tr>';
-										echo '<td>'. $row[1] . '</td>';
-										echo '<td>'. $row[2] . '</td>';
-										echo '<td>'. $row[3] . '</td>';
-										echo '<td>$'. number_format($row[4],2) . '</td>';
-										echo '<td>$'. number_format($row[5],2) . '</td>';
-										echo '</tr>';
-									}
-								   Database::disconnect();
-								  ?>
-								</tbody>
-								<tfoot>
-								  <tr>
-									  <th>Detalle</th>
-									  <th>Cantidad</th>
-									  <th>Unidad Medida</th>
-									  <th>Costo</th>
-									  <th>Precio</th>
-								  </tr>
-								</tfoot>
-							  </table>
-							</div>
-							</div>
-                        </div>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Container-fluid Ends-->
-        </div>
-        <!-- footer start-->
-    
-      </div>
-    </div>
-    <!-- latest jquery-->
-    <script src="assets/js/jquery-3.2.1.min.js"></script>
-    <!-- Bootstrap js-->
-    <script src="assets/js/bootstrap/popper.min.js"></script>
-    <script src="assets/js/bootstrap/bootstrap.js"></script>
-    <!-- feather icon js-->
-    <script src="assets/js/icons/feather-icon/feather.min.js"></script>
-    <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
-    <!-- Sidebar jquery-->
-    <script src="assets/js/sidebar-menu.js"></script>
-    <script src="assets/js/config.js"></script>
-    <!-- Plugins JS start-->
-    <script src="assets/js/typeahead/handlebars.js"></script>
-    <script src="assets/js/typeahead/typeahead.bundle.js"></script>
-    <script src="assets/js/typeahead/typeahead.custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <script src="assets/js/typeahead-search/handlebars.js"></script>
-    <script src="assets/js/typeahead-search/typeahead-custom.js"></script>
-    <!-- Plugins JS Ends-->
-    <!-- Theme js-->
-   <script src="assets/js/script.js"></script>
-    <!-- Plugin used-->
-	<script src="assets/js/select2/select2.full.min.js"></script>
-    <script src="assets/js/select2/select2-custom.js"></script>
-	<script src="assets/js/datatable/datatables/jquery.dataTables.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.buttons.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/jszip.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.colVis.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/pdfmake.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/vfs_fonts.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.autoFill.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.select.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.html5.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/buttons.print.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.responsive.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/responsive.bootstrap4.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.keyTable.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.colReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.fixedHeader.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.rowReorder.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/dataTables.scroller.min.js"></script>
-    <script src="assets/js/datatable/datatable-extension/custom.js"></script>
-    <script src="assets/js/chat-menu.js"></script>
-    <script src="assets/js/tooltip-init.js"></script>
-    <!-- Plugins JS Ends-->
-	<script>
-    $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example667 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	$('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
-    
-    </script>
-    <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
-  </body>
-</html>
-<script>window.print();</script>
+$qItems = $pdo->prepare(
+  "SELECT pd.detalle, pd.cantidad, um.unidad_medida, pd.costo, pd.precio
+   FROM presupuestos_detalle pd
+   LEFT JOIN unidades_medida um ON um.id = pd.id_unidad_medida
+   WHERE pd.id_presupuesto = ?
+   ORDER BY pd.id"
+);
+$qItems->execute([$id]);
+$items = $qItems->fetchAll(PDO::FETCH_ASSOC);
+
+Database::disconnect();
+
+$simbolo = ((int)$data['id_moneda'] === 1) ? 'U$S' : '$';
+$totalCosto = 0.0;
+$totalPrecio = 0.0;
+
+$filasItems = '';
+foreach ($items as $indice => $item) {
+  $cantidad = (float)$item['cantidad'];
+  $costo = (float)$item['costo'];
+  $precio = (float)$item['precio'];
+  $subtotalCosto = $cantidad * $costo;
+  $subtotalPrecio = $cantidad * $precio;
+  $totalCosto += $subtotalCosto;
+  $totalPrecio += $subtotalPrecio;
+
+  $filasItems .= '<tr>'
+    . '<td class="centro">' . ($indice + 1) . '</td>'
+    . '<td>' . presupuestoPdfEscape($item['detalle']) . '</td>'
+    . '<td class="numero">' . presupuestoPdfNumero($cantidad) . '</td>'
+    . '<td class="centro">' . presupuestoPdfEscape($item['unidad_medida'] ?? '') . '</td>'
+    . '<td class="numero">' . $simbolo . ' ' . presupuestoPdfNumero($costo) . '</td>'
+    . '<td class="numero">' . $simbolo . ' ' . presupuestoPdfNumero($precio) . '</td>'
+    . '<td class="numero">' . $simbolo . ' ' . presupuestoPdfNumero($subtotalPrecio) . '</td>'
+    . '</tr>';
+}
+
+if ($filasItems === '') {
+  $filasItems = '<tr><td colspan="7" class="centro">El presupuesto no tiene ítems cargados.</td></tr>';
+}
+
+$logoArchivo = ((int)$data['id_empresa'] === 1) ? 'img/logo_nc.png' : 'img/logo_np.png';
+$logoRuta = __DIR__ . '/' . $logoArchivo;
+$logoHtml = is_file($logoRuta)
+  ? '<img class="logo" src="data:image/png;base64,' . base64_encode((string)file_get_contents($logoRuta)) . '" alt="Logo">'
+  : '';
+
+$html = '<!doctype html><html lang="es"><head><meta charset="UTF-8"><style>
+  @page { size: A4 portrait; margin: 11mm 10mm 14mm; }
+  body { font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #111; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 0.5pt solid #444; padding: 3pt; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+  th { background: #e9edf2; font-weight: bold; text-align: left; }
+  .header-table td { border: none; padding: 0; vertical-align: middle; }
+  .header-table .logo { max-width: 150pt; max-height: 52pt; }
+  .title { text-align: center; font-size: 16pt; font-weight: bold; letter-spacing: 1pt; }
+  .identifier { text-align: right; font-size: 9pt; font-weight: bold; }
+  .info-table td { padding: 2.5pt 3pt; }
+  .info-table td.label { width: 19%; background: #f3f5f8; font-weight: bold; }
+  .info-table td.value { width: 31%; }
+  .block-title { margin: 7pt 0 2pt; font-size: 9pt; font-weight: bold; }
+  .text-block { border: 0.5pt solid #444; padding: 4pt; min-height: 16pt; }
+  .items-table { margin-top: 7pt; }
+  .items-table thead { display: table-header-group; }
+  .items-table th:nth-child(1) { width: 5%; }
+  .items-table th:nth-child(2) { width: 43%; }
+  .items-table th:nth-child(3) { width: 10%; }
+  .items-table th:nth-child(4) { width: 10%; }
+  .items-table th:nth-child(5) { width: 10.66%; }
+  .items-table th:nth-child(6) { width: 10.66%; }
+  .items-table th:nth-child(7) { width: 10.68%; }
+  .items-table tbody tr { page-break-inside: avoid; }
+  .numero { text-align: right; white-space: nowrap; }
+  .centro { text-align: center; }
+  .totals-table { margin-top: 6pt; width: 45%; margin-left: 55%; }
+  .totals-table td { border: none; padding: 2pt 3pt; }
+  .totals-table td.label { font-weight: bold; }
+  .totals-table td.numero { border: 0.5pt solid #444; }
+  .footer-note { margin-top: 10pt; font-size: 7pt; color: #555; text-align: center; }
+</style></head><body>';
+
+$html .= '<table class="header-table"><tbody><tr>'
+  . '<td style="width:30%">' . $logoHtml . '</td>'
+  . '<td class="title" style="width:40%">PRESUPUESTO</td>'
+  . '<td class="identifier" style="width:30%">Nº ' . presupuestoPdfEscape($data['nro'])
+  . '<br>Revisión ' . presupuestoPdfEscape($data['nro_revision']) . '</td>'
+  . '</tr></tbody></table>';
+
+$html .= '<table class="info-table" style="margin-top:8pt"><tbody>'
+  . '<tr><td class="label">Empresa</td><td class="value">' . presupuestoPdfTexto($data['empresa']) . '</td>'
+  . '<td class="label">Fecha</td><td class="value">' . presupuestoPdfTexto($data['fecha_formateada']) . '</td></tr>'
+  . '<tr><td class="label">Cliente</td><td class="value">' . presupuestoPdfTexto($data['cliente']) . '</td>'
+  . '<td class="label">Razón social</td><td class="value">' . presupuestoPdfTexto($data['razon_social']) . '</td></tr>'
+  . '<tr><td class="label">CUIT</td><td class="value">' . presupuestoPdfTexto($data['cuit']) . '</td>'
+  . '<td class="label">Dirección</td><td class="value">' . presupuestoPdfTexto($data['direccion']) . '</td></tr>'
+  . '<tr><td class="label">Teléfono</td><td class="value">' . presupuestoPdfTexto($data['telefono']) . '</td>'
+  . '<td class="label">Email</td><td class="value">' . presupuestoPdfTexto($data['email']) . '</td></tr>'
+  . '<tr><td class="label">Solicitante</td><td class="value">' . presupuestoPdfTexto($data['solicitante']) . '</td>'
+  . '<td class="label">Referencia</td><td class="value">' . presupuestoPdfTexto($data['referencia']) . '</td></tr>'
+  . '<tr><td class="label">Línea de negocio</td><td class="value">' . presupuestoPdfTexto($data['linea_negocio']) . '</td>'
+  . '<td class="label">Moneda</td><td class="value">' . presupuestoPdfTexto($data['moneda']) . '</td></tr>'
+  . '<tr><td class="label">Es marco</td><td class="value">' . ((int)$data['es_marco'] === 1 ? 'Sí' : 'No') . '</td>'
+  . '<td class="label">Adjudicado</td><td class="value">' . ((int)$data['adjudicado'] === 1 ? 'Sí' : 'No') . '</td></tr>'
+  . '<tr><td class="label">Certificación</td><td class="value">' . presupuestoPdfTexto($data['certificacion']) . '</td>'
+  . '<td class="label">Forma de pago</td><td class="value">' . presupuestoPdfTexto($data['forma_pago']) . '</td></tr>'
+  . '<tr><td class="label">Plazo de entrega</td><td class="value">' . presupuestoPdfDias($data['plazo_entrega_dias']) . '</td>'
+  . '<td class="label">Validez de la oferta</td><td class="value">' . presupuestoPdfDias($data['validez_oferta_dias']) . '</td></tr>'
+  . '</tbody></table>';
+
+$html .= '<div class="block-title">Descripción</div>'
+  . '<div class="text-block">' . nl2br(presupuestoPdfTexto($data['descripcion'])) . '</div>';
+
+$html .= '<div class="block-title">Observaciones</div>'
+  . '<div class="text-block">' . nl2br(presupuestoPdfTexto($data['observaciones'])) . '</div>';
+
+$html .= '<table class="items-table"><thead><tr>'
+  . '<th class="centro">#</th><th>Detalle</th><th class="numero">Cantidad</th>'
+  . '<th class="centro">Unidad</th><th class="numero">Costo unit.</th>'
+  . '<th class="numero">Precio unit.</th><th class="numero">Subtotal</th>'
+  . '</tr></thead><tbody>' . $filasItems . '</tbody></table>';
+
+$html .= '<table class="totals-table"><tbody>'
+  . '<tr><td class="label">Total costo</td><td class="numero">' . $simbolo . ' ' . presupuestoPdfNumero($totalCosto) . '</td></tr>'
+  . '<tr><td class="label">Total precio</td><td class="numero">' . $simbolo . ' ' . presupuestoPdfNumero($totalPrecio) . '</td></tr>'
+  . '<tr><td class="label">Monto del presupuesto</td><td class="numero">' . $simbolo . ' ' . presupuestoPdfNumero($data['monto']) . '</td></tr>'
+  . '</tbody></table>';
+
+$html .= '<div class="footer-note">Emitido por ' . presupuestoPdfEscape($data['usuario']) . '</div>';
+$html .= '</body></html>';
+
+$options = new Options();
+$options->set('isHtml5ParserEnabled', true);
+$options->set('defaultFont', 'DejaVu Sans');
+$options->set('chroot', __DIR__);
+$dompdf = new Dompdf($options);
+$dompdf->loadHtml($html, 'UTF-8');
+$dompdf->setPaper('A4', 'portrait');
+$dompdf->render();
+
+$canvas = $dompdf->getCanvas();
+$font = $dompdf->getFontMetrics()->getFont('DejaVu Sans', 'normal');
+$canvas->page_text(500, 800, '{PAGE_NUM} / {PAGE_COUNT}', $font, 7, [0.35, 0.35, 0.35]);
+
+$dompdf->stream(
+  'presupuesto_' . (int)$data['nro'] . '_rev_' . (int)$data['nro_revision'] . '.pdf',
+  ['Attachment' => false]
+);

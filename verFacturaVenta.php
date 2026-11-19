@@ -86,13 +86,6 @@ $qRet = $pdo->prepare("SELECT r.*, COALESCE(r.regimen_text, r.codigo, r.articulo
 $qRet->execute([$id]);
 $retenciones = $qRet->fetchAll(PDO::FETCH_ASSOC);
 
-$qReg = $pdo->prepare("SELECT o.*, COALESCE(o.regimen_text, rf.regimen) AS regimen_text
-    FROM facturas_venta_otros o
-    LEFT JOIN regimenes_facturacion rf ON rf.id = o.id_regimen
-    WHERE o.id_factura_venta = ?");
-$qReg->execute([$id]);
-$regimenes = $qReg->fetchAll(PDO::FETCH_ASSOC);
-
 $comprobanteARCA = null;
 if (FacturacionARCA::habilitada()) {
   $qArca = $pdo->prepare(
@@ -203,17 +196,6 @@ if (empty($_SESSION['csrf_factura_arca'])) {
                     <label class="col-sm-2 font-weight-bold">Exportada</label>
                     <div class="col-sm-4"><?= $data['exportada'] ? 'Sí' : 'No' ?></div>
                   </div>
-
-                  <?php if (!empty($regimenes)): ?>
-                  <div class="form-group row mt-1">
-                    <label class="col-sm-2 font-weight-bold">Regímenes</label>
-                    <div class="col-sm-10">
-                      <?php foreach ($regimenes as $i => $reg): ?>
-                        <?= htmlspecialchars($reg['regimen_text']) ?> (<?= fmtV($reg['porcentaje']) ?>%)<?= $i < count($regimenes) - 1 ? ', ' : '' ?>
-                      <?php endforeach; ?>
-                    </div>
-                  </div>
-                  <?php endif; ?>
 
                   <?php if (!empty($data['observaciones'])): ?>
                   <div class="form-group row mt-1">

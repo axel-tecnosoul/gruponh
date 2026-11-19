@@ -480,25 +480,6 @@ if ($vista === 'venta') {
                             <small id="infoCotizacion" class="text-muted"></small>
                           </div>
                         </div>
-
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label">Otros Regímenes</label>
-                          <div class="col-sm-8">
-                            <select name="regimenes[]" id="regimenes" multiple="multiple"
-                              class="js-example-basic-multiple col-sm-12">
-                              <?php
-                              $pdo = Database::connect();
-                              $q = $pdo->prepare("SELECT id, regimen, porcentaje FROM regimenes_facturacion WHERE anulado = 0 ORDER BY regimen");
-                              $q->execute();
-                              while ($f = $q->fetch(PDO::FETCH_ASSOC)) {
-                                $sel = in_array((int)$f['id'], array_map('intval', $regimenesSeleccionados ?? []), true) ? ' selected' : '';
-                                echo "<option value='{$f['id']}'$sel>" . htmlspecialchars($f['regimen']) . " ({$f['porcentaje']}%)</option>";
-                              }
-                              Database::disconnect();
-                              ?>
-                            </select>
-                          </div>
-                        </div>
                         <?php else: ?>
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label" id="labelCotizacion">Cotización</label>

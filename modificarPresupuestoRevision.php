@@ -182,7 +182,7 @@ if (!empty($_POST)) {
 
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ? ";
+  $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, certificacion, forma_pago, plazo_entrega_dias, validez_oferta_dias, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ? ";
   $q = $pdo->prepare($sql);
   $q->execute([$id]);
   $data = $q->fetch(PDO::FETCH_ASSOC);
@@ -357,6 +357,22 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Observaciones</label>
                             <div class="col-sm-9"><textarea name="observaciones" class="form-control"><?php echo $data['observaciones']; ?></textarea></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Certificación</label>
+                            <div class="col-sm-9"><input name="certificacion" type="text" maxlength="199" class="form-control" value="<?= htmlspecialchars((string) ($data['certificacion'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Forma de pago</label>
+                            <div class="col-sm-9"><input name="forma_pago" type="text" maxlength="199" class="form-control" value="<?= htmlspecialchars((string) ($data['forma_pago'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Plazo de entrega (días)</label>
+                            <div class="col-sm-9"><input name="plazo_entrega_dias" type="number" min="0" step="1" class="form-control" placeholder="Días" value="<?= htmlspecialchars((string) ($data['plazo_entrega_dias'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
+                          </div>
+                          <div class="form-group row">
+                            <label class="col-sm-3 col-form-label">Validez de la oferta (días)</label>
+                            <div class="col-sm-9"><input name="validez_oferta_dias" type="number" min="0" step="1" class="form-control" placeholder="Días" value="<?= htmlspecialchars((string) ($data['validez_oferta_dias'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></div>
                           </div>
 						  <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Comentarios Revisión(*)</label>
