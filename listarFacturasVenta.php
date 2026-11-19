@@ -265,6 +265,8 @@ Database::disconnect(); ?>
                           $numeroFacturaMostrar = trim((string)$row['numero']);
                           if ($estadoFacturaId === 2 && preg_match('/-0+$/D', $numeroFacturaMostrar)) {
                             $numeroFacturaMostrar = '—';
+                          } elseif (preg_match('/^(\d+)(?:-0*)?$/D', $numeroFacturaMostrar, $coincidenciaNumero)) {
+                            $numeroFacturaMostrar = str_pad($coincidenciaNumero[1], 4, '0', STR_PAD_LEFT);
                           }
                           $clasesEstadoFactura = [
                             1 => 'badge-warning',

@@ -461,20 +461,24 @@ if (!empty($_POST)) {
                             <input type="hidden" name="hId" value="1" />
                           </div>
                           <?php if ($modo === 'update') { ?>
-                            <div class="form-group row">
-                              <label class="col-sm-3 col-form-label">Tarea Planos y LC(*)</label>
-                              <div class="col-sm-9">
-                                <select name="id_tarea" id="id_tarea" class="form-control" required>
-                                  <option value="">Seleccione una tarea...</option>
-                                  <?php foreach ($tareasPackingList as $tarea): ?>
-                                    <option value="<?=$tarea['id']?>" <?=((string)$id_tarea === (string)$tarea['id']) ? 'selected' : ''?>>
-                                      #<?=$tarea['id']?> — <?=htmlspecialchars($tarea['estructura'], ENT_QUOTES, 'UTF-8')?> (<?=htmlspecialchars($tarea['tipo'], ENT_QUOTES, 'UTF-8')?>)
-                                    </option>
-                                  <?php endforeach; ?>
-                                  <option value="__crear__">Crear nueva tarea Planos y LC…</option>
-                                </select>
+                            <?php if (!empty($id_tarea)) { ?>
+                              <input type="hidden" name="id_tarea" value="<?=htmlspecialchars((string)$id_tarea, ENT_QUOTES, 'UTF-8')?>" />
+                            <?php } else { ?>
+                              <div class="form-group row">
+                                <label class="col-sm-3 col-form-label">Tarea Planos y LC(*)</label>
+                                <div class="col-sm-9">
+                                  <select name="id_tarea" id="id_tarea" class="form-control" required>
+                                    <option value="">Seleccione una tarea...</option>
+                                    <?php foreach ($tareasPackingList as $tarea): ?>
+                                      <option value="<?=$tarea['id']?>">
+                                        #<?=$tarea['id']?> — <?=htmlspecialchars($tarea['estructura'], ENT_QUOTES, 'UTF-8')?> (<?=htmlspecialchars($tarea['tipo'], ENT_QUOTES, 'UTF-8')?>)
+                                      </option>
+                                    <?php endforeach; ?>
+                                    <option value="__crear__">Crear nueva tarea Planos y LC…</option>
+                                  </select>
+                                </div>
                               </div>
-                            </div>
+                            <?php } ?>
                             <div class="form-group row d-none" id="nuevaTareaPackingFields">
                               <label class="col-sm-3 col-form-label">Nueva tarea</label>
                               <div class="col-sm-9">

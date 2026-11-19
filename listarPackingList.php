@@ -586,6 +586,30 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
  
     // DataTable
     var table = $('#dataTables-example666').DataTable();
+
+    function actualizarFilaEstadoPackingList(idRevision, idEstado) {
+      const fila = table.rows({search: 'none'}).nodes().to$().filter(function() {
+        return $.trim($(this).find('td:first').text()) === String(idRevision);
+      }).first();
+      if (!fila.length) return;
+
+      if (fila.hasClass('selected')) {
+        fila.find('td:first').trigger('click');
+      }
+
+      const estadosFiltrados = ($('select[name="id_estado[]"]').val() || []).filter(function(id) {
+        return id !== '' && Number(id) > 0;
+      });
+      if (estadosFiltrados.length && !estadosFiltrados.includes(String(idEstado))) {
+        table.row(fila).remove().draw(false);
+        return;
+      }
+
+      const estadoTexto = $('#select_estado_base option[value="' + idEstado + '"]').text().trim();
+      fila.attr('data-estado-id', idEstado);
+      table.cell(fila, 9).data(estadoTexto);
+      table.draw(false);
+    }
  
     // Apply the search
     table.columns().every( function () {
@@ -676,7 +700,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
           6: 'Packing List cancelada correctamente.'
         };
         alert(mensajesEstado[idEstadoAccion] || 'Estado del Packing List actualizado correctamente.');
-        $('#btnFiltrarPackingList').trigger('click');
+        actualizarFilaEstadoPackingList(idPosicionAccion, idEstadoAccion);
       }).fail(function(xhr) {
         alert(xhr.responseText || 'Error del servidor al actualizar el estado del Packing List.');
       });

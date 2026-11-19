@@ -329,9 +329,9 @@ if ($mensajeErrorFiltros === '') {
 										  <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
 										  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
 										</div>
-										<div class="modal-body">¿Está seguro que desea clonar este presupuesto?</div>
+										<div class="modal-body">¿Desea crear un presupuesto nuevo a partir de este? Los datos se guardarán al confirmar el formulario.</div>
 										<div class="modal-footer">
-										  <a href="clonarPresupuesto.php?id=<?php echo $row["id"]; ?>" class="btn btn-primary">Clonar</a>
+										  <a href="clonarPresupuesto.php?id=<?php echo $row["id"]; ?>" class="btn btn-primary">Nuevo desde</a>
 										  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
 										</div>
 									  </div>

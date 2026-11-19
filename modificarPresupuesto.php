@@ -9,13 +9,17 @@ if (empty($_SESSION['user'])) {
 
 require 'database.php';
 
-$id = null;
-if (!empty($_GET['id'])) {
-  $id = $_REQUEST['id'];
-}
+$id = !empty($_GET['id']) ? (int) $_GET['id'] : null;
+$sourceId = ($id === null && !empty($_GET['desde'])) ? (int) $_GET['desde'] : null;
+$isCreate = $id === null;
 
-if (null==$id) {
+if (!$isCreate && $id < 1) {
   header("Location: listarPresupuestos.php");
+  exit;
+}
+if ($isCreate && isset($_GET['desde']) && ($sourceId === null || $sourceId < 1)) {
+  header("Location: listarPresupuestos.php");
+  exit;
 }
 
 if (!empty($_POST)) {
@@ -32,7 +36,38 @@ if (!empty($_POST)) {
     var_dump($_GET);
   }
 
-  if(isset($_POST["btn1"])){
+  if ($isCreate) {
+    $pdo->beginTransaction();
+
+    if (!empty($_POST['nuevo_cliente'])) {
+      $sql = "INSERT INTO `cuentas`(`id_tipo_cuenta`, `nombre`, `razon_social`, `cuit`, `contacto`, `email`, `telefono`, `id_puesto`, `codigo_postal`, `id_pais`, `id_provincia`, `id_localidad`, `observaciones`, `activo`, `es_recurso`, `anulado`, `cuenta_gestion`, `codigo_externo`, `id_condicion_iva`, `direccion`, `id_usuario`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,0,?,?,?,?,?)";
+      $q = $pdo->prepare($sql);
+      $q->execute([1,$_POST['nuevo_cliente'],$_POST['nuevo_cliente'],'11-11111111-1',$_POST['nuevo_cliente'],'','',null,'',12,61,99999,'',0,null,null,null,null,null]);
+
+      $idNuevaCuenta = $pdo->lastInsertId();
+      $pdo->prepare("INSERT IGNORE INTO cuentas_x_tipos_cuenta (id_cuenta, id_tipo_cuenta) VALUES (?,1)")->execute([$idNuevaCuenta]);
+      $_POST['id_cuenta'] = $idNuevaCuenta;
+    }
+
+    $sql = "INSERT INTO presupuestos (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`) VALUES (0,?,0,?,?,?,?,?,?,?,?,?,?,0,?,?,now())";
+    $q = $pdo->prepare($sql);
+    $q->execute([$_POST['id_empresa'],$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio']]);
+
+    $id = (int) $pdo->lastInsertId();
+    $pdo->prepare("UPDATE presupuestos SET `nro` = ? WHERE id = ?")->execute([$id, $id]);
+
+    if ($sourceId !== null) {
+      $sql = "INSERT INTO presupuestos_detalle (id_presupuesto, detalle, cantidad, id_unidad_medida, costo, precio) SELECT ?, detalle, cantidad, id_unidad_medida, costo, precio FROM presupuestos_detalle WHERE id_presupuesto = ?";
+      $pdo->prepare($sql)->execute([$id, $sourceId]);
+    }
+
+    $detalleLog = $sourceId !== null ? 'Se ha clonado un presupuesto' : 'Nuevo Presupuesto';
+    $sql = "INSERT INTO logs(fecha_hora, id_usuario, detalle_accion,modulo,link) VALUES (now(),?,?, 'Presupuestos',?)";
+    $pdo->prepare($sql)->execute([$_SESSION['user']['id'], $detalleLog, 'verPresupuesto.php?id='.$id]);
+
+    $adjudicado = 0;
+    $pdo->commit();
+  } elseif(isset($_POST["btn1"])){
     //modificamos el presupuesto
 	
 	$sql = "select nro, adjudicado,fecha_hora_alta FROM `presupuestos` where id = ?";
@@ -182,10 +217,37 @@ if (!empty($_POST)) {
 
   $pdo = Database::connect();
   $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ? ";
-  $q = $pdo->prepare($sql);
-  $q->execute([$id]);
-  $data = $q->fetch(PDO::FETCH_ASSOC);
+  $data = [
+    'id_empresa' => '', 'nro' => '', 'nro_revision' => 0, 'fecha' => date('Y-m-d'),
+    'id_cuenta' => '', 'solicitante' => '', 'referencia' => '', 'descripcion' => '',
+    'id_moneda' => '', 'monto' => '', 'adjudicado' => 0, 'observaciones' => '',
+    'id_usuario' => '', 'anulado' => 0, 'es_marco' => 0, 'id_linea_negocio' => ''
+  ];
+
+  if ($id !== null) {
+    $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $data = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$data) {
+      Database::disconnect();
+      header("Location: listarPresupuestos.php");
+      exit;
+    }
+  } elseif ($sourceId !== null) {
+    $sql = "SELECT id, nro, id_empresa, nro_revision, fecha, id_cuenta, solicitante, referencia, descripcion, id_moneda, monto, adjudicado, observaciones, id_usuario, anulado, es_marco, id_linea_negocio FROM presupuestos WHERE id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$sourceId]);
+    $dataOrigen = $q->fetch(PDO::FETCH_ASSOC);
+    if (!$dataOrigen) {
+      Database::disconnect();
+      header("Location: listarPresupuestos.php");
+      exit;
+    }
+    $data = $dataOrigen;
+    $data['fecha'] = date('Y-m-d');
+    $data['adjudicado'] = 0;
+  }
   
   Database::disconnect();
 }?>
@@ -207,7 +269,9 @@ if (!empty($_POST)) {
         <!-- Page Sidebar Start-->
         <!-- Right sidebar Ends-->
         <div class="page-body"><?php
-          $ubicacion="Modificar Presupuesto";
+          $ubicacion = $isCreate
+            ? ($sourceId !== null ? "Nuevo Presupuesto desde #" . $sourceId : "Nuevo Presupuesto")
+            : "Modificar Presupuesto";
           include_once("head_page.php")?>
           <!-- Container-fluid starts-->
           <div class="container-fluid">
@@ -217,12 +281,12 @@ if (!empty($_POST)) {
                   <div class="card-header">
                     <h5><?=$ubicacion?></h5>
                   </div>
-				          <form class="form theme-form" role="form" method="post" action="modificarPresupuesto.php?id=<?=$id?>">
+					          <form class="form theme-form" role="form" method="post" action="<?= $isCreate ? 'modificarPresupuesto.php' . ($sourceId !== null ? '?desde=' . rawurlencode((string) $sourceId) : '') : 'modificarPresupuesto.php?id=' . rawurlencode((string) $id) ?>">
                     <div class="card-body">
                       <div class="row">
                         <div class="col">
                           <div class="form-group row">
-                            <input type="hidden" name="revision" value="<?=$_GET["revision"]?>">
+                            <input type="hidden" name="revision" value="<?= htmlspecialchars((string) ($_GET['revision'] ?? $data['nro_revision'] ?? 0), ENT_QUOTES, 'UTF-8') ?>">
                             <label class="col-sm-3 col-form-label">Empresa(*)</label>
                             <div class="col-sm-9">
                               <select name="id_empresa" id="id_empresa" class="js-example-basic-single col-sm-12" autofocus required="required">
@@ -250,7 +314,7 @@ if (!empty($_POST)) {
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Cliente(*)</label>
                             <div class="col-sm-9">
-                              <select name="id_cuenta" id="id_cuenta" class="js-example-basic-single col-sm-12" required="required">
+                                <select name="id_cuenta" id="id_cuenta" class="js-example-basic-single col-sm-12" <?= $isCreate ? '' : 'required="required"' ?>>
                                 <option value="">Seleccione...</option><?php
                                 $pdo = Database::connect();
                                 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -266,6 +330,11 @@ if (!empty($_POST)) {
                                 }
                                 Database::disconnect();?>
                               </select>
+                              <?php if ($isCreate): ?>
+                                <div class="mt-2">
+                                  <input name="nuevo_cliente" type="text" maxlength="199" class="form-control" placeholder="O crear una nueva cuenta...">
+                                </div>
+                              <?php endif; ?>
                             </div>
                           </div>
                           <div class="form-group row">
@@ -291,11 +360,11 @@ if (!empty($_POST)) {
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Solicitante(*)</label>
-                            <div class="col-sm-9"><input name="solicitante" type="text" maxlength="99" class="form-control" required="required" value="<?php echo $data['solicitante']; ?>"></div>
+                            <div class="col-sm-9"><input name="solicitante" type="text" maxlength="99" class="form-control" required="required" value="<?= htmlspecialchars((string) $data['solicitante'], ENT_QUOTES, 'UTF-8') ?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Referencia(*)</label>
-                            <div class="col-sm-9"><input name="referencia" type="text" maxlength="199" class="form-control" required="required" value="<?php echo $data['referencia']; ?>"></div>
+                            <div class="col-sm-9"><input name="referencia" type="text" maxlength="199" class="form-control" required="required" value="<?= htmlspecialchars((string) $data['referencia'], ENT_QUOTES, 'UTF-8') ?>"></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Es Marco?(*)</label>
@@ -313,7 +382,7 @@ if (!empty($_POST)) {
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Descripción(*)</label>
-                            <div class="col-sm-9"><textarea name="descripcion" class="form-control" required="required"><?php echo $data['descripcion']; ?></textarea></div>
+                            <div class="col-sm-9"><textarea name="descripcion" class="form-control" required="required"><?= htmlspecialchars((string) $data['descripcion'], ENT_QUOTES, 'UTF-8') ?></textarea></div>
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Moneda(*)</label>
@@ -338,7 +407,7 @@ if (!empty($_POST)) {
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Monto(*)</label>
-                            <div class="col-sm-9"><input name="monto" type="number" step="0.01" class="form-control" required="required" value="<?php echo $data['monto']; ?>"></div>
+                            <div class="col-sm-9"><input name="monto" type="number" step="0.01" class="form-control" required="required" value="<?= htmlspecialchars((string) $data['monto'], ENT_QUOTES, 'UTF-8') ?>"></div>
                           </div>
 						  <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Adjudicado?(*)</label>
@@ -356,24 +425,24 @@ if (!empty($_POST)) {
                           </div>
                           <div class="form-group row">
                             <label class="col-sm-3 col-form-label">Observaciones</label>
-                            <div class="col-sm-9"><textarea name="observaciones" class="form-control"><?php echo $data['observaciones']; ?></textarea></div>
+                            <div class="col-sm-9"><textarea name="observaciones" class="form-control"><?= htmlspecialchars((string) $data['observaciones'], ENT_QUOTES, 'UTF-8') ?></textarea></div>
                           </div>
                         </div>
                       </div>
                     </div>
                     <div class="card-footer">
                       <div class="col-sm-9 offset-sm-3">
-						<?php
-						$ultimaRevision = 0;
-						$sql2 = "SELECT max(nro_revision) ultimaRevision FROM presupuestos WHERE nro = ? ";
-						$q2 = $pdo->prepare($sql2);
-						$q2->execute([$data['nro']]);
-						$data2 = $q2->fetch(PDO::FETCH_ASSOC);
-						$ultimaRevision = $data2['ultimaRevision'];
-						if ($data['nro_revision'] == $ultimaRevision) {
-						?>
-                        <button type="submit" value="1" name="btn1" class="btn btn-primary">Modificar</button>
-                        <?php } ?>
+                        <?php if ($isCreate): ?>
+                          <button type="submit" class="btn btn-primary">Crear</button>
+                        <?php else:
+                          $sql2 = "SELECT max(nro_revision) ultimaRevision FROM presupuestos WHERE nro = ?";
+                          $q2 = $pdo->prepare($sql2);
+                          $q2->execute([$data['nro']]);
+                          $data2 = $q2->fetch(PDO::FETCH_ASSOC);
+                          if ((int) $data['nro_revision'] === (int) $data2['ultimaRevision']): ?>
+                            <button type="submit" value="1" name="btn1" class="btn btn-primary">Modificar</button>
+                          <?php endif;
+                        endif; ?>
 						<a href='listarPresupuestos.php' class="btn btn-light">Volver</a>
                       </div>
                     </div>
@@ -408,5 +477,17 @@ if (!empty($_POST)) {
     <!-- Plugin used-->
 	  <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
-  </body>
+    <?php if ($isCreate): ?>
+    <script>
+      $(document).ready(function() {
+        $("form").on("submit", function(event) {
+          if (!$("#id_cuenta").val() && !$('input[name="nuevo_cliente"]').val().trim()) {
+            alert("Debe seleccionar una cuenta existente o ingresar un nuevo cliente.");
+            event.preventDefault();
+          }
+        });
+      });
+    </script>
+    <?php endif; ?>
+	  </body>
 </html>

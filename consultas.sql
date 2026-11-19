@@ -1274,3 +1274,19 @@ LEFT JOIN (
     ON despachados.`id_componente` = plc.`id`
 SET plc.`cantidad_despachada` =
     COALESCE(despachados.`cantidad_despachada`, 0);
+
+
+CREATE TABLE IF NOT EXISTS `despachos_occ` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_despacho` INT(11) NOT NULL,
+  `id_occ` INT(11) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_despachos_occ` (`id_despacho`, `id_occ`),
+  KEY `idx_despachos_occ_occ` (`id_occ`),
+  CONSTRAINT `fk_despachos_occ_despacho`
+    FOREIGN KEY (`id_despacho`) REFERENCES `despachos` (`id`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_despachos_occ_occ`
+    FOREIGN KEY (`id_occ`) REFERENCES `occ` (`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

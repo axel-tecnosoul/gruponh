@@ -251,7 +251,7 @@ final class FacturaVentaARCAPDF extends FPDF
         $this->SetFont('Arial', 'B', 8);
         $this->Write(4, $this->texto('Condición frente al IVA: '));
         $condicionEmisor = $this->normalizarCondicionIva((string)($this->emisor['condicion_iva'] ?? ''));
-        $this->SetFont('Arial', 'B', 8);
+        $this->SetFont('Arial', '', 8);
         $this->Write(4, $this->texto($condicionEmisor));
 
         // --- LADO DERECHO: FACTURA Y DATOS FISCALES ---
