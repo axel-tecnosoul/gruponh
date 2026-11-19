@@ -7,6 +7,8 @@
     
     require 'database.php';
 
+    $esUsuarioDesarrollador = (int)($_SESSION['user']['id'] ?? 0) === 1;
+
     $id = null;
     if (!empty($_GET['id'])) {
         $id = $_REQUEST['id'];
@@ -109,11 +111,16 @@
             $occIdsSeleccionadas = array_map('intval', $qOccLegacy->fetchAll(PDO::FETCH_COLUMN));
         }
 
-        $sqlOcc = "SELECT o.id, o.numero, o.monto, o.fecha_entrega, o.abierta, m.moneda
-                   FROM occ o
-                   INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
-                   INNER JOIN monedas m ON m.id = o.id_moneda
-                   WHERE p.id = ? AND (o.activa = 1";
+        $sqlOcc = $esUsuarioDesarrollador
+            ? "SELECT o.id, o.numero, o.monto, o.fecha_entrega, o.abierta, m.moneda
+               FROM occ o
+               INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
+               INNER JOIN monedas m ON m.id = o.id_moneda
+               WHERE p.id = ? AND (o.activa = 1"
+            : "SELECT o.id, o.numero
+               FROM occ o
+               INNER JOIN proyectos p ON p.id_cliente = o.id_cuenta_cliente
+               WHERE p.id = ? AND (o.activa = 1";
         $paramsOcc = [$data['id_proyecto']];
         if ($occIdsSeleccionadas) {
             $sqlOcc .= " OR o.id IN (" . implode(',', array_fill(0, count($occIdsSeleccionadas), '?')) . ")";
@@ -189,14 +196,17 @@
 							<div class="col-sm-9">
 							<select name="id_occ[]" id="detalle_oc" class="js-example-basic-multiple col-sm-12" multiple="multiple" data-placeholder="Seleccione una o más OCC" required="required">
 							<?php foreach ($occDisponibles as $occ):
-								$fechaEntregaOcc = (string)$occ['fecha_entrega'];
-								$fechaEntregaOcc = $fechaEntregaOcc !== '' && $fechaEntregaOcc !== '0000-00-00'
-									? date('d/m/Y', strtotime($fechaEntregaOcc))
-									: 'sin fecha';
-								$estadoOcc = (int)$occ['abierta'] === 1 ? 'Abierta' : 'Cerrada';
-								$etiquetaOcc = 'OCC ' . $occ['numero']
-									. ' · ' . $occ['moneda'] . ' ' . number_format((float)$occ['monto'], 2, ',', '.')
-									. ' · Entrega: ' . $fechaEntregaOcc . ' · ' . $estadoOcc;
+								$etiquetaOcc = (string)$occ['numero'];
+								if ($esUsuarioDesarrollador) {
+									$fechaEntregaOcc = (string)$occ['fecha_entrega'];
+									$fechaEntregaOcc = $fechaEntregaOcc !== '' && $fechaEntregaOcc !== '0000-00-00'
+										? date('d/m/Y', strtotime($fechaEntregaOcc))
+										: 'sin fecha';
+									$estadoOcc = (int)$occ['abierta'] === 1 ? 'Abierta' : 'Cerrada';
+									$etiquetaOcc = 'OCC ' . $occ['numero']
+										. ' · ' . $occ['moneda'] . ' ' . number_format((float)$occ['monto'], 2, ',', '.')
+										. ' · Entrega: ' . $fechaEntregaOcc . ' · ' . $estadoOcc;
+								}
 				?>
 								<option value="<?=(int)$occ['id']?>" <?=in_array((int)$occ['id'], $occIdsSeleccionadas, true) ? 'selected' : ''?>><?=htmlspecialchars($etiquetaOcc, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')?></option>
 							<?php endforeach; ?>

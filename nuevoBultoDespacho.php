@@ -235,6 +235,8 @@ Database::disconnect();
       #tablaComponentesDespacho td { vertical-align: middle; }
       .cantidad-despacho, .bulto-despacho { min-width: 105px; }
       .observacion-componente { min-width: 170px; white-space: normal; }
+      .resumen-despacho .form-group { margin-bottom: .25rem; }
+      .resumen-despacho .form-control-plaintext { padding-top: .1rem; padding-bottom: .1rem; }
     </style>
   </head>
   <body>
@@ -263,8 +265,7 @@ Database::disconnect();
                     <?php elseif (count(array_filter($componentes, static function ($componente) { return (float)$componente['saldo'] > 0; })) === 0): ?>
                       <div class="alert alert-warning" role="status">Los componentes cargados no tienen saldo disponible. Revisa si falta liberar producción de lista de corte o reservar material de cómputo.</div>
                     <?php endif; ?>
-                    <p class="text-muted">Solo se guardan las filas con una cantidad a despachar mayor que cero; el identificador de bulto queda asociado a esa cantidad.</p>
-                    <div class="row">
+                    <div class="row resumen-despacho">
                       <div class="col-lg-6">
                         <div class="form-group row"><label class="col-sm-4 col-form-label">Proyecto</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape(implode('-', array_filter([$despacho['nro_sitio'], $despacho['nro_subsitio'], $despacho['nro_proyecto']])) . ': ' . $despacho['proyecto'])?></div></div></div>
                         <div class="form-group row"><label class="col-sm-4 col-form-label">Cliente</label><div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($despacho['cliente'])?></div></div></div>

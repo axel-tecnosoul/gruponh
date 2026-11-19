@@ -100,6 +100,8 @@ $escape = static function ($value): string {
       #dataTables-example666 thead th {
         padding-right: 20px;
       }
+      .resumen-despacho .form-group { margin-bottom: .25rem; }
+      .resumen-despacho .form-control-plaintext { padding-top: .1rem; padding-bottom: .1rem; }
     </style>
   </head>
   <body>
@@ -117,7 +119,7 @@ $escape = static function ($value): string {
                     <h5><?=$ubicacion?> #<?=$escape($despacho['id'])?></h5>
                   </div>
                   <div class="card-body">
-                    <div class="row">
+                    <div class="row resumen-despacho">
                       <div class="col-lg-6">
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label">Proyecto</label>
@@ -194,7 +196,7 @@ $escape = static function ($value): string {
                       </table>
                     </div>
                   </div>
-                  <div class="card-footer">
+                  <div class="card-footer d-flex justify-content-center">
                     <a href="listarDespachos.php" class="btn btn-light">Volver</a>
                   </div>
                 </div>

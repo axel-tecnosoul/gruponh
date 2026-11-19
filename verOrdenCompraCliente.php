@@ -37,13 +37,24 @@ if (!empty($_POST)) {
   }
   
   Database::disconnect();
-}?>
+}
+
+$escape = static function ($valor): string {
+  return htmlspecialchars((string)$valor, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+};
+?>
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <?php include('head_forms.php');?>
 	<link rel="stylesheet" type="text/css" href="assets/css/select2.css">
 	<link rel="stylesheet" type="text/css" href="assets/css/datatables.css">
+    <style>
+      #dataTables-example667 {
+        background-color: #ffffff;
+        width: 100%;
+      }
+    </style>
   </head>
   <body>
     <!-- Loader ends-->
@@ -70,106 +81,123 @@ if (!empty($_POST)) {
                   <form class="form theme-form" role="form" method="post" action="#">
                     <div class="card-body">
                       <div class="row">
-                        <div class="col">
-                        <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Emisión(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_emision']; ?></div>
+                        <div class="col-lg-6">
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Número(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['numero'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Recepción(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_recepcion'];?></div>
+                            <label class="col-sm-4 col-form-label">Cliente(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['cliente'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Número(*)</label>
-                            <div class="col-sm-9"><?=$data['numero']; ?></div>
+                            <label class="col-sm-4 col-form-label">Fecha Emisión(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['fecha_emision'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Cliente(*)</label>
-                            <div class="col-sm-9"><?=$data['cliente']?></div>
+                            <label class="col-sm-4 col-form-label">Fecha Recepción(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['fecha_recepcion'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Moneda(*)</label>
-                            <div class="col-sm-9"><?=$data['moneda']?></div>
+                            <label class="col-sm-4 col-form-label">Moneda(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['moneda'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Condición IVA(*)</label>
-                            <div class="col-sm-9"><?=$data['iva'];?></div>
+                            <label class="col-sm-4 col-form-label">Condición IVA(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['iva'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Forma de pago(*)</label>
-                            <div class="col-sm-9"><?=$data['forma_pago']?></div>
+                            <label class="col-sm-4 col-form-label">Forma de pago(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['forma_pago'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Presupuesto(*)</label>
-                            <div class="col-sm-9"><?=$data['presupuesto']?>
-                              </select>
-                            </div>
+                            <label class="col-sm-4 col-form-label">Presupuesto(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['presupuesto'])?></div></div>
+                          </div>
+                        </div>
+                        <div class="col-lg-6">
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label">Requiere Póliza(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['requiere_polizas'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Requiere Poliza(*)</label>
-                            <div class="col-sm-9"><?=$data["requiere_polizas"]?></div>
+                            <label class="col-sm-4 col-form-label">Tipo OC(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['tipo_oc'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Tipo OC(*)</label>
-                            <div class="col-sm-9"><?=$data["tipo_oc"]?></div>
+                            <label class="col-sm-4 col-form-label">Fecha Vencimiento</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['fecha_vencimiento'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Vencimiento</label>
-                            <div class="col-sm-9"><?=$data['fecha_vencimiento'];?></div>
+                            <label class="col-sm-4 col-form-label">Fecha Entrega(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['fecha_entrega'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Fecha Entrega(*)</label>
-                            <div class="col-sm-9"><?=$data['fecha_entrega'];?></div>
+                            <label class="col-sm-4 col-form-label">Lugar de Entrega(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['lugar_entrega'])?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Lugar de Entrega(*)</label>
-                            <div class="col-sm-9"><?=$data['lugar_entrega'];?></div>
+                            <label class="col-sm-4 col-form-label">Observaciones</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=nl2br($escape($data['observaciones']))?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Observaciones</label>
-                            <div class="col-sm-9"><?=$data['observaciones'];?></div>
+                            <label class="col-sm-4 col-form-label">Link de archivo</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?php if (!empty($data['link_archivo'])): ?><a href="<?=$escape($data['link_archivo'])?>" target="_blank" rel="noopener noreferrer"><?=$escape($data['link_archivo'])?></a><?php else: ?>-<?php endif; ?></div></div>
                           </div>
                           <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Link de archivo</label>
-                            <div class="col-sm-9"><?php if (!empty($data['link_archivo'])) { ?><a href="<?=htmlspecialchars($data['link_archivo'], ENT_QUOTES, 'UTF-8')?>" target="_blank" rel="noopener noreferrer"><?=htmlspecialchars($data['link_archivo'], ENT_QUOTES, 'UTF-8')?></a><?php } else { ?>-<?php } ?></div>
+                            <label class="col-sm-4 col-form-label">Activo(*)</label>
+                            <div class="col-sm-8"><div class="form-control-plaintext"><?=$escape($data['activa'])?></div></div>
                           </div>
-                          <div class="form-group row">
-                            <label class="col-sm-3 col-form-label">Activo(*)</label>
-                            <div class="col-sm-9"><?=$data["activa"]?></div>
-                          </div>
-                          <div class="form-group row">
-                            <div class="col-sm-12">
-                              <table class="display" id="dataTables-example667">
-                                <thead>
-                                  <tr>
-                                     <th>Posición</th>
-                                     <th>Descripcion</th>
-                                    <th>Cantidad</th>
-                                    <th>Precio Unitario</th>
-                                    <th>Descuento</th>
-                                    <th>Subtotal</th>
-                                  </tr>
-                                </thead>
-                                <tbody><?php
-                                  $pdo = Database::connect();
-                                  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                                  
-                                   $sql = " SELECT id, posicion, descripcion, cantidad, precio_unitario, descuento, subtotal FROM occ_detalles WHERE id_occ = ".$id." ORDER BY posicion, id";
-                                  foreach ($pdo->query($sql) as $row) {
-                                    echo '<tr>';
-                                     echo '<td>'. $row["posicion"] . '</td>';
-                                     echo '<td>'. $row["descripcion"] . '</td>';
-                                    echo '<td>'. $row["cantidad"] . '</td>';
-                                    echo '<td>'.$signo. number_format($row["precio_unitario"],2) . '</td>';
-                                    echo '<td>'.$signo. number_format($row["descuento"],2) . '</td>';
-                                    echo '<td>'.$signo. number_format($row["subtotal"],2) . '</td>';
-                                    echo '</tr>';
-                                  }
-                                  Database::disconnect();?>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
+                        </div>
+                      </div>
+
+                      <div class="form-group row">
+                        <div class="col-sm-12">
+                          <table class="display table table-sm table-bordered mb-0" id="dataTables-example667">
+                            <thead>
+                              <tr>
+                                <th>Posición</th>
+                                <th>Descripción</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Precio Unitario</th>
+                                <th class="text-right">Descuento</th>
+                                <th class="text-right">Subtotal</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php
+                                $pdo = Database::connect();
+                                $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                                $qDetalles = $pdo->prepare(
+                                  "SELECT posicion, descripcion, cantidad, precio_unitario, descuento, subtotal
+                                   FROM occ_detalles
+                                   WHERE id_occ = ?
+                                   ORDER BY posicion, id"
+                                );
+                                $qDetalles->execute([$id]);
+                                foreach ($qDetalles->fetchAll(PDO::FETCH_ASSOC) as $detalle):
+                              ?>
+                                <tr>
+                                  <td><?=$escape($detalle['posicion'])?></td>
+                                  <td><?=$escape($detalle['descripcion'])?></td>
+                                  <td><?=$escape($detalle['cantidad'])?></td>
+                                  <td><?=$escape($signo . ' ' . number_format((float)$detalle['precio_unitario'], 2, ',', '.'))?></td>
+                                  <td><?=$escape($signo . ' ' . number_format((float)$detalle['descuento'], 2, ',', '.'))?></td>
+                                  <td><?=$escape($signo . ' ' . number_format((float)$detalle['subtotal'], 2, ',', '.'))?></td>
+                                </tr>
+                              <?php endforeach; Database::disconnect(); ?>
+                            </tbody>
+                            <tfoot>
+                              <tr>
+                                <th>Posición</th>
+                                <th>Descripción</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Precio Unitario</th>
+                                <th class="text-right">Descuento</th>
+                                <th class="text-right">Subtotal</th>
+                              </tr>
+                            </tfoot>
+                          </table>
                         </div>
                       </div>
                     </div>
@@ -239,53 +267,6 @@ if (!empty($_POST)) {
     <script src="assets/js/tooltip-init.js"></script>
     <!-- Plugins JS Ends-->
 	<script>
-    $(document).ready(function() {
-    // Setup - add a text input to each footer cell
-    $('#dataTables-example667 tfoot th').each( function () {
-        var title = $(this).text();
-        $(this).html( '<input type="text" size="'+title.length+'" placeholder="'+title+'" />' );
-    } );
-	  $('#dataTables-example667').DataTable({
-        stateSave: false,
-        responsive: false,
-        language: {
-         "decimal": "",
-        "emptyTable": "No hay información",
-        "info": "Mostrando _START_ a _END_ de _TOTAL_ Registros",
-        "infoEmpty": "Mostrando 0 to 0 of 0 Registros",
-        "infoFiltered": "(Filtrado de _MAX_ total registros)",
-        "infoPostFix": "",
-        "thousands": ",",
-        "lengthMenu": "Mostrar _MENU_ Registros",
-        "loadingRecords": "Cargando...",
-        "processing": "Procesando...",
-        "search": "Buscar:",
-        "zeroRecords": "No hay resultados",
-        "paginate": {
-            "first": "Primero",
-            "last": "Ultimo",
-            "next": "Siguiente",
-            "previous": "Anterior"
-        }}
-      });
- 
-    // DataTable
-    var table = $('#dataTables-example667').DataTable();
- 
-    // Apply the search
-    table.columns().every( function () {
-        var that = this;
- 
-        $( 'input', this.footer() ).on( 'keyup change', function () {
-            if ( that.search() !== this.value ) {
-                that
-                    .search( this.value )
-                    .draw();
-            }
-        } );
-		} );
-	} );
-    
     </script>
     <script src="https://cdn.datatables.net/plug-ins/1.10.15/i18n/Spanish.json"></script>
   </body>
