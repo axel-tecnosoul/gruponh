@@ -197,12 +197,12 @@
 							<?php
 							$pdo = Database::connect();
 							$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-							$sqlZon = "SELECT `id`, `nombre` FROM `paises` WHERE 1";
+							$sqlZon = "SELECT `id`, `iso`, `nombre` FROM `paises` WHERE 1";
 							$q = $pdo->prepare($sqlZon);
 							$q->execute();
 							while ($fila = $q->fetch(PDO::FETCH_ASSOC)) {
 								echo "<option value='".$fila['id']."'";
-								if ($fila['id']==13) {
+								if (($fila['iso'] ?? '') === 'AR') {
 									echo " selected ";
 								}
 								echo ">".$fila['nombre']."</option>";

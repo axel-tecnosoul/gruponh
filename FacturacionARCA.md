@@ -18,11 +18,16 @@ En `env.php` —archivo local ignorado por Git— se pueden declarar variables c
 
 ```php
 putenv('ARCA_HOMOLOGACION=1');
-putenv('ARCA_CERT_EMPRESA_2_HOMOLOGACION=C:\\seguridad\\arca\\empresa-2.crt');
-putenv('ARCA_KEY_EMPRESA_2_HOMOLOGACION=C:\\seguridad\\arca\\empresa-2.key');
+putenv('ARCA_CERT_HOMOLOGACION=C:\\seguridad\\arca\\certificado.crt');
+putenv('ARCA_KEY_HOMOLOGACION=C:\\seguridad\\arca\\clave.key');
+putenv('ARCA_CUIT_REPRESENTADO_PADRON=CUIT_AUTORIZADO_AL_PADRON');
 ```
 
-Repetir las variables `ARCA_CERT_EMPRESA_<id>_HOMOLOGACION` y `ARCA_KEY_EMPRESA_<id>_HOMOLOGACION` para cada emisor. Si `ARCA_HOMOLOGACION` no está definida, se usa homologación. Para producción se requieren certificados y autorización de producción y se configura `ARCA_HOMOLOGACION=0`; no cambiarlo para probar.
+Las rutas de producción se configuran con `ARCA_CERT_PRODUCCION` y `ARCA_KEY_PRODUCCION`. Si `ARCA_HOMOLOGACION` no está definida, se usa homologación. Para producción se requieren certificados y autorización de producción y se configura `ARCA_HOMOLOGACION=0`; no cambiarlo para probar.
+
+`ARCA_CUIT_REPRESENTADO_PADRON` identifica al CUIT autorizado a consultar `ws_sr_constancia_inscripcion`. La sincronización de actividades de Empresas y `testingAfip.php` reutilizan esa representación para consultar el CUIT seleccionado. Deben distribuirse los WSDL oficiales incluidos en `wsdl/`. La facturación sigue representando al CUIT de la empresa emisora.
+
+La actividad de una factura es opcional: se guarda `NULL` y se omite `Actividades` de la solicitud WSFE cuando no se selecciona. Si se informa una actividad, se valida que esté configurada para la empresa; las actividades de prueba siguen bloqueadas al emitir. La vista previa y las notas relacionadas admiten facturas sin actividad.
 
 ## Flujo y formato
 

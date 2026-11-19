@@ -16,6 +16,7 @@ function abrirMenu($op) {
         }
     } else if ($op == "3") {
         if (($current_page == "listarCuentas.php") ||
+            ($current_page == "migrarCuentas.php") ||
         ($current_page == "reporteCentrosCosto.php") || 		
 		($current_page == "listarSubcuentas.php") ||
 		($current_page == "listarFacturasVenta.php") ||

@@ -245,7 +245,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             str_pad((string)$origen['punto_venta'], 4, '0', STR_PAD_LEFT) . '-00000000',
             (int)$origen['id_cuenta_destino'],
             (int)$origen['id_empresa'],
-            (int)$origen['actividad_arca_id'],
+            $origen['actividad_arca_id'],
             $fecha,
             $fecha,
             (int)$origen['id_condicion_pago'],

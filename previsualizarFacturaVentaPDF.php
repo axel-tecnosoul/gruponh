@@ -8,6 +8,7 @@ require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/funciones.php';
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/FacturaVentaARCAPDF.php';
+require_once __DIR__ . '/FacturacionARCA.php';
 
 function responderErrorVistaPrevia(string $message, int $status = 422): void
 {
@@ -37,18 +38,13 @@ try {
     $companyId = filter_var($_POST['id_empresa'] ?? null, FILTER_VALIDATE_INT);
     $customerId = filter_var($_POST['id_cuenta_destino'] ?? null, FILTER_VALIDATE_INT);
     $projectId = filter_var($_POST['id_proyecto'] ?? null, FILTER_VALIDATE_INT);
-    $activityId = filter_var($_POST['actividad_arca_id'] ?? null, FILTER_VALIDATE_INT);
     $point = filter_var($_POST['punto_venta'] ?? null, FILTER_VALIDATE_INT);
     $typeCode = filter_var($_POST['id_tipo_comprobante'] ?? null, FILTER_VALIDATE_INT);
-    if (!$companyId || !$customerId || !$projectId || !$activityId || !$point || !$typeCode) {
-        throw new RuntimeException('Complete empresa, cliente, proyecto, punto de venta, tipo de comprobante y actividad ARCA.');
+    if (!$companyId || !$customerId || !$projectId || !$point || !$typeCode) {
+        throw new RuntimeException('Complete empresa, cliente, proyecto, punto de venta y tipo de comprobante.');
     }
 
-    $activityCheck = $pdo->prepare('SELECT COUNT(*) FROM arca_actividades_empresa WHERE id_empresa = ? AND codigo = ?');
-    $activityCheck->execute([$companyId, $activityId]);
-    if ((int)$activityCheck->fetchColumn() === 0) {
-        throw new RuntimeException('La actividad seleccionada no está configurada para la empresa emisora.');
-    }
+    FacturacionARCA::validarActividadEmpresa($pdo, $companyId, $_POST['actividad_arca_id'] ?? null);
 
     $qCompany = $pdo->prepare(
         'SELECT e.empresa, e.cuit, e.direccion, e.email, e.iibb, e.fecha_inicio_actividades, e.cbu_emisor, e.alias_cbu,
