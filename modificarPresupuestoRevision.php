@@ -35,14 +35,14 @@ if (!empty($_POST)) {
   if(isset($_POST["btn1"])){
     //modificamos el presupuesto
 	
-	$sql = "select nro, adjudicado,fecha_hora_alta FROM `presupuestos` where id = ?";
-	$q = $pdo->prepare($sql);
-	$q->execute([$id]);
-	$dataC = $q->fetch(PDO::FETCH_ASSOC);
-	
-	$nro = $dataC['nro'];
-	$adjudicado = $dataC['adjudicado'];
-	$fecha_hora_alta = $dataC['fecha_hora_alta'];
+    $sql = "select nro, adjudicado,fecha_hora_alta FROM `presupuestos` where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $dataC = $q->fetch(PDO::FETCH_ASSOC);
+    
+    $nro = $dataC['nro'];
+    $adjudicado = $dataC['adjudicado'];
+    $fecha_hora_alta = $dataC['fecha_hora_alta'];
   
     $sql = "UPDATE presupuestos set id_empresa = ?, fecha = ?, id_cuenta = ?, solicitante = ?, referencia = ?, descripcion = ?, id_moneda = ?, monto = ?, adjudicado = ?, observaciones = ?, id_usuario = ?, es_marco = ?, id_linea_negocio = ? where id = ?";
     $q = $pdo->prepare($sql);
@@ -66,25 +66,25 @@ if (!empty($_POST)) {
 
   }else{
     //creamos una revision
-	$nro_revision=$_POST["revision"];
+	  $nro_revision=$_POST["revision"];
     $nuevo_nro_revision=$nro_revision+1;
 	
-	$sql = "select nro, adjudicado,fecha_hora_alta FROM `presupuestos` where id = ?";
-	$q = $pdo->prepare($sql);
-	$q->execute([$id]);
-	$dataC = $q->fetch(PDO::FETCH_ASSOC);
-	
-	$nro = $dataC['nro'];
-	$adjudicado = $dataC['adjudicado'];
-	$fecha_hora_alta = $dataC['fecha_hora_alta'];
+    $sql = "SELECT nro, adjudicado,fecha_hora_alta FROM `presupuestos` where id = ?";
+    $q = $pdo->prepare($sql);
+    $q->execute([$id]);
+    $dataC = $q->fetch(PDO::FETCH_ASSOC);
+    
+    $nro = $dataC['nro'];
+    $adjudicado = $dataC['adjudicado'];
+    $fecha_hora_alta = $dataC['fecha_hora_alta'];
 
-	$sql = "insert into `presupuestos` (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`, `comentarios_revision`, `fecha_hora_revision`) values (?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,now())";
-	$q = $pdo->prepare($sql);
-	$q->execute([$nro,$_POST['id_empresa'],$nuevo_nro_revision,$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio'],$fecha_hora_alta,$_POST['comentarios_revision']]);
-	
-	$idNuevoPresupuesto = $pdo->lastInsertId();
-	
-	$sql = "SELECT pd.detalle,pd.cantidad,pd.id_unidad_medida,pd.costo,pd.precio FROM presupuestos_detalle pd WHERE pd.id_presupuesto = ".$id;
+    $sql = "INSERT INTO `presupuestos` (`nro`, `id_empresa`, `nro_revision`, `fecha`, `id_cuenta`, `solicitante`, `referencia`, `descripcion`, `id_moneda`, `monto`, `adjudicado`, `observaciones`, `id_usuario`, `anulado`, `es_marco`, `id_linea_negocio`, `fecha_hora_alta`, `comentarios_revision`, `fecha_hora_revision`) values (?,?,?,?,?,?,?,?,?,?,?,?,?,0,?,?,?,?,now())";
+    $q = $pdo->prepare($sql);
+    $q->execute([$nro,$_POST['id_empresa'],$nuevo_nro_revision,$_POST['fecha'],$_POST['id_cuenta'],$_POST['solicitante'],$_POST['referencia'],$_POST['descripcion'],$_POST['id_moneda'],$_POST['monto'],$_POST['adjudicado'],$_POST['observaciones'],$_SESSION['user']['id'],$_POST['es_marco'],$_POST['id_linea_negocio'],$fecha_hora_alta,$_POST['comentarios_revision']]);
+    
+    $idNuevoPresupuesto = $pdo->lastInsertId();
+    
+    $sql = "SELECT pd.detalle,pd.cantidad,pd.id_unidad_medida,pd.costo,pd.precio FROM presupuestos_detalle pd WHERE pd.id_presupuesto = ".$id;
     foreach ($pdo->query($sql) as $row) {
       $sql = "INSERT INTO presupuestos_detalle (id_presupuesto, detalle, cantidad, id_unidad_medida, costo, precio) VALUES (?,?,?,?,?,?)";
       $q = $pdo->prepare($sql);

@@ -120,15 +120,7 @@ final class FacturacionARCA
             throw new RuntimeException('La empresa debe tener un CUIT válido para consultar sus actividades en ARCA.');
         }
 
-        $afip = self::afipClient([
-            'id_empresa' => $companyId,
-            'homologacion' => self::homologacion(),
-            'datos_emisor' => self::encode(['cuit' => $cuit]),
-        ]);
-        $taxpayer = $afip->RegisterScopeFive->GetTaxpayerDetails($cuit);
-        if (!is_object($taxpayer)) {
-            throw new RuntimeException('ARCA no devolvió los datos registrales de la empresa.');
-        }
+        $taxpayer = self::consultarDatosRegistralesCuit($cuit);
 
         $activities = [];
         $groups = [
@@ -184,7 +176,106 @@ final class FacturacionARCA
             return [$a['regimen'], $a['orden'], $a['codigo']] <=> [$b['regimen'], $b['orden'], $b['codigo']];
         });
 
+        // Una respuesta registral fallida no debe borrar el catálogo sincronizado previamente.
+        if ($activities === []) {
+            $errores = [];
+            foreach (['errorConstancia', 'errorRegimenGeneral', 'errorMonotributo'] as $campoError) {
+                $erroresCampo = self::field(self::field($taxpayer, $campoError), 'error', []);
+                if (is_string($erroresCampo)) {
+                    $erroresCampo = [$erroresCampo];
+                }
+                if (is_array($erroresCampo)) {
+                    foreach ($erroresCampo as $error) {
+                        if (is_string($error) && trim($error) !== '') {
+                            $errores[] = trim($error);
+                        }
+                    }
+                }
+            }
+            if ($errores !== []) {
+                throw new RuntimeException('ARCA no pudo informar las actividades: ' . implode(' | ', $errores));
+            }
+        }
+
         return $activities;
+    }
+
+    public static function consultarDatosRegistralesCuit(string $cuitConsulta): object
+    {
+        if (!self::habilitada()) {
+            throw new RuntimeException('Las consultas ARCA están deshabilitadas.');
+        }
+        $cuitConsulta = str_replace(['-', ' '], '', trim($cuitConsulta));
+        if (!self::validCuit($cuitConsulta)) {
+            throw new RuntimeException('El CUIT que desea consultar no es válido.');
+        }
+        $cuitRepresentado = str_replace(['-', ' '], '', trim((string)getenv('ARCA_CUIT_REPRESENTADO_PADRON')));
+        if (!self::validCuit($cuitRepresentado)) {
+            throw new RuntimeException('Configure ARCA_CUIT_REPRESENTADO_PADRON con el CUIT autorizado a consultar Constancia de Inscripción.');
+        }
+
+        $afip = self::afipClient([
+            'id_empresa' => 0,
+            'homologacion' => self::homologacion(),
+            'datos_emisor' => self::encode(['cuit' => $cuitRepresentado]),
+        ]);
+        $servicio = $afip->WebService('ws_sr_constancia_inscripcion', [
+            'WSDL' => __DIR__ . '/wsdl/ws_sr_constancia_inscripcion-production.wsdl',
+            'URL' => 'https://aws.arca.gob.ar/sr-padron/webservices/personaServiceA5',
+            'WSDL_TEST' => __DIR__ . '/wsdl/ws_sr_constancia_inscripcion.wsdl',
+            'URL_TEST' => 'https://awshomo.arca.gob.ar/sr-padron/webservices/personaServiceA5',
+            'soap_version' => SOAP_1_1,
+        ]);
+        $ta = $servicio->GetTokenAuthorization();
+        $respuesta = $servicio->ExecuteRequest('getPersona_v2', [
+            'token' => $ta->token,
+            'sign' => $ta->sign,
+            'cuitRepresentada' => $cuitRepresentado,
+            'idPersona' => $cuitConsulta,
+        ]);
+        if (!isset($respuesta->personaReturn) || !is_object($respuesta->personaReturn)) {
+            throw new RuntimeException('ARCA no devolvió la respuesta esperada de Constancia de Inscripción.');
+        }
+        $taxpayer = $respuesta->personaReturn;
+        if (!is_object(self::field($taxpayer, 'datosGenerales'))) {
+            throw new RuntimeException('ARCA no devolvió los datos generales del CUIT consultado.');
+        }
+        if ((string)self::field($taxpayer->datosGenerales, 'idPersona', '') !== $cuitConsulta) {
+            throw new RuntimeException('El CUIT devuelto por ARCA no coincide con el consultado.');
+        }
+
+        return $taxpayer;
+    }
+
+    public static function validarActividadEmpresa(PDO $pdo, int $companyId, $actividad, bool $paraEmision = false): ?int
+    {
+        if ($companyId < 1) {
+            throw new RuntimeException('Seleccione una empresa emisora válida.');
+        }
+        if ($actividad === null || $actividad === '' || $actividad === 0 || $actividad === '0') {
+            return null;
+        }
+        if (!is_string($actividad) && !is_int($actividad)) {
+            throw new RuntimeException('La actividad ARCA recibida no es válida.');
+        }
+        $activityId = filter_var($actividad, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($activityId === false) {
+            throw new RuntimeException('La actividad ARCA recibida no es válida.');
+        }
+        $query = $pdo->prepare(
+            "SELECT regimen FROM arca_actividades_empresa WHERE id_empresa = ? AND codigo = ?
+             ORDER BY CASE WHEN regimen = 'prueba' THEN 1 ELSE 0 END, orden LIMIT 1"
+        );
+        $query->execute([$companyId, $activityId]);
+        $regimen = $query->fetchColumn();
+        if ($regimen === false) {
+            throw new RuntimeException('La actividad seleccionada no está configurada para la empresa emisora. Sincronice las actividades desde Administración de Empresas.');
+        }
+        if ($paraEmision && $regimen === 'prueba') {
+            throw new RuntimeException('La actividad seleccionada es solo de prueba y no puede enviarse a ARCA. Sincronice las actividades registrales de la empresa.');
+        }
+
+        return $activityId;
     }
 
     public static function validarFactura(PDO $pdo, int $idFactura, array $input): void
@@ -960,22 +1051,12 @@ final class FacturacionARCA
             throw new RuntimeException('Solo las notas de crédito/débito pueden asociar otras facturas.');
         }
 
-        $activityId = (int)($invoice['actividad_arca_id'] ?? 0);
-        if ($activityId < 1) {
-            throw new RuntimeException('Seleccione una actividad ARCA para la factura antes de emitirla.');
-        }
-        $activityCheck = $pdo->prepare(
-            "SELECT regimen FROM arca_actividades_empresa WHERE id_empresa = ? AND codigo = ?
-             ORDER BY CASE WHEN regimen = 'prueba' THEN 1 ELSE 0 END, orden LIMIT 1"
+        $activityId = self::validarActividadEmpresa(
+            $pdo,
+            (int)$invoice['id_empresa'],
+            $invoice['actividad_arca_id'] ?? null,
+            true
         );
-        $activityCheck->execute([(int)$invoice['id_empresa'], $activityId]);
-        $activityRegimen = $activityCheck->fetchColumn();
-        if ($activityRegimen === false) {
-            throw new RuntimeException('La actividad ARCA guardada en la factura ya no está configurada para la empresa emisora.');
-        }
-        if ($activityRegimen === 'prueba') {
-            throw new RuntimeException('La actividad seleccionada es solo de prueba y no puede enviarse a ARCA. Sincronice las actividades registrales de la empresa.');
-        }
 
         $currency = self::currency((string)$invoice['moneda']);
         $exchangeRate = (float)$invoice['cotizacion'];

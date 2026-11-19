@@ -187,16 +187,11 @@ if (!empty($_POST)) {
     $_POST['id_condicion_pago'] = $conditionIds[0];
 
     $idEmpresaActividad = filter_var($_POST['id_empresa'] ?? null, FILTER_VALIDATE_INT);
-    $actividadArcaId = filter_var($_POST['actividad_arca_id'] ?? null, FILTER_VALIDATE_INT);
-    if ($idEmpresaActividad === false || $idEmpresaActividad < 1 || $actividadArcaId === false || $actividadArcaId < 1) {
-      throw new RuntimeException('Seleccione una actividad ARCA válida para la empresa emisora.');
+    if ($idEmpresaActividad === false || $idEmpresaActividad < 1) {
+      throw new RuntimeException('Seleccione una empresa emisora válida.');
     }
-    $qActividad = $pdo->prepare('SELECT COUNT(*) FROM arca_actividades_empresa WHERE id_empresa = ? AND codigo = ?');
-    $qActividad->execute([$idEmpresaActividad, $actividadArcaId]);
-    if ((int)$qActividad->fetchColumn() === 0) {
-      throw new RuntimeException('La actividad seleccionada no está configurada para la empresa emisora. Sincronice las actividades desde Administración de Empresas.');
-    }
-    $_POST['actividad_arca_id'] = (int)$actividadArcaId;
+    $actividadArcaId = FacturacionARCA::validarActividadEmpresa($pdo, $idEmpresaActividad, $_POST['actividad_arca_id'] ?? null);
+    $_POST['actividad_arca_id'] = $actividadArcaId;
 
     if ($isEditing) {
       $idFactura = (int)$_POST['id_factura'];

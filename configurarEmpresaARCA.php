@@ -259,6 +259,11 @@ $activityQuery = $pdo->prepare(
 );
 $activityQuery->execute([$companyId]);
 $activityRows = $activityQuery->fetchAll(PDO::FETCH_ASSOC);
+$regimenLabelsPhp = [
+    'regimen_general' => 'Régimen general',
+    'monotributo' => 'Monotributo',
+    'actividad_monotributista' => 'Actividad monotributista',
+];
 
 $provinceRows = $pdo->query('SELECT id, provincia FROM provincias ORDER BY provincia')->fetchAll(PDO::FETCH_ASSOC);
 $provinceQuery = $pdo->prepare('SELECT id_provincia, url_padron FROM empresas_padrones_retencion WHERE id_empresa = ?');
@@ -307,6 +312,20 @@ $escape = static function ($value): string {
       left: .45rem;
     }
     .retention-control { margin-bottom: .75rem; }
+    #tablaActividadesArca {
+      table-layout: auto;
+    }
+    #tablaActividadesArca th,
+    #tablaActividadesArca td {
+      width: 1%;
+      white-space: nowrap;
+    }
+    #tablaActividadesArca th:nth-child(3),
+    #tablaActividadesArca td:nth-child(3) {
+      width: auto;
+      min-width: 280px;
+      white-space: normal;
+    }
   </style>
 </head>
 <body>
@@ -435,11 +454,13 @@ $escape = static function ($value): string {
                 <hr>
                 <h5 class="mb-0">Actividades económicas registradas en ARCA
                   <button type="button" class="btn btn-link p-0 arca-icon-button" id="consultarActividadesArca"
-                          title="Consultar actividades en ARCA" aria-label="Consultar actividades en ARCA"
-                          <?= FacturacionARCA::habilitada() ? '' : 'disabled' ?>>
+                          title="Consultar actividades en ARCA" aria-label="Consultar actividades en ARCA"<?php
+                    if (!FacturacionARCA::habilitada()) { ?> disabled<?php
+                    } ?>>
                     <img src="img/import.png" width="24" height="25" border="0" alt="Consultar actividades en ARCA">
                   </button>
                 </h5>
+                <p class="text-muted mt-2">Se consultan desde Constancia de Inscripción para el CUIT de esta empresa. Estarán disponibles como selección opcional al cargar facturas.</p>
                 <div id="estadoConsultaActividadesArca" class="mb-2" role="status"></div>
                 <div class="dt-ext table-responsive">
                   <table class="display table table-bordered table-sm dynamic-grid-table" id="tablaActividadesArca">
@@ -454,29 +475,30 @@ $escape = static function ($value): string {
                         <th>Sincronizada</th>
                       </tr>
                     </thead>
-                    <tbody id="actividadesArca">
-                      <?php foreach ($activityRows as $activity): ?>
-                        <?php
-                        $regimenLabelsPhp = [
-                          'regimen_general' => 'Régimen general',
-                          'monotributo' => 'Monotributo',
-                          'actividad_monotributista' => 'Actividad monotributista'
-                        ];
-                        $regimenTexto = $regimenLabelsPhp[$activity['regimen']] ?? $activity['regimen'];
-                        ?>
+                    <tbody id="actividadesArca"><?php
+                      foreach ($activityRows as $activity) {
+                        $nomenclador = "—";
+                        if ((int)$activity['nomenclador'] > 0) {
+                          $nomenclador = (int)$activity['nomenclador'];
+                        }
+                        $orden = "—";
+                        if ((int)$activity['orden'] > 0) {
+                          $orden = (int)$activity['orden'];
+                        }
+                        $periodo = "—";
+                        if ($activity['periodo'] !== null) {
+                          $periodo = (int)$activity['periodo'];
+                        } ?>
                         <tr>
-                          <td><?= $escape($regimenTexto) ?></td>
-                          <td><?= (int)$activity['codigo'] ?></td>
-                          <td><?= $escape($activity['descripcion']) ?></td>
-                          <td><?= (int)$activity['nomenclador'] ?: '—' ?></td>
-                          <td><?= (int)$activity['orden'] ?: '—' ?></td>
-                          <td><?= $activity['periodo'] !== null ? (int)$activity['periodo'] : '—' ?></td>
-                          <td><?= $escape($activity['fecha_sincronizacion']) ?></td>
-                        </tr>
-                      <?php endforeach; ?>
-                      <?php if (count($activityRows) === 0): ?>
-                        <tr><td colspan="7" class="text-muted">Todavía no se sincronizaron actividades desde ARCA.</td></tr>
-                      <?php endif; ?>
+                          <td><?=escaparHtml($regimenLabelsPhp[$activity['regimen']] ?? $activity['regimen'])?></td>
+                          <td><?=(int)$activity['codigo']?></td>
+                          <td><?=escaparHtml($activity['descripcion'])?></td>
+                          <td><?=escaparHtml((string)$nomenclador)?></td>
+                          <td><?=escaparHtml((string)$orden)?></td>
+                          <td><?=escaparHtml((string)$periodo)?></td>
+                          <td><?=escaparHtml($activity['fecha_sincronizacion'])?></td>
+                        </tr><?php
+                      } ?>
                     </tbody>
                   </table>
                 </div>
@@ -595,8 +617,25 @@ $escape = static function ($value): string {
       });
       const tablaActividades = $('#tablaActividadesArca').DataTable({
         // Sin paginado ni búsqueda: la tabla se recarga entera al sincronizar.
-        paging: false, searching: false, info: false, ordering: false, language: txtEspanol,
-        columnDefs: [{className: 'text-nowrap', targets: [0, 1]}]
+        paging: false,
+        searching: false,
+        info: false,
+        ordering: false,
+        autoWidth: false,
+        language: Object.assign({}, txtEspanol, {emptyTable: 'No hay actividades sincronizadas desde ARCA.'}),
+        columnDefs: [{
+          targets: 6,
+          render: function (valor, tipo) {
+            if (tipo !== 'display' && tipo !== 'filter') {
+              return valor;
+            }
+            const partes = String(valor || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+            if (!partes || partes[1] === '0000' || partes[2] === '00' || partes[3] === '00') {
+              return '—';
+            }
+            return partes[3] + '/' + partes[2] + '/' + partes[1] + ' ' + partes[4] + ':' + partes[5] + ':' + partes[6];
+          }
+        }]
       });
 
       function initializeTypeSelect(select) {
@@ -695,8 +734,8 @@ $escape = static function ($value): string {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: new URLSearchParams({
-              id_empresa: '<?= (int)$companyId ?>',
-              csrf_token: '<?= $escape($_SESSION['csrf_empresa_arca']) ?>'
+              id_empresa: '<?=(int)$companyId?>',
+              csrf_token: '<?=escaparHtml($_SESSION['csrf_empresa_arca'])?>'
             })
           });
           const data = await response.json();
@@ -773,33 +812,24 @@ $escape = static function ($value): string {
             throw new Error(data.error || 'No se pudieron consultar las actividades de ARCA.');
           }
 
-          const regimenLabels = {
-            regimen_general: 'Régimen general',
-            monotributo: 'Monotributo',
-            actividad_monotributista: 'Actividad monotributista'
-          };
+          const regimenLabels = <?=json_encode($regimenLabelsPhp, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE)?>;
+          const renderTexto = $.fn.dataTable.render.text().display;
           const filas = [];
           data.actividades.forEach(function (activity) {
             filas.push([
               regimenLabels[activity.regimen] || activity.regimen,
               String(activity.codigo),
               activity.descripcion,
-              Number(activity.nomenclador) ? String(activity.nomenclador) : '—',
-              Number(activity.orden) ? String(activity.orden) : '—',
-              activity.periodo ? String(activity.periodo) : '—',
+              String(activity.nomenclador || '—'),
+              String(activity.orden || '—'),
+              String(activity.periodo || '—'),
               String(data.sincronizada_en)
-            ]);
+            ].map(function (valor) {
+              return renderTexto(String(valor));
+            }));
           });
 
-          if (data.actividades.length === 0) {
-            tablaActividades.clear().rows.add([['ARCA no informó actividades para esta empresa.', '', '', '', '', '', '']]).draw();
-            const filaVacia = $('#tablaActividadesArca tbody tr:last');
-            filaVacia.find('td:first').addClass('text-muted');
-            filaVacia.find('td').slice(1).remove();
-            filaVacia.find('td:first').attr('colspan', 7);
-          } else {
-            tablaActividades.clear().rows.add(filas).draw();
-          }
+          tablaActividades.clear().rows.add(filas).draw();
 
           status.className = 'text-success mb-2';
           status.textContent = 'Sincronización completada: ' + data.cantidad + ' actividad(es).';

@@ -12,6 +12,8 @@ github-deploy-key
 /vendor/
 /node_modules/
 #composer.lock
+/migracion/
+/testingAfip.php
 
 #.env
 #.env.*

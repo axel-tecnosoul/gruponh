@@ -32,7 +32,37 @@ if ($vista === 'venta' && $empresaFceId > 0) {
   $empresaFceDefaults = $qEmpresaFce->fetch(PDO::FETCH_ASSOC) ?: $empresaFceDefaults;
   Database::disconnect();
 }
-?>
+
+$empresaActividadesId = 0;
+$actividadSeleccionadaId = 0;
+$actividadesDisponibles = [];
+$textoActividadSinSeleccion = 'Sin actividad';
+$textoActividadInicial = 'Seleccione primero la empresa...';
+if ($vista === 'venta') {
+  $empresaActividadesId = $empresaFceId;
+  $actividadRecibida = $facturaData['actividad_arca_id'] ?? null;
+  if (array_key_exists('actividad_arca_id', $_POST)) {
+    $actividadRecibida = $_POST['actividad_arca_id'];
+  }
+  if (is_string($actividadRecibida) || is_int($actividadRecibida)) {
+    $actividadValidada = filter_var($actividadRecibida, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($actividadValidada !== false) {
+      $actividadSeleccionadaId = $actividadValidada;
+    }
+  }
+  if ($empresaActividadesId > 0) {
+    $textoActividadInicial = $textoActividadSinSeleccion;
+    $pdoActividades = Database::connect();
+    $qActividades = $pdoActividades->prepare(
+      'SELECT codigo, MAX(descripcion) AS descripcion, MIN(orden) AS orden
+       FROM arca_actividades_empresa WHERE id_empresa = ?
+       GROUP BY codigo ORDER BY MIN(orden), codigo'
+    );
+    $qActividades->execute([$empresaActividadesId]);
+    $actividadesDisponibles = $qActividades->fetchAll(PDO::FETCH_ASSOC);
+    Database::disconnect();
+  }
+} ?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -336,42 +366,26 @@ if ($vista === 'venta' && $empresaFceId > 0) {
                             <input type="hidden" name="id_letra_comprobante" id="id_letra_comprobante" value="">
                             <small id="tipoHabilitadosHint" class="text-danger d-none"></small>
                           </div>
-                        </div>
-
-                        <?php if ($vista === 'venta'):
-                          $empresaActividadesId = (int)($_POST['id_empresa'] ?? $proyectoDatos['id_empresa'] ?? $facturaData['id_empresa'] ?? 0);
-                          $actividadSeleccionadaId = (int)($_POST['actividad_arca_id'] ?? $facturaData['actividad_arca_id'] ?? 0);
-                          $actividadesDisponibles = [];
-                          if ($empresaActividadesId > 0) {
-                            $pdo = Database::connect();
-                            $qActividades = $pdo->prepare(
-                              'SELECT codigo, MAX(descripcion) AS descripcion, MIN(orden) AS orden
-                               FROM arca_actividades_empresa WHERE id_empresa = ?
-                               GROUP BY codigo ORDER BY MIN(orden), codigo'
-                            );
-                            $qActividades->execute([$empresaActividadesId]);
-                            $actividadesDisponibles = $qActividades->fetchAll(PDO::FETCH_ASSOC);
-                            Database::disconnect();
-                          }
-                        ?>
-                        <div class="form-group row">
-                          <label class="col-sm-4 col-form-label" for="actividad_arca_id">Actividad ARCA(*)</label>
-                          <div class="col-sm-8">
-                            <select name="actividad_arca_id" id="actividad_arca_id" class="js-example-basic-single col-sm-12" required>
-                              <option value=""><?= $empresaActividadesId > 0 ? 'Seleccione una actividad...' : 'Seleccione primero la empresa...' ?></option>
-                              <?php foreach ($actividadesDisponibles as $actividad): ?>
-                                <option value="<?= (int)$actividad['codigo'] ?>" <?= (int)$actividad['codigo'] === $actividadSeleccionadaId ? 'selected' : '' ?>>
-                                  <?= (int)$actividad['codigo'] ?> — <?= htmlspecialchars($actividad['descripcion']) ?>
-                                </option>
-                              <?php endforeach; ?>
-                            </select>
-                            <small id="estadoActividadesFactura" class="form-text text-muted">
-                              <?php if ($empresaActividadesId > 0 && !$actividadesDisponibles): ?>
-                                No hay actividades sincronizadas para esta empresa. Sincronícelas desde Administración → Empresas.
-                              <?php endif; ?>
-                            </small>
+                        </div><?php
+                        if ($vista === 'venta') { ?>
+                          <div class="form-group row">
+                            <label class="col-sm-4 col-form-label" for="actividad_arca_id">Actividad ARCA</label>
+                            <div class="col-sm-8">
+                              <select name="actividad_arca_id" id="actividad_arca_id" class="js-example-basic-single col-sm-12" data-sin-actividad="<?=escaparHtml($textoActividadSinSeleccion)?>">
+                                <option value=""><?=escaparHtml($textoActividadInicial)?></option><?php
+                                foreach ($actividadesDisponibles as $actividad) { ?>
+                                  <option value="<?=(int)$actividad['codigo']?>"<?php
+                                    if ((int)$actividad['codigo'] === $actividadSeleccionadaId) { ?> selected<?php
+                                    } ?>><?=(int)$actividad['codigo']?> — <?=escaparHtml($actividad['descripcion'])?></option><?php
+                                } ?>
+                              </select>
+                              <small id="estadoActividadesFactura" class="form-text text-muted"><?php
+                                if ($empresaActividadesId > 0 && !$actividadesDisponibles) { ?>
+                                  No hay actividades sincronizadas para esta empresa. Sincronícelas desde Administración → Empresas.<?php
+                                } ?>
+                              </small>
+                            </div>
                           </div>
-                        </div>
 
                         <div class="form-group row">
                           <label class="col-sm-4 col-form-label" for="condiciones_venta">Condiciones de venta(*)</label>
@@ -392,8 +406,8 @@ if ($vista === 'venta' && $empresaFceId > 0) {
                             <small class="form-text text-muted">Seleccione una o más. Se guardan en la factura; WSFE no envía una condición de venta estructurada.</small>
                             <a href="configurarPlazosPago.php" target="_blank" class="small">Configurar días de vencimiento</a>
                           </div>
-                        </div>
-                        <?php endif; ?>
+                        </div><?php
+                        } ?>
 
                       </div>
 
@@ -652,12 +666,12 @@ if ($vista === 'venta' && $empresaFceId > 0) {
                       <table class="table table-bordered" id="tablaDetalles">
                         <thead>
                           <tr>
-                            <th>#</th>
+                            <th>#</th><?php
+                            if ($vista === 'venta'): ?>
+                              <th>N.C.M.</th><?php
+                            endif; ?>
                             <th>Concepto</th>
                             <th>Descripción</th>
-                            <?php if ($vista === 'venta'): ?>
-                            <th>N.C.M.</th>
-                            <?php endif; ?>
                             <th>Imputación</th>
                             <th>Precio</th>
                             <th>Descuento</th>
@@ -1054,9 +1068,9 @@ if ($vista === 'venta' && $empresaFceId > 0) {
           tbody.append(
             '<tr>' +
             '<td>' + (i + 1) + '</td>' +
+            ncmTd +
             '<td>' + item.concepto_text + '</td>' +
             '<td>' + (PROYECTO_DETALLE ? htmlEsc(PROYECTO_DETALLE) + ' ' : '') + (item.descripcion ? htmlEsc(item.descripcion) : '') + '</td>' +
-            ncmTd +
             '<td>' + imputacionesHtml + '</td>' +
             '<td class="text-right">' + monedaSimbolo + ' ' + formatNumber(totalSubImp) + '</td>' +
             '<td class="text-right">' + porcDesc.toFixed(2) + '%</td>' +
@@ -2157,26 +2171,40 @@ if ($vista === 'venta' && $empresaFceId > 0) {
             filtrarTiposPorPunto();
           });
       }
-      var actividadArcaInicial = <?= (int)($_POST['actividad_arca_id'] ?? $facturaData['actividad_arca_id'] ?? 0) ?>;
+      var actividadArcaInicial = <?=$actividadSeleccionadaId?>;
       function cargarActividadesEmpresa(preservarSeleccion) {
         var idEmpresa = $('#id_empresa').val();
         var select = document.getElementById('actividad_arca_id');
         var status = document.getElementById('estadoActividadesFactura');
-        if (!select) return;
+        if (!select) {
+          return;
+        }
 
-        var seleccionPrevia = preservarSeleccion ? (select.value || String(actividadArcaInicial || '')) : '';
-        select.replaceChildren(new Option(idEmpresa ? 'Cargando actividades...' : 'Seleccione primero la empresa...', ''));
-        if (!idEmpresa) return;
+        var seleccionPrevia = '';
+        if (preservarSeleccion) {
+          seleccionPrevia = select.value || String(actividadArcaInicial || '');
+        }
+        select.replaceChildren(new Option('Seleccione primero la empresa...', ''));
+        if (status) {
+          status.className = 'form-text text-muted';
+          status.textContent = '';
+        }
+        if (!idEmpresa) {
+          return;
+        }
+        select.replaceChildren(new Option('Cargando actividades...', ''));
 
         fetch('obtenerActividadesEmpresaARCA.php?id_empresa=' + encodeURIComponent(idEmpresa))
           .then(function(response) {
             return response.json().then(function(data) {
-              if (!response.ok || !data.ok) throw new Error(data.error || 'No se pudieron cargar las actividades ARCA.');
+              if (!response.ok || !data.ok) {
+                throw new Error(data.error || 'No se pudieron cargar las actividades ARCA.');
+              }
               return data;
             });
           })
           .then(function(data) {
-            select.replaceChildren(new Option('Seleccione una actividad...', ''));
+            select.replaceChildren(new Option(select.dataset.sinActividad, ''));
             data.actividades.forEach(function(actividad) {
               var label = String(actividad.codigo) + ' — ' + actividad.descripcion;
               var option = new Option(label, String(actividad.codigo));
@@ -2185,6 +2213,9 @@ if ($vista === 'venta' && $empresaFceId > 0) {
               }
               select.appendChild(option);
             });
+            if (status && data.actividades.length === 0) {
+              status.textContent = 'No hay actividades sincronizadas para esta empresa.';
+            }
             $(select).trigger('change');
           })
           .catch(function(error) {
