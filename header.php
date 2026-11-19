@@ -17,8 +17,14 @@
             <div class="logo-wrapper"><a href="dashboard.php"><img src="assets/images/logo.jpg" width="" alt=""></a></div>
           </div>
           <div class="mobile-sidebar d-block">
-            <div class="media-body text-right switch-sm">
-              <label class="switch"><a href="#"><i id="sidebar-toggle" data-feather="align-left"></i></a></label>
+            <div class="media-body text-right switch-sm"><?php
+              if (isset($menuLateralManual) && $menuLateralManual === true) { ?>
+                <div class="switch">
+                  <button type="button" class="boton-menu-lateral" aria-label="Mostrar menú lateral" aria-expanded="false"><i id="sidebar-toggle" data-feather="align-left"></i></button>
+                </div><?php
+              } else { ?>
+                <label class="switch"><a href="#"><i id="sidebar-toggle" data-feather="align-left"></i></a></label><?php
+              } ?>
             </div>
           </div>
           <div class="nav-right col p-0">

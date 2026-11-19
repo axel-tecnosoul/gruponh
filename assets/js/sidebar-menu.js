@@ -29,32 +29,39 @@ $.sidebarMenu($('.sidebar-menu'))
 $nav = $('.page-sidebar');
 $header = $('.page-main-header');
 $toggle_nav_top = $('#sidebar-toggle');
-$toggle_nav_top.click(function() {
-  $this = $(this);
-  $nav = $('.page-sidebar');
-  $nav.toggleClass('open');
-  $header.toggleClass('open');
+var menuLateralManual = $('body').attr('data-sidebar-manual') === 'true';
+var enlaceMenuLateral = $toggle_nav_top.closest('button, a');
+
+function aplicarEstadoMenuLateral(oculto) {
+  $nav.toggleClass('open', oculto);
+  $header.toggleClass('open', oculto);
+  $toggle_nav_top.toggleClass('open', oculto);
+  if (menuLateralManual) {
+    $('body').toggleClass('menu-lateral-oculto', oculto);
+  }
+  var descripcion = 'Mostrar menú lateral';
+  if (!oculto) {
+    descripcion = 'Ocultar menú lateral';
+  }
+  enlaceMenuLateral.attr({ role: 'button', 'aria-expanded': String(!oculto), 'aria-label': descripcion });
+}
+
+function ventanaAngostaMenuLateral() {
+  return $(window).width() + 17 <= 991;
+}
+
+var menuEnVentanaAngosta = ventanaAngostaMenuLateral();
+aplicarEstadoMenuLateral(menuLateralManual || menuEnVentanaAngosta);
+enlaceMenuLateral.on('click', function(evento) {
+  evento.preventDefault();
+  aplicarEstadoMenuLateral(!$nav.hasClass('open'));
 });
 
-
-// responsive sidebar
-var $window = $(window);
-var widthwindow = $window.width();
-(function($) {
-  "use strict";
-  if(widthwindow+17 <= 991) {
-    $toggle_nav_top.addClass("open");
-    $nav.addClass("open");
+// Ocultar solo al entrar al tamaño angosto; los demás cambios respetan la elección manual.
+$(window).on('resize', function() {
+  var ventanaAngosta = ventanaAngostaMenuLateral();
+  if (ventanaAngosta && !menuEnVentanaAngosta) {
+    aplicarEstadoMenuLateral(true);
   }
-})(jQuery);
-
-$( window ).resize(function() {
-  var widthwindaw = $window.width();
-  if(widthwindaw+17 <= 991){
-    $toggle_nav_top.addClass("open");
-    $nav.addClass("open");
-  }else{
-    $toggle_nav_top.removeClass("open");
-    $nav.removeClass("open");
-  }
+  menuEnVentanaAngosta = ventanaAngosta;
 });
