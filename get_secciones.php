@@ -30,6 +30,7 @@ $filas = $q->fetchAll(PDO::FETCH_ASSOC);
 
 $pesosSecciones = [];
 $pesosComponentes = [];
+$cantidadesComponentes = [];
 foreach ($filas as $fila) {
   $idSeccion = (int)$fila['id_seccion'];
   $idComponente = (int)($fila['id_componente'] ?? 0);
@@ -44,7 +45,11 @@ foreach ($filas as $fila) {
     $pesoComponente = round(($largo * $pesoMetro / 1000) * $cantidadComponente, 2);
   }
 
+  if (!isset($cantidadesComponentes[$idSeccion])) {
+    $cantidadesComponentes[$idSeccion] = 0;
+  }
   if ($idComponente > 0) {
+    $cantidadesComponentes[$idSeccion]++;
     $pesosComponentes[$idComponente] = $pesoComponente;
   }
   $pesosSecciones[$idSeccion] = ($pesosSecciones[$idSeccion] ?? 0.0) + $pesoComponente;
@@ -65,6 +70,10 @@ foreach ($filas as $fila) {
     5 => $pesosComponentes[$idComponente] ?? 0.0,
     6 => $fila['observaciones_componente'],
     7 => $fila['estado_componente'],
+    'DT_RowAttr' => [
+      'data-id-seccion' => $idSeccion,
+      'data-cantidad-componentes' => $cantidadesComponentes[$idSeccion],
+    ],
   ];
 }
 

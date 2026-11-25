@@ -83,21 +83,7 @@ if (empty($_SESSION['user'])) {
                               <td><?=$row["id_orden_trabajo"]; ?></td>
                             </tr>
 
-                            <div class="modal fade" id="eliminarModal_<?=$row["id_consumo"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                              <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                  </div>
-                                  <div class="modal-body">¿Está seguro que desea anular el consumo?</div>
-                                  <div class="modal-footer">
-                                    <a href="eliminarConsumo.php?id=<?=$row["id_consumo"]; ?>" class="btn btn-primary">Eliminar</a>
-                                    <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div><?php
+                            <?php
                           }
                           Database::disconnect();?>
                         </tbody>
@@ -185,11 +171,27 @@ if (empty($_SESSION['user'])) {
       </div>
     </div>
 
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarConsumo.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea anular el consumo?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -280,7 +282,7 @@ if (empty($_SESSION['user'])) {
           if(t.hasClass('selected')){
             deselectRow(t);
             get_detalle_consumo(0)
-            $("#link_eliminar_consumo").data("id","");
+            $("#link_eliminar_consumo").data("id","").attr("data-target", "#").removeAttr("data-url-confirmacion");
           }else{
             table.rows().nodes().each( function (rowNode, index) {
               $(rowNode).removeClass("selected");
@@ -288,6 +290,7 @@ if (empty($_SESSION['user'])) {
             selectRow(t);
             get_detalle_consumo(id_consumo)
             $("#link_eliminar_consumo").data("id",id_consumo);
+            prepararConfirmacion("#link_eliminar_consumo", "#modalEliminar", "eliminarConsumo.php?id=" + id_consumo, t);
           }
         });
 
@@ -300,10 +303,8 @@ if (empty($_SESSION['user'])) {
         $("#link_eliminar_consumo").on("click",function(){
           let id_consumo=$(this).data("id");
           console.log(id_consumo);
-          if(id_consumo!="" && id_consumo>0){
-            $("#eliminarModal_"+id_consumo).modal("show")
-          }else{
-            alert("Por favor seleccione un consumo para eliminarlo")
+          if (!id_consumo || id_consumo <= 0 || this.dataset.target === "#") {
+            alert("Por favor seleccione un consumo para eliminarlo");
           }
           
         })

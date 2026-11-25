@@ -71,8 +71,8 @@ if (empty($_SESSION['user'])) {
                                     echo '<a href="modificarPerfil.php?id='.$row[0].'"><img src="img/icon_modificar.png" width="24" height="25" border="0" alt="Modificar" title="Modificar"></a>';
                                     echo '&nbsp;&nbsp;';
                                 }
-                                if (!empty(tienePermiso(9))) {
-                                    echo '<a href="#" data-toggle="modal" data-target="#eliminarModal_'.$row[0].'"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a>';
+                                if (!empty(tienePermiso(9))) { ?>
+                                    <a href="#" data-toggle="modal" data-target="#modalEliminar" data-url-confirmacion="eliminarPerfil.php?id=<?=(int)$row[0]?>"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Eliminar" title="Eliminar"></a><?php
                                     echo '&nbsp;&nbsp;';
                                 }
                                 echo '</td>';
@@ -103,35 +103,28 @@ if (empty($_SESSION['user'])) {
         <?php include("footer.php"); ?>
       </div>
     </div>
-  <?php
-    $pdo = Database::connect();
-    $sql = " SELECT `id`, `perfil` FROM `perfiles` WHERE 1 ";
-    foreach ($pdo->query($sql) as $row) {
-        ?>
-  <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea eliminar el perfil?</div>
-      <div class="modal-footer">
-      <a href="eliminarPerfil.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarPerfil.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el perfil?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
-    </div>
-  </div>
-  <?php
-    }
-    Database::disconnect();
-    ?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>

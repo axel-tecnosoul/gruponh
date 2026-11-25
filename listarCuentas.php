@@ -138,7 +138,7 @@ include 'database.php';?>
       </div>
     </div>
 
-    <div class="modal fade" id="modalEliminar" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarCuenta.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
@@ -147,7 +147,7 @@ include 'database.php';?>
           </div>
           <div class="modal-body">¿Está seguro que desea eliminar la cuenta?</div>
           <div class="modal-footer">
-            <a href="#" class="btn btn-primary" id="btnEliminar">Eliminar</a>
+            <a class="btn btn-primary confirmar-accion" id="btnEliminar">Eliminar</a>
             <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
           </div>
         </div>
@@ -159,6 +159,7 @@ include 'database.php';?>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -261,9 +262,6 @@ include 'database.php';?>
           let target=this.dataset.target;
           if(target==undefined || target=="#"){
             alert("Por favor seleccione una cuenta para eliminar");
-          }else{
-            let id=$(this).data('id');
-            $("#btnEliminar").attr("href","eliminarCuenta.php?id="+id);
           }
         });
         //$('#dataTables-example666').find("tbody tr td").not(":last-child").on( 'click', function () {
@@ -287,7 +285,7 @@ include 'database.php';?>
             $("#link_ver_cuenta").attr("href","verCuenta.php?id="+id_cuenta);
             $("#link_modificar_cuenta").attr("href","modificarCuenta.php?id="+id_cuenta);
             $("#link_eliminar_cuenta").attr("data-toggle","modal");
-            $("#link_eliminar_cuenta").attr("data-target","#modalEliminar");
+            prepararConfirmacion("#link_eliminar_cuenta", "#modalEliminar", "eliminarCuenta.php?id=" + id_cuenta, t);
             $("#link_eliminar_cuenta").data('id',id_cuenta);
           }
         });

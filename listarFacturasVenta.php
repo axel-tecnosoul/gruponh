@@ -491,37 +491,30 @@ Database::disconnect(); ?>
   </div>
 
   <!-- Modales de confirmación eliminación detalles -->
-  <?php
-  $pdo = Database::connect();
-  $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-  $q = $pdo->prepare("SELECT id, id_factura_venta FROM facturas_venta_detalle WHERE 1");
-  $q->execute();
-  while ($row = $q->fetch(PDO::FETCH_ASSOC)):
-  ?>
-    <div class="modal fade" id="eliminarModalDetalle_<?= $row['id'] ?>" tabindex="-1" role="dialog" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirmación</h5>
-            <button class="close" type="button" data-dismiss="modal"><span>&times;</span></button>
-          </div>
-          <div class="modal-body">¿Está seguro que desea eliminar el ítem de detalle?</div>
-          <div class="modal-footer">
-            <a href="eliminarDetalleFacturaVenta.php?id=<?= $row['id'] ?>&fv=<?= $row['id_factura_venta'] ?>" class="btn btn-danger">Eliminar</a>
-            <button class="btn btn-light" type="button" data-dismiss="modal">Cancelar</button>
-          </div>
+
+
+
+
+  <div class="modal fade modal-confirmacion-tabla" id="modalEliminarDetalle" data-tabla-origen="#dataTables-example667" data-tabla-padre="#dataTables-example666" data-ruta-confirmacion="eliminarDetalleFacturaVenta.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarDetalleLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEliminarDetalleLabel">Confirmación</h5>
+          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+        </div>
+        <div class="modal-body">¿Está seguro que desea eliminar el ítem de detalle?</div>
+        <div class="modal-footer">
+          <a class="btn btn-primary confirmar-accion">Eliminar</a>
+          <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
         </div>
       </div>
     </div>
-  <?php endwhile;
-  Database::disconnect(); ?>
-
-
-
+  </div>
   <!-- Scripts -->
   <script src="assets/js/jquery-3.2.1.min.js"></script>
   <script src="assets/js/bootstrap/popper.min.js"></script>
   <script src="assets/js/bootstrap/bootstrap.js"></script>
+  <script src="assets/js/confirmaciones-tablas.js"></script>
   <script src="assets/js/icons/feather-icon/feather.min.js"></script>
   <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
   <script src="assets/js/sidebar-menu.js"></script>
@@ -912,7 +905,8 @@ Database::disconnect(); ?>
           });
           t.addClass('selected');
           $('#link_modificar_detalle_fv').attr('href', 'modificarDetalleFacturaVenta.php?id=' + id_det);
-          $('#link_eliminar_detalle_fv').attr('data-toggle', 'modal').attr('data-target', '#eliminarModalDetalle_' + id_det);
+          $('#link_eliminar_detalle_fv').attr('data-toggle', 'modal');
+          prepararConfirmacion("#link_eliminar_detalle_fv", "#modalEliminarDetalle", "eliminarDetalleFacturaVenta.php?id=" + id_det + "&fv=" + encodeURIComponent($("#dataTables-example666 tbody tr.selected td:nth-child(2)").text().trim()), t);
         }
       });
 
@@ -978,6 +972,7 @@ Database::disconnect(); ?>
     var table2 = $('#dataTables-example667');
 
     function get_detalles(id_fv) {
+      var versionConfirmacion = iniciarCargaConfirmaciones("#dataTables-example667");
       var fd = new FormData();
       fd.append('id_fv', id_fv);
       $.ajax({
@@ -988,6 +983,9 @@ Database::disconnect(); ?>
         contentType: false,
         processData: false,
         success: function(raw) {
+          if (!finalizarCargaConfirmaciones("#dataTables-example667", versionConfirmacion)) {
+            return;
+          }
           var data = JSON.parse(raw);
           table2.DataTable().destroy();
           var table4 = table2.DataTable({

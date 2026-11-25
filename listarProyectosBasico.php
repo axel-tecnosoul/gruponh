@@ -273,60 +273,45 @@ $seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
         <?php include("footer.php"); ?>
       </div>
     </div>
-  <?php
-    $pdo = Database::connect();
-    $sql = " SELECT p.`id`, s.nro_sitio, s.nro_subsitio, p.nombre, p.`descripcion`, c.nombre, ep.`estado`, c2.nombre, date_format(p.`fecha_pedido`,'%d/%m/%y'), date_format(p.`fecha_entrega`,'%d/%m/%y'), ln.`linea_negocio`, p.`tags` FROM `proyectos` p inner join lineas_negocio ln on ln.id = p.`id_linea_negocio` inner join tipos_proyecto tp on tp.id = p.`id_tipo_proyecto` inner join estados_proyecto ep on ep.id = p.`id_estado_proyecto` inner join sitios s on s.id = p.id_sitio inner join cuentas c on c.id = p.id_cliente inner join cuentas c2 on c2.id = p.id_gerente WHERE p.`anulado` = 0 ";
-	foreach ($pdo->query($sql) as $row) {
-    ?>
-  <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea eliminar el proyecto?</div>
-      <div class="modal-footer">
-      <a href="eliminarProyecto.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-      </div>
-    </div>
-    </div>
-  </div>
-  <?php
-    }
-    Database::disconnect();
-    ?>
+
 	
-	<?php
-    $pdo = Database::connect();
-    $sql = " SELECT t.`id`, p.`descripcion`, s.nombre, t.`estructura`, sec.`sector`, tt.`tipo`, c.`nombre`, date_format(t.`fecha_inicio_estimada`,'%d/%m/%y'), date_format(t.`fecha_fin_estimada`,'%d/%m/%y'), date_format(t.`fecha_inicio_real`,'%d/%m/%y'), date_format(t.`fecha_fin_real`,'%d/%m/%y') FROM `tareas` t inner join proyectos p on p.id = t.`id_proyecto` inner join sitios s on s.id = p.id_sitio inner join sectores sec on sec.id = t.`id_sector` inner join tipos_tarea tt on tt.id = t.`id_tipo_tarea` left join cuentas c on c.id = t.`id_coordinador` WHERE t.`anulado` = 0 and p.anulado = 0 ";
-    foreach ($pdo->query($sql) as $row) {
-    ?>
-  <div class="modal fade" id="eliminarModalTarea_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabelTarea" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-      <h5 class="modal-title" id="exampleModalLabelTarea">Confirmación</h5>
-      <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-      </div>
-      <div class="modal-body">¿Está seguro que desea eliminar la tarea?</div>
-      <div class="modal-footer">
-      <a href="eliminarTarea.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-      <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
+
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarProyecto.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el proyecto?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
       </div>
     </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminarTarea" data-tabla-origen="#dataTables-example667" data-tabla-padre="#dataTables-example666" data-ruta-confirmacion="eliminarTarea.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarTareaLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarTareaLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar la tarea?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-  <?php
-    }
-    Database::disconnect();
-    ?>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -535,7 +520,7 @@ $seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
 		  $("#link_nueva_lc").attr("href","nuevaListaCorte.php?idProyecto="+id_proyecto);
 		  $("#link_nuevo_packing").attr("href","nuevaPackingList.php?idProyecto="+id_proyecto);
           $("#link_eliminar_proyecto").attr("data-toggle","modal");
-          $("#link_eliminar_proyecto").attr("data-target","#eliminarModal_"+id_proyecto);
+          prepararConfirmacion("#link_eliminar_proyecto", "#modalEliminar", "eliminarProyecto.php?id=" + id_proyecto, t);
         }
       });
 	} );
@@ -625,6 +610,7 @@ $seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
     var table2 = $('#dataTables-example667');
 
     function get_tareas(id_proyecto){
+      var versionConfirmacion = iniciarCargaConfirmaciones("#dataTables-example667");
       let datosUpdate = new FormData();
       datosUpdate.append('id_proyecto', id_proyecto);
       $.ajax({
@@ -635,6 +621,9 @@ $seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
         contentType: false,
         processData: false,
         success: function(data){
+          if (!finalizarCargaConfirmaciones("#dataTables-example667", versionConfirmacion)) {
+            return;
+          }
           console.log(data);
           data = JSON.parse(data);
           console.log(data);
@@ -740,7 +729,7 @@ $seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
     }
 
     //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
-      $(document).on("click","#dataTables-example667 tbody tr td", function(){
+      $(document).off("click.confirmacionFila", "#dataTables-example667 tbody tr td").on("click.confirmacionFila", "#dataTables-example667 tbody tr td", function(){
         var t=$(this).parent();
         //t.parent().find("tr").removeClass("selected");
 
@@ -778,7 +767,7 @@ $seleccionarTodosEstadosBasico = empty($estadosProyectoBasicoSeleccionados);
 			$("#link_nuevo_computo").attr("href","#");
           }
           $("#link_eliminar_tarea").attr("data-toggle","modal");
-          $("#link_eliminar_tarea").attr("data-target","#eliminarModalTarea_"+id_tarea);
+          prepararConfirmacion("#link_eliminar_tarea", "#modalEliminarTarea", "eliminarTarea.php?id=" + id_tarea, t);
         }
 		  });
     

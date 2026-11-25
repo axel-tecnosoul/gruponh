@@ -8,13 +8,10 @@
 	
 	require 'database.php';
 
-	$id = null;
-	if ( !empty($_GET['id'])) {
-		$id = $_REQUEST['id'];
-	}
-	
-	if ( null==$id ) {
+	$id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+	if (!$id || $id < 1) {
 		header("Location: listarProyectos.php");
+		exit;
 	}
 	
 	if ( !empty($_POST)) {
@@ -103,9 +100,11 @@
 								<tbody>
 								  <?php
 									$pdo = Database::connect();
-									$sql = " SELECT p.nro, p.nro_revision, date_format(p.fecha,'%d/%m/%y'), c.nombre, p.solicitante, p.referencia, p.descripcion, m.moneda, p.monto, p.adjudicado,pp.id FROM proyectos_presupuestos pp inner join presupuestos p on p.id = pp.id_presupuesto inner join cuentas c on c.id = p.id_cuenta inner join monedas m on m.id = p.id_moneda WHERE p.anulado = 0 ";
-									
-									foreach ($pdo->query($sql) as $row) {
+									$sql = " SELECT p.nro, p.nro_revision, date_format(p.fecha,'%d/%m/%y'), c.nombre, p.solicitante, p.referencia, p.descripcion, m.moneda, p.monto, p.adjudicado,pp.id FROM proyectos_presupuestos pp inner join presupuestos p on p.id = pp.id_presupuesto inner join cuentas c on c.id = p.id_cuenta inner join monedas m on m.id = p.id_moneda WHERE p.anulado = 0 AND pp.id_proyecto = ? ";
+									$q = $pdo->prepare($sql);
+									$q->execute([$id]);
+
+									while ($row = $q->fetch(PDO::FETCH_BOTH)) {
 										echo '<tr>';
 										echo '<td>'. $row[0] . ' / '.$row[1].'</td>';
 										echo '<td>'. $row[2] . '</td>';
@@ -120,28 +119,12 @@
 											echo '<td>No</td>';
 										}
 										echo '<td>';
-										if (!empty(tienePermiso(306))) {
-											echo '<a href="#" data-toggle="modal" data-target="#eliminarModal_'.$row[10].'"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Quitar Presupuesto" title="Quitar Presupuesto"></a>';
+										if (!empty(tienePermiso(306))) { ?>
+											<a href="#" data-toggle="modal" data-target="#modalEliminar" data-url-confirmacion="eliminarPresupuestoProyecto.php?id=<?=(int)$row[10]?>&amp;idProyecto=<?=(int)$id?>"><img src="img/icon_baja.png" width="24" height="25" border="0" alt="Quitar Presupuesto" title="Quitar Presupuesto"></a><?php
 											echo '&nbsp;&nbsp;';
 										}
 										echo '</td>';
-										echo '</tr>';?>
-
-                    <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                      <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                          <div class="modal-header">
-                            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                          </div>
-                          <div class="modal-body">¿Está seguro que desea quitar el presupuesto del proyecto?</div>
-                          <div class="modal-footer">
-                            <a href="eliminarPresupuestoProyecto.php?id=<?php echo $row[10]; ?>" class="btn btn-primary">Eliminar</a>
-                            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                          </div>
-                        </div>
-                      </div>
-                    </div><?php
+										echo '</tr>';
 									}
 								   Database::disconnect();
 								  ?>
@@ -204,11 +187,27 @@
 		<?php include("footer.php"); ?>
       </div>
     </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarPresupuestoProyecto.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea quitar el presupuesto del proyecto?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>

@@ -290,55 +290,7 @@ if ($mensajeErrorFiltros === '') {
 								  } else {
 									  echo '<td>No</td>';
 								  }
-								  echo '</tr>';?>
-
-								  <div class="modal fade" id="eliminarModal_<?php echo $row["id"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-									<div class="modal-dialog" role="document">
-									  <div class="modal-content">
-										<div class="modal-header">
-										  <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-										  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-										</div>
-										<div class="modal-body">¿Está seguro que desea eliminar el presupuesto?</div>
-										<div class="modal-footer">
-										  <a href="eliminarPresupuesto.php?id=<?php echo $row["id"]; ?>" class="btn btn-primary">Eliminar</a>
-										  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-										</div>
-									  </div>
-									</div>
-								  </div>
-								  
-								  <div class="modal fade" id="adjudicarModal_<?php echo $row["id"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-									<div class="modal-dialog" role="document">
-									  <div class="modal-content">
-										<div class="modal-header">
-										  <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-										  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-										</div>
-										<div class="modal-body">¿Está seguro que desea adjudicar/desadjudicar el presupuesto?</div>
-										<div class="modal-footer">
-										  <a href="adjudicarPresupuesto.php?id=<?php echo $row["id"]; ?>" class="btn btn-primary">Ejecutar</a>
-										  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-										</div>
-									  </div>
-									</div>
-								  </div>
-							
-								  <div class="modal fade" id="clonarModal_<?php echo $row["id"]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-									<div class="modal-dialog" role="document">
-									  <div class="modal-content">
-										<div class="modal-header">
-										  <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-										  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-										</div>
-										<div class="modal-body">¿Desea crear un presupuesto nuevo a partir de este? Los datos se guardarán al confirmar el formulario.</div>
-										<div class="modal-footer">
-										  <a href="clonarPresupuesto.php?id=<?php echo $row["id"]; ?>" class="btn btn-primary">Nuevo desde</a>
-										  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-										</div>
-									  </div>
-									</div>
-								  </div><?php
+								  echo '</tr>';
 								} ?>
                           </tbody>
                         </table>
@@ -357,11 +309,57 @@ if ($mensajeErrorFiltros === '') {
         </div>
       </div>
     </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarPresupuesto.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el presupuesto?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalAdjudicar" data-ruta-confirmacion="adjudicarPresupuesto.php" tabindex="-1" role="dialog" aria-labelledby="modalAdjudicarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalAdjudicarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea adjudicar/desadjudicar el presupuesto?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Ejecutar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalClonar" data-ruta-confirmacion="clonarPresupuesto.php" tabindex="-1" role="dialog" aria-labelledby="modalClonarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalClonarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Desea crear un presupuesto nuevo a partir de este? Los datos se guardarán al confirmar el formulario.</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Nuevo desde</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -565,17 +563,17 @@ if ($mensajeErrorFiltros === '') {
 			$("#link_items_presupuesto").attr("href","itemsPresupuesto.php?id="+id_presupuesto);
             $("#link_items_presupuesto_masivo").attr("href","itemsPresupuestoMasivo.php?id="+id_presupuesto);
             $("#link_clonar_presupuesto").attr("data-toggle","modal");
-            $("#link_clonar_presupuesto").attr("data-target","#clonarModal_"+id_presupuesto);
+            prepararConfirmacion("#link_clonar_presupuesto", "#modalClonar", "clonarPresupuesto.php?id=" + id_presupuesto, t);
             $("#link_imprimir_presupuesto").attr("href","imprimirPresupuesto.php?id="+id_presupuesto);
 			if (adj == "No") {
 				$("#link_eliminar_presupuesto").attr("data-toggle","modal");
-				$("#link_eliminar_presupuesto").attr("data-target","#eliminarModal_"+id_presupuesto);
+				prepararConfirmacion("#link_eliminar_presupuesto", "#modalEliminar", "eliminarPresupuesto.php?id=" + id_presupuesto, t);
 				$("#link_adjudicar_presupuesto").attr("data-toggle","modal");
-				$("#link_adjudicar_presupuesto").attr("data-target","#adjudicarModal_"+id_presupuesto);
+				prepararConfirmacion("#link_adjudicar_presupuesto", "#modalAdjudicar", "adjudicarPresupuesto.php?id=" + id_presupuesto, t);
 			} else {
 				$("#link_eliminar_presupuesto").attr("data-target","#");
 				$("#link_adjudicar_presupuesto").attr("data-toggle","modal");
-				$("#link_adjudicar_presupuesto").attr("data-target","#adjudicarModal_"+id_presupuesto);
+				prepararConfirmacion("#link_adjudicar_presupuesto", "#modalAdjudicar", "adjudicarPresupuesto.php?id=" + id_presupuesto, t);
 			}
           }
         });

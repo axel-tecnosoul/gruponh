@@ -1306,3 +1306,19 @@ ALTER TABLE `presupuestos`
 -- EJECUTAR MANUALMENTE Y CON BACKUP PREVIO.
 -- ---------------------------------------------------------------------------
 DROP TABLE IF EXISTS `facturas_venta_otros`;
+
+-- Tipos historicos de cuentas: conservar las siglas originales.
+-- No fijar IDs ni volver a insertar un tipo que ya exista.
+INSERT INTO `tipos_cuenta` (`tipo_cuenta`)
+SELECT 'PRVA'
+WHERE NOT EXISTS (
+    SELECT 1 FROM `tipos_cuenta`
+    WHERE UPPER(TRIM(`tipo_cuenta`)) = 'PRVA'
+);
+
+INSERT INTO `tipos_cuenta` (`tipo_cuenta`)
+SELECT 'META'
+WHERE NOT EXISTS (
+    SELECT 1 FROM `tipos_cuenta`
+    WHERE UPPER(TRIM(`tipo_cuenta`)) = 'META'
+);

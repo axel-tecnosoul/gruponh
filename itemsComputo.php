@@ -7,6 +7,7 @@ ob_start();
 
 require("config.php");
 require 'database.php';
+require_once 'funciones.php';
 
 $prod      = isset($_REQUEST['prod']) ? (int)$_REQUEST['prod'] : null;
 $prodQuery = $prod ? '?prod=' . $prod : '';
@@ -16,6 +17,11 @@ define('ID_ESTADO_TERMINADO_COMPUTO',  5);
 define('ID_ESTADO_TERMINADO_PROYECTO', 4);
 
 $modo     = $_REQUEST['modo']     ?? 'nuevo';
+if (!is_string($modo)) {
+  header("Location: listarComputos.php$prodQuery");
+  exit;
+}
+
 $idOrigen = $_REQUEST['id']       ?? null;
 $nroRev   = $_REQUEST['revision'] ?? 0;
 
@@ -360,7 +366,7 @@ Database::disconnect();
                                           <img src="img/icon_modificar.png" width="24" height="25" alt="Modificar" title="Modificar">
                                         </a>
                                         &nbsp;&nbsp;
-                                        <a href="#" data-toggle="modal" data-target="#eliminarModal_<?= $row["id_computo_detalle"] ?>">
+                                        <a href="#" data-toggle="modal" data-target="#modalEliminar" data-url-confirmacion="eliminarItemComputo.php?id=<?=(int)$row["id_computo_detalle"]?>&amp;idComputo=<?=(int)$id?>&amp;revision=<?=(int)$revision?>&amp;idOrigen=<?=(int)$idComputoPadre?>&amp;modo=<?=rawurlencode($modo)?><?=escaparHtml($prodParam)?>">
                                           <img src="img/icon_baja.png" width="24" height="25" alt="Eliminar" title="Eliminar">
                                         </a>
                                         &nbsp;&nbsp;
@@ -497,36 +503,28 @@ Database::disconnect();
     </div>
   </div>
 
-  <?php
-  $pdo = Database::connect();
-  $sql = "SELECT d.id, m.concepto, d.cantidad, d.id_computo
-        FROM computos_detalle d
-        INNER JOIN materiales m ON m.id = d.id_material
-        WHERE d.id_computo = " . $id;
-  foreach ($pdo->query($sql) as $row) { ?>
-    <div class="modal fade" id="eliminarModal_<?= $row["id"] ?>" tabindex="-1" role="dialog" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Confirmación</h5>
-            <button class="close" type="button" data-dismiss="modal"><span aria-hidden="true">×</span></button>
-          </div>
-          <div class="modal-body">¿Está seguro que desea eliminar el ítem del cómputo?</div>
-          <div class="modal-footer">
-            <a href="eliminarItemComputo.php?id=<?= $row["id"] ?>&idComputo=<?= $row["id_computo"] ?>&revision=<?= $revision ?>&idOrigen=<?= $idComputoPadre ?>&modo=<?= $modo ?><?= $prodParam ?>"
-              class="btn btn-primary">Eliminar</a>
-            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
-          </div>
+
+
+  <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarItemComputo.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+        </div>
+        <div class="modal-body">¿Está seguro que desea eliminar el ítem del cómputo?</div>
+        <div class="modal-footer">
+          <a class="btn btn-primary confirmar-accion">Eliminar</a>
+          <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
         </div>
       </div>
     </div>
-  <?php }
-  Database::disconnect(); ?>
-
+  </div>
   <!-- Scripts -->
   <script src="assets/js/jquery-3.2.1.min.js"></script>
   <script src="assets/js/bootstrap/popper.min.js"></script>
   <script src="assets/js/bootstrap/bootstrap.js"></script>
+  <script src="assets/js/confirmaciones-tablas.js"></script>
   <script src="assets/js/icons/feather-icon/feather.min.js"></script>
   <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
   <script src="assets/js/sidebar-menu.js"></script>

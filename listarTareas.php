@@ -202,40 +202,29 @@ $submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
     </div>
   </div>
 
-  <?php
-  $pdo = Database::connect();
-  $sqlModal = "SELECT t.`id`
-                 FROM `tareas` t
-                 INNER JOIN proyectos p ON p.id = t.`id_proyecto`
-                 WHERE t.`anulado` = 0 AND p.anulado = 0";
-  foreach ($pdo->query($sqlModal) as $row) { ?>
-    <div class="modal fade" id="eliminarModal_<?php echo $row[0]; ?>" tabindex="-1" role="dialog"
-      aria-labelledby="exampleModalLabel" aria-hidden="true">
-      <div class="modal-dialog" role="document">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-            <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-              <span aria-hidden="true">×</span>
-            </button>
-          </div>
-          <div class="modal-body">¿Está seguro que desea eliminar la tarea?</div>
-          <div class="modal-footer">
-            <a href="eliminarTarea.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-            <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-          </div>
+
+
+  <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarTarea.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+        </div>
+        <div class="modal-body">¿Está seguro que desea eliminar la tarea?</div>
+        <div class="modal-footer">
+          <a class="btn btn-primary confirmar-accion">Eliminar</a>
+          <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
         </div>
       </div>
     </div>
-  <?php }
-  Database::disconnect();
-  ?>
-
+  </div>
   <!-- latest jquery-->
   <script src="assets/js/jquery-3.2.1.min.js"></script>
   <!-- Bootstrap js-->
   <script src="assets/js/bootstrap/popper.min.js"></script>
   <script src="assets/js/bootstrap/bootstrap.js"></script>
+  <script src="assets/js/confirmaciones-tablas.js"></script>
   <!-- feather icon js-->
   <script src="assets/js/icons/feather-icon/feather.min.js"></script>
   <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -418,7 +407,8 @@ $submitted     = isset($_POST['buscar'])        ? "1"                     : "0";
 
           $("#link_eliminar_tarea")
             .attr("data-toggle", "modal")
-            .attr("data-target", "#eliminarModal_" + id_tarea);
+            .attr("data-target", "#modalEliminar");
+          prepararConfirmacion("#link_eliminar_tarea", "#modalEliminar", "eliminarTarea.php?id=" + id_tarea, t);
         }
       });
 

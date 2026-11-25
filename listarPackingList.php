@@ -200,23 +200,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 								echo '<td><span style="display: none;">'. $row[12] . '</span>'. $row[3] . '</td>';
                                 echo '<td>'. $row[10] . '</td>';
                                 echo '<td>'. $row[4] . '</td>';
-                                echo '</tr>';?>
-
-                                <div class="modal fade" id="eliminarModal_<?=$row[11]?>_<?=$row[5]?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                  <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                      <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                        <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                      </div>
-                                      <div class="modal-body">¿Está seguro que desea cancelar el Packing List?</div>
-                                      <div class="modal-footer">
-                                        <a href="eliminarPackingList.php?id=<?=$row[5]?><?= $prodParam ?>" class="btn btn-primary">Eliminar</a>
-                                        <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div><?php
+                                echo '</tr>';
                             }
 							Database::disconnect();
 							}
@@ -427,82 +411,57 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
       </select>
     </div>
 	
-		<?php
-		$pdo = Database::connect();
-		$sql = "SELECT `id`, `id_packing_list_seccion`, `id_conjunto_lista_corte`, `id_concepto`, `cantidad`, `observaciones`, `id_estado_componente_packing_list` FROM `packing_lists_componentes` WHERE 1 "; 
-		foreach ($pdo->query($sql) as $row) {
-			?>
-		  <div class="modal fade" id="eliminarModalComponente_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalComponenteLabel" aria-hidden="true">
-			<div class="modal-dialog" role="document">
-			<div class="modal-content">
-			  <div class="modal-header">
-			  <h5 class="modal-title" id="exampleModalComponenteLabel">Confirmación</h5>
-			  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-			  </div>
-			  <div class="modal-body">¿Está seguro que desea eliminar el Componente?</div>
-			  <div class="modal-footer">
-                          <a href="eliminarComponentePackingList.php?id=<?php echo $row[0]; ?><?= $prodParam ?>" class="btn btn-primary">Eliminar</a>
-			  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-			  </div>
-			</div>
-			</div>
-		  </div>
-		  <?php
-			}
-			Database::disconnect();
-			?>
-			<?php
-			$pdo = Database::connect();
-			$sql = "SELECT id, id_packing_list_revision, cantidad, observaciones FROM packing_lists_secciones WHERE 1 "; 
-			foreach ($pdo->query($sql) as $row) {
-				$sql2 = "select count(*) cant from packing_lists_componentes where id_packing_list_seccion = ".$row[0];
-				$q2 = $pdo->prepare($sql2);
-				$q2->execute();
-				$data2 = $q2->fetch(PDO::FETCH_ASSOC);
-				if (empty($data2['cant'])) {
-				?>
-				<div class="modal fade" id="eliminarModalSeccion_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalSeccionLabel" aria-hidden="true">
-				<div class="modal-dialog" role="document">
-				<div class="modal-content">
-				  <div class="modal-header">
-				  <h5 class="modal-title" id="exampleModalSeccionLabel">Confirmación</h5>
-				  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-				  </div>
-				  <div class="modal-body">¿Está seguro que desea eliminar la Sección?</div>
-				  <div class="modal-footer">
-                                  <a href="eliminarSeccionPackingList.php?id=<?php echo $row[0]; ?><?= $prodParam ?>" class="btn btn-primary">Eliminar</a>
-				  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-				  </div>
-				</div>
-				</div>
-			  </div>
-			  <?php
-				} else {
-			?>
-				<div class="modal fade" id="eliminarModalSeccion_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalSeccionLabel" aria-hidden="true">
-				<div class="modal-dialog" role="document">
-				<div class="modal-content">
-				  <div class="modal-header">
-				  <h5 class="modal-title" id="exampleModalSeccionLabel">Alerta</h5>
-				  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-				  </div>
-				  <div class="modal-body">La Sección no puede ser eliminada debido a que tiene Componentes sin cancelar.</div>
-				  <div class="modal-footer">
-				  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-				  </div>
-				</div>
-				</div>
-			  </div>
-			  <?php
-				}
-			}
-			Database::disconnect();
-			?>
-    <!-- latest jquery-->
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarPackingList.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea cancelar el Packing List?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminarComponente" data-tabla-origen="#dataTables-example668" data-tabla-padre="#dataTables-example667" data-ruta-confirmacion="eliminarComponentePackingList.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarComponenteLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarComponenteLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el Componente?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminarSeccion" data-tabla-origen="#dataTables-example667" data-tabla-padre="#dataTables-example666" data-ruta-confirmacion="eliminarSeccionPackingList.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarSeccionLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarSeccionLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar la Sección?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+		<!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <!-- feather icon js-->
     <script src="assets/js/icons/feather-icon/feather.min.js"></script>
     <script src="assets/js/icons/feather-icon/feather-icon.js"></script>
@@ -788,7 +747,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
           $("#link_imprimir_pl_sin").attr("href","imprimirPackingList.php?peso=0&id="+id_pl_revision+prodParam);
 		  if ((estado == "Elaboración") || (estado == "Enviado")){
 			  $("#link_eliminar_pl").attr("data-toggle","modal");
-			  $("#link_eliminar_pl").attr("data-target","#eliminarModal_"+id_pl+"_"+id_pl_revision);
+			  prepararConfirmacion("#link_eliminar_pl", "#modalEliminar", "eliminarPackingList.php?id=" + id_pl_revision + prodParam, t);
 		  } else {
 			  $("#link_eliminar_pl").attr("data-target","#");
 		  }
@@ -925,6 +884,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 	} );
 	
 	function get_secciones(id_pl){
+      var versionConfirmacion = iniciarCargaConfirmaciones("#dataTables-example667");
       let datosUpdate = new FormData();
       datosUpdate.append('id_pl', id_pl);
       $.ajax({
@@ -936,6 +896,9 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
         contentType: false,
         processData: false,
         success: function(data){
+          if (!finalizarCargaConfirmaciones("#dataTables-example667", versionConfirmacion)) {
+            return;
+          }
           if (!Array.isArray(data)) {
             alert((data && data.error) || "La respuesta del detalle de secciones no tiene el formato esperado.");
             return;
@@ -1015,11 +978,11 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 			})
 			
       //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
-      $(document).on("click","#dataTables-example667 tbody tr td", function(){
+      $(document).off("click.confirmacionFila", "#dataTables-example667 tbody tr td").on("click.confirmacionFila", "#dataTables-example667 tbody tr td", function(){
         var t=$(this).parent();
         //t.parent().find("tr").removeClass("selected");
 
-        let id_sec=t.find("td:first-child").html();
+        let id_sec=t.attr("data-id-seccion");
         if(t.hasClass('selected')){
           deselectRow(t);
           get_componentes(id_sec)
@@ -1037,7 +1000,13 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
           $("#link_modificar_seccion").attr("href","modificarSeccionPackingList.php?id="+id_sec+prodParam);
            $("#link_nuevo_componente").attr("href","nuevoComponentePackingList.php?id="+id_sec+prodParam);
            $("#link_eliminar_seccion").attr("data-toggle","modal");
-           $("#link_eliminar_seccion").attr("data-target","#eliminarModalSeccion_"+id_sec);
+           var cantidadComponentes = Number(t.attr("data-cantidad-componentes"));
+           var tieneComponentes = !Number.isFinite(cantidadComponentes) || cantidadComponentes > 0;
+           var mensajeSeccion = "¿Está seguro que desea eliminar la Sección?";
+           if (tieneComponentes) {
+             mensajeSeccion = "La Sección no puede ser eliminada debido a que tiene Componentes sin cancelar.";
+           }
+           prepararConfirmacion("#link_eliminar_seccion", "#modalEliminarSeccion", "eliminarSeccionPackingList.php?id=" + id_sec + prodParam, t, { bloqueado: tieneComponentes, mensaje: mensajeSeccion });
          }
 		  });
         },
@@ -1099,6 +1068,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 	} );
 	
 	function get_componentes(id_sec){
+      var versionConfirmacion = iniciarCargaConfirmaciones("#dataTables-example668");
       let datosUpdate = new FormData();
       datosUpdate.append('id_sec', id_sec);
       $.ajax({
@@ -1109,6 +1079,9 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
         contentType: false,
         processData: false,
         success: function(data){
+          if (!finalizarCargaConfirmaciones("#dataTables-example668", versionConfirmacion)) {
+            return;
+          }
           console.log(data);
           data = JSON.parse(data);
           console.log(data);
@@ -1176,7 +1149,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
 			})
 			
           //$('#dataTables-example668').find("tbody tr td").not(":last-child").on( 'click', function () {
-      $(document).on("click","#dataTables-example668 tbody tr td", function(){
+      $(document).off("click.confirmacionFila", "#dataTables-example668 tbody tr td").on("click.confirmacionFila", "#dataTables-example668 tbody tr td", function(){
         var t=$(this).parent();
         //t.parent().find("tr").removeClass("selected");
 
@@ -1194,7 +1167,7 @@ $seleccionarTodosEstadosPacking = empty($estadosPackingPost);
           $("#link_ver_componente_pl").attr("href","verComponenteSeccionPackingList.php?id="+id_componente+prodParam);
           $("#link_modificar_componente").attr("href","modificarComponenteSeccionPackingList.php?id="+id_componente+prodParam);
           $("#link_eliminar_componente").attr("data-toggle","modal");
-          $("#link_eliminar_componente").attr("data-target","#eliminarModalComponente_"+id_componente);
+          prepararConfirmacion("#link_eliminar_componente", "#modalEliminarComponente", "eliminarComponentePackingList.php?id=" + id_componente + prodParam, t);
         }
 		  });
           

@@ -202,7 +202,7 @@ Database::disconnect();
                         </thead>
                         <tbody>
                           <?php foreach ($despachos as $row): ?>
-                            <tr data-id-estado-despacho="<?=(int)$row['id_estado_despacho']?>">
+                            <tr data-id-estado-despacho="<?=(int)$row['id_estado_despacho']?>" data-cantidad-bultos="<?=(int)$row['cantidad_bultos']?>">
                               <td class="d-none"><?=(int)$row['id']?></td>
                               <td><?=htmlspecialchars((string)$row['nro_sitio'], ENT_QUOTES, 'UTF-8')?></td>
 								<td><?=htmlspecialchars((string)$row['nro_subsitio'], ENT_QUOTES, 'UTF-8')?></td>
@@ -216,29 +216,7 @@ Database::disconnect();
 								<td><?=htmlspecialchars((string)$row['operario'], ENT_QUOTES, 'UTF-8')?></td>
                             </tr>
 
-                                <?php if ((int)$row['id_estado_despacho'] === 1): ?>
-                                <div class="modal fade" id="eliminarModal_<?=(int)$row['id']?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                                  <div class="modal-dialog" role="document">
-                                    <div class="modal-content">
-                                      <div class="modal-header">
-                                        <h5 class="modal-title" id="exampleModalLabel">Confirmación</h5>
-                                        <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                                      </div>
-                                      <div class="modal-body">
-                                        <?php if ((int)$row['cantidad_bultos'] > 0): ?>
-                                          Este despacho tiene <strong><?=(int)$row['cantidad_bultos']?> <?=((int)$row['cantidad_bultos'] === 1 ? 'bulto' : 'bultos')?></strong> asociados. Al eliminarlo, también se borrarán esos bultos y los detalles de su contenido. ¿Desea continuar?
-                                        <?php else: ?>
-                                          Este despacho no tiene bultos asociados. ¿Confirma que desea eliminarlo?
-                                        <?php endif; ?>
-                                      </div>
-                                      <div class="modal-footer">
-                                        <a href="eliminarDespacho.php?id=<?=(int)$row['id']?>" class="btn btn-primary">Eliminar</a>
-                                        <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                                <?php endif; ?>
+
                           <?php endforeach; ?>
                         </tbody>
 						            <tfoot>
@@ -401,82 +379,57 @@ Database::disconnect();
     }
     Database::disconnect();*/
     ?>
-		<?php
-		$pdo = Database::connect();
-		$sql = "SELECT `id`, `id_bulto`, `id_tipo_bulto`, `id_origen_bulto`, `id_detalle_bulto`, `cantidad` FROM `bultos_detalle` WHERE 1 "; 
-		foreach ($pdo->query($sql) as $row) {
-			?>
-		  <div class="modal fade" id="eliminarModalDetalle_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalDetalleLabel" aria-hidden="true">
-			<div class="modal-dialog" role="document">
-			<div class="modal-content">
-			  <div class="modal-header">
-			  <h5 class="modal-title" id="exampleModalDetalleLabel">Confirmación</h5>
-			  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-			  </div>
-			  <div class="modal-body">¿Está seguro que desea eliminar el Detalle del Bulto?</div>
-			  <div class="modal-footer">
-			  <a href="eliminarDetalleBultoDespacho.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-			  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-			  </div>
-			</div>
-			</div>
-		  </div>
-		  <?php
-			}
-			Database::disconnect();
-			?>
-			<?php
-			$pdo = Database::connect();
-			$sql = "SELECT `id`, `id_despacho`, `numero`, `nombre`, `color`, `id_estado_bulto` FROM `bultos` WHERE 1 "; 
-			foreach ($pdo->query($sql) as $row) {
-				$sql2 = "select count(*) cant from bultos_detalle where id_bulto = ".$row[0];
-				$q2 = $pdo->prepare($sql2);
-				$q2->execute();
-				$data2 = $q2->fetch(PDO::FETCH_ASSOC);
-				if (empty($data2['cant'])) {
-				?>
-				<div class="modal fade" id="eliminarModalBulto_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalBultoLabel" aria-hidden="true">
-				<div class="modal-dialog" role="document">
-				<div class="modal-content">
-				  <div class="modal-header">
-				  <h5 class="modal-title" id="exampleModalBultoLabel">Confirmación</h5>
-				  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-				  </div>
-				  <div class="modal-body">¿Está seguro que desea eliminar el Bulto?</div>
-				  <div class="modal-footer">
-				  <a href="eliminarBultoDespacho.php?id=<?php echo $row[0]; ?>" class="btn btn-primary">Eliminar</a>
-				  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-				  </div>
-				</div>
-				</div>
-			  </div>
-			  <?php
-				} else {
-			?>
-				<div class="modal fade" id="eliminarModalBulto_<?php echo $row[0]; ?>" tabindex="-1" role="dialog" aria-labelledby="exampleModalBultoLabel" aria-hidden="true">
-				<div class="modal-dialog" role="document">
-				<div class="modal-content">
-				  <div class="modal-header">
-				  <h5 class="modal-title" id="exampleModalBultoLabel">Alerta</h5>
-				  <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-				  </div>
-				  <div class="modal-body">El Bulto no puede ser eliminado debido a que tiene Detalles sin cancelar.</div>
-				  <div class="modal-footer">
-				  <button class="btn btn-light" type="button" data-dismiss="modal" aria-label="Close">Volver</button>
-				  </div>
-				</div>
-				</div>
-			  </div>
-			  <?php
-				}
-			}
-			Database::disconnect();
-			?>
-    <!-- latest jquery-->
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminar" data-ruta-confirmacion="eliminarDespacho.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">Este despacho no tiene bultos asociados. ¿Confirma que desea eliminarlo?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminarDetalle" data-tabla-origen="#dataTables-example668" data-tabla-padre="#dataTables-example667" data-ruta-confirmacion="eliminarDetalleBultoDespacho.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarDetalleLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarDetalleLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el Detalle del Bulto?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade modal-confirmacion-tabla" id="modalEliminarBulto" data-tabla-origen="#dataTables-example667" data-tabla-padre="#dataTables-example666" data-ruta-confirmacion="eliminarBultoDespacho.php" tabindex="-1" role="dialog" aria-labelledby="modalEliminarBultoLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEliminarBultoLabel">Confirmación</h5>
+            <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+          </div>
+          <div class="modal-body">¿Está seguro que desea eliminar el Bulto?</div>
+          <div class="modal-footer">
+            <a class="btn btn-primary confirmar-accion">Eliminar</a>
+            <button class="btn btn-light" type="button" data-dismiss="modal">Volver</button>
+          </div>
+        </div>
+      </div>
+    </div>
+		<!-- latest jquery-->
     <script src="assets/js/jquery-3.2.1.min.js"></script>
     <!-- Bootstrap js-->
     <script src="assets/js/bootstrap/popper.min.js"></script>
     <script src="assets/js/bootstrap/bootstrap.js"></script>
+    <script src="assets/js/confirmaciones-tablas.js"></script>
     <script src="assets/js/select2/select2.full.min.js"></script>
     <script src="assets/js/select2/select2-custom.js"></script>
     <!-- feather icon js-->
@@ -642,7 +595,17 @@ Database::disconnect();
           if (estadoDespacho === 1) {
             $("#link_nuevo_bulto").attr("href","nuevoBultoDespacho.php?id_despacho="+id_des);
             $("#link_modificar_des").attr("href","modificarDespacho.php?id="+id_des);
-            $("#link_eliminar_des").removeClass("disabled").removeAttr("aria-disabled").attr("title","Eliminar despacho pendiente").attr("href","#").attr("data-toggle","modal").attr("data-target","#eliminarModal_"+id_des);
+            $("#link_eliminar_des").removeClass("disabled").removeAttr("aria-disabled").attr("title","Eliminar despacho pendiente").attr("href","#").attr("data-toggle","modal");
+            var cantidadBultos = Number(t.attr("data-cantidad-bultos"));
+            var mensajeEliminar = "Este despacho no tiene bultos asociados. ¿Confirma que desea eliminarlo?";
+            if (cantidadBultos > 0) {
+              var nombreBultos = "bultos";
+              if (cantidadBultos === 1) {
+                nombreBultos = "bulto";
+              }
+              mensajeEliminar = "Este despacho tiene " + cantidadBultos + " " + nombreBultos + " asociados. Al eliminarlo, también se borrarán esos bultos y los detalles de su contenido. ¿Desea continuar?";
+            }
+            prepararConfirmacion("#link_eliminar_des", "#modalEliminar", "eliminarDespacho.php?id=" + id_des, t, { mensaje: mensajeEliminar });
             $("#link_modificar_des, #link_nuevo_bulto, #link_despachar_des").removeClass("disabled").removeAttr("aria-disabled");
             $("#link_modificar_des").attr("title","Modificar despacho");
             $("#link_nuevo_bulto").attr("title","Editar carga");
@@ -717,6 +680,7 @@ Database::disconnect();
 	} );
 	
 	function get_bultos(id_des){
+      var versionConfirmacion = iniciarCargaConfirmaciones("#dataTables-example667");
       let datosUpdate = new FormData();
       datosUpdate.append('id_des', id_des);
       $.ajax({
@@ -727,6 +691,9 @@ Database::disconnect();
         contentType: false,
         processData: false,
         success: function(data){
+          if (!finalizarCargaConfirmaciones("#dataTables-example667", versionConfirmacion)) {
+            return;
+          }
           console.log(data);
           data = JSON.parse(data);
           console.log(data);
@@ -800,7 +767,7 @@ Database::disconnect();
 			})
 			
           //$('#dataTables-example667').find("tbody tr td").not(":last-child").on( 'click', function () {
-    $(document).on("click","#dataTables-example667 tbody tr td", function(){
+    $(document).off("click.confirmacionFila", "#dataTables-example667 tbody tr td").on("click.confirmacionFila", "#dataTables-example667 tbody tr td", function(){
 			var t=$(this).parent();
 			//t.parent().find("tr").removeClass("selected");
 
@@ -822,7 +789,7 @@ Database::disconnect();
 			  $("#link_modificar_bulto").attr("href","modificarBultoDespacho.php?id="+id_bul);
 			  $("#link_nuevo_detalle_bulto").attr("href","nuevoDetalleBultoDespacho.php?id="+id_bul);
 			  $("#link_eliminar_bulto").attr("data-toggle","modal");
-			  $("#link_eliminar_bulto").attr("data-target","#eliminarModalBulto_"+id_bul);
+			  prepararConfirmacion("#link_eliminar_bulto", "#modalEliminarBulto", "eliminarBultoDespacho.php?id=" + id_bul, t, { bloqueado: Number(t.find("td:nth-child(6)").text().trim()) > 0, mensaje: "El Bulto no puede ser eliminado debido a que tiene Detalles sin cancelar." });
 			}
 		  });
           
@@ -881,6 +848,7 @@ Database::disconnect();
 	} );
 	
 	function get_detalles_bulto(id_bul){
+      var versionConfirmacion = iniciarCargaConfirmaciones("#dataTables-example668");
       let datosUpdate = new FormData();
       datosUpdate.append('id_bul', id_bul);
       $.ajax({
@@ -891,6 +859,9 @@ Database::disconnect();
         contentType: false,
         processData: false,
         success: function(data){
+          if (!finalizarCargaConfirmaciones("#dataTables-example668", versionConfirmacion)) {
+            return;
+          }
           console.log(data);
           data = JSON.parse(data);
           console.log(data);
@@ -958,7 +929,7 @@ Database::disconnect();
 			})
 			
           //$('#dataTables-example668').find("tbody tr td").not(":last-child").on( 'click', function () {
-    $(document).on("click","#dataTables-example668 tbody tr td", function(){
+    $(document).off("click.confirmacionFila", "#dataTables-example668 tbody tr td").on("click.confirmacionFila", "#dataTables-example668 tbody tr td", function(){
 			var t=$(this).parent();
 			//t.parent().find("tr").removeClass("selected");
 
@@ -976,7 +947,7 @@ Database::disconnect();
 			  $("#link_ver_detalle_bulto_des").attr("href","verDetalleBultoDespacho.php?id="+id_detalle);
 			  $("#link_modificar_detalle_bulto").attr("href","modificarDetalleBultoDespacho.php?id="+id_detalle);
 			  $("#link_eliminar_detalle_bulto").attr("data-toggle","modal");
-			  $("#link_eliminar_detalle_bulto").attr("data-target","#eliminarModalDetalle_"+id_detalle);
+			  prepararConfirmacion("#link_eliminar_detalle_bulto", "#modalEliminarDetalle", "eliminarDetalleBultoDespacho.php?id=" + id_detalle, t);
 			}
 		  });
           

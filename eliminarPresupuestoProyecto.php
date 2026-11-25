@@ -7,21 +7,19 @@
     
     require 'database.php';
 
-    $id = null;
-    if (!empty($_GET['id'])) {
-        $id = $_REQUEST['id'];
-    }
-    
-    if (null==$id) {
+    $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+    $idProyecto = filter_input(INPUT_GET, 'idProyecto', FILTER_VALIDATE_INT);
+    if (!$id || $id < 1 || !$idProyecto || $idProyecto < 1) {
         header("Location: listarProyectos.php");
+        exit;
     }
-    
+
     $pdo = Database::connect();
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    $sql = "delete from proyectos_presupuestos where id = ? ";
+    $sql = "delete from proyectos_presupuestos where id = ? AND id_proyecto = ? ";
     $q = $pdo->prepare($sql);
-    $q->execute(array($id));
+    $q->execute([$id, $idProyecto]);
         
     Database::disconnect();
         
