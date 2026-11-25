@@ -171,9 +171,9 @@ Database::disconnect();
 						echo '&nbsp;&nbsp;';
 					}
 					if (!empty(tienePermiso(361))) {
-						echo '<a href="#" id="link_nuevo_bulto" title="Editar carga"><i class="fa fa-lg fa-cubes" aria-hidden="true"></i></a>';
+						echo '<a href="#" id="link_nuevo_bulto" title="Editar carga" style="color: midnightblue;"><i class="fa fa-lg fa-cubes" aria-hidden="true"></i></a>';
 						echo '&nbsp;&nbsp;';
-						echo '<a href="#" id="link_despachar_des" title="Despachar pendiente"><i class="fa fa-lg fa-truck" aria-hidden="true"></i></a>';
+						echo '<a href="#" id="link_despachar_des" title="Despachar pendiente" style="color: midnightblue;"><i class="fa fa-lg fa-truck" aria-hidden="true"></i></a>';
 						echo '&nbsp;&nbsp;';
 					}
 					?>
